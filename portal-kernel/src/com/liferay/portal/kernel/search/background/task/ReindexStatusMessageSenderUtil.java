@@ -14,25 +14,12 @@
 
 package com.liferay.portal.kernel.search.background.task;
 
-import aQute.bnd.annotation.ProviderType;
-
-import com.liferay.portal.kernel.security.pacl.permission.PortalRuntimePermission;
 import com.liferay.portal.kernel.util.ServiceProxyFactory;
 
 /**
  * @author Andrew Betts
  */
-@ProviderType
 public class ReindexStatusMessageSenderUtil {
-
-	/**
-	 * @deprecated As of 7.0.0, replaced by {@link
-	 *             #_getReindexStatusMessageSender()}
-	 */
-	@Deprecated
-	public static ReindexStatusMessageSender getReindexStatusMessageSender() {
-		return _getReindexStatusMessageSender();
-	}
 
 	public static void sendStatusMessage(
 		String className, long count, long total) {
@@ -49,9 +36,6 @@ public class ReindexStatusMessageSenderUtil {
 	}
 
 	private static ReindexStatusMessageSender _getReindexStatusMessageSender() {
-		PortalRuntimePermission.checkGetBeanProperty(
-			ReindexStatusMessageSenderUtil.class);
-
 		return _reindexStatusMessageSender;
 	}
 

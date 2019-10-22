@@ -57,7 +57,7 @@ public class LiferayInputStreamTest {
 								File.class.getMethod("createTempFile"))) {
 
 							_file = java.io.File.createTempFile(
-								"temp", Long.toString(System.nanoTime()));
+								"temp", String.valueOf(System.nanoTime()));
 
 							return _file;
 						}
@@ -190,8 +190,8 @@ public class LiferayInputStreamTest {
 	private static final byte[] _CACHEABLE_BYTES =
 		new byte[(int)LiferayInputStream.THRESHOLD_SIZE - 1];
 
-	private static final byte[] _UNCACHEABLE_BYTES = new byte[
-		(int)LiferayInputStream.THRESHOLD_SIZE];
+	private static final byte[] _UNCACHEABLE_BYTES =
+		new byte[(int)LiferayInputStream.THRESHOLD_SIZE];
 
 	static {
 		for (int i = 0; i < _CACHEABLE_BYTES.length; i++) {

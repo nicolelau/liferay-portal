@@ -14,7 +14,9 @@
 
 package com.liferay.portal.model.impl;
 
+import com.liferay.petra.io.StreamUtil;
 import com.liferay.petra.string.CharPool;
+import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.language.LanguageUtil;
 import com.liferay.portal.kernel.log.Log;
@@ -22,10 +24,8 @@ import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.model.LayoutTemplate;
 import com.liferay.portal.kernel.model.Plugin;
 import com.liferay.portal.kernel.servlet.ServletContextPool;
-import com.liferay.portal.kernel.util.HttpUtil;
 import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.PortalUtil;
-import com.liferay.portal.kernel.util.StringBundler;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
 
@@ -71,14 +71,13 @@ public class LayoutTemplateImpl
 			return false;
 		}
 
-		String layoutTemplateId = layoutTemplate.getLayoutTemplateId();
+		if (getLayoutTemplateId().equals(
+				layoutTemplate.getLayoutTemplateId())) {
 
-		if (getLayoutTemplateId().equals(layoutTemplateId)) {
 			return true;
 		}
-		else {
-			return false;
-		}
+
+		return false;
 	}
 
 	@Override
@@ -153,13 +152,13 @@ public class LayoutTemplateImpl
 
 	@Override
 	public String getStaticResourcePath() {
-		String proxyPath = PortalUtil.getPathProxy();
-
 		String contextPath = getContextPath();
 
 		if (!isWARFile()) {
 			return contextPath;
 		}
+
+		String proxyPath = PortalUtil.getPathProxy();
 
 		return proxyPath.concat(contextPath);
 	}
@@ -200,8 +199,8 @@ public class LayoutTemplateImpl
 					getTemplatePath()));
 		}
 
-		String content = HttpUtil.URLtoString(
-			_servletContext.getResource(getTemplatePath()));
+		String content = StreamUtil.toString(
+			_servletContext.getResourceAsStream(getTemplatePath()));
 
 		setContent(content);
 

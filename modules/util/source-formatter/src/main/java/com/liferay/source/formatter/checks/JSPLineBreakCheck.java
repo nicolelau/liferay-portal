@@ -20,6 +20,8 @@ import com.liferay.portal.kernel.io.unsync.UnsyncStringReader;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.source.formatter.checks.util.JSPSourceUtil;
 
+import java.io.IOException;
+
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -31,7 +33,7 @@ public class JSPLineBreakCheck extends LineBreakCheck {
 	@Override
 	protected String doProcess(
 			String fileName, String absolutePath, String content)
-		throws Exception {
+		throws IOException {
 
 		try (UnsyncBufferedReader unsyncBufferedReader =
 				new UnsyncBufferedReader(new UnsyncStringReader(content))) {
@@ -39,12 +41,40 @@ public class JSPLineBreakCheck extends LineBreakCheck {
 			String line = null;
 			String previousLine = StringPool.BLANK;
 
-			int lineCount = 0;
+			boolean javaSource = false;
+			boolean jsSource = false;
+
+			int lineNumber = 0;
 
 			while ((line = unsyncBufferedReader.readLine()) != null) {
-				lineCount++;
+				lineNumber++;
 
-				checkLineBreaks(line, previousLine, fileName, lineCount);
+				String trimmedLine = StringUtil.trimLeading(line);
+
+				if (trimmedLine.equals("<%") || trimmedLine.equals("<%!")) {
+					javaSource = true;
+				}
+				else if (trimmedLine.equals("%>")) {
+					javaSource = false;
+				}
+				else if (trimmedLine.equals("<aui:script>") ||
+						 trimmedLine.startsWith("<aui:script ") ||
+						 trimmedLine.equals("<script>") ||
+						 trimmedLine.startsWith("<script ")) {
+
+					jsSource = true;
+				}
+				else if (trimmedLine.equals("</aui:script>") ||
+						 trimmedLine.equals("</script>")) {
+
+					jsSource = false;
+				}
+
+				if (!line.startsWith(StringPool.POUND) &&
+					(!jsSource || javaSource)) {
+
+					checkLineBreaks(line, previousLine, fileName, lineNumber);
+				}
 
 				previousLine = line;
 			}
@@ -82,6 +112,13 @@ public class JSPLineBreakCheck extends LineBreakCheck {
 					continue;
 				}
 
+				String lastLine = StringUtil.trim(
+					getLine(content, getLineNumber(content, x)));
+
+				if (lastLine.startsWith(StringPool.CLOSE_PARENTHESIS)) {
+					break;
+				}
+
 				String codeSingleLine = StringUtil.replace(
 					codeBlock, new String[] {StringPool.TAB, ",\n", "\n"},
 					new String[] {StringPool.BLANK, ", ", StringPool.BLANK});
@@ -104,9 +141,9 @@ public class JSPLineBreakCheck extends LineBreakCheck {
 		return content;
 	}
 
-	private final Pattern _redundantLineBreakPattern1 = Pattern.compile(
+	private static final Pattern _redundantLineBreakPattern1 = Pattern.compile(
 		"[\n\t][^/\n\t].*(\\(\n)");
-	private final Pattern _redundantLineBreakPattern2 = Pattern.compile(
+	private static final Pattern _redundantLineBreakPattern2 = Pattern.compile(
 		"[\n\t][^/\n\t].*[|&](\n[\t ]*)");
 
 }

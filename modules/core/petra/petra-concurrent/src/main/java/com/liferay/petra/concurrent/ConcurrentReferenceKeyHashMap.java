@@ -16,11 +16,9 @@ package com.liferay.petra.concurrent;
 
 import com.liferay.petra.memory.FinalizeAction;
 import com.liferay.petra.memory.FinalizeManager;
-import com.liferay.petra.memory.FinalizeManager.ReferenceFactory;
 
 import java.lang.ref.Reference;
 
-import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -32,7 +30,7 @@ public class ConcurrentReferenceKeyHashMap<K, V>
 
 	public ConcurrentReferenceKeyHashMap(
 		ConcurrentMap<Reference<K>, V> innerConcurrentMap,
-		ReferenceFactory referenceFactory) {
+		FinalizeManager.ReferenceFactory referenceFactory) {
 
 		super(innerConcurrentMap);
 
@@ -40,33 +38,26 @@ public class ConcurrentReferenceKeyHashMap<K, V>
 	}
 
 	public ConcurrentReferenceKeyHashMap(
+		FinalizeManager.ReferenceFactory referenceFactory) {
+
+		this(new ConcurrentHashMap<>(), referenceFactory);
+	}
+
+	public ConcurrentReferenceKeyHashMap(
+		int initialCapacity,
+		FinalizeManager.ReferenceFactory referenceFactory) {
+
+		this(new ConcurrentHashMap<>(initialCapacity), referenceFactory);
+	}
+
+	public ConcurrentReferenceKeyHashMap(
 		int initialCapacity, float loadFactor, int concurrencyLevel,
-		ReferenceFactory referenceFactory) {
+		FinalizeManager.ReferenceFactory referenceFactory) {
 
 		this(
-			new ConcurrentHashMap<Reference<K>, V>(
+			new ConcurrentHashMap<>(
 				initialCapacity, loadFactor, concurrencyLevel),
 			referenceFactory);
-	}
-
-	public ConcurrentReferenceKeyHashMap(
-		int initialCapacity, ReferenceFactory referenceFactory) {
-
-		this(
-			new ConcurrentHashMap<Reference<K>, V>(initialCapacity),
-			referenceFactory);
-	}
-
-	public ConcurrentReferenceKeyHashMap(
-		Map<? extends K, ? extends V> map, ReferenceFactory referenceFactory) {
-
-		this(new ConcurrentHashMap<Reference<K>, V>(), referenceFactory);
-
-		putAll(map);
-	}
-
-	public ConcurrentReferenceKeyHashMap(ReferenceFactory referenceFactory) {
-		this(new ConcurrentHashMap<Reference<K>, V>(), referenceFactory);
 	}
 
 	@Override
@@ -123,6 +114,6 @@ public class ConcurrentReferenceKeyHashMap<K, V>
 
 	};
 
-	private final ReferenceFactory _referenceFactory;
+	private final FinalizeManager.ReferenceFactory _referenceFactory;
 
 }

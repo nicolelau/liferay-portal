@@ -33,144 +33,14 @@ import java.util.regex.Pattern;
  */
 public class LoadBalancerUtil {
 
-	public static String getMostAvailableMasterURL(Properties properties) {
-		long start = System.currentTimeMillis();
-
-		int retries = 0;
-
-		while (true) {
-			try {
-				String baseInvocationURL = properties.getProperty(
-					"base.invocation.url");
-
-				String masterPrefix = getMasterPrefix(baseInvocationURL);
-
-				if (masterPrefix.equals(baseInvocationURL)) {
-					return baseInvocationURL;
-				}
-
-				List<JenkinsMaster> jenkinsMasters = getAvailableJenkinsMasters(
-					masterPrefix, properties);
-
-				long nextUpdateTimestamp = _getNextUpdateTimestamp(
-					masterPrefix);
-
-				if (nextUpdateTimestamp < System.currentTimeMillis()) {
-					_updateJenkinsMasters(jenkinsMasters);
-
-					_setNextUpdateTimestamp(
-						masterPrefix,
-						System.currentTimeMillis() + _updateInterval);
-				}
-
-				Collections.sort(jenkinsMasters);
-
-				JenkinsMaster mostAvailableJenkinsMaster = jenkinsMasters.get(
-					0);
-
-				StringBuilder sb = new StringBuilder();
-
-				for (JenkinsMaster jenkinsMaster : jenkinsMasters) {
-					sb.append(jenkinsMaster.getName());
-					sb.append(" : ");
-					sb.append(jenkinsMaster.getAvailableSlavesCount());
-					sb.append("\n");
-				}
-
-				System.out.print(sb);
-
-				sb = new StringBuilder();
-
-				sb.append("\nMost available master ");
-				sb.append(mostAvailableJenkinsMaster.getName());
-				sb.append(" has ");
-				sb.append(mostAvailableJenkinsMaster.getAvailableSlavesCount());
-				sb.append(" available slaves.");
-
-				System.out.println(sb);
-
-				int invokedBatchSize = 0;
-
-				try {
-					invokedBatchSize = Integer.parseInt(
-						properties.getProperty("invoked.job.batch.size"));
-				}
-				catch (Exception e) {
-					invokedBatchSize = 1;
-				}
-
-				mostAvailableJenkinsMaster.addRecentBatch(invokedBatchSize);
-
-				return "http://" + mostAvailableJenkinsMaster.getName();
-			}
-			catch (Exception e) {
-				if (retries < _MAX_RETRIES) {
-					retries++;
-
-					continue;
-				}
-
-				throw e;
-			}
-			finally {
-				System.out.println(
-					"Got most available master URL in " +
-						JenkinsResultsParserUtil.toDurationString(
-							System.currentTimeMillis() - start));
-			}
-		}
-	}
-
-	public static String getMostAvailableMasterURL(
-			String... overridePropertiesArray)
-		throws Exception {
-
-		return getMostAvailableMasterURL(null, overridePropertiesArray);
-	}
-
-	public static String getMostAvailableMasterURL(
-			String propertiesURL, String[] overridePropertiesArray)
-		throws Exception {
-
-		Properties properties = new Properties();
-
-		if (propertiesURL == null) {
-			properties = JenkinsResultsParserUtil.getBuildProperties();
-		}
-		else {
-			properties = new Properties();
-			String propertiesString = JenkinsResultsParserUtil.toString(
-				JenkinsResultsParserUtil.getLocalURL(propertiesURL), false);
-
-			properties.load(new StringReader(propertiesString));
-		}
-
-		if ((overridePropertiesArray != null) &&
-			(overridePropertiesArray.length > 0) &&
-			((overridePropertiesArray.length % 2) == 0)) {
-
-			for (int i = 0; i < overridePropertiesArray.length; i += 2) {
-				String overridePropertyName = overridePropertiesArray[i];
-				String overridePropertyValue = overridePropertiesArray[i + 1];
-
-				if (overridePropertyValue == null) {
-					continue;
-				}
-
-				properties.setProperty(
-					overridePropertyName, overridePropertyValue);
-			}
-		}
-
-		return getMostAvailableMasterURL(properties);
-	}
-
-	public static void setUpdateInterval(long interval) {
-		_updateInterval = interval;
-	}
-
-	protected static List<JenkinsMaster> getAvailableJenkinsMasters(
+	public static List<JenkinsMaster> getAvailableJenkinsMasters(
 		String masterPrefix, Properties properties) {
+
+		return getAvailableJenkinsMasters(masterPrefix, properties, true);
+	}
+
+	public static List<JenkinsMaster> getAvailableJenkinsMasters(
+		String masterPrefix, Properties properties, boolean verbose) {
 
 		List<JenkinsMaster> allJenkinsMasters = null;
 
@@ -184,7 +54,7 @@ public class LoadBalancerUtil {
 			allJenkinsMasters = _jenkinsMasters.get(masterPrefix);
 		}
 
-		List<String> blacklist = _getBlacklist(properties);
+		List<String> blacklist = _getBlacklist(properties, verbose);
 
 		if (blacklist.isEmpty()) {
 			return new ArrayList<>(allJenkinsMasters);
@@ -204,6 +74,173 @@ public class LoadBalancerUtil {
 		return availableJenkinsMasters;
 	}
 
+	public static String getMostAvailableMasterURL(
+			boolean verbose, String... overridePropertiesArray)
+		throws Exception {
+
+		return getMostAvailableMasterURL(
+			null, overridePropertiesArray, verbose);
+	}
+
+	public static String getMostAvailableMasterURL(Properties properties) {
+		return getMostAvailableMasterURL(properties, true);
+	}
+
+	public static String getMostAvailableMasterURL(
+		Properties properties, boolean verbose) {
+
+		long start = System.currentTimeMillis();
+
+		int retries = 0;
+
+		while (true) {
+			try {
+				String baseInvocationURL = properties.getProperty(
+					"base.invocation.url");
+
+				String masterPrefix = getMasterPrefix(baseInvocationURL);
+
+				if (masterPrefix.equals(baseInvocationURL)) {
+					return baseInvocationURL;
+				}
+
+				List<JenkinsMaster> jenkinsMasters = getAvailableJenkinsMasters(
+					masterPrefix, properties, verbose);
+
+				long nextUpdateTimestamp = _getNextUpdateTimestamp(
+					masterPrefix);
+
+				if (nextUpdateTimestamp < System.currentTimeMillis()) {
+					_updateJenkinsMasters(jenkinsMasters);
+
+					_setNextUpdateTimestamp(
+						masterPrefix,
+						System.currentTimeMillis() + _updateInterval);
+				}
+
+				Collections.sort(jenkinsMasters);
+
+				JenkinsMaster mostAvailableJenkinsMaster = jenkinsMasters.get(
+					0);
+
+				if (verbose) {
+					StringBuilder sb = new StringBuilder();
+
+					for (JenkinsMaster jenkinsMaster : jenkinsMasters) {
+						sb.append(jenkinsMaster.getName());
+						sb.append(" : ");
+						sb.append(jenkinsMaster.getAvailableSlavesCount());
+						sb.append("\n");
+					}
+
+					System.out.println(sb.toString());
+
+					sb = new StringBuilder();
+
+					sb.append("\nMost available master ");
+					sb.append(mostAvailableJenkinsMaster.getName());
+					sb.append(" has ");
+					sb.append(
+						mostAvailableJenkinsMaster.getAvailableSlavesCount());
+					sb.append(" available slaves.");
+
+					System.out.println(sb.toString());
+				}
+
+				int invokedBatchSize = 0;
+
+				try {
+					invokedBatchSize = Integer.parseInt(
+						properties.getProperty("invoked.job.batch.size"));
+				}
+				catch (Exception e) {
+					invokedBatchSize = 1;
+				}
+
+				mostAvailableJenkinsMaster.addRecentBatch(invokedBatchSize);
+
+				return "http://" + mostAvailableJenkinsMaster.getName();
+			}
+			catch (Exception e) {
+				if (retries < _RETRIES_SIZE_MAX) {
+					retries++;
+
+					continue;
+				}
+
+				throw e;
+			}
+			finally {
+				if (verbose) {
+					String durationString =
+						JenkinsResultsParserUtil.toDurationString(
+							System.currentTimeMillis() - start);
+
+					System.out.println(
+						"Got most available master URL in " + durationString);
+				}
+			}
+		}
+	}
+
+	public static String getMostAvailableMasterURL(
+			String... overridePropertiesArray)
+		throws Exception {
+
+		return getMostAvailableMasterURL(true, overridePropertiesArray);
+	}
+
+	public static String getMostAvailableMasterURL(
+			String propertiesURL, String[] overridePropertiesArray)
+		throws Exception {
+
+		return getMostAvailableMasterURL(
+			propertiesURL, overridePropertiesArray, true);
+	}
+
+	public static String getMostAvailableMasterURL(
+			String propertiesURL, String[] overridePropertiesArray,
+			boolean verbose)
+		throws Exception {
+
+		Properties properties = new Properties();
+
+		if (propertiesURL == null) {
+			properties = JenkinsResultsParserUtil.getBuildProperties(false);
+		}
+		else {
+			properties = new Properties();
+			String propertiesString = JenkinsResultsParserUtil.toString(
+				JenkinsResultsParserUtil.getLocalURL(propertiesURL), false);
+
+			properties.load(new StringReader(propertiesString));
+		}
+
+		if ((overridePropertiesArray != null) &&
+			(overridePropertiesArray.length > 0) &&
+			((overridePropertiesArray.length % 2) == 0)) {
+
+			for (int i = 0; i < overridePropertiesArray.length; i += 2) {
+				String overridePropertyName = overridePropertiesArray[i];
+
+				String overridePropertyValue = overridePropertiesArray[i + 1];
+
+				if (overridePropertyValue == null) {
+					continue;
+				}
+
+				properties.setProperty(
+					overridePropertyName, overridePropertyValue);
+			}
+		}
+
+		return getMostAvailableMasterURL(properties, verbose);
+	}
+
+	public static void setUpdateInterval(long interval) {
+		_updateInterval = interval;
+	}
+
 	protected static String getMasterPrefix(String baseInvocationURL) {
 		Matcher matcher = _urlPattern.matcher(baseInvocationURL);
 
@@ -214,11 +251,15 @@ public class LoadBalancerUtil {
 		return matcher.group("masterPrefix");
 	}
 
-	private static List<String> _getBlacklist(Properties properties) {
+	private static List<String> _getBlacklist(
+		Properties properties, boolean verbose) {
+
 		String blacklistString = properties.getProperty(
 			"jenkins.load.balancer.blacklist", "");
 
-		System.out.println("Blacklist: " + blacklistString);
+		if (verbose) {
+			System.out.println("Blacklist: " + blacklistString);
+		}
 
 		if (blacklistString.isEmpty()) {
 			return Collections.emptyList();
@@ -291,7 +332,7 @@ public class LoadBalancerUtil {
 		}
 	}
 
-	private static final int _MAX_RETRIES = 3;
+	private static final int _RETRIES_SIZE_MAX = 3;
 
 	private static final Map<String, List<JenkinsMaster>> _jenkinsMasters =
 		new HashMap<>();

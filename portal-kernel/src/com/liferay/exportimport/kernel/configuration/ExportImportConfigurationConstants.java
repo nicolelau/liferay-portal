@@ -14,15 +14,12 @@
 
 package com.liferay.exportimport.kernel.configuration;
 
-import aQute.bnd.annotation.ProviderType;
-
 import com.liferay.petra.string.StringPool;
 
 /**
  * @author Daniel Kocsis
  * @author Akos Thurzo
  */
-@ProviderType
 public class ExportImportConfigurationConstants {
 
 	public static final int TYPE_EXPORT_LAYOUT = 0;
@@ -106,9 +103,8 @@ public class ExportImportConfigurationConstants {
 		else if (type == TYPE_SCHEDULED_PUBLISH_LAYOUT_REMOTE) {
 			return TYPE_SCHEDULED_PUBLISH_LAYOUT_REMOTE_LABEL;
 		}
-		else {
-			return StringPool.BLANK;
-		}
+
+		return StringPool.BLANK;
 	}
 
 }

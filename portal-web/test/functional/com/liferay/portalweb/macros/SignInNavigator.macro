@@ -1,13 +1,23 @@
-<definition>
-	<command name="gotoCreateAccount">
-		<execute function="AssertClick" locator1="UserBar#USER_SIGN_IN" value1="Sign In" />
+definition {
 
-		<execute function="AssertClick" locator1="Link#CREATE_ACCOUNT" value1="Create Account" />
-	</command>
+	macro gotoCreateAccount {
+		AssertClick(
+			locator1 = "UserBar#USER_SIGN_IN",
+			value1 = "Sign In");
 
-	<command name="gotoForgotPassword">
-		<execute function="AssertClick" locator1="UserBar#USER_SIGN_IN" value1="Sign In" />
+		AssertClick(
+			locator1 = "Link#CREATE_ACCOUNT",
+			value1 = "Create Account");
+	}
 
-		<execute function="AssertClick" locator1="Link#FORGOT_PASSWORD" value1="Forgot Password" />
-	</command>
-</definition>
+	macro gotoForgotPassword {
+		AssertClick(
+			locator1 = "UserBar#USER_SIGN_IN",
+			value1 = "Sign In");
+
+		AssertClick(
+			locator1 = "Link#FORGOT_PASSWORD",
+			value1 = "Forgot Password");
+	}
+
+}

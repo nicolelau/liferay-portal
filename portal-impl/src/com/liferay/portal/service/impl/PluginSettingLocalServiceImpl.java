@@ -44,12 +44,12 @@ public class PluginSettingLocalServiceImpl
 
 	@Override
 	public PluginSetting getDefaultPluginSetting() {
-		PluginSettingImpl pluginSetting = new PluginSettingImpl();
+		PluginSettingImpl pluginSettingImpl = new PluginSettingImpl();
 
-		pluginSetting.setRoles(StringPool.BLANK);
-		pluginSetting.setActive(true);
+		pluginSettingImpl.setRoles(StringPool.BLANK);
+		pluginSettingImpl.setActive(true);
 
-		return pluginSetting;
+		return pluginSettingImpl;
 	}
 
 	@Override
@@ -98,9 +98,8 @@ public class PluginSettingLocalServiceImpl
 			if (!pluginSetting.hasPermission(userId)) {
 				return false;
 			}
-			else {
-				return true;
-			}
+
+			return true;
 		}
 		catch (Exception e) {
 			if (_log.isWarnEnabled()) {

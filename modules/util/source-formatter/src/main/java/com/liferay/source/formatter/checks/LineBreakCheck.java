@@ -27,20 +27,7 @@ import java.util.regex.Pattern;
 public abstract class LineBreakCheck extends BaseFileCheck {
 
 	protected void checkLineBreaks(
-		String line, String previousLine, String fileName, int lineCount) {
-
-		int lineLeadingTabCount = getLeadingTabCount(line);
-		int previousLineLeadingTabCount = getLeadingTabCount(previousLine);
-
-		if (previousLine.endsWith(StringPool.COMMA) &&
-			previousLine.contains(StringPool.OPEN_PARENTHESIS) &&
-			!previousLine.contains("for (") &&
-			(lineLeadingTabCount > previousLineLeadingTabCount)) {
-
-			addMessage(
-				fileName, "There should be a line break after '('",
-				lineCount - 1);
-		}
+		String line, String previousLine, String fileName, int lineNumber) {
 
 		String trimmedLine = StringUtil.trimLeading(line);
 
@@ -54,14 +41,16 @@ public abstract class LineBreakCheck extends BaseFileCheck {
 			(strippedQuotesLineOpenParenthesisCount > 0) &&
 			(getLevel(trimmedLine) > 0)) {
 
-			addMessage(fileName, "Incorrect line break", lineCount);
+			addMessage(fileName, "Incorrect line break", lineNumber);
 		}
 
-		if (!trimmedLine.contains(StringPool.COMMA_AND_SPACE) &&
-			trimmedLine.endsWith(StringPool.COMMA) &&
-			!trimmedLine.startsWith("for (") && (getLevel(trimmedLine) > 0)) {
+		if (!trimmedLine.matches("(return )?\\(.*") &&
+			(trimmedLine.endsWith(StringPool.COMMA) ||
+			 trimmedLine.endsWith("->")) &&
+			(getLevel(trimmedLine) > 0)) {
 
-			addMessage(fileName, "Incorrect line break", lineCount);
+			addMessage(
+				fileName, "There should be a line break after '('", lineNumber);
 		}
 
 		if (line.endsWith(" +") || line.endsWith(" -") || line.endsWith(" *") ||
@@ -75,7 +64,7 @@ public abstract class LineBreakCheck extends BaseFileCheck {
 				if ((y == -1) || (x < y)) {
 					addMessage(
 						fileName, "There should be a line break after '='",
-						lineCount);
+						lineNumber);
 				}
 			}
 
@@ -87,7 +76,7 @@ public abstract class LineBreakCheck extends BaseFileCheck {
 				if ((y == -1) || (x < y)) {
 					addMessage(
 						fileName, "There should be a line break after '->'",
-						lineCount);
+						lineNumber);
 				}
 			}
 		}
@@ -104,6 +93,7 @@ public abstract class LineBreakCheck extends BaseFileCheck {
 		return content;
 	}
 
-	private final Pattern _redundantCommaPattern = Pattern.compile(",\n\t+\\}");
+	private static final Pattern _redundantCommaPattern = Pattern.compile(
+		",\n\t+\\}");
 
 }

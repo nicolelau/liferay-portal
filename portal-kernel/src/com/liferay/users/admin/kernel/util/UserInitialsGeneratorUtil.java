@@ -27,16 +27,12 @@ public class UserInitialsGeneratorUtil {
 	public static String getInitials(
 		Locale locale, String firstName, String middleName, String lastName) {
 
-		return getUserInitialsGenerator().getInitials(
+		return _userInitialsGenerator.getInitials(
 			locale, firstName, middleName, lastName);
 	}
 
 	public static String getInitials(User user) {
-		return getUserInitialsGenerator().getInitials(user);
-	}
-
-	public static UserInitialsGenerator getUserInitialsGenerator() {
-		return _userInitialsGenerator;
+		return _userInitialsGenerator.getInitials(user);
 	}
 
 	private static volatile UserInitialsGenerator _userInitialsGenerator =

@@ -147,15 +147,6 @@ public class DefaultActionableDynamicQuery implements ActionableDynamicQuery {
 		}
 	}
 
-	/**
-	 * @deprecated As of 7.0.0, replaced by {@link #setModelClass(Class)}
-	 */
-	@Deprecated
-	@Override
-	public void setClass(Class<?> modelClass) {
-		_modelClass = modelClass;
-	}
-
 	@Override
 	public void setClassLoader(ClassLoader classLoader) {
 		_classLoader = classLoader;
@@ -334,10 +325,8 @@ public class DefaultActionableDynamicQuery implements ActionableDynamicQuery {
 			if (transactionConfig == null) {
 				return callable.call();
 			}
-			else {
-				return TransactionInvokerUtil.invoke(
-					transactionConfig, callable);
-			}
+
+			return TransactionInvokerUtil.invoke(transactionConfig, callable);
 		}
 		catch (Throwable t) {
 			if (t instanceof PortalException) {

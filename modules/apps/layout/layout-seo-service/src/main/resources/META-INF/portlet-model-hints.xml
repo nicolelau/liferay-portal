@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+
+<model-hints>
+	<model name="com.liferay.layout.seo.model.LayoutSEOEntry">
+		<field name="mvccVersion" type="long" />
+		<field name="uuid" type="String" />
+		<field name="layoutSEOEntryId" type="long" />
+		<field name="groupId" type="long" />
+		<field name="companyId" type="long" />
+		<field name="userId" type="long" />
+		<field name="userName" type="String" />
+		<field name="createDate" type="Date" />
+		<field name="modifiedDate" type="Date" />
+		<field name="privateLayout" type="boolean" />
+		<field name="layoutId" type="long" />
+		<field localized="true" name="canonicalURL" type="String" />
+		<field name="canonicalURLEnabled" type="boolean" />
+		<field localized="true" name="openGraphDescription" type="String" />
+		<field name="openGraphDescriptionEnabled" type="boolean" />
+		<field name="openGraphImageFileEntryId" type="long" />
+		<field localized="true" name="openGraphTitle" type="String" />
+		<field name="openGraphTitleEnabled" type="boolean" />
+		<field name="lastPublishDate" type="Date" />
+	</model>
+</model-hints>

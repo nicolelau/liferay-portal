@@ -42,12 +42,12 @@ public class ValidatorEqualsCheck extends BaseFileCheck {
 					fileName,
 					"Use Objects.equals(Object, Object) instead of " +
 						"Validator.equals(Object, Object)",
-					"equals.markdown", getLineCount(content, matcher.start()));
+					"equals.markdown", getLineNumber(content, matcher.start()));
 			}
 		}
 	}
 
-	private final Pattern _validatorEqualsPattern = Pattern.compile(
+	private static final Pattern _validatorEqualsPattern = Pattern.compile(
 		"\\WValidator\\.equals\\(");
 
 }

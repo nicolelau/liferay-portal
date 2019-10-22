@@ -14,9 +14,9 @@
 
 package com.liferay.portal.tools;
 
+import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.io.unsync.UnsyncBufferedReader;
 import com.liferay.portal.kernel.util.ListUtil;
-import com.liferay.portal.kernel.util.StringBundler;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.util.FileImpl;
@@ -73,7 +73,6 @@ public class PluginsGitSvnSyncer {
 
 		Process process = runtime.exec(cmd);
 
-		String[] stdout = _getExecOutput(process.getInputStream());
 		String[] stderr = _getExecOutput(process.getErrorStream());
 
 		if (stderr.length > 0) {
@@ -92,7 +91,7 @@ public class PluginsGitSvnSyncer {
 			throw new Exception(sb.toString());
 		}
 
-		return stdout;
+		return _getExecOutput(process.getInputStream());
 	}
 
 	private String[] _getExecOutput(InputStream is) throws IOException {
@@ -126,14 +125,14 @@ public class PluginsGitSvnSyncer {
 			}
 		}
 
-		return list.toArray(new String[list.size()]);
+		return list.toArray(new String[0]);
 	}
 
 	private void _updateGitIgnores(String srcDirName, String destDirName)
 		throws Exception {
 
 		for (String pluginType : _PLUGIN_TYPES) {
-			String[] dirNames = _fileUtil.listDirs(srcDirName + pluginType);
+			String[] dirNames = _fileImpl.listDirs(srcDirName + pluginType);
 
 			for (String dirName : dirNames) {
 				if (dirName.equals(".svn")) {
@@ -156,8 +155,8 @@ public class PluginsGitSvnSyncer {
 
 		File gitIgnoreFile = new File(destDirName + dirName + ".gitignore");
 
-		if (!_fileUtil.exists(srcDirName + dirName + ".svn")) {
-			_fileUtil.delete(gitIgnoreFile);
+		if (!_fileImpl.exists(srcDirName + dirName + ".svn")) {
+			_fileImpl.delete(gitIgnoreFile);
 
 			return;
 		}
@@ -185,7 +184,7 @@ public class PluginsGitSvnSyncer {
 		}
 
 		if (!ignores.isEmpty()) {
-			String[] ignoresArray = ignores.toArray(new String[ignores.size()]);
+			String[] ignoresArray = ignores.toArray(new String[0]);
 
 			for (int i = 0; i < ignoresArray.length; i++) {
 				String ignore = ignoresArray[i];
@@ -195,12 +194,12 @@ public class PluginsGitSvnSyncer {
 				}
 			}
 
-			_fileUtil.write(
+			_fileImpl.write(
 				destDirName + dirName + ".gitignore",
 				StringUtil.merge(ignoresArray, "\n"));
 		}
 		else {
-			_fileUtil.delete(gitIgnoreFile);
+			_fileImpl.delete(gitIgnoreFile);
 		}
 	}
 
@@ -208,7 +207,7 @@ public class PluginsGitSvnSyncer {
 		throws Exception {
 
 		for (String pluginType : _PLUGIN_TYPES) {
-			String[] dirNames = _fileUtil.listDirs(srcDirName + pluginType);
+			String[] dirNames = _fileImpl.listDirs(srcDirName + pluginType);
 
 			for (String dirName : dirNames) {
 				for (String pluginDirName : _PLUGIN_DIR_NAMES) {
@@ -225,7 +224,7 @@ public class PluginsGitSvnSyncer {
 			String srcDirName, String destDirName, String dirName)
 		throws Exception {
 
-		if (!_fileUtil.exists(destDirName + dirName)) {
+		if (!_fileImpl.exists(destDirName + dirName)) {
 			return;
 		}
 
@@ -261,10 +260,10 @@ public class PluginsGitSvnSyncer {
 				ignores.set(i, ignore);
 			}
 
-			if (dirName.endsWith("/docroot/WEB-INF/")) {
-				if (!ignores.contains("classes")) {
-					ignores.add("classes");
-				}
+			if (dirName.endsWith("/docroot/WEB-INF/") &&
+				!ignores.contains("classes")) {
+
+				ignores.add("classes");
 			}
 		}
 
@@ -292,12 +291,12 @@ public class PluginsGitSvnSyncer {
 			return;
 		}
 
-		File tempFile = _fileUtil.createTempFile("svn-ignores-", "tmp");
+		File tempFile = _fileImpl.createTempFile("svn-ignores-", "tmp");
 
 		try {
-			String[] ignoresArray = ignores.toArray(new String[ignores.size()]);
+			String[] ignoresArray = ignores.toArray(new String[0]);
 
-			_fileUtil.write(tempFile, StringUtil.merge(ignoresArray, "\n"));
+			_fileImpl.write(tempFile, StringUtil.merge(ignoresArray, "\n"));
 
 			_exec(
 				StringBundler.concat(
@@ -305,7 +304,7 @@ public class PluginsGitSvnSyncer {
 					"\" \"", destDirName, dirName, "\""));
 		}
 		finally {
-			_fileUtil.delete(tempFile);
+			_fileImpl.delete(tempFile);
 		}
 	}
 
@@ -314,8 +313,9 @@ public class PluginsGitSvnSyncer {
 		"/docroot/WEB-INF/tld"
 	};
 
-	private static final String[] _PLUGIN_TYPES =
-		{"clients", "ext", "hooks", "layouttpl", "portlets", "themes", "webs"};
+	private static final String[] _PLUGIN_TYPES = {
+		"clients", "ext", "hooks", "layouttpl", "portlets", "themes", "webs"
+	};
 
 	private static final String _SVN_DEL_IGNORES = "svn propdel svn:ignore ";
 
@@ -323,6 +323,6 @@ public class PluginsGitSvnSyncer {
 
 	private static final String _SVN_SET_IGNORES = "svn propset svn:ignore ";
 
-	private static final FileImpl _fileUtil = FileImpl.getInstance();
+	private static final FileImpl _fileImpl = FileImpl.getInstance();
 
 }

@@ -48,12 +48,10 @@ public class Dom4JUtil {
 
 		List<Element> elements = new ArrayList<>();
 
-		for (Object object : rootElement.elements()) {
-			Element childElement = (Element)object;
-
+		for (Element childElement : rootElement.elements()) {
 			rootElement.remove(childElement);
 
-			element.add(childElement);
+			elements.add(childElement);
 		}
 
 		addToElement(element, elements.toArray());
@@ -124,9 +122,7 @@ public class Dom4JUtil {
 			return null;
 		}
 
-		Element anchorElement = null;
-
-		anchorElement = getNewElement("a", parentElement, items);
+		Element anchorElement = getNewElement("a", parentElement, items);
 
 		anchorElement.addAttribute("href", href);
 
@@ -194,6 +190,60 @@ public class Dom4JUtil {
 		return getOrderedListElement(itemElements, null, maxItems);
 	}
 
+	public static void insertElementAfter(
+		Element parentElement, Element targetElement, Element newElement) {
+
+		List<Element> elements = parentElement.elements();
+
+		int targetElementIndex = -1;
+
+		if (targetElement != null) {
+			if (!elements.contains(targetElement)) {
+				try {
+					throw new IllegalArgumentException(
+						"Invalid target element\n" + format(targetElement));
+				}
+				catch (IOException ioe) {
+					throw new IllegalArgumentException(
+						"Invalid target element");
+				}
+			}
+
+			targetElementIndex = elements.indexOf(targetElement);
+		}
+
+		elements.add(targetElementIndex + 1, newElement);
+
+		setElements(parentElement, elements);
+	}
+
+	public static void insertElementBefore(
+		Element parentElement, Element targetElement, Element newElement) {
+
+		List<Element> elements = parentElement.elements();
+
+		int targetElementIndex = elements.size();
+
+		if (targetElement != null) {
+			if (!elements.contains(targetElement)) {
+				try {
+					throw new IllegalArgumentException(
+						"Invalid target element\n" + format(targetElement));
+				}
+				catch (IOException ioe) {
+					throw new IllegalArgumentException(
+						"Invalid target element");
+				}
+			}
+
+			targetElementIndex = elements.indexOf(targetElement);
+		}
+
+		elements.add(targetElementIndex, newElement);
+
+		setElements(parentElement, elements);
+	}
+
 	public static Document parse(String xml) throws DocumentException {
 		SAXReader saxReader = new SAXReader();
 
@@ -204,20 +254,16 @@ public class Dom4JUtil {
 		Element element, boolean cascade, String replacementText,
 		String targetText) {
 
-		Iterator<?> attributeIterator = element.attributeIterator();
-
-		while (attributeIterator.hasNext()) {
-			Attribute attribute = (Attribute)attributeIterator.next();
-
+		for (Attribute attribute : element.attributes()) {
 			String text = attribute.getValue();
 
 			attribute.setValue(text.replace(targetText, replacementText));
 		}
 
-		Iterator<?> nodeIterator = element.nodeIterator();
+		Iterator<? extends Node> nodeIterator = element.nodeIterator();
 
 		while (nodeIterator.hasNext()) {
-			Node node = (Node)nodeIterator.next();
+			Node node = nodeIterator.next();
 
 			if (node instanceof Text) {
 				Text textNode = (Text)node;
@@ -229,15 +275,26 @@ public class Dom4JUtil {
 
 					textNode.setText(text);
 				}
-
-				continue;
 			}
-
-			if (node instanceof Element && cascade) {
+			else if ((node instanceof Element) && cascade) {
 				replace((Element)node, cascade, replacementText, targetText);
-
-				continue;
 			}
+		}
+	}
+
+	public static void setElements(
+		Element parentElement, List<Element> elements) {
+
+		if (parentElement == null) {
+			throw new IllegalArgumentException("Parent is null");
+		}
+
+		for (Element element : parentElement.elements()) {
+			parentElement.remove(element);
+		}
+
+		for (Element element : elements) {
+			parentElement.add(element);
 		}
 	}
 
@@ -246,16 +303,6 @@ public class Dom4JUtil {
 			"pre", null,
 			getNewElement(
 				"code", null, JenkinsResultsParserUtil.redact(content)));
-	}
-
-	public static List<Element> toElementList(List<?> objects) {
-		List<Element> elements = new ArrayList<>(objects.size());
-
-		for (Object object : objects) {
-			elements.add((Element)object);
-		}
-
-		return elements;
 	}
 
 }

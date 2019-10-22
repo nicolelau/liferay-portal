@@ -16,7 +16,6 @@ package com.liferay.portal.repository.liferayrepository.model;
 
 import com.liferay.document.library.kernel.model.DLFileVersion;
 import com.liferay.document.library.kernel.service.DLAppHelperLocalServiceUtil;
-import com.liferay.document.library.kernel.service.DLFileEntryLocalServiceUtil;
 import com.liferay.expando.kernel.model.ExpandoBridge;
 import com.liferay.exportimport.kernel.lar.StagedModelType;
 import com.liferay.portal.kernel.exception.PortalException;
@@ -27,7 +26,6 @@ import com.liferay.portal.kernel.repository.model.FileVersion;
 import com.liferay.portal.kernel.repository.model.RepositoryModelOperation;
 import com.liferay.portal.kernel.security.auth.PrincipalThreadLocal;
 
-import java.io.File;
 import java.io.InputStream;
 import java.io.Serializable;
 
@@ -141,12 +139,6 @@ public class LiferayFileVersion extends LiferayModel implements FileVersion {
 	@Override
 	public String getExtraSettings() {
 		return _dlFileVersion.getExtraSettings();
-	}
-
-	public File getFile(boolean incrementCounter) throws PortalException {
-		return DLFileEntryLocalServiceUtil.getFile(
-			_dlFileVersion.getFileEntryId(), _dlFileVersion.getVersion(),
-			incrementCounter);
 	}
 
 	@Override
@@ -304,9 +296,8 @@ public class LiferayFileVersion extends LiferayModel implements FileVersion {
 		if (_dlFileVersion.getGroupId() == _dlFileVersion.getRepositoryId()) {
 			return true;
 		}
-		else {
-			return false;
-		}
+
+		return false;
 	}
 
 	@Override
@@ -359,7 +350,7 @@ public class LiferayFileVersion extends LiferayModel implements FileVersion {
 
 	@Override
 	public void setPrimaryKeyObj(Serializable primaryKeyObj) {
-		setPrimaryKey(((Long)primaryKeyObj).longValue());
+		setPrimaryKey((Long)primaryKeyObj);
 	}
 
 	@Override
@@ -387,10 +378,8 @@ public class LiferayFileVersion extends LiferayModel implements FileVersion {
 		if (isEscapedModel()) {
 			return this;
 		}
-		else {
-			return new LiferayFileVersion(
-				_dlFileVersion.toEscapedModel(), true);
-		}
+
+		return new LiferayFileVersion(_dlFileVersion.toEscapedModel(), true);
 	}
 
 	@Override
@@ -404,9 +393,8 @@ public class LiferayFileVersion extends LiferayModel implements FileVersion {
 			return new LiferayFileVersion(
 				_dlFileVersion.toUnescapedModel(), true);
 		}
-		else {
-			return this;
-		}
+
+		return this;
 	}
 
 	private static final Log _log = LogFactoryUtil.getLog(

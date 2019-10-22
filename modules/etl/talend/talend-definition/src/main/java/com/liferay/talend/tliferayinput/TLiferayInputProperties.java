@@ -14,136 +14,56 @@
 
 package com.liferay.talend.tliferayinput;
 
-import com.liferay.talend.LiferayBaseComponentDefinition;
-import com.liferay.talend.connection.LiferayConnectionProperties;
 import com.liferay.talend.connection.LiferayConnectionResourceBaseProperties;
-import com.liferay.talend.exception.ExceptionUtils;
-import com.liferay.talend.runtime.LiferaySourceOrSinkRuntime;
-import com.liferay.talend.utils.PropertiesUtils;
-
-import java.io.IOException;
+import com.liferay.talend.resource.LiferayInputResourceProperties;
 
 import java.util.Collections;
 import java.util.Set;
-
-import org.apache.avro.Schema;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.talend.components.api.component.PropertyPathConnector;
-import org.talend.daikon.properties.PresentationItem;
-import org.talend.daikon.properties.ValidationResult;
-import org.talend.daikon.properties.ValidationResult.Result;
-import org.talend.daikon.properties.presentation.Form;
-import org.talend.daikon.properties.presentation.Widget;
-import org.talend.daikon.properties.property.Property;
-import org.talend.daikon.properties.property.PropertyFactory;
-import org.talend.daikon.sandbox.SandboxedInstance;
+import org.talend.daikon.properties.Properties;
 
 /**
  * @author Zoltán Takács
+ * @author Ivica Cardic
  */
 public class TLiferayInputProperties
 	extends LiferayConnectionResourceBaseProperties {
 
 	public TLiferayInputProperties(String name) {
 		super(name);
-	}
 
-	/**
-	 * Refreshes form after "Guess Schema" button was processed
-	 */
-	public void afterGuessSchema() {
-		if (_log.isDebugEnabled()) {
-			_log.debug(
-				"Selected resource URL: " + resource.resourceURL.getValue());
-			_log.debug("Query string: " + queryString.getValue());
-		}
+		resource = new LiferayInputResourceProperties("resource");
 
-		refreshLayout(getForm(Form.MAIN));
-	}
+		resource.setLiferayConnectionProperties(connection);
 
-	@Override
-	public void refreshLayout(Form form) {
-		super.refreshLayout(form);
-
-		boolean hideDevWidgets = true;
-
-		String formName = form.getName();
-
-		if (formName.equals(Form.MAIN) ||
-			formName.equals(LiferayConnectionProperties.FORM_WIZARD)) {
-
-			PropertiesUtils.setHidden(form, guessSchema, hideDevWidgets);
-			PropertiesUtils.setHidden(form, queryString, hideDevWidgets);
+		if (_logger.isTraceEnabled()) {
+			_logger.trace("Instantiated " + System.identityHashCode(this));
 		}
 	}
 
 	@Override
-	public void setupLayout() {
-		super.setupLayout();
+	public Properties init() {
+		Properties properties = super.init();
 
-		Form mainForm = getForm(Form.MAIN);
+		if (_logger.isTraceEnabled()) {
+			_logger.trace("Initialized " + System.identityHashCode(this));
+		}
 
-		mainForm.addRow(queryString);
-
-		Widget guessButtonWidget = Widget.widget(guessSchema);
-
-		guessButtonWidget.setLongRunning(true);
-		guessButtonWidget.setWidgetType(Widget.BUTTON_WIDGET_TYPE);
-
-		mainForm.addRow(guessButtonWidget);
+		return properties;
 	}
 
 	@Override
 	public void setupProperties() {
 		super.setupProperties();
 
-		queryString.setValue("");
-	}
-
-	public ValidationResult validateGuessSchema() {
-		try (SandboxedInstance sandboxedInstance =
-				LiferayBaseComponentDefinition.getSandboxedInstance(
-					LiferayBaseComponentDefinition.
-						RUNTIME_SOURCE_OR_SINK_CLASS_NAME)) {
-
-			LiferaySourceOrSinkRuntime liferaySourceOrSinkRuntime =
-				(LiferaySourceOrSinkRuntime)sandboxedInstance.getInstance();
-
-			ValidationResult validationResult =
-				liferaySourceOrSinkRuntime.initialize(
-					null, getEffectiveConnectionProperties());
-
-			if (validationResult.getStatus() == Result.ERROR) {
-				return validationResult;
-			}
-
-			validationResult = liferaySourceOrSinkRuntime.validate(null);
-
-			if (validationResult.getStatus() == ValidationResult.Result.OK) {
-				try {
-					Schema runtimeSchema =
-						liferaySourceOrSinkRuntime.
-							getInputResourceCollectionSchema(
-								resource.resourceURL.getValue());
-
-					resource.main.schema.setValue(runtimeSchema);
-				}
-				catch (IOException ioe) {
-					ExceptionUtils.exceptionToValidationResult(ioe);
-				}
-			}
-
-			return validationResult;
+		if (_logger.isTraceEnabled()) {
+			_logger.trace("Properties set " + System.identityHashCode(this));
 		}
 	}
-
-	public transient PresentationItem guessSchema = new PresentationItem(
-		"guessSchema", "Guess Schema");
-	public Property<String> queryString = PropertyFactory.newProperty(
-		"queryString");
 
 	@Override
 	protected Set<PropertyPathConnector> getAllSchemaPropertiesConnectors(
@@ -156,7 +76,7 @@ public class TLiferayInputProperties
 		return Collections.<PropertyPathConnector>emptySet();
 	}
 
-	private static final Logger _log = LoggerFactory.getLogger(
+	private static final Logger _logger = LoggerFactory.getLogger(
 		TLiferayInputProperties.class);
 
 	private static final long serialVersionUID = 8010931662185868407L;

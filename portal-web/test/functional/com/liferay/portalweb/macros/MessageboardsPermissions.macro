@@ -1,19 +1,19 @@
-<definition>
-	<command name="checkReplyToMessageForGuestPG">
-		<execute function="Click" locator1="Icon#BODY_VERTICAL_ELLIPSIS" />
+definition {
 
-		<execute function="AssertClick" locator1="MenuItem#ANY_MENU_ITEM" value1="Permissions">
-			<var name="key_menuItem" value="Permissions" />
-		</execute>
+	macro checkReplyToMessageForGuestPG {
+		Click(locator1 = "Icon#BODY_VERTICAL_ELLIPSIS");
 
-		<execute function="SelectFrame" locator1="IFrame#DIALOG" />
+		MenuItem.click(menuItem = "Permissions");
 
-		<execute function="Check" locator1="AssetPermissions#GUEST_REPLY_TO_MESSAGE_CHECKBOX" />
+		SelectFrame(locator1 = "IFrame#DIALOG");
 
-		<execute macro="PortletEntry#save" />
+		Check(locator1 = "AssetPermissions#GUEST_REPLY_TO_MESSAGE_CHECKBOX");
 
-		<execute function="SelectFrame" value1="relative=top" />
+		PortletEntry.save();
 
-		<execute function="Click" locator1="Icon#CLOSE" />
-	</command>
-</definition>
+		SelectFrame(value1 = "relative=top");
+
+		Click(locator1 = "Icon#CLOSE");
+	}
+
+}

@@ -14,7 +14,7 @@
 
 package com.liferay.portal.tools.db.upgrade.client;
 
-import com.liferay.portal.tools.db.upgrade.client.util.GogoTelnetClient;
+import com.liferay.gogo.shell.client.GogoShellClient;
 import com.liferay.portal.tools.db.upgrade.client.util.Properties;
 import com.liferay.portal.tools.db.upgrade.client.util.TeePrintStream;
 
@@ -90,14 +90,20 @@ public class UpgradeClient {
 						"y,suspend=y");
 			}
 
+			File logDir = new File(_jarDir, "logs");
+
+			if ((logDir != null) && !logDir.exists()) {
+				logDir.mkdirs();
+			}
+
 			File logFile = null;
 
 			if (commandLine.hasOption("log-file")) {
 				logFile = new File(
-					_jarDir, commandLine.getOptionValue("log-file"));
+					logDir, commandLine.getOptionValue("log-file"));
 			}
 			else {
-				logFile = new File(_jarDir, "upgrade.log");
+				logFile = new File(logDir, "upgrade.log");
 			}
 
 			if (logFile.exists()) {
@@ -105,9 +111,9 @@ public class UpgradeClient {
 
 				logFile.renameTo(
 					new File(
-						_jarDir, logFileName + "." + logFile.lastModified()));
+						logDir, logFileName + "." + logFile.lastModified()));
 
-				logFile = new File(_jarDir, logFileName);
+				logFile = new File(logDir, logFileName);
 			}
 
 			boolean shell = false;
@@ -144,6 +150,8 @@ public class UpgradeClient {
 
 		_appServerProperties = _readProperties(_appServerPropertiesFile);
 
+		_fileOutputStream = new FileOutputStream(_logFile);
+
 		_portalUpgradeDatabasePropertiesFile = new File(
 			_jarDir, "portal-upgrade-database.properties");
 
@@ -160,8 +168,7 @@ public class UpgradeClient {
 	public void upgrade() throws IOException {
 		verifyProperties();
 
-		System.setOut(
-			new TeePrintStream(new FileOutputStream(_logFile), System.out));
+		System.setOut(new TeePrintStream(_fileOutputStream, System.out));
 
 		ProcessBuilder processBuilder = new ProcessBuilder();
 
@@ -177,12 +184,15 @@ public class UpgradeClient {
 		commands.add("-cp");
 		commands.add(_getBootstrapClassPath());
 
-		Collections.addAll(commands, _jvmOpts.split(" "));
+		String jvmOptsCommands = _jvmOpts.concat(
+			" -Dexternal-properties=portal-upgrade.properties " +
+				"-Dserver.detector.server.id=" +
+					_appServer.getServerDetectorServerId());
 
-		commands.add("-Dexternal-properties=portal-upgrade.properties");
-		commands.add(
-			"-Dserver.detector.server.id=" +
-				_appServer.getServerDetectorServerId());
+		System.out.println("JVM arguments: " + jvmOptsCommands);
+
+		Collections.addAll(commands, jvmOptsCommands.split(" "));
+
 		commands.add(DBUpgraderLauncher.class.getName());
 
 		processBuilder.command(commands);
@@ -212,9 +222,8 @@ public class UpgradeClient {
 
 					break;
 				}
-				else {
-					System.out.println(line);
-				}
+
+				System.out.println(line);
 			}
 
 			System.out.flush();
@@ -223,23 +232,28 @@ public class UpgradeClient {
 			ioe.printStackTrace();
 		}
 
-		try (GogoTelnetClient gogoTelnetClient = new GogoTelnetClient()) {
-			if (_shell || !_isFinished(gogoTelnetClient)) {
-				System.out.println("You are connected to Gogo shell.");
+		try (GogoShellClient gogoShellClient = new GogoShellClient()) {
+			boolean finished = _isFinished(gogoShellClient);
+
+			if (!finished || _shell) {
+				System.out.println("Connecting to Gogo shell...");
 
 				_printHelp();
 
-				_consoleReader.setPrompt("g! ");
+				_consoleReader.setPrompt(_GOGO_SHELL_PREFIX);
 
-				String line;
+				String line = _consoleReader.readLine();
 
-				while ((line = _consoleReader.readLine()) != null) {
-					if (line.equals("exit") || line.equals("quit")) {
+				if (line == null) {
+					System.out.println("Unable to open Gogo shell");
+				}
+
+				while (line != null) {
+					if (!_processGogoShellCommand(gogoShellClient, line)) {
 						break;
 					}
-					else {
-						System.out.println(gogoTelnetClient.send(line));
-					}
+
+					line = _consoleReader.readLine();
 				}
 			}
 		}
@@ -347,14 +361,14 @@ public class UpgradeClient {
 		return sb.toString();
 	}
 
-	private boolean _isFinished(GogoTelnetClient gogoTelnetClient)
+	private boolean _isFinished(GogoShellClient gogoShellClient)
 		throws IOException {
 
 		System.out.print("Checking to see if all upgrades have completed...");
 
-		String upgradeCheck = gogoTelnetClient.send("upgrade:check");
+		String upgradeCheck = gogoShellClient.send("upgrade:check");
 
-		String upgradeSteps = gogoTelnetClient.send(
+		String upgradeSteps = gogoShellClient.send(
 			"upgrade:list | grep Registered | grep step");
 
 		if (!upgradeCheck.equals("upgrade:check") ||
@@ -366,11 +380,10 @@ public class UpgradeClient {
 
 			return false;
 		}
-		else {
-			System.out.println(" done.");
 
-			return true;
-		}
+		System.out.println(" done.");
+
+		return true;
 	}
 
 	private void _printHelp() {
@@ -382,6 +395,37 @@ public class UpgradeClient {
 				"command. For example, \"help upgrade:list\".");
 
 		System.out.println("Enter \"exit\" or \"quit\" to exit.");
+	}
+
+	private boolean _processGogoShellCommand(
+			GogoShellClient gogoShellClient, String command)
+		throws IOException {
+
+		if (command.equals("")) {
+			return true;
+		}
+
+		String line = _GOGO_SHELL_PREFIX + command + System.lineSeparator();
+
+		_fileOutputStream.write(line.getBytes());
+
+		if (command.equals("exit") || command.equals("quit")) {
+			return false;
+		}
+
+		String output = gogoShellClient.send(command);
+
+		int index = output.indexOf(System.lineSeparator());
+
+		if (index == -1) {
+			return true;
+		}
+
+		output = output.substring(index + 1);
+
+		System.out.println(output);
+
+		return true;
 	}
 
 	private Properties _readProperties(File file) {
@@ -438,11 +482,9 @@ public class UpgradeClient {
 				}
 			}
 
-			File dir = _appServer.getDir();
-
 			System.out.println(
-				"Please enter your application server directory (" + dir +
-					"): ");
+				"Please enter your application server directory (" +
+					_appServer.getDir() + "): ");
 
 			response = _consoleReader.readLine();
 
@@ -482,7 +524,10 @@ public class UpgradeClient {
 				_appServer.setPortalDirName(response);
 			}
 
+			File dir = _appServer.getDir();
+
 			_appServerProperties.setProperty("dir", dir.getCanonicalPath());
+
 			_appServerProperties.setProperty(
 				"extra.lib.dirs", _appServer.getExtraLibDirNames());
 			_appServerProperties.setProperty(
@@ -661,32 +706,36 @@ public class UpgradeClient {
 			"liferay.home", liferayHome.getCanonicalPath());
 	}
 
+	private static final String _GOGO_SHELL_PREFIX = "g! ";
+
 	private static final String _JAVA_HOME = System.getenv("JAVA_HOME");
 
 	private static final Map<String, AppServer> _appServers =
-		new LinkedHashMap<>();
+		new LinkedHashMap<String, AppServer>() {
+			{
+				put("jboss", AppServer.getJBossEAPAppServer());
+				put("tcserver", AppServer.getTCServerAppServer());
+				put("tomcat", AppServer.getTomcatAppServer());
+				put("weblogic", AppServer.getWebLogicAppServer());
+				put("websphere", AppServer.getWebSphereAppServer());
+				put("wildfly", AppServer.getWildFlyAppServer());
+			}
+		};
 	private static final Map<String, Database> _databases =
-		new LinkedHashMap<>();
+		new LinkedHashMap<String, Database>() {
+			{
+				put("db2", Database.getDB2Database());
+				put("mariadb", Database.getMariaDBDatabase());
+				put("mysql", Database.getMySQLDatabase());
+				put("oracle", Database.getOracleDataSource());
+				put("postgresql", Database.getPostgreSQLDatabase());
+				put("sqlserver", Database.getSQLServerDatabase());
+				put("sybase", Database.getSybaseDatabase());
+			}
+		};
 	private static File _jarDir;
 
 	static {
-		_appServers.put("jboss", AppServer.getJBossEAPAppServer());
-		_appServers.put("jonas", AppServer.getJOnASAppServer());
-		_appServers.put("resin", AppServer.getResinAppServer());
-		_appServers.put("tcserver", AppServer.getTCServerAppServer());
-		_appServers.put("tomcat", AppServer.getTomcatAppServer());
-		_appServers.put("weblogic", AppServer.getWebLogicAppServer());
-		_appServers.put("websphere", AppServer.getWebSphereAppServer());
-		_appServers.put("wildfly", AppServer.getWildFlyAppServer());
-
-		_databases.put("db2", Database.getDB2Database());
-		_databases.put("mariadb", Database.getMariaDBDatabase());
-		_databases.put("mysql", Database.getMySQLDatabase());
-		_databases.put("oracle", Database.getOracleDataSource());
-		_databases.put("postgresql", Database.getPostgreSQLDatabase());
-		_databases.put("sqlserver", Database.getSQLServerDatabase());
-		_databases.put("sybase", Database.getSybaseDatabase());
-
 		ProtectionDomain protectionDomain =
 			UpgradeClient.class.getProtectionDomain();
 
@@ -710,6 +759,7 @@ public class UpgradeClient {
 	private final Properties _appServerProperties;
 	private final File _appServerPropertiesFile;
 	private final ConsoleReader _consoleReader = new ConsoleReader();
+	private final FileOutputStream _fileOutputStream;
 	private final String _jvmOpts;
 	private final File _logFile;
 	private final Properties _portalUpgradeDatabaseProperties;

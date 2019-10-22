@@ -15,6 +15,7 @@
 package com.liferay.portal.search.elasticsearch6.internal;
 
 import com.liferay.petra.string.StringPool;
+import com.liferay.portal.kernel.exception.SystemException;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.search.BaseSearchEngine;
@@ -29,33 +30,29 @@ import com.liferay.portal.kernel.util.Time;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.search.elasticsearch6.internal.connection.ElasticsearchConnectionManager;
 import com.liferay.portal.search.elasticsearch6.internal.index.IndexFactory;
-import com.liferay.portal.search.elasticsearch6.internal.index.IndexNameBuilder;
-import com.liferay.portal.search.elasticsearch6.internal.util.LogUtil;
+import com.liferay.portal.search.engine.adapter.SearchEngineAdapter;
+import com.liferay.portal.search.engine.adapter.cluster.ClusterHealthStatus;
+import com.liferay.portal.search.engine.adapter.cluster.HealthClusterRequest;
+import com.liferay.portal.search.engine.adapter.cluster.HealthClusterResponse;
+import com.liferay.portal.search.engine.adapter.index.CloseIndexRequest;
+import com.liferay.portal.search.engine.adapter.index.CloseIndexResponse;
+import com.liferay.portal.search.engine.adapter.snapshot.CreateSnapshotRepositoryRequest;
+import com.liferay.portal.search.engine.adapter.snapshot.CreateSnapshotRequest;
+import com.liferay.portal.search.engine.adapter.snapshot.CreateSnapshotResponse;
+import com.liferay.portal.search.engine.adapter.snapshot.DeleteSnapshotRequest;
+import com.liferay.portal.search.engine.adapter.snapshot.GetSnapshotRepositoriesRequest;
+import com.liferay.portal.search.engine.adapter.snapshot.GetSnapshotRepositoriesResponse;
+import com.liferay.portal.search.engine.adapter.snapshot.RestoreSnapshotRequest;
+import com.liferay.portal.search.engine.adapter.snapshot.SnapshotDetails;
+import com.liferay.portal.search.engine.adapter.snapshot.SnapshotRepositoryDetails;
+import com.liferay.portal.search.engine.adapter.snapshot.SnapshotState;
+import com.liferay.portal.search.index.IndexNameBuilder;
 
 import java.util.List;
 import java.util.Map;
 
-import org.elasticsearch.action.admin.cluster.health.ClusterHealthResponse;
-import org.elasticsearch.action.admin.cluster.repositories.get.GetRepositoriesRequestBuilder;
-import org.elasticsearch.action.admin.cluster.repositories.get.GetRepositoriesResponse;
-import org.elasticsearch.action.admin.cluster.repositories.put.PutRepositoryRequestBuilder;
-import org.elasticsearch.action.admin.cluster.repositories.put.PutRepositoryResponse;
-import org.elasticsearch.action.admin.cluster.snapshots.create.CreateSnapshotRequestBuilder;
-import org.elasticsearch.action.admin.cluster.snapshots.create.CreateSnapshotResponse;
-import org.elasticsearch.action.admin.cluster.snapshots.delete.DeleteSnapshotRequestBuilder;
-import org.elasticsearch.action.admin.cluster.snapshots.delete.DeleteSnapshotResponse;
-import org.elasticsearch.action.admin.cluster.snapshots.restore.RestoreSnapshotRequestBuilder;
-import org.elasticsearch.action.admin.cluster.snapshots.restore.RestoreSnapshotResponse;
-import org.elasticsearch.action.admin.indices.close.CloseIndexRequestBuilder;
-import org.elasticsearch.action.admin.indices.close.CloseIndexResponse;
-import org.elasticsearch.client.AdminClient;
-import org.elasticsearch.client.ClusterAdminClient;
-import org.elasticsearch.client.IndicesAdminClient;
-import org.elasticsearch.cluster.health.ClusterHealthStatus;
-import org.elasticsearch.cluster.metadata.RepositoryMetaData;
+import org.elasticsearch.client.Client;
 import org.elasticsearch.common.Strings;
-import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.repositories.RepositoryMissingException;
 
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
@@ -81,28 +78,27 @@ public class ElasticsearchSearchEngine extends BaseSearchEngine {
 
 		validateBackupName(backupName);
 
-		ClusterAdminClient clusterAdminClient =
-			elasticsearchConnectionManager.getClusterAdminClient();
+		createBackupRepository();
 
-		CreateSnapshotRequestBuilder createSnapshotRequestBuilder =
-			clusterAdminClient.prepareCreateSnapshot(
-				_BACKUP_REPOSITORY_NAME, backupName);
+		CreateSnapshotRequest createSnapshotRequest = new CreateSnapshotRequest(
+			_BACKUP_REPOSITORY_NAME, backupName);
 
-		createSnapshotRequestBuilder.setWaitForCompletion(true);
+		createSnapshotRequest.setIndexNames(
+			_indexNameBuilder.getIndexName(companyId));
 
-		try {
-			createBackupRepository(clusterAdminClient);
+		CreateSnapshotResponse createSnapshotResponse =
+			_searchEngineAdapter.execute(createSnapshotRequest);
 
-			CreateSnapshotResponse createSnapshotResponse =
-				createSnapshotRequestBuilder.get();
+		SnapshotDetails snapshotDetails =
+			createSnapshotResponse.getSnapshotDetails();
 
-			LogUtil.logActionResponse(_log, createSnapshotResponse);
+		SnapshotState snapshotState = snapshotDetails.getSnapshotState();
 
-			return backupName;
+		if (snapshotState.equals(SnapshotState.FAILED)) {
+			throw new IllegalStateException("Unable to complete snapshot");
 		}
-		catch (Exception e) {
-			throw new SearchException(e);
-		}
+
+		return backupName;
 	}
 
 	@Override
@@ -111,43 +107,25 @@ public class ElasticsearchSearchEngine extends BaseSearchEngine {
 
 		waitForYellowStatus();
 
-		try {
-			indexFactory.createIndices(
-				elasticsearchConnectionManager.getAdminClient(), companyId);
+		Client client = _elasticsearchConnectionManager.getClient();
 
-			elasticsearchConnectionManager.registerCompanyId(companyId);
-		}
-		catch (Exception e) {
-			throw new IllegalStateException(e);
-		}
+		_indexFactory.createIndices(client.admin(), companyId);
+
+		_elasticsearchConnectionManager.registerCompanyId(companyId);
 
 		waitForYellowStatus();
 	}
 
 	@Override
-	public synchronized void removeBackup(long companyId, String backupName)
-		throws SearchException {
-
-		ClusterAdminClient clusterAdminClient =
-			elasticsearchConnectionManager.getClusterAdminClient();
-
-		try {
-			if (!hasBackupRepository(clusterAdminClient)) {
-				return;
-			}
-
-			DeleteSnapshotRequestBuilder deleteSnapshotRequestBuilder =
-				clusterAdminClient.prepareDeleteSnapshot(
-					_BACKUP_REPOSITORY_NAME, backupName);
-
-			DeleteSnapshotResponse deleteSnapshotResponse =
-				deleteSnapshotRequestBuilder.get();
-
-			LogUtil.logActionResponse(_log, deleteSnapshotResponse);
+	public synchronized void removeBackup(long companyId, String backupName) {
+		if (!hasBackupRepository()) {
+			return;
 		}
-		catch (Exception e) {
-			throw new SearchException(e);
-		}
+
+		DeleteSnapshotRequest deleteSnapshotRequest = new DeleteSnapshotRequest(
+			_BACKUP_REPOSITORY_NAME, backupName);
+
+		_searchEngineAdapter.execute(deleteSnapshotRequest);
 	}
 
 	@Override
@@ -155,10 +133,10 @@ public class ElasticsearchSearchEngine extends BaseSearchEngine {
 		super.removeCompany(companyId);
 
 		try {
-			indexFactory.deleteIndices(
-				elasticsearchConnectionManager.getAdminClient(), companyId);
+			_indexFactory.deleteIndices(
+				_elasticsearchConnectionManager.getAdminClient(), companyId);
 
-			elasticsearchConnectionManager.unregisterCompanyId(companyId);
+			_elasticsearchConnectionManager.unregisterCompanyId(companyId);
 		}
 		catch (Exception e) {
 			if (_log.isWarnEnabled()) {
@@ -175,45 +153,25 @@ public class ElasticsearchSearchEngine extends BaseSearchEngine {
 
 		validateBackupName(backupName);
 
-		AdminClient adminClient =
-			elasticsearchConnectionManager.getAdminClient();
+		CloseIndexRequest closeIndexRequest = new CloseIndexRequest(
+			_indexNameBuilder.getIndexName(companyId));
 
-		IndicesAdminClient indicesAdminClient = adminClient.indices();
+		CloseIndexResponse closeIndexResponse = _searchEngineAdapter.execute(
+			closeIndexRequest);
 
-		CloseIndexRequestBuilder closeIndexRequestBuilder =
-			indicesAdminClient.prepareClose(
-				indexNameBuilder.getIndexName(companyId));
-
-		try {
-			CloseIndexResponse closeIndexResponse =
-				closeIndexRequestBuilder.get();
-
-			LogUtil.logActionResponse(_log, closeIndexResponse);
-		}
-		catch (Exception e) {
-			throw new SearchException(e);
+		if (!closeIndexResponse.isAcknowledged()) {
+			throw new SystemException(
+				"Error closing index: " +
+					_indexNameBuilder.getIndexName(companyId));
 		}
 
-		ClusterAdminClient clusterAdminClient =
-			elasticsearchConnectionManager.getClusterAdminClient();
+		RestoreSnapshotRequest restoreSnapshotRequest =
+			new RestoreSnapshotRequest(_BACKUP_REPOSITORY_NAME, backupName);
 
-		RestoreSnapshotRequestBuilder restoreSnapshotRequestBuilder =
-			clusterAdminClient.prepareRestoreSnapshot(
-				_BACKUP_REPOSITORY_NAME, backupName);
+		restoreSnapshotRequest.setIndexNames(
+			_indexNameBuilder.getIndexName(companyId));
 
-		restoreSnapshotRequestBuilder.setIndices(
-			indexNameBuilder.getIndexName(companyId));
-		restoreSnapshotRequestBuilder.setWaitForCompletion(true);
-
-		try {
-			RestoreSnapshotResponse restoreSnapshotResponse =
-				restoreSnapshotRequestBuilder.get();
-
-			LogUtil.logActionResponse(_log, restoreSnapshotResponse);
-		}
-		catch (Exception e) {
-			throw new SearchException(e);
-		}
+		_searchEngineAdapter.execute(restoreSnapshotRequest);
 
 		waitForYellowStatus();
 	}
@@ -233,11 +191,11 @@ public class ElasticsearchSearchEngine extends BaseSearchEngine {
 	public void unsetElasticsearchConnectionManager(
 		ElasticsearchConnectionManager elasticsearchConnectionManager) {
 
-		this.elasticsearchConnectionManager = null;
+		_elasticsearchConnectionManager = null;
 	}
 
 	public void unsetIndexFactory(IndexFactory indexFactory) {
-		this.indexFactory = null;
+		_indexFactory = null;
 	}
 
 	@Activate
@@ -245,52 +203,62 @@ public class ElasticsearchSearchEngine extends BaseSearchEngine {
 		setVendor(MapUtil.getString(properties, "search.engine.impl"));
 	}
 
-	protected void createBackupRepository(ClusterAdminClient clusterAdminClient)
-		throws Exception {
-
-		if (hasBackupRepository(clusterAdminClient)) {
+	protected void createBackupRepository() {
+		if (hasBackupRepository()) {
 			return;
 		}
 
-		PutRepositoryRequestBuilder putRepositoryRequestBuilder =
-			clusterAdminClient.preparePutRepository(_BACKUP_REPOSITORY_NAME);
+		CreateSnapshotRepositoryRequest createSnapshotRepositoryRequest =
+			new CreateSnapshotRepositoryRequest(
+				_BACKUP_REPOSITORY_NAME, "es_backup");
 
-		Settings.Builder builder = Settings.builder();
-
-		builder.put("location", "es_backup");
-
-		putRepositoryRequestBuilder.setSettings(builder);
-
-		putRepositoryRequestBuilder.setType("fs");
-
-		PutRepositoryResponse putRepositoryResponse =
-			putRepositoryRequestBuilder.get();
-
-		LogUtil.logActionResponse(_log, putRepositoryResponse);
+		_searchEngineAdapter.execute(createSnapshotRepositoryRequest);
 	}
 
-	protected boolean hasBackupRepository(ClusterAdminClient clusterAdminClient)
-		throws Exception {
-
-		GetRepositoriesRequestBuilder getRepositoriesRequestBuilder =
-			clusterAdminClient.prepareGetRepositories(_BACKUP_REPOSITORY_NAME);
-
+	protected boolean hasBackupRepository() {
 		try {
-			GetRepositoriesResponse getRepositoriesResponse =
-				getRepositoriesRequestBuilder.get();
+			GetSnapshotRepositoriesRequest getSnapshotRepositoriesRequest =
+				new GetSnapshotRepositoriesRequest(_BACKUP_REPOSITORY_NAME);
 
-			List<RepositoryMetaData> repositoryMetaDatas =
-				getRepositoriesResponse.repositories();
+			GetSnapshotRepositoriesResponse getSnapshotRepositoriesResponse =
+				_searchEngineAdapter.execute(getSnapshotRepositoriesRequest);
 
-			if (repositoryMetaDatas.isEmpty()) {
+			List<SnapshotRepositoryDetails> snapshotRepositoryDetailsList =
+				getSnapshotRepositoriesResponse.getSnapshotRepositoryDetails();
+
+			if (snapshotRepositoryDetailsList.isEmpty()) {
 				return false;
 			}
+		}
+		catch (Exception e) {
+			_log.error(e, e);
+		}
 
-			return true;
-		}
-		catch (RepositoryMissingException rme) {
-			return false;
-		}
+		return true;
+	}
+
+	@Reference
+	protected void setElasticsearchConnectionManager(
+		ElasticsearchConnectionManager elasticsearchConnectionManager) {
+
+		_elasticsearchConnectionManager = elasticsearchConnectionManager;
+	}
+
+	@Reference
+	protected void setIndexFactory(IndexFactory indexFactory) {
+		_indexFactory = indexFactory;
+	}
+
+	@Reference(unbind = "-")
+	protected void setIndexNameBuilder(IndexNameBuilder indexNameBuilder) {
+		_indexNameBuilder = indexNameBuilder;
+	}
+
+	@Reference(target = "(search.engine.impl=Elasticsearch)", unbind = "-")
+	protected void setSearchEngineAdapter(
+		SearchEngineAdapter searchEngineAdapter) {
+
+		_searchEngineAdapter = searchEngineAdapter;
 	}
 
 	protected void validateBackupName(String backupName)
@@ -337,28 +305,33 @@ public class ElasticsearchSearchEngine extends BaseSearchEngine {
 			timeout = Time.HOUR;
 		}
 
-		ClusterHealthResponse clusterHealthResponse =
-			elasticsearchConnectionManager.getClusterHealthResponse(timeout);
+		HealthClusterRequest healthClusterRequest = new HealthClusterRequest();
 
-		if (clusterHealthResponse.getStatus() == ClusterHealthStatus.RED) {
+		healthClusterRequest.setTimeout(timeout);
+
+		healthClusterRequest.setWaitForClusterHealthStatus(
+			ClusterHealthStatus.YELLOW);
+
+		HealthClusterResponse healthClusterResponse =
+			_searchEngineAdapter.execute(healthClusterRequest);
+
+		if (healthClusterResponse.getClusterHealthStatus() ==
+				ClusterHealthStatus.RED) {
+
 			throw new IllegalStateException(
 				"Unable to initialize Elasticsearch cluster: " +
-					clusterHealthResponse);
+					healthClusterResponse);
 		}
 	}
-
-	@Reference
-	protected ElasticsearchConnectionManager elasticsearchConnectionManager;
-
-	@Reference
-	protected IndexFactory indexFactory;
-
-	@Reference
-	protected IndexNameBuilder indexNameBuilder;
 
 	private static final String _BACKUP_REPOSITORY_NAME = "liferay_backup";
 
 	private static final Log _log = LogFactoryUtil.getLog(
 		ElasticsearchSearchEngine.class);
+
+	private ElasticsearchConnectionManager _elasticsearchConnectionManager;
+	private IndexFactory _indexFactory;
+	private IndexNameBuilder _indexNameBuilder;
+	private SearchEngineAdapter _searchEngineAdapter;
 
 }

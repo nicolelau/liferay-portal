@@ -32,6 +32,7 @@ import org.osgi.framework.BundleEvent;
 import org.osgi.framework.BundleListener;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.ConfigurationPolicy;
 import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.service.component.annotations.Modified;
 import org.osgi.service.component.annotations.Reference;
@@ -43,7 +44,8 @@ import org.osgi.service.component.runtime.dto.ComponentDescriptionDTO;
  */
 @Component(
 	configurationPid = "com.liferay.portal.component.blacklist.internal.ComponentBlacklistConfiguration",
-	immediate = true, service = ComponentBlacklist.class
+	configurationPolicy = ConfigurationPolicy.REQUIRE, immediate = true,
+	service = ComponentBlacklist.class
 )
 public class ComponentBlacklistImpl implements ComponentBlacklist {
 
@@ -65,9 +67,12 @@ public class ComponentBlacklistImpl implements ComponentBlacklist {
 
 		_bundleListener = new ComponentDisablingBundleListener();
 
+		Set<String> reactivateComponentNames = _initBlacklistComponentNames(
+			properties);
+
 		_bundleContext.addBundleListener(_bundleListener);
 
-		modified(properties);
+		_processBundles(reactivateComponentNames);
 	}
 
 	@Deactivate
@@ -98,7 +103,6 @@ public class ComponentBlacklistImpl implements ComponentBlacklist {
 					componentDescriptionDTO);
 
 				_disabledComponentNames.add(componentDescriptionDTO.name);
-
 			});
 	}
 
@@ -124,7 +128,17 @@ public class ComponentBlacklistImpl implements ComponentBlacklist {
 
 	@Modified
 	protected void modified(Map<String, Object> properties) {
-		Bundle[] bundles = _bundleContext.getBundles();
+		Set<String> reactivateComponentNames = _initBlacklistComponentNames(
+			properties);
+
+		_processBundles(reactivateComponentNames);
+	}
+
+	@Reference
+	protected ServiceComponentRuntime serviceComponentRuntime;
+
+	private Set<String> _initBlacklistComponentNames(
+		Map<String, Object> properties) {
 
 		ComponentBlacklistConfiguration componentBlacklistConfiguration =
 			ConfigurableUtil.createConfigurable(
@@ -143,15 +157,8 @@ public class ComponentBlacklistImpl implements ComponentBlacklist {
 				}
 			});
 
-		for (Bundle bundle : bundles) {
-			disableComponents(bundle, _blacklistComponentNames);
-
-			enableComponents(bundle, reactivateComponentNames);
-		}
+		return reactivateComponentNames;
 	}
-
-	@Reference
-	protected ServiceComponentRuntime serviceComponentRuntime;
 
 	private void _performComponentDescriptionDTOOperation(
 		Bundle bundle, Set<String> componentNames,
@@ -168,6 +175,16 @@ public class ComponentBlacklistImpl implements ComponentBlacklist {
 						componentDescriptionDTO);
 				}
 			});
+	}
+
+	private void _processBundles(Set<String> reactivateComponentNames) {
+		Bundle[] bundles = _bundleContext.getBundles();
+
+		for (Bundle bundle : bundles) {
+			disableComponents(bundle, _blacklistComponentNames);
+
+			enableComponents(bundle, reactivateComponentNames);
+		}
 	}
 
 	private static final Log _log = LogFactoryUtil.getLog(
@@ -192,9 +209,8 @@ public class ComponentBlacklistImpl implements ComponentBlacklist {
 				return;
 			}
 
-			Bundle bundle = bundleEvent.getBundle();
-
-			disableComponents(bundle, _blacklistComponentNames);
+			disableComponents(
+				bundleEvent.getBundle(), _blacklistComponentNames);
 		}
 
 	}

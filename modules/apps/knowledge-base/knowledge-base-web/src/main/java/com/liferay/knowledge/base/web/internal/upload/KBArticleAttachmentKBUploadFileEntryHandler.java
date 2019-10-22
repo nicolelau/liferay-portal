@@ -66,8 +66,8 @@ public class KBArticleAttachmentKBUploadFileEntryHandler
 		String contentType = uploadPortletRequest.getContentType(
 			_PARAMETER_NAME);
 
-		try (InputStream inputStream =
-				uploadPortletRequest.getFileAsStream(_PARAMETER_NAME)) {
+		try (InputStream inputStream = uploadPortletRequest.getFileAsStream(
+				_PARAMETER_NAME)) {
 
 			String uniqueFileName = _uniqueFileNameProvider.provide(
 				fileName,
@@ -83,10 +83,11 @@ public class KBArticleAttachmentKBUploadFileEntryHandler
 		ThemeDisplay themeDisplay, KBArticle kbArticle, String fileName) {
 
 		try {
-			if (PortletFileRepositoryUtil.getPortletFileEntry(
-					themeDisplay.getScopeGroupId(),
-					kbArticle.getAttachmentsFolderId(), fileName) != null) {
+			FileEntry fileEntry = PortletFileRepositoryUtil.getPortletFileEntry(
+				themeDisplay.getScopeGroupId(),
+				kbArticle.getAttachmentsFolderId(), fileName);
 
+			if (fileEntry != null) {
 				return true;
 			}
 

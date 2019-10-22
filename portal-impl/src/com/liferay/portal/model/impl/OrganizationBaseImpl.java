@@ -14,12 +14,10 @@
 
 package com.liferay.portal.model.impl;
 
-import aQute.bnd.annotation.ProviderType;
-
+import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.model.Organization;
 import com.liferay.portal.kernel.service.OrganizationLocalServiceUtil;
-import com.liferay.portal.kernel.util.StringBundler;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -36,13 +34,13 @@ import java.util.List;
  * @see Organization
  * @generated
  */
-@ProviderType
-public abstract class OrganizationBaseImpl extends OrganizationModelImpl
-	implements Organization {
-	/*
+public abstract class OrganizationBaseImpl
+	extends OrganizationModelImpl implements Organization {
+
+	/**
 	 * NOTE FOR DEVELOPERS:
 	 *
-	 * Never modify or reference this class directly. All methods that expect a organization model instance should use the {@link Organization} interface instead.
+	 * Never modify or reference this class directly. All methods that expect a organization model instance should use the <code>Organization</code> interface instead.
 	 */
 	@Override
 	public void persist() {
@@ -64,10 +62,11 @@ public abstract class OrganizationBaseImpl extends OrganizationModelImpl
 		while (organization != null) {
 			organizations.add(organization);
 
-			organization = OrganizationLocalServiceUtil.fetchOrganization(organization.getParentOrganizationId());
+			organization = OrganizationLocalServiceUtil.fetchOrganization(
+				organization.getParentOrganizationId());
 		}
 
-		StringBundler sb = new StringBundler((organizations.size() * 2) + 1);
+		StringBundler sb = new StringBundler(organizations.size() * 2 + 1);
 
 		sb.append("/");
 
@@ -89,4 +88,5 @@ public abstract class OrganizationBaseImpl extends OrganizationModelImpl
 
 		OrganizationLocalServiceUtil.updateOrganization(organization);
 	}
+
 }

@@ -37,6 +37,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.locks.ReentrantLock;
@@ -191,14 +192,17 @@ public class TestIntegrationPlugin implements Plugin<Project> {
 
 	private void _addDependenciesTestModules(Project project) {
 		GradleUtil.addDependency(
-			project, TEST_MODULES_CONFIGURATION_NAME, "org.apache.aries.jmx",
-			"org.apache.aries.jmx.core", "1.1.7");
+			project, TEST_MODULES_CONFIGURATION_NAME, "com.liferay",
+			"com.liferay.arquillian.extension.junit.bridge.connector", "1.0.0");
 		GradleUtil.addDependency(
 			project, TEST_MODULES_CONFIGURATION_NAME, "com.liferay.portal",
 			"com.liferay.portal.test", "3.0.0");
 		GradleUtil.addDependency(
 			project, TEST_MODULES_CONFIGURATION_NAME, "com.liferay.portal",
 			"com.liferay.portal.test.integration", "3.0.0");
+		GradleUtil.addDependency(
+			project, TEST_MODULES_CONFIGURATION_NAME, "org.apache.aries.jmx",
+			"org.apache.aries.jmx.core", "1.1.7");
 	}
 
 	private Copy _addTaskCopyTestModules(
@@ -348,8 +352,6 @@ public class TestIntegrationPlugin implements Plugin<Project> {
 
 			});
 
-		_configureJmxRemotePortSpec(
-			setUpTestableTomcatTask, testIntegrationTomcatExtension);
 		_configureManagerSpec(
 			setUpTestableTomcatTask, testIntegrationTomcatExtension);
 		_configureModuleFrameworkBaseDirSpec(
@@ -377,7 +379,6 @@ public class TestIntegrationPlugin implements Plugin<Project> {
 					(StartTestableTomcatTask)task;
 
 				File binDir = startTestableTomcatTask.getBinDir();
-				Logger logger = startTestableTomcatTask.getLogger();
 
 				boolean started = false;
 
@@ -396,6 +397,8 @@ public class TestIntegrationPlugin implements Plugin<Project> {
 				}
 
 				if (started) {
+					Logger logger = startTestableTomcatTask.getLogger();
+
 					if (logger.isDebugEnabled()) {
 						logger.debug(
 							"Application server {} is already started", binDir);
@@ -468,6 +471,7 @@ public class TestIntegrationPlugin implements Plugin<Project> {
 		return startTestableTomcatTask;
 	}
 
+	@SuppressWarnings("serial")
 	private StopTestableTomcatTask _addTaskStopTestableTomcat(
 		Project project, Test testIntegrationTask,
 		TestIntegrationTomcatExtension testIntegrationTomcatExtension) {
@@ -610,6 +614,16 @@ public class TestIntegrationPlugin implements Plugin<Project> {
 
 			});
 
+		baseAppServerTask.setHostName(
+			new Callable<String>() {
+
+				@Override
+				public String call() throws Exception {
+					return testIntegrationTomcatExtension.getHostName();
+				}
+
+			});
+
 		baseAppServerTask.setPortNumber(
 			new Callable<Integer>() {
 
@@ -688,6 +702,7 @@ public class TestIntegrationPlugin implements Plugin<Project> {
 		}
 	}
 
+	@SuppressWarnings("serial")
 	private void _configureTaskTestIntegration(
 		final Test test, final SourceSet testIntegrationSourceSet,
 		final TestIntegrationTomcatExtension testIntegrationTomcatExtension,
@@ -719,6 +734,21 @@ public class TestIntegrationPlugin implements Plugin<Project> {
 		test.jvmArgs(
 			"-Djava.net.preferIPv4Stack=true", "-Dliferay.mode=test",
 			"-Duser.timezone=GMT");
+
+		Properties systemProperties = System.getProperties();
+
+		for (String propertyName : systemProperties.stringPropertyNames()) {
+			if (propertyName.startsWith("liferay.arquillian.")) {
+				StringBuilder sb = new StringBuilder();
+
+				sb.append("-D");
+				sb.append(propertyName);
+				sb.append("=");
+				sb.append(systemProperties.get(propertyName));
+
+				test.jvmArgs(sb.toString());
+			}
+		}
 
 		Project project = test.getProject();
 

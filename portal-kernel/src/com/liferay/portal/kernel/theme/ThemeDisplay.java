@@ -14,11 +14,10 @@
 
 package com.liferay.portal.kernel.theme;
 
-import aQute.bnd.annotation.ProviderType;
-
 import com.liferay.admin.kernel.util.PortalMyAccountApplicationType;
 import com.liferay.exportimport.kernel.staging.StagingUtil;
 import com.liferay.mobile.device.rules.kernel.MDRRuleGroupInstance;
+import com.liferay.petra.lang.HashUtil;
 import com.liferay.petra.reflect.ReflectionUtil;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.exception.PortalException;
@@ -50,7 +49,6 @@ import com.liferay.portal.kernel.service.LayoutFriendlyURLLocalServiceUtil;
 import com.liferay.portal.kernel.service.LayoutLocalServiceUtil;
 import com.liferay.portal.kernel.service.PortletPreferencesLocalServiceUtil;
 import com.liferay.portal.kernel.util.GetterUtil;
-import com.liferay.portal.kernel.util.HashUtil;
 import com.liferay.portal.kernel.util.HttpUtil;
 import com.liferay.portal.kernel.util.ListUtil;
 import com.liferay.portal.kernel.util.LocaleThreadLocal;
@@ -96,13 +94,11 @@ import javax.servlet.http.HttpServletResponse;
  * <code>
  * themeDisplay = (ThemeDisplay) request.getAttribute(WebKeys.THEME_DISPLAY);
  * </code>
- * </pre>
- * </p>
+ * </pre></p>
  *
  * @author Brian Wing Shun Chan
  */
 @JSON
-@ProviderType
 public class ThemeDisplay
 	implements Cloneable, Mergeable<ThemeDisplay>, Serializable {
 
@@ -389,14 +385,6 @@ public class ThemeDisplay
 	}
 
 	/**
-	 * @deprecated As of 7.0.0, with no direct replacement
-	 */
-	@Deprecated
-	public String getFacebookCanvasPageURL() {
-		return _facebookCanvasPageURL;
-	}
-
-	/**
 	 * Returns the current internationalization language's code.
 	 *
 	 * <p>
@@ -468,7 +456,10 @@ public class ThemeDisplay
 			Group group = layout.getGroup();
 
 			return VirtualLayoutConstants.CANONICAL_URL_SEPARATOR.concat(
-				group.getFriendlyURL()).concat(_getFriendlyURL(layout));
+				group.getFriendlyURL()
+			).concat(
+				_getFriendlyURL(layout)
+			);
 		}
 
 		return _getFriendlyURL(layout);
@@ -533,8 +524,7 @@ public class ThemeDisplay
 	 * returns "2" for RESOURCE phase
 	 * returns "3" for EVENT phase
 	 * </code>
-	 * </pre>
-	 * </p>
+	 * </pre></p>
 	 *
 	 * @return the numeric portlet lifecycle indicator
 	 */
@@ -795,7 +785,7 @@ public class ThemeDisplay
 	 */
 	@JSON(include = false)
 	public HttpServletRequest getRequest() {
-		return _request;
+		return _httpServletRequest;
 	}
 
 	/**
@@ -805,7 +795,7 @@ public class ThemeDisplay
 	 */
 	@JSON(include = false)
 	public HttpServletResponse getResponse() {
-		return _response;
+		return _httpServletResponse;
 	}
 
 	/**
@@ -846,9 +836,8 @@ public class ThemeDisplay
 		else if (_scopeGroup.isLayout()) {
 			return LayoutLocalServiceUtil.getLayout(_scopeGroup.getClassPK());
 		}
-		else {
-			return null;
-		}
+
+		return null;
 	}
 
 	/**
@@ -1016,14 +1005,6 @@ public class ThemeDisplay
 		return _unfilteredLayouts;
 	}
 
-	/**
-	 * @deprecated As of 7.0.0, with no direct replacement
-	 */
-	@Deprecated
-	public String getURLAddContent() {
-		return StringPool.BLANK;
-	}
-
 	public String getURLControlPanel() {
 		return _urlControlPanel;
 	}
@@ -1034,18 +1015,6 @@ public class ThemeDisplay
 
 	public String getURLHome() {
 		return _urlHome;
-	}
-
-	/**
-	 * @deprecated As of 7.0.0, with no direct replacement
-	 */
-	@Deprecated
-	public String getURLLayoutTemplates() {
-		if (Validator.isNull(_urlLayoutTemplates)) {
-			return getURLPageSettings() + "#layout";
-		}
-
-		return _urlLayoutTemplates;
 	}
 
 	@JSON(include = false)
@@ -1060,23 +1029,6 @@ public class ThemeDisplay
 		}
 
 		return _urlMyAccount;
-	}
-
-	/**
-	 * @deprecated As of 7.0.0, with no direct replacement
-	 */
-	@Deprecated
-	@JSON(include = false)
-	public PortletURL getURLPageSettings() {
-		if (_urlPageSettings == null) {
-			String portletId = PortletProviderUtil.getPortletId(
-				Layout.class.getName(), PortletProvider.Action.EDIT);
-
-			_urlPageSettings = PortalUtil.getControlPanelPortletURL(
-				getRequest(), portletId, PortletRequest.RENDER_PHASE);
-		}
-
-		return _urlPageSettings;
 	}
 
 	public String getURLPortal() {
@@ -1136,16 +1088,28 @@ public class ThemeDisplay
 		return _ajax;
 	}
 
-	/**
-	 * @deprecated As of 7.0.0, with no direct replacement
-	 */
-	@Deprecated
-	public boolean isFacebook() {
-		return false;
+	public boolean isAsync() {
+		return _async;
 	}
 
+	/**
+	 * @deprecated As of Judson (7.1.x), as of 7.1.x, with no direct replacement
+	 */
+	@Deprecated
 	public boolean isFreeformLayout() {
 		return _freeformLayout;
+	}
+
+	public boolean isHubAction() {
+		return _hubAction;
+	}
+
+	public boolean isHubPartialAction() {
+		return _hubPartialAction;
+	}
+
+	public boolean isHubResource() {
+		return _hubResource;
 	}
 
 	public boolean isI18n() {
@@ -1219,22 +1183,6 @@ public class ThemeDisplay
 
 	public boolean isSecure() {
 		return _secure;
-	}
-
-	/**
-	 * @deprecated As of 7.0.0, with no direct replacement
-	 */
-	@Deprecated
-	public boolean isShowAddContentIcon() {
-		return false;
-	}
-
-	/**
-	 * @deprecated As of 7.0.0, with no direct replacement
-	 */
-	@Deprecated
-	public boolean isShowAddContentIconPermission() {
-		return false;
 	}
 
 	public boolean isShowControlPanelIcon() {
@@ -1344,6 +1292,10 @@ public class ThemeDisplay
 		_ajax = ajax;
 	}
 
+	public void setAsync(boolean async) {
+		_async = async;
+	}
+
 	public void setCDNBaseURL(String cdnBase) {
 		_cdnBaseURL = cdnBase;
 	}
@@ -1394,15 +1346,23 @@ public class ThemeDisplay
 	}
 
 	/**
-	 * @deprecated As of 7.0.0, with no direct replacement
+	 * @deprecated As of Judson (7.1.x), as of 7.1.x, with no direct replacement
 	 */
 	@Deprecated
-	public void setFacebookCanvasPageURL(String facebookCanvasPageURL) {
-		_facebookCanvasPageURL = facebookCanvasPageURL;
-	}
-
 	public void setFreeformLayout(boolean freeformLayout) {
 		_freeformLayout = freeformLayout;
+	}
+
+	public void setHubAction(boolean hubAction) {
+		_hubAction = hubAction;
+	}
+
+	public void setHubPartialAction(boolean hubPartialAction) {
+		_hubPartialAction = hubPartialAction;
+	}
+
+	public void setHubResource(boolean resource) {
+		_hubResource = resource;
 	}
 
 	public void setI18nLanguageId(String i18nLanguageId) {
@@ -1673,12 +1633,12 @@ public class ThemeDisplay
 		_refererPlid = refererPlid;
 	}
 
-	public void setRequest(HttpServletRequest request) {
-		_request = request;
+	public void setRequest(HttpServletRequest httpServletRequest) {
+		_httpServletRequest = httpServletRequest;
 	}
 
-	public void setResponse(HttpServletResponse response) {
-		_response = response;
+	public void setResponse(HttpServletResponse httpServletResponse) {
+		_httpServletResponse = httpServletResponse;
 	}
 
 	public void setScopeGroupId(long scopeGroupId) {
@@ -1708,21 +1668,6 @@ public class ThemeDisplay
 
 	public void setSessionId(String sessionId) {
 		_sessionId = sessionId;
-	}
-
-	/**
-	 * @deprecated As of 7.0.0, with no direct replacement
-	 */
-	@Deprecated
-	public void setShowAddContentIcon(boolean showAddContentIcon) {
-	}
-
-	/**
-	 * @deprecated As of 7.0.0, with no direct replacement
-	 */
-	@Deprecated
-	public void setShowAddContentIconPermission(
-		boolean showAddContentIconPermission) {
 	}
 
 	public void setShowControlPanelIcon(boolean showControlPanelIcon) {
@@ -1846,13 +1791,6 @@ public class ThemeDisplay
 		_unfilteredLayouts = unfilteredLayouts;
 	}
 
-	/**
-	 * @deprecated As of 7.0.0, with no direct replacement
-	 */
-	@Deprecated
-	public void setURLAddContent(String urlAddContent) {
-	}
-
 	public void setURLControlPanel(String urlControlPanel) {
 		_urlControlPanel = urlControlPanel;
 	}
@@ -1869,22 +1807,6 @@ public class ThemeDisplay
 		_urlLayoutTemplates = urlLayoutTemplates;
 	}
 
-	/**
-	 * @deprecated As of 7.0.0, with no direct replacement
-	 */
-	@Deprecated
-	public void setURLMyAccount(PortletURL urlMyAccount) {
-		_urlMyAccount = urlMyAccount;
-	}
-
-	/**
-	 * @deprecated As of 7.0.0, with no direct replacement
-	 */
-	@Deprecated
-	public void setURLPageSettings(PortletURL urlPageSettings) {
-		_urlPageSettings = urlPageSettings;
-	}
-
 	public void setURLPortal(String urlPortal) {
 		_urlPortal = urlPortal;
 	}
@@ -1899,14 +1821,6 @@ public class ThemeDisplay
 
 	public void setURLSignOut(String urlSignOut) {
 		_urlSignOut = urlSignOut;
-	}
-
-	/**
-	 * @deprecated As of 7.0.0, with no direct replacement
-	 */
-	@Deprecated
-	public void setURLUpdateManager(PortletURL urlUpdateManager) {
-		_urlUpdateManager = urlUpdateManager;
 	}
 
 	public void setUser(User user) {
@@ -1994,6 +1908,7 @@ public class ThemeDisplay
 	private Account _account;
 	private boolean _addSessionIdToURL;
 	private boolean _ajax;
+	private boolean _async;
 	private String _cdnBaseURL;
 	private String _cdnDynamicResourcesHost = StringPool.BLANK;
 	private String _cdnHost = StringPool.BLANK;
@@ -2011,14 +1926,12 @@ public class ThemeDisplay
 	private long _doAsGroupId;
 	private String _doAsUserId = StringPool.BLANK;
 	private String _doAsUserLanguageId = StringPool.BLANK;
-
-	/**
-	 * @deprecated As of 7.0.0, with no direct replacement
-	 */
-	@Deprecated
-	private String _facebookCanvasPageURL;
-
 	private boolean _freeformLayout;
+	private transient HttpServletRequest _httpServletRequest;
+	private transient HttpServletResponse _httpServletResponse;
+	private boolean _hubAction;
+	private boolean _hubPartialAction;
+	private boolean _hubResource;
 	private boolean _i18n;
 	private String _i18nLanguageId;
 	private String _i18nPath;
@@ -2071,8 +1984,6 @@ public class ThemeDisplay
 	private Group _refererGroup;
 	private long _refererGroupId;
 	private long _refererPlid;
-	private transient HttpServletRequest _request;
-	private transient HttpServletResponse _response;
 	private Group _scopeGroup;
 	private long _scopeGroupId;
 	private boolean _secure;
@@ -2112,7 +2023,6 @@ public class ThemeDisplay
 	private String _urlHome = StringPool.BLANK;
 	private String _urlLayoutTemplates = StringPool.BLANK;
 	private transient PortletURL _urlMyAccount;
-	private transient PortletURL _urlPageSettings;
 	private String _urlPortal = StringPool.BLANK;
 	private transient PortletURL _urlPublishToLive;
 	private String _urlSignIn = StringPool.BLANK;

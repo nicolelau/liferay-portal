@@ -15,26 +15,24 @@
 package com.liferay.adaptive.media.image.item.selector.internal;
 
 import com.liferay.adaptive.media.image.item.selector.AMImageFileEntryItemSelectorReturnType;
-import com.liferay.document.library.kernel.util.DLUtil;
+import com.liferay.document.library.util.DLURLHelper;
 import com.liferay.item.selector.ItemSelectorReturnTypeResolver;
 import com.liferay.petra.string.StringPool;
-import com.liferay.portal.kernel.json.JSONFactoryUtil;
 import com.liferay.portal.kernel.json.JSONObject;
-import com.liferay.portal.kernel.portletfilerepository.PortletFileRepositoryUtil;
+import com.liferay.portal.kernel.json.JSONUtil;
+import com.liferay.portal.kernel.portletfilerepository.PortletFileRepository;
 import com.liferay.portal.kernel.repository.model.FileEntry;
 import com.liferay.portal.kernel.theme.ThemeDisplay;
 
 import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Reference;
 
 /**
  * @author Roberto Díaz
  */
 @Component(
 	immediate = true, property = "service.ranking:Integer=100",
-	service = {
-		FileEntryAMImageFileEntryItemSelectorReturnTypeResolver.class,
-		ItemSelectorReturnTypeResolver.class
-	}
+	service = ItemSelectorReturnTypeResolver.class
 )
 public class FileEntryAMImageFileEntryItemSelectorReturnTypeResolver
 	implements ItemSelectorReturnTypeResolver
@@ -56,25 +54,30 @@ public class FileEntryAMImageFileEntryItemSelectorReturnTypeResolver
 	public String getValue(FileEntry fileEntry, ThemeDisplay themeDisplay)
 		throws Exception {
 
-		JSONObject fileEntryJSONObject = JSONFactoryUtil.createJSONObject();
-
-		fileEntryJSONObject.put("fileEntryId", fileEntry.getFileEntryId());
+		JSONObject fileEntryJSONObject = JSONUtil.put(
+			"fileEntryId", fileEntry.getFileEntryId());
 
 		String previewURL = null;
 
 		if (fileEntry.getGroupId() == fileEntry.getRepositoryId()) {
-			previewURL = DLUtil.getPreviewURL(
+			previewURL = _dlURLHelper.getImagePreviewURL(
 				fileEntry, fileEntry.getFileVersion(), themeDisplay,
 				StringPool.BLANK, false, false);
 		}
 		else {
-			previewURL = PortletFileRepositoryUtil.getPortletFileEntryURL(
-				themeDisplay, fileEntry, StringPool.BLANK, false);
+			previewURL = _portletFileRepository.getPortletFileEntryURL(
+				themeDisplay, fileEntry, "&imagePreview=1", false);
 		}
 
 		fileEntryJSONObject.put("url", previewURL);
 
 		return fileEntryJSONObject.toString();
 	}
+
+	@Reference
+	private DLURLHelper _dlURLHelper;
+
+	@Reference
+	private PortletFileRepository _portletFileRepository;
 
 }

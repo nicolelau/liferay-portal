@@ -105,10 +105,12 @@ public class NettyFabricAgentRegistrationChannelHandler
 
 		SocketAddress socketAddress = channel.localAddress();
 
+		String socketAddressString = socketAddress.toString();
+
 		Path repositoryPath = Paths.get(
 			_repositoryParentPath.toString(),
 			StringUtil.replace(
-				socketAddress.toString(), CharPool.COLON, CharPool.DASH));
+				socketAddressString, CharPool.COLON, CharPool.DASH));
 
 		Files.createDirectories(repositoryPath);
 

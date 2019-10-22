@@ -130,11 +130,9 @@ public class PasswordPolicyLocalServiceImpl
 				companyId, defaultPasswordPolicyName);
 
 		if (defaultPasswordPolicy == null) {
-			long defaultUserId = userLocalService.getDefaultUserId(companyId);
-
 			addPasswordPolicy(
-				defaultUserId, true, defaultPasswordPolicyName,
-				defaultPasswordPolicyName,
+				userLocalService.getDefaultUserId(companyId), true,
+				defaultPasswordPolicyName, defaultPasswordPolicyName,
 				PropsValues.PASSWORDS_DEFAULT_POLICY_CHANGEABLE,
 				PropsValues.PASSWORDS_DEFAULT_POLICY_CHANGE_REQUIRED,
 				PropsValues.PASSWORDS_DEFAULT_POLICY_MIN_AGE,
@@ -348,7 +346,7 @@ public class PasswordPolicyLocalServiceImpl
 		PasswordPolicy passwordPolicy =
 			passwordPolicyPersistence.findByPrimaryKey(passwordPolicyId);
 
-		if (!passwordPolicy.getDefaultPolicy()) {
+		if (!passwordPolicy.isDefaultPolicy()) {
 			validate(passwordPolicyId, passwordPolicy.getCompanyId(), name);
 
 			passwordPolicy.setName(name);

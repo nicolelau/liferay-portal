@@ -33,6 +33,7 @@ import org.dom4j.Document;
 import org.dom4j.DocumentException;
 import org.dom4j.io.SAXReader;
 
+import org.junit.Before;
 import org.junit.Rule;
 import org.junit.rules.ErrorCollector;
 
@@ -40,6 +41,11 @@ import org.junit.rules.ErrorCollector;
  * @author Peter Yoo
  */
 public class Test {
+
+	@Before
+	public void setUp() throws Exception {
+		JenkinsResultsParserUtil.clearCache();
+	}
 
 	@Rule
 	public ErrorCollector errorCollector = new ErrorCollector();
@@ -99,8 +105,10 @@ public class Test {
 
 			errorCollector.addError(
 				new Throwable(
-					"Expected message mismatch in sample '" + sampleKey +
-						"'."));
+					JenkinsResultsParserUtil.combine(
+						"Expected message mismatch in sample '", sampleKey,
+						"'.\n Expected message file: ",
+						expectedMessageFile.getPath())));
 		}
 	}
 
@@ -213,15 +221,15 @@ public class Test {
 	}
 
 	protected String fixMessage(String message) {
-		if (message.contains(JenkinsResultsParserUtil.DEPENDENCIES_URL_FILE)) {
+		if (message.contains(JenkinsResultsParserUtil.URL_DEPENDENCIES_FILE)) {
 			message = message.replace(
-				JenkinsResultsParserUtil.DEPENDENCIES_URL_FILE,
+				JenkinsResultsParserUtil.URL_DEPENDENCIES_FILE,
 				"${dependencies.url}");
 		}
 
-		if (message.contains(JenkinsResultsParserUtil.DEPENDENCIES_URL_HTTP)) {
+		if (message.contains(JenkinsResultsParserUtil.URL_DEPENDENCIES_HTTP)) {
 			message = message.replace(
-				JenkinsResultsParserUtil.DEPENDENCIES_URL_HTTP,
+				JenkinsResultsParserUtil.URL_DEPENDENCIES_HTTP,
 				"${dependencies.url}");
 		}
 
@@ -233,8 +241,8 @@ public class Test {
 
 		SAXReader saxReader = new SAXReader();
 
-		for (int i = 0; i < _XML_REPLACEMENTS.length; i++) {
-			xml = xml.replace(_XML_REPLACEMENTS[i][0], _XML_REPLACEMENTS[i][1]);
+		for (String[] xmlReplacement : _XML_REPLACEMENTS) {
+			xml = xml.replace(xmlReplacement[0], xmlReplacement[1]);
 		}
 
 		Document document = null;
@@ -253,9 +261,9 @@ public class Test {
 
 		String formattedXML = Dom4JUtil.format(document.getRootElement());
 
-		for (int i = 0; i < _XML_REPLACEMENTS.length; i++) {
+		for (String[] xmlReplacement : _XML_REPLACEMENTS) {
 			formattedXML = formattedXML.replace(
-				_XML_REPLACEMENTS[i][1], _XML_REPLACEMENTS[i][0]);
+				xmlReplacement[1], xmlReplacement[0]);
 		}
 
 		return formattedXML;
@@ -263,6 +271,15 @@ public class Test {
 
 	protected File getExpectedMessageFile(TestSample testSample) {
 		return new File(testSample.getSampleDir(), "expected-message.html");
+	}
+
+	protected String getMismatchMessage(
+		String expectedValue, String actualValue, String valueName) {
+
+		return JenkinsResultsParserUtil.combine(
+			"The expected ", valueName, " value ", expectedValue,
+			", Did not match the actual ", valueName, " value ", actualValue,
+			".");
 	}
 
 	protected List<String> getSimpleClassNames() {
@@ -301,6 +318,25 @@ public class Test {
 		return string.replace("${" + token + "}", value);
 	}
 
+	protected void testEquals(String expected, String actual) {
+		if (!((expected == null) ^ (actual == null))) {
+			if ((expected != null) && !expected.equals(actual)) {
+				errorCollector.addError(
+					new Throwable(
+						JenkinsResultsParserUtil.combine(
+							"String mismatch\nExpected:", expected, "\nActual:",
+							actual)));
+			}
+		}
+		else {
+			errorCollector.addError(
+				new Throwable(
+					JenkinsResultsParserUtil.combine(
+						"String mismatch\nExpected:", expected, "\nActual:",
+						actual)));
+		}
+	}
+
 	protected String toURLString(File file) throws Exception {
 		URI uri = file.toURI();
 
@@ -319,7 +355,8 @@ public class Test {
 		path = path.substring(x);
 
 		return urlString.replace(
-			"file:" + dependenciesDir.getAbsolutePath(),
+			"file:" +
+				JenkinsResultsParserUtil.getCanonicalPath(dependenciesDir),
 			"${dependencies.url}/" + path);
 	}
 

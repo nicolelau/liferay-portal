@@ -17,13 +17,27 @@ package com.liferay.project.templates;
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.ParameterException;
 
-import com.liferay.project.templates.internal.Archetyper;
-import com.liferay.project.templates.internal.util.FileUtil;
-import com.liferay.project.templates.internal.util.StringUtil;
-import com.liferay.project.templates.internal.util.Validator;
+import com.liferay.project.templates.extensions.ProjectTemplatesArgs;
+import com.liferay.project.templates.extensions.ProjectTemplatesArgsExt;
+import com.liferay.project.templates.extensions.ProjectTemplatesConstants;
+import com.liferay.project.templates.extensions.util.FileUtil;
+import com.liferay.project.templates.extensions.util.ProjectTemplatesUtil;
+import com.liferay.project.templates.extensions.util.StringUtil;
+import com.liferay.project.templates.extensions.util.Validator;
+import com.liferay.project.templates.extensions.util.WorkspaceUtil;
+import com.liferay.project.templates.internal.ProjectGenerator;
+
+import java.beans.Statement;
 
 import java.io.File;
 import java.io.InputStream;
+
+import java.lang.reflect.Method;
+
+import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URL;
+import java.net.URLClassLoader;
 
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
@@ -31,11 +45,14 @@ import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.PosixFilePermissions;
 
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Enumeration;
-import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
+import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.jar.Attributes;
@@ -51,11 +68,8 @@ import org.apache.maven.archetype.ArchetypeGenerationResult;
  */
 public class ProjectTemplates {
 
-	public static final String TEMPLATE_BUNDLE_PREFIX =
-		"com.liferay.project.templates.";
-
 	public static Map<String, String> getTemplates() throws Exception {
-		return getTemplates(new HashSet<>());
+		return getTemplates(Collections.emptySet());
 	}
 
 	public static Map<String, String> getTemplates(
@@ -63,12 +77,6 @@ public class ProjectTemplates {
 		throws Exception {
 
 		Map<String, String> templates = new TreeMap<>();
-
-		File projectTemplatesFile = FileUtil.getJarFile(ProjectTemplates.class);
-
-		if (!templatesFiles.contains(projectTemplatesFile)) {
-			templatesFiles.add(projectTemplatesFile);
-		}
 
 		for (File templatesFile : templatesFiles) {
 			if (templatesFile.isDirectory()) {
@@ -81,26 +89,17 @@ public class ProjectTemplates {
 					while (iterator.hasNext()) {
 						Path path = iterator.next();
 
-						String template = String.valueOf(path.getFileName());
+						String fileName = String.valueOf(path.getFileName());
 
-						template = template.substring(
-							TEMPLATE_BUNDLE_PREFIX.length(),
-							template.lastIndexOf('-'));
-
-						template = template.replace('.', '-');
+						String template = ProjectTemplatesUtil.getTemplateName(
+							fileName);
 
 						if (!template.startsWith(WorkspaceUtil.WORKSPACE)) {
-							try (JarFile jarFile = new JarFile(path.toFile())) {
-								Manifest manifest = jarFile.getManifest();
+							String bundleDescription =
+								FileUtil.getManifestProperty(
+									path.toFile(), "Bundle-Description");
 
-								Attributes attributes =
-									manifest.getMainAttributes();
-
-								String bundleDescription = attributes.getValue(
-									"Bundle-Description");
-
-								templates.put(template, bundleDescription);
-							}
+							templates.put(template, bundleDescription);
 						}
 					}
 				}
@@ -118,20 +117,19 @@ public class ProjectTemplates {
 
 						String template = jarEntry.getName();
 
-						if (!template.startsWith(TEMPLATE_BUNDLE_PREFIX)) {
+						if (!template.startsWith(
+								ProjectTemplatesConstants.
+									TEMPLATE_BUNDLE_PREFIX)) {
+
 							continue;
 						}
 
-						template = template.substring(
-							TEMPLATE_BUNDLE_PREFIX.length(),
-							template.indexOf("-"));
-
-						template = template.replace('.', '-');
+						template = ProjectTemplatesUtil.getTemplateName(
+							template);
 
 						if (!template.startsWith(WorkspaceUtil.WORKSPACE)) {
 							try (InputStream inputStream =
 									jarFile.getInputStream(jarEntry);
-
 								JarInputStream jarInputStream =
 									new JarInputStream(inputStream)) {
 
@@ -152,25 +150,114 @@ public class ProjectTemplates {
 			}
 		}
 
+		List<String> archetypeJarNames =
+			ProjectTemplatesUtil.getArchetypeJarNames();
+
+		for (String projectTemplateJarName : archetypeJarNames) {
+			String templateName = ProjectTemplatesUtil.getTemplateName(
+				projectTemplateJarName);
+
+			if (!templateName.startsWith(WorkspaceUtil.WORKSPACE)) {
+				try (InputStream inputStream =
+						ProjectTemplates.class.getResourceAsStream(
+							projectTemplateJarName);
+					JarInputStream jarInputStream = new JarInputStream(
+						inputStream)) {
+
+					Manifest manifest = jarInputStream.getManifest();
+
+					Attributes attributes = manifest.getMainAttributes();
+
+					String bundleDescription = attributes.getValue(
+						"Bundle-Description");
+
+					templates.put(templateName, bundleDescription);
+				}
+			}
+		}
+
 		return templates;
+	}
+
+	public static Map<String, String> getTemplates(File templateDirectory)
+		throws Exception {
+
+		return getTemplates(Arrays.asList(templateDirectory));
 	}
 
 	public static void main(String[] args) throws Exception {
 		ProjectTemplatesArgs projectTemplatesArgs = new ProjectTemplatesArgs();
 
-		JCommander jCommander = new JCommander(projectTemplatesArgs);
+		JCommander.Builder builder = JCommander.newBuilder();
+
+		builder.addObject(projectTemplatesArgs);
+
+		JCommander jCommander = builder.build();
+
+		jCommander.setAcceptUnknownOptions(true);
+
+		jCommander.parseWithoutValidation(args);
+
+		String template = projectTemplatesArgs.getTemplate();
+
+		if (template.equals("portlet")) {
+			template = "mvc-portlet";
+
+			projectTemplatesArgs.setTemplate(template);
+		}
+
+		File templateFile = ProjectTemplatesUtil.getTemplateFile(
+			projectTemplatesArgs);
+
+		Thread thread = Thread.currentThread();
+
+		ClassLoader oldContextClassLoader = thread.getContextClassLoader();
+
+		URI uri = templateFile.toURI();
+
+		thread.setContextClassLoader(
+			new URLClassLoader(new URL[] {uri.toURL()}));
+
+		ProjectTemplatesArgsExt projectTemplatesArgsExt =
+			_getProjectTemplateArgsExt(
+				projectTemplatesArgs.getTemplate(), templateFile);
+
+		builder = JCommander.newBuilder();
+
+		projectTemplatesArgs = new ProjectTemplatesArgs();
+
+		builder = builder.addObject(projectTemplatesArgs);
+
+		if (projectTemplatesArgsExt != null) {
+			builder = builder.addObject(projectTemplatesArgsExt);
+		}
+
+		jCommander = builder.build();
+
+		if (projectTemplatesArgsExt != null) {
+			projectTemplatesArgs.setProjectTemplatesArgsExt(
+				projectTemplatesArgsExt);
+		}
 
 		try {
-			File jarFile = FileUtil.getJarFile(ProjectTemplates.class);
+			Path jarPath = FileUtil.getJarPath();
 
-			if (jarFile.isFile()) {
-				jCommander.setProgramName("java -jar " + jarFile.getName());
+			if (Files.isDirectory(jarPath)) {
+				jCommander.setProgramName(ProjectTemplates.class.getName());
 			}
 			else {
-				jCommander.setProgramName(ProjectTemplates.class.getName());
+				jCommander.setProgramName("java -jar " + jarPath.getFileName());
 			}
 
 			jCommander.parse(args);
+
+			template = projectTemplatesArgs.getTemplate();
+
+			if (template.equals("portlet")) {
+				template = "mvc-portlet";
+
+				projectTemplatesArgs.setTemplate(template);
+			}
 
 			if (projectTemplatesArgs.isHelp()) {
 				_printHelp(jCommander, projectTemplatesArgs);
@@ -187,62 +274,145 @@ public class ProjectTemplates {
 
 			_printHelp(jCommander, projectTemplatesArgs);
 		}
+		finally {
+			thread.setContextClassLoader(oldContextClassLoader);
+		}
 	}
 
 	public ProjectTemplates(ProjectTemplatesArgs projectTemplatesArgs)
 		throws Exception {
 
-		_checkArgs(projectTemplatesArgs);
+		this(projectTemplatesArgs, null);
+	}
 
-		File destinationDir = projectTemplatesArgs.getDestinationDir();
+	public ProjectTemplates(
+			ProjectTemplatesArgs projectTemplatesArgs,
+			Map<String, String> propertiesMap)
+		throws Exception {
 
-		Archetyper archetyper = new Archetyper();
+		ProjectTemplatesArgsExt projectTemplatesArgsExt =
+			projectTemplatesArgs.getProjectTemplatesArgsExt();
 
-		ArchetypeGenerationResult archetypeGenerationResult =
-			archetyper.generateProject(projectTemplatesArgs, destinationDir);
+		Thread thread = Thread.currentThread();
 
-		if (archetypeGenerationResult != null) {
-			Exception cause = archetypeGenerationResult.getCause();
+		ClassLoader oldContextClassLoader = thread.getContextClassLoader();
 
-			if (cause != null) {
-				throw cause;
+		boolean changedClassLoader = false;
+
+		try {
+			if (projectTemplatesArgsExt == null) {
+				File templateFile = ProjectTemplatesUtil.getTemplateFile(
+					projectTemplatesArgs);
+
+				URI uri = templateFile.toURI();
+
+				changedClassLoader = true;
+				thread.setContextClassLoader(
+					new URLClassLoader(new URL[] {uri.toURL()}));
+
+				projectTemplatesArgsExt = _getProjectTemplateArgsExt(
+					projectTemplatesArgs.getTemplate(), templateFile);
+
+				projectTemplatesArgs.setProjectTemplatesArgsExt(
+					projectTemplatesArgsExt);
+			}
+
+			if (propertiesMap != null) {
+				for (Map.Entry<String, String> entry :
+						propertiesMap.entrySet()) {
+
+					_setIfPresent(
+						projectTemplatesArgsExt, entry.getKey(),
+						entry.getValue());
+				}
+			}
+
+			_checkArgs(projectTemplatesArgs);
+
+			File destinationDir = projectTemplatesArgs.getDestinationDir();
+
+			ProjectGenerator projectGenerator = new ProjectGenerator();
+
+			ArchetypeGenerationResult archetypeGenerationResult =
+				projectGenerator.generateProject(
+					projectTemplatesArgs, destinationDir);
+
+			if (archetypeGenerationResult != null) {
+				Exception cause = archetypeGenerationResult.getCause();
+
+				if (cause != null) {
+					throw cause;
+				}
+			}
+
+			Path templateDirPath = destinationDir.toPath();
+
+			templateDirPath = templateDirPath.resolve(
+				projectTemplatesArgs.getName());
+
+			if (WorkspaceUtil.isWorkspace(destinationDir)) {
+				Files.deleteIfExists(
+					templateDirPath.resolve("settings.gradle"));
+			}
+			else {
+				if (projectTemplatesArgs.isGradle()) {
+					FileUtil.extractDirectory(
+						"gradle-wrapper", templateDirPath);
+
+					FileUtil.setPosixFilePermissions(
+						templateDirPath.resolve("gradlew"),
+						_wrapperPosixFilePermissions);
+				}
+
+				if (projectTemplatesArgs.isMaven()) {
+					FileUtil.extractDirectory("maven-wrapper", templateDirPath);
+
+					FileUtil.setPosixFilePermissions(
+						templateDirPath.resolve("mvnw"),
+						_wrapperPosixFilePermissions);
+				}
+			}
+
+			if (!projectTemplatesArgs.isGradle()) {
+				FileUtil.deleteFiles(
+					templateDirPath, "build.gradle", "settings.gradle");
+			}
+
+			if (!projectTemplatesArgs.isMaven()) {
+				FileUtil.deleteFiles(templateDirPath, "pom.xml");
+			}
+		}
+		finally {
+			if (changedClassLoader) {
+				thread.setContextClassLoader(oldContextClassLoader);
+			}
+		}
+	}
+
+	private static ProjectTemplatesArgsExt _getProjectTemplateArgsExt(
+			String templateName, File archetypeFile)
+		throws MalformedURLException {
+
+		if (archetypeFile == null) {
+			return null;
+		}
+
+		ServiceLoader<ProjectTemplatesArgsExt> serviceLoader =
+			ServiceLoader.load(ProjectTemplatesArgsExt.class);
+
+		Iterator<ProjectTemplatesArgsExt> iterator = serviceLoader.iterator();
+
+		while (iterator.hasNext()) {
+			ProjectTemplatesArgsExt projectTemplatesArgsExt = iterator.next();
+
+			if (templateName.equals(
+					projectTemplatesArgsExt.getTemplateName())) {
+
+				return projectTemplatesArgsExt;
 			}
 		}
 
-		Path templateDirPath = destinationDir.toPath();
-
-		templateDirPath = templateDirPath.resolve(
-			projectTemplatesArgs.getName());
-
-		if (WorkspaceUtil.isWorkspace(destinationDir)) {
-			Files.deleteIfExists(templateDirPath.resolve("settings.gradle"));
-		}
-		else {
-			if (projectTemplatesArgs.isGradle()) {
-				FileUtil.extractDirectory("gradle-wrapper", templateDirPath);
-
-				FileUtil.setPosixFilePermissions(
-					templateDirPath.resolve("gradlew"),
-					_wrapperPosixFilePermissions);
-			}
-
-			if (projectTemplatesArgs.isMaven()) {
-				FileUtil.extractDirectory("maven-wrapper", templateDirPath);
-
-				FileUtil.setPosixFilePermissions(
-					templateDirPath.resolve("mvnw"),
-					_wrapperPosixFilePermissions);
-			}
-		}
-
-		if (!projectTemplatesArgs.isGradle()) {
-			FileUtil.deleteFiles(
-				templateDirPath, "build.gradle", "settings.gradle");
-		}
-
-		if (!projectTemplatesArgs.isMaven()) {
-			FileUtil.deleteFiles(templateDirPath, "pom.xml");
-		}
+		return null;
 	}
 
 	private static void _printHelp(
@@ -355,11 +525,6 @@ public class ProjectTemplates {
 		else if ((template.equals("freemarker-portlet") ||
 				  template.equals("mvc-portlet") ||
 				  template.equals("npm-angular-portlet") ||
-				  template.equals("npm-billboardjs-portlet") ||
-				  template.equals("npm-isomorphic-portlet") ||
-				  template.equals("npm-jquery-portlet") ||
-				  template.equals("npm-metaljs-portlet") ||
-				  template.equals("npm-portlet") ||
 				  template.equals("npm-react-portlet") ||
 				  template.equals("npm-vuejs-portlet") ||
 				  template.equals("spring-mvc-portlet") ||
@@ -375,12 +540,6 @@ public class ProjectTemplates {
 			Validator.isNotNull(name)) {
 
 			projectTemplatesArgs.setPackageName(_getPackageName(name));
-		}
-
-		String contributorType = projectTemplatesArgs.getContributorType();
-
-		if (Validator.isNull(contributorType)) {
-			projectTemplatesArgs.setContributorType(name);
 		}
 	}
 
@@ -402,6 +561,43 @@ public class ProjectTemplates {
 		name = name.replace(' ', '.');
 
 		return name.toLowerCase();
+	}
+
+	private boolean _hasMethod(Object object, String methodName) {
+		if (object != null) {
+			Class<?> clazz = object.getClass();
+			Method method = null;
+
+			try {
+				method = clazz.getMethod(
+					methodName, new Class<?>[] {String.class});
+			}
+			catch (Exception e) {
+				return false;
+			}
+
+			if (method != null) {
+				return true;
+			}
+
+			return false;
+		}
+
+		return false;
+	}
+
+	private void _setIfPresent(Object object, String methodName, String value) {
+		if (_hasMethod(object, methodName)) {
+			Statement statement = new Statement(
+				object, methodName, new Object[] {value});
+
+			try {
+				statement.execute();
+			}
+			catch (Exception e) {
+				throw new RuntimeException(e);
+			}
+		}
 	}
 
 	private static final Set<PosixFilePermission> _wrapperPosixFilePermissions =

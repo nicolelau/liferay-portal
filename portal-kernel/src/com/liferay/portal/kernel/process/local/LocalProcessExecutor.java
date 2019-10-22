@@ -14,6 +14,7 @@
 
 package com.liferay.portal.kernel.process.local;
 
+import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.concurrent.AsyncBroker;
 import com.liferay.portal.kernel.concurrent.DefaultNoticeableFuture;
@@ -26,10 +27,8 @@ import com.liferay.portal.kernel.process.ProcessConfig;
 import com.liferay.portal.kernel.process.ProcessException;
 import com.liferay.portal.kernel.process.ProcessExecutor;
 import com.liferay.portal.kernel.process.ProcessLog;
-import com.liferay.portal.kernel.process.ProcessLog.Level;
 import com.liferay.portal.kernel.process.TerminationProcessException;
 import com.liferay.portal.kernel.util.ClassLoaderObjectInputStream;
-import com.liferay.portal.kernel.util.StringBundler;
 
 import java.io.EOFException;
 import java.io.IOException;
@@ -44,10 +43,8 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.function.Consumer;
 
@@ -55,14 +52,6 @@ import java.util.function.Consumer;
  * @author Shuyang Zhou
  */
 public class LocalProcessExecutor implements ProcessExecutor {
-
-	/**
-	 * @deprecated As of 7.0.0, with no direct replacement
-	 */
-	@Deprecated
-	public Set<Process> destroy() {
-		return Collections.emptySet();
-	}
 
 	@Override
 	public <T extends Serializable> ProcessChannel<T> execute(
@@ -214,7 +203,7 @@ public class LocalProcessExecutor implements ProcessExecutor {
 						if (unsyncByteArrayOutputStream.size() > 0) {
 							_processLogConsumer.accept(
 								new LocalProcessLog(
-									Level.WARN,
+									ProcessLog.Level.WARN,
 									"Found corrupt leading log " +
 										unsyncByteArrayOutputStream.toString(),
 									null));
@@ -244,8 +233,8 @@ public class LocalProcessExecutor implements ProcessExecutor {
 					catch (WriteAbortedException wae) {
 						_processLogConsumer.accept(
 							new LocalProcessLog(
-								Level.WARN, "Caught a write aborted exception",
-								wae));
+								ProcessLog.Level.WARN,
+								"Caught a write aborted exception", wae));
 
 						continue;
 					}
@@ -253,7 +242,7 @@ public class LocalProcessExecutor implements ProcessExecutor {
 					if (!(obj instanceof ProcessCallable)) {
 						_processLogConsumer.accept(
 							new LocalProcessLog(
-								Level.INFO,
+								ProcessLog.Level.INFO,
 								"Received a nonprocess callable piping back " +
 									obj,
 								null));
@@ -276,18 +265,17 @@ public class LocalProcessExecutor implements ProcessExecutor {
 
 						_processLogConsumer.accept(
 							new LocalProcessLog(
-								Level.DEBUG,
+								ProcessLog.Level.DEBUG,
 								StringBundler.concat(
 									"Invoked generic process callable ",
-									String.valueOf(processCallable),
-									" with return value ",
-									String.valueOf(returnValue)),
+									processCallable, " with return value ",
+									returnValue),
 								null));
 					}
 					catch (Throwable t) {
 						_processLogConsumer.accept(
 							new LocalProcessLog(
-								Level.ERROR,
+								ProcessLog.Level.ERROR,
 								"Unable to invoke generic process callable",
 								t));
 					}
@@ -299,7 +287,7 @@ public class LocalProcessExecutor implements ProcessExecutor {
 
 				_processLogConsumer.accept(
 					new LocalProcessLog(
-						Level.ERROR,
+						ProcessLog.Level.ERROR,
 						"Dumping content of corrupted object input stream to " +
 							path.toAbsolutePath(),
 						sce));
@@ -318,7 +306,7 @@ public class LocalProcessExecutor implements ProcessExecutor {
 			catch (Throwable t) {
 				_processLogConsumer.accept(
 					new LocalProcessLog(
-						Level.ERROR, "Abort subprocess piping", t));
+						ProcessLog.Level.ERROR, "Abort subprocess piping", t));
 
 				throw t;
 			}

@@ -55,15 +55,17 @@ TasksEntry tasksEntry = TasksEntryLocalServiceUtil.fetchTasksEntry(tasksEntryId)
 						%>
 
 						<liferay-ui:icon
-							iconCssClass="icon-user"
+							icon="user"
 							label="<%= true %>"
+							markupView="lexicon"
 							message='<%= LanguageUtil.format(request, "assigned-to-x", taglibAssigneeDisplayURL, false) %>'
 						/>
 					</c:when>
 					<c:otherwise>
 						<liferay-ui:icon
-							iconCssClass="icon-signin"
+							icon="upload"
 							label="<%= true %>"
+							markupView="lexicon"
 							message="unassigned"
 						/>
 					</c:otherwise>
@@ -83,16 +85,18 @@ TasksEntry tasksEntry = TasksEntryLocalServiceUtil.fetchTasksEntry(tasksEntryId)
 				%>
 
 				<liferay-ui:icon
-					iconCssClass="icon-user"
+					icon="user"
 					label="<%= true %>"
+					markupView="lexicon"
 					message='<%= LanguageUtil.format(request, "created-by-x", taglibReporterDisplayURL, false) %>'
 				/>
 			</div>
 
 			<div class="last task-data">
 				<liferay-ui:icon
-					iconCssClass="icon-calendar"
+					icon="calendar"
 					label="<%= true %>"
+					markupView="lexicon"
 					message='<%= LanguageUtil.format(request, "modified-on-x", dateFormatDateTime.format(tasksEntry.getModifiedDate()), false) %>'
 				/>
 			</div>
@@ -154,8 +158,9 @@ TasksEntry tasksEntry = TasksEntryLocalServiceUtil.fetchTasksEntry(tasksEntryId)
 					<td>
 						<div class="due-date task-data">
 							<liferay-ui:icon
-								iconCssClass="icon-calendar"
+								icon="calendar"
 								label="<%= true %>"
+								markupView="lexicon"
 								message="<%= dateFormatDateTime.format(tasksEntry.getDueDate()) %>"
 							/>
 						</div>
@@ -173,7 +178,7 @@ TasksEntry tasksEntry = TasksEntryLocalServiceUtil.fetchTasksEntry(tasksEntryId)
 					<liferay-ui:message key="tags" />
 				</td>
 				<td>
-					<liferay-ui:asset-tags-summary
+					<liferay-asset:asset-tags-summary
 						className="<%= TasksEntry.class.getName() %>"
 						classPK="<%= tasksEntry.getTasksEntryId() %>"
 					/>
@@ -206,13 +211,13 @@ TasksEntry tasksEntry = TasksEntryLocalServiceUtil.fetchTasksEntry(tasksEntryId)
 				<aui:button name="deleteTasksEntry" value="delete" />
 
 				<aui:script use="aui-io-deprecated">
-					var deleteTasksEntry = A.one('#<portlet:namespace />deleteTasksEntry');
+					var <portlet:namespace />deleteTasksEntry = document.querySelector('#<portlet:namespace />deleteTasksEntry');
 
-					if (deleteTasksEntry) {
-						deleteTasksEntry.on(
+					if (<portlet:namespace />deleteTasksEntry) {
+						<portlet:namespace />deleteTasksEntry.addEventListener(
 							'click',
 							function(event) {
-								if (confirm('<%= UnicodeLanguageUtil.get(request, "are-you-sure-you-want-to-delete-this-entry") %>')) {
+								if (confirm('<liferay-ui:message key="are-you-sure-you-want-to-delete-this-entry" />')) {
 									A.io.request(
 										'<portlet:actionURL name="deleteTasksEntry" />',
 										{

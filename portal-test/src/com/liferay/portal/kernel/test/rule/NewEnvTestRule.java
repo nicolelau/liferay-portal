@@ -18,22 +18,16 @@ import com.liferay.petra.process.ClassPathUtil;
 import com.liferay.petra.process.ProcessCallable;
 import com.liferay.petra.process.ProcessChannel;
 import com.liferay.petra.process.ProcessConfig;
-import com.liferay.petra.process.ProcessConfig.Builder;
 import com.liferay.petra.process.ProcessException;
 import com.liferay.petra.process.ProcessExecutor;
 import com.liferay.petra.process.local.LocalProcessExecutor;
-import com.liferay.petra.process.local.LocalProcessLauncher.ProcessContext;
-import com.liferay.petra.process.local.LocalProcessLauncher.ShutdownHook;
+import com.liferay.petra.process.local.LocalProcessLauncher;
 import com.liferay.petra.string.CharPool;
+import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
-import com.liferay.portal.kernel.test.rule.BaseTestRule.StatementWrapper;
-import com.liferay.portal.kernel.test.rule.NewEnv.Environment;
-import com.liferay.portal.kernel.test.rule.NewEnv.JVMArgsLine;
 import com.liferay.portal.kernel.util.GetterUtil;
-import com.liferay.portal.kernel.util.MethodCache;
 import com.liferay.portal.kernel.util.MethodKey;
 import com.liferay.portal.kernel.util.PortalClassLoaderUtil;
-import com.liferay.portal.kernel.util.StringBundler;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.SystemProperties;
 import com.liferay.portal.kernel.util.Validator;
@@ -41,6 +35,8 @@ import com.liferay.portal.kernel.util.Validator;
 import java.io.Serializable;
 
 import java.lang.annotation.Annotation;
+import java.lang.management.ManagementFactory;
+import java.lang.management.RuntimeMXBean;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
@@ -89,7 +85,7 @@ public class NewEnvTestRule implements TestRule {
 			return new RunInNewClassLoaderStatement(statement, description);
 		}
 
-		Builder builder = new Builder();
+		ProcessConfig.Builder builder = new ProcessConfig.Builder();
 
 		builder.setArguments(createArguments(description));
 		builder.setBootstrapClassPath(CLASS_PATH);
@@ -105,9 +101,9 @@ public class NewEnvTestRule implements TestRule {
 			return;
 		}
 
-		ProcessContext.attach(
+		LocalProcessLauncher.ProcessContext.attach(
 			message, 1000,
-			new ShutdownHook() {
+			new LocalProcessLauncher.ShutdownHook() {
 
 				@Override
 				public boolean shutdown(
@@ -159,13 +155,14 @@ public class NewEnvTestRule implements TestRule {
 
 		Class<?> testClass = description.getTestClass();
 
-		JVMArgsLine jvmArgsLine = testClass.getAnnotation(JVMArgsLine.class);
+		NewEnv.JVMArgsLine jvmArgsLine = testClass.getAnnotation(
+			NewEnv.JVMArgsLine.class);
 
 		if (jvmArgsLine != null) {
 			arguments.addAll(processJVMArgsLine(jvmArgsLine));
 		}
 
-		jvmArgsLine = description.getAnnotation(JVMArgsLine.class);
+		jvmArgsLine = description.getAnnotation(NewEnv.JVMArgsLine.class);
 
 		if (jvmArgsLine != null) {
 			arguments.addAll(processJVMArgsLine(jvmArgsLine));
@@ -173,7 +170,7 @@ public class NewEnvTestRule implements TestRule {
 
 		arguments.add("-Djava.net.preferIPv4Stack=true");
 
-		if (Boolean.getBoolean("jvm.debug")) {
+		if (_isJPDAEnabled()) {
 			arguments.add(_JPDA_OPTIONS);
 			arguments.add("-Djvm.debug=true");
 		}
@@ -251,7 +248,7 @@ public class NewEnvTestRule implements TestRule {
 		return environmentMap;
 	}
 
-	protected List<String> processJVMArgsLine(JVMArgsLine jvmArgsLine) {
+	protected List<String> processJVMArgsLine(NewEnv.JVMArgsLine jvmArgsLine) {
 		String[] jvmArgs = StringUtil.split(
 			jvmArgsLine.value(), StringPool.SPACE);
 
@@ -290,12 +287,15 @@ public class NewEnvTestRule implements TestRule {
 		return sb.toString();
 	}
 
-	protected void setEnvironment(Builder builder, Description description) {
+	protected void setEnvironment(
+		ProcessConfig.Builder builder, Description description) {
+
 		Map<String, String> environmentMap = new HashMap<>(System.getenv());
 
 		Class<?> testClass = description.getTestClass();
 
-		Environment environment = testClass.getAnnotation(Environment.class);
+		NewEnv.Environment environment = testClass.getAnnotation(
+			NewEnv.Environment.class);
 
 		if (environment != null) {
 			Map<String, String> map = processEnvironmentVariables(
@@ -309,7 +309,7 @@ public class NewEnvTestRule implements TestRule {
 			}
 		}
 
-		environment = description.getAnnotation(Environment.class);
+		environment = description.getAnnotation(NewEnv.Environment.class);
 
 		if (environment != null) {
 			Map<String, String> map = processEnvironmentVariables(
@@ -328,6 +328,22 @@ public class NewEnvTestRule implements TestRule {
 
 	protected static final String CLASS_PATH = ClassPathUtil.getJVMClassPath(
 		true);
+
+	private boolean _isJPDAEnabled() {
+		if (Boolean.getBoolean("jvm.debug")) {
+			return true;
+		}
+
+		RuntimeMXBean runtimeMXBean = ManagementFactory.getRuntimeMXBean();
+
+		for (String argument : runtimeMXBean.getInputArguments()) {
+			if (argument.startsWith("-agentlib:jdwp=")) {
+				return true;
+			}
+		}
+
+		return false;
+	}
 
 	private static final String _JPDA_OPTIONS =
 		"-agentlib:jdwp=transport=dt_socket,address=8001,server=y,suspend=y";
@@ -433,7 +449,7 @@ public class NewEnvTestRule implements TestRule {
 
 		@Override
 		public void evaluate() throws Throwable {
-			MethodCache.reset();
+			MethodKey.resetCache();
 
 			Thread currentThread = Thread.currentThread();
 
@@ -478,7 +494,7 @@ public class NewEnvTestRule implements TestRule {
 
 				currentThread.setContextClassLoader(contextClassLoader);
 
-				MethodCache.reset();
+				MethodKey.resetCache();
 			}
 		}
 
@@ -531,8 +547,8 @@ public class NewEnvTestRule implements TestRule {
 			catch (ExecutionException ee) {
 				Throwable cause = ee.getCause();
 
-				while ((cause instanceof ProcessException) ||
-					   (cause instanceof InvocationTargetException)) {
+				while (cause instanceof InvocationTargetException ||
+					   cause instanceof ProcessException) {
 
 					cause = cause.getCause();
 				}

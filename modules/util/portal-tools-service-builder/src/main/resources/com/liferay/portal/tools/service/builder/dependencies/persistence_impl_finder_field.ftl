@@ -2,8 +2,10 @@
 
 <#if entityColumn_has_next>
 	<#assign finderColConjunction = " AND " />
-<#elseif entityFinder.where?? && validator.isNotNull(entityFinder.getWhere())>
+<#elseif validator.isNull(finderFieldSuffix) && entityFinder.where?? && validator.isNotNull(entityFinder.getWhere())>
 	<#assign finderColConjunction = " AND " + entityFinder.where />
+<#elseif validator.isNotNull(finderFieldSuffix) && entityFinder.DBWhere?? && validator.isNotNull(entityFinder.getDBWhere())>
+	<#assign finderColConjunction = " AND " + entityFinder.DBWhere />
 </#if>
 
 <#if entity.hasCompoundPK() && entityColumn.isPrimary()>
@@ -18,7 +20,7 @@
 	<#assign textFinderFieldName = finderFieldName />
 </#if>
 
-<#if !entityColumn.isPrimitiveType()>
+<#if !entityColumn.isPrimitiveType() && !(stringUtil.equals(entityColumn.type, "String") && entityColumn.isConvertNull())>
 	private static final String _FINDER_COLUMN_${entityFinder.name?upper_case}_${entityColumn.name?upper_case}_1${finderFieldSuffix} =
 
 	<#if (entityColumn.comparator == "<>") || (entityColumn.comparator == "!=")>
@@ -45,7 +47,9 @@ private static final String _FINDER_COLUMN_${entityFinder.name?upper_case}_${ent
 </#if>
 
 <#if entityColumn.hasArrayableOperator() && validator.isNotNull(finderColConjunction) && stringUtil.equals(entityColumn.type, "String")>
-	private static final String _FINDER_COLUMN_${entityFinder.name?upper_case}_${entityColumn.name?upper_case}_4${finderFieldSuffix} = "(" + removeConjunction(_FINDER_COLUMN_${entityFinder.name?upper_case}_${entityColumn.name?upper_case}_1) + ")";
+	<#if !entityColumn.isConvertNull()>
+		private static final String _FINDER_COLUMN_${entityFinder.name?upper_case}_${entityColumn.name?upper_case}_4${finderFieldSuffix} = "(" + removeConjunction(_FINDER_COLUMN_${entityFinder.name?upper_case}_${entityColumn.name?upper_case}_1) + ")";
+	</#if>
 
 	private static final String _FINDER_COLUMN_${entityFinder.name?upper_case}_${entityColumn.name?upper_case}_5${finderFieldSuffix} = "(" + removeConjunction(_FINDER_COLUMN_${entityFinder.name?upper_case}_${entityColumn.name?upper_case}_2) + ")";
 

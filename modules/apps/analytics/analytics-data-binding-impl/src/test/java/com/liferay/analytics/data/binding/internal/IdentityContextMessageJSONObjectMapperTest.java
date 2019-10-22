@@ -30,7 +30,7 @@ import org.junit.Test;
 import org.skyscreamer.jsonassert.JSONAssert;
 
 /**
- * @author Eduardo Garcia
+ * @author Eduardo García
  */
 public class IdentityContextMessageJSONObjectMapperTest {
 
@@ -58,7 +58,7 @@ public class IdentityContextMessageJSONObjectMapperTest {
 	@Test
 	public void testJSONSerialization() throws Exception {
 		IdentityContextMessage.Builder identityContextMessageBuilder =
-			IdentityContextMessage.builder("AnalyticsKey");
+			IdentityContextMessage.builder("DataSourceId");
 
 		identityContextMessageBuilder.domain("liferay.com");
 		identityContextMessageBuilder.language("en-US");

@@ -14,8 +14,8 @@
 
 package com.liferay.source.formatter.checks;
 
+import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
-import com.liferay.portal.kernel.util.StringBundler;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
 
@@ -86,7 +86,7 @@ public class FTLStringRelationalOperatorCheck extends BaseFileCheck {
 			content, match, replacement, matcher.start());
 	}
 
-	private final Pattern _stringRelationalOperationPattern = Pattern.compile(
-		"(\\W)([\\w.]+) ([!=]=) \"(\\w*)\"(.)");
+	private static final Pattern _stringRelationalOperationPattern =
+		Pattern.compile("(\\W)([\\w.]+) ([!=]=) \"(\\w*)\"(.)");
 
 }

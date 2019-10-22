@@ -14,7 +14,9 @@
 
 package com.liferay.source.formatter.checks.configuration;
 
+import com.liferay.source.formatter.checkstyle.util.AlloyMVCCheckstyleUtil;
 import com.liferay.source.formatter.util.CheckType;
+import com.liferay.source.formatter.util.SourceFormatterUtil;
 
 import com.puppycrawl.tools.checkstyle.api.FilterSet;
 import com.puppycrawl.tools.checkstyle.filters.SuppressElement;
@@ -31,14 +33,14 @@ public class SourceFormatterSuppressions {
 
 	public void addSuppression(
 		CheckType checkType, String suppressionsFileLocation, String checkName,
-		String fileName) {
+		String fileNameRegex) {
 
 		if (checkType.equals(CheckType.SOURCE_CHECK)) {
 			_addSourceCheckSuppression(
-				suppressionsFileLocation, checkName, fileName);
+				suppressionsFileLocation, checkName, fileNameRegex);
 		}
 		else {
-			_addCheckstyleSuppression(checkName, fileName);
+			_addCheckstyleSuppression(checkName, fileNameRegex);
 		}
 	}
 
@@ -59,14 +61,24 @@ public class SourceFormatterSuppressions {
 
 			String suppressionsFileLocation = entry.getKey();
 
-			if (!absolutePath.startsWith(suppressionsFileLocation)) {
+			if (!absolutePath.startsWith(suppressionsFileLocation) &&
+				!absolutePath.contains(
+					SourceFormatterUtil.SOURCE_FORMATTER_TEST_PATH)) {
+
 				continue;
 			}
 
-			List<String> fileNames = entry.getValue();
+			List<String> fileNameRegexes = entry.getValue();
 
-			for (String fileName : fileNames) {
-				if (absolutePath.matches(".*" + fileName)) {
+			for (String fileNameRegex : fileNameRegexes) {
+				if (absolutePath.matches(".*" + fileNameRegex)) {
+					return true;
+				}
+
+				String fileName = AlloyMVCCheckstyleUtil.getSourceFileName(
+					absolutePath);
+
+				if (fileName.matches(".*" + fileNameRegex)) {
 					return true;
 				}
 			}
@@ -75,13 +87,17 @@ public class SourceFormatterSuppressions {
 		return false;
 	}
 
-	private void _addCheckstyleSuppression(String checkName, String fileName) {
+	private void _addCheckstyleSuppression(
+		String checkName, String fileNameRegex) {
+
 		_checkstyleFilterSet.addFilter(
-			new SuppressElement(fileName, checkName, null, null, null));
+			new SuppressElement(
+				fileNameRegex, checkName, null, null, null, null));
 	}
 
 	private void _addSourceCheckSuppression(
-		String suppressionsFileLocation, String checkName, String fileName) {
+		String suppressionsFileLocation, String checkName,
+		String fileNameRegex) {
 
 		Map<String, List<String>> sourceCheckSuppressionsMap =
 			_sourceChecksSuppressionsMap.get(checkName);
@@ -90,16 +106,17 @@ public class SourceFormatterSuppressions {
 			sourceCheckSuppressionsMap = new HashMap<>();
 		}
 
-		List<String> fileNames = sourceCheckSuppressionsMap.get(
+		List<String> fileNameRegexes = sourceCheckSuppressionsMap.get(
 			suppressionsFileLocation);
 
-		if (fileNames == null) {
-			fileNames = new ArrayList<>();
+		if (fileNameRegexes == null) {
+			fileNameRegexes = new ArrayList<>();
 		}
 
-		fileNames.add(fileName);
+		fileNameRegexes.add(fileNameRegex);
 
-		sourceCheckSuppressionsMap.put(suppressionsFileLocation, fileNames);
+		sourceCheckSuppressionsMap.put(
+			suppressionsFileLocation, fileNameRegexes);
 
 		_sourceChecksSuppressionsMap.put(checkName, sourceCheckSuppressionsMap);
 	}

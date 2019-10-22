@@ -1,130 +1,121 @@
-<definition>
-	<command name="deactivateAppCP">
-		<var name="key_appName" value="${appName}" />
+definition {
 
-		<execute function="Click" locator1="AppManager#APP_ACTIONS" />
+	macro deactivateAppCP {
+		LexiconEntry.openEntryMenu(rowEntry = "${appName}");
 
-		<execute function="AssertClickNoError" locator1="MenuItem#ANY_MENU_ITEM" value1="Deactivate">
-			<var name="key_menuItem" value="Deactivate" />
-		</execute>
+		MenuItem.clickNoError(menuItem = "Deactivate");
 
-		<execute function="Confirm" value1="Are you sure you want to deactivate this?" />
-	</command>
+		AssertConfirm(value1 = "Are you sure you want to deactivate this?");
+	}
 
-	<command name="selectAppCP">
-		<var name="key_appName" value="${appName}" />
+	macro selectAppCP {
+		var key_appName = "${appName}";
 
-		<while>
-			<condition function="IsElementNotPresent" locator1="AppManager#APP_NAME" />
-			<then>
-				<execute function="Click" locator1="Pagination#NEXT_LINK" />
-			</then>
-		</while>
+		while (IsElementNotPresent(locator1 = "AppManager#APP_NAME")) {
+			Click(locator1 = "Pagination#NEXT_LINK");
+		}
 
-		<execute function="AssertClick" locator1="AppManager#APP_NAME" value1="${appName}" />
-	</command>
+		AssertClick(
+			locator1 = "AppManager#APP_NAME",
+			value1 = "${appName}");
+	}
 
-	<command name="uninstallAppCP">
-		<var name="key_appName" value="${appName}" />
+	macro uninstallAppCP {
+		LexiconEntry.openEntryMenu(rowEntry = "${appName}");
 
-		<execute function="Click" locator1="AppManager#APP_ACTIONS" />
+		MenuItem.clickNoError(menuItem = "Uninstall");
 
-		<execute function="AssertClickNoError" locator1="MenuItem#ANY_MENU_ITEM" value1="Uninstall">
-			<var name="key_menuItem" value="Uninstall" />
-		</execute>
+		AssertConfirm(value1 = "Are you sure you want to delete this? It will be deleted immediately.");
 
-		<execute function="Confirm" value1="Are you sure you want to delete this? It will be deleted immediately." />
+		Pause(locator1 = "15000");
+	}
 
-		<execute function="Pause" locator1="15000" />
-	</command>
+	macro uploadAppCP {
+		var key_appName = "${appName}";
 
-	<command name="uploadAppCP">
-		<var name="key_appName" value="${appName}" />
+		Click(locator1 = "Portlet#OPTIONS_ICON");
 
-		<execute function="Click" locator1="Portlet#OPTIONS_ICON" />
+		MenuItem.click(menuItem = "Upload");
 
-		<execute function="AssertClick" locator1="MenuItem#ANY_MENU_ITEM" value1="Upload">
-			<var name="key_menuItem" value="Upload" />
-		</execute>
+		SelectFrame(locator1 = "IFrame#DIALOG");
 
-		<execute function="SelectFrame" locator1="IFrame#DIALOG" />
+		AssertElementPresent(locator1 = "TextInput#FILE");
 
-		<execute function="AssertElementPresent" locator1="Button#BROWSE" />
+		UploadCommonFile.uploadCommonFileHiddenNoMouseOver(
+			locator1 = "TextInput#FILE",
+			value1 = "${warFileName}");
 
-		<execute function="Click" locator1="Button#BROWSE" />
+		Button.clickInstall();
 
-		<execute function="SikuliClick" locator1="OS#FILE_DIALOG_BOX_TYPE_FILE_NAME_ICON_PNG" />
+		AssertTextEquals.assertPartialText(
+			locator1 = "Message#SUCCESS",
+			value1 = "The plugin was uploaded successfully and is now being installed.");
 
-		<execute function="SikuliUploadCommonFile" locator1="OS#FILE_DIALOG_BOX_FILE_NAME_FIELD_PNG" value1="${warFileName}" />
+		SelectFrame.selectFrameTop();
 
-		<execute macro="Button#clickInstall" />
+		Click(locator1 = "Modal#CLOSE_BUTTON");
 
-		<execute function="AssertTextEquals" locator1="Message#SUCCESS_3" value1="The plugin was uploaded successfully and is now being installed." />
+		Pause(locator1 = "15000");
 
-		<execute function="SelectFrame#selectFrameTop" />
+		AssertConsoleTextPresent(value1 = "STARTED ${appName}");
 
-		<execute function="Click" locator1="Modal#CLOSE_BUTTON" />
+		Pause(locator1 = "3000");
 
-		<execute function="Pause" locator1="15000" />
+		AssertConsoleTextNotPresent(value1 = "HotDeployException: Error initializing Spring for ${appName}");
 
-		<execute function="AssertConsoleTextPresent" value1="STARTED ${appName}" />
+		AssertConsoleTextNotPresent(value1 = "HotDeployException: Error registering hook for ${appName}");
 
-		<execute function="Pause" locator1="3000" />
+		AssertConsoleTextNotPresent(value1 = "HotDeployException: Error registering portlets for ${appName}");
+	}
 
-		<execute function="AssertConsoleTextNotPresent" value1="HotDeployException: Error initializing Spring for ${appName}" />
-		<execute function="AssertConsoleTextNotPresent" value1="HotDeployException: Error registering hook for ${appName}" />
-		<execute function="AssertConsoleTextNotPresent" value1="HotDeployException: Error registering portlets for ${appName}" />
-	</command>
+	macro viewAppCP {
+		var key_appName = "${appName}";
 
-	<command name="viewAppCP">
-		<var name="key_appName" value="${appName}" />
+		if (isSet(searchTerm)) {
+			Search.searchCP(searchTerm = "${searchTerm}");
+		}
+		else {
+			Search.searchCP(searchTerm = "${appName}");
+		}
 
-		<execute macro="Search#searchCP">
-			<var name="searchTerm" value="${appName}" />
-		</execute>
+		AssertTextEquals.assertPartialText(
+			locator1 = "AppManager#APP_NAME",
+			value1 = "${appName}");
 
-		<execute function="AssertTextEquals#assertPartialText" locator1="AppManager#APP_NAME" value1="${appName}" />
+		if (isSet(appStatus)) {
+			AppManager.viewStatus(
+				appName = "${appName}",
+				appStatus = "${appStatus}");
+		}
+	}
 
-		<if>
-			<isset var="appStatus" />
-			<then>
-				<execute macro="AppManager#viewStatus">
-					<var name="appName" value="${appName}" />
-					<var name="appStatus" value="${appStatus}" />
-				</execute>
-			</then>
-		</if>
-	</command>
+	macro viewNoAppCP {
+		var key_appName = "${appName}";
 
-	<command name="viewNoAppCP">
-		<var name="key_appName" value="${appName}" />
+		AssertElementNotPresent(locator1 = "AppManager#APP_NAME");
 
-		<execute function="AssertElementNotPresent" locator1="AppManager#APP_NAME" />
+		while (IsElementPresent(locator1 = "Pagination#NEXT_LINK")) {
+			Click(locator1 = "Pagination#NEXT_LINK");
 
-		<while>
-			<condition function="IsElementPresent" locator1="Pagination#NEXT_LINK" />
-			<then>
-				<execute function="Click" locator1="Pagination#NEXT_LINK" />
+			AssertElementNotPresent(locator1 = "AppManager#APP_NAME");
+		}
+	}
 
-				<execute function="AssertElementNotPresent" locator1="AppManager#APP_NAME" />
-			</then>
-		</while>
-	</command>
+	macro viewStatus {
+		var key_appName = "${appName}";
+		var key_appStatus = "${appStatus}";
 
-	<command name="viewStatus">
-		<var name="key_appName" value="${appName}" />
-		<var name="key_appStatus" value="${appStatus}" />
+		AssertTextEquals.assertPartialText(
+			locator1 = "AppManager#APP_STATUS",
+			value1 = "${appStatus}");
+	}
 
-		<execute function="AssertTextEquals#assertPartialText" locator1="AppManager#APP_STATUS" value1="${appStatus}" />
-	</command>
+	macro viewUninstallAppCP {
+		Search.searchCP(searchTerm = "${appName}");
 
-	<command name="viewUninstallAppCP">
-		<execute macro="Search#searchCP">
-			<var name="searchTerm" value="${appName}" />
-		</execute>
+		AssertElementNotPresent(
+			key_appName = "${appName}",
+			locator1 = "AppManager#APP_NAME");
+	}
 
-		<execute function="AssertElementNotPresent" locator1="AppManager#APP_NAME">
-			<var name="key_appName" value="${appName}" />
-		</execute>
-	</command>
-</definition>
+}

@@ -24,32 +24,45 @@ public class SemiColonCheck extends BaseCheck {
 
 	@Override
 	public int[] getDefaultTokens() {
-		return new int[] {TokenTypes.SEMI};
+		return new int[] {TokenTypes.EMPTY_STAT, TokenTypes.SEMI};
 	}
 
 	@Override
 	protected void doVisitToken(DetailAST detailAST) {
-		DetailAST previousSiblingAST = detailAST.getPreviousSibling();
+		if (detailAST.getType() == TokenTypes.EMPTY_STAT) {
+			DetailAST parentDetailAST = detailAST.getParent();
 
-		if (previousSiblingAST == null) {
+			if (parentDetailAST.getType() != TokenTypes.LITERAL_WHILE) {
+				log(detailAST, _MSG_UNNECESSARY_SEMI_COLON);
+			}
+
 			return;
 		}
 
-		if ((previousSiblingAST.getType() == TokenTypes.CLASS_DEF) ||
-			(previousSiblingAST.getType() == TokenTypes.CTOR_DEF) ||
-			(previousSiblingAST.getType() == TokenTypes.ENUM_DEF) ||
-			(previousSiblingAST.getType() == TokenTypes.INTERFACE_DEF) ||
-			(previousSiblingAST.getType() == TokenTypes.METHOD_DEF)) {
+		DetailAST previousSiblingDetailAST = detailAST.getPreviousSibling();
 
-			log(detailAST.getLineNo(), _MSG_UNNECESSARY_SEMI_COLON);
+		if (previousSiblingDetailAST == null) {
+			return;
 		}
-		else if (previousSiblingAST.getType() == TokenTypes.ENUM_CONSTANT_DEF) {
-			DetailAST nextSiblingAST = detailAST.getNextSibling();
 
-			if ((nextSiblingAST != null) &&
-				(nextSiblingAST.getType() == TokenTypes.RCURLY)) {
+		if ((previousSiblingDetailAST.getType() == TokenTypes.CLASS_DEF) ||
+			(previousSiblingDetailAST.getType() == TokenTypes.CTOR_DEF) ||
+			(previousSiblingDetailAST.getType() == TokenTypes.ENUM_DEF) ||
+			(previousSiblingDetailAST.getType() == TokenTypes.INTERFACE_DEF) ||
+			(previousSiblingDetailAST.getType() == TokenTypes.METHOD_DEF) ||
+			(previousSiblingDetailAST.getType() == TokenTypes.STATIC_INIT)) {
 
-				log(detailAST.getLineNo(), _MSG_UNNECESSARY_SEMI_COLON);
+			log(detailAST, _MSG_UNNECESSARY_SEMI_COLON);
+		}
+		else if (previousSiblingDetailAST.getType() ==
+					TokenTypes.ENUM_CONSTANT_DEF) {
+
+			DetailAST nextSiblingDetailAST = detailAST.getNextSibling();
+
+			if ((nextSiblingDetailAST != null) &&
+				(nextSiblingDetailAST.getType() == TokenTypes.RCURLY)) {
+
+				log(detailAST, _MSG_UNNECESSARY_SEMI_COLON);
 			}
 		}
 	}

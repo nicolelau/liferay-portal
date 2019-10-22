@@ -110,6 +110,7 @@ public class HtmlTopTagTest {
 		throws IOException, JspException {
 
 		HtmlTopTag htmlTopTag = new HtmlTopTag();
+
 		UnsyncStringWriter unsyncStringWriter = new UnsyncStringWriter();
 
 		final JspWriter jspWriter = new MockJspWriter(unsyncStringWriter);
@@ -185,6 +186,7 @@ public class HtmlTopTagTest {
 		htmlTopTag.doEndTag();
 
 		String htmlTopTagOutputString = unsyncStringWriter.toString();
+
 		String elementName = _getElementName(element);
 
 		String elementBeginRegex = "<" + elementName + "[^>]+";
@@ -192,9 +194,9 @@ public class HtmlTopTagTest {
 		String dataSennaTrackAttributeName = "data-senna-track";
 
 		if (expectedDataSennaTrackValue != null) {
-			String dataSennaTrackAttribute =
-				dataSennaTrackAttributeName + "=\"" +
-					expectedDataSennaTrackValue + "\"";
+			String dataSennaTrackAttribute = StringBundler.concat(
+				dataSennaTrackAttributeName, "=\"", expectedDataSennaTrackValue,
+				"\"");
 
 			String dataSennaTrackAttributeRegex =
 				elementBeginRegex + dataSennaTrackAttribute + "[\\s>]";

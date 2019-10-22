@@ -15,9 +15,9 @@
 package com.liferay.petra.concurrent;
 
 import com.liferay.petra.reflect.ReflectionUtil;
+import com.liferay.petra.test.util.ThreadTestUtil;
 import com.liferay.portal.kernel.test.ReflectionTestUtil;
 import com.liferay.portal.kernel.test.rule.CodeCoverageAssertor;
-import com.liferay.portal.kernel.util.ThreadUtil;
 
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
@@ -47,7 +47,7 @@ public class NoticeableThreadPoolExecutorTest {
 
 			@Override
 			public void appendAssertClasses(List<Class<?>> assertClasses) {
-				assertClasses.add(AbstractNoticeableExecutorService.class);
+				assertClasses.add(BaseNoticeableExecutorService.class);
 			}
 
 		};
@@ -73,7 +73,7 @@ public class NoticeableThreadPoolExecutorTest {
 		}
 		catch (IllegalArgumentException iae) {
 			Assert.assertEquals(
-				"To ensure FIFO, core pool size must be 1 or greater.",
+				"To ensure FIFO, core pool size must be 1 or greater",
 				iae.getMessage());
 		}
 
@@ -138,7 +138,7 @@ public class NoticeableThreadPoolExecutorTest {
 		}
 		catch (IllegalArgumentException iae) {
 			Assert.assertEquals(
-				"To ensure FIFO, core pool size must be 1 or greater.",
+				"To ensure FIFO, core pool size must be 1 or greater",
 				iae.getMessage());
 		}
 
@@ -248,9 +248,8 @@ public class NoticeableThreadPoolExecutorTest {
 			new NoticeableThreadPoolExecutor(
 				1, 1, 1, TimeUnit.NANOSECONDS, dispatchTaskQueue,
 				new MethodNameThreadFactory(),
-				(runnable, threadPoolExecutor) -> {
-					rejectedTaskQueue.add(runnable);
-				},
+				(runnable, threadPoolExecutor) -> rejectedTaskQueue.add(
+					runnable),
 				new ThreadPoolHandlerAdapter());
 
 		Semaphore semaphore = new Semaphore(0);
@@ -295,9 +294,7 @@ public class NoticeableThreadPoolExecutorTest {
 			new NoticeableThreadPoolExecutor(
 				1, 1, 1, TimeUnit.NANOSECONDS, new SynchronousQueue<>(),
 				new MethodNameThreadFactory(),
-				(runnable, threadPoolExecutor) -> {
-					rejectedTasks.add(runnable);
-				},
+				(runnable, threadPoolExecutor) -> rejectedTasks.add(runnable),
 				new ThreadPoolHandlerAdapter());
 
 		ThreadPoolExecutor workerThreadPoolExecutor =
@@ -400,7 +397,7 @@ public class NoticeableThreadPoolExecutorTest {
 
 		Thread dispatcherThread = null;
 
-		for (Thread thread : ThreadUtil.getThreads()) {
+		for (Thread thread : ThreadTestUtil.getThreads()) {
 			if (thread == null) {
 				continue;
 			}

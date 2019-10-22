@@ -76,6 +76,7 @@ public class ClassUtil {
 					st.ordinaryChar(' ');
 					st.wordChars('=', '=');
 					st.wordChars('+', '+');
+					st.wordChars('-', '-');
 
 					String[] annotationClasses = _processAnnotation(
 						st.sval, st);
@@ -93,12 +94,6 @@ public class ClassUtil {
 
 		while (st.nextToken() != StreamTokenizer.TT_EOF) {
 			if (st.ttype == StreamTokenizer.TT_WORD) {
-				Matcher matcher = _fullyQualifiedNamePattern.matcher(st.sval);
-
-				if (matcher.find()) {
-					continue;
-				}
-
 				int firstIndex = st.sval.indexOf('.');
 
 				if (firstIndex >= 0) {
@@ -185,14 +180,14 @@ public class ClassUtil {
 			path = url.getFile();
 		}
 
-		if (ServerDetector.isJBoss() || ServerDetector.isWildfly()) {
-			if (path.startsWith("file:") && !path.startsWith("file:/")) {
-				path = path.substring(5);
+		if ((ServerDetector.isJBoss() || ServerDetector.isWildfly()) &&
+			path.startsWith("file:") && !path.startsWith("file:/")) {
 
-				path = "file:/".concat(path);
+			path = path.substring(5);
 
-				path = StringUtil.replace(path, "%5C", StringPool.SLASH);
-			}
+			path = "file:/".concat(path);
+
+			path = StringUtil.replace(path, "%5C", StringPool.SLASH);
 		}
 
 		if (_log.isDebugEnabled()) {
@@ -293,7 +288,7 @@ public class ClassUtil {
 		else if (annotationParametersMatcher.matches()) {
 			tokens.add(annotationParametersMatcher.group(1));
 
-			String annotationParameters = StringPool.BLANK;
+			String annotationParameters = null;
 
 			String trimmedString = s.trim();
 
@@ -301,11 +296,7 @@ public class ClassUtil {
 				annotationParameters = annotationParametersMatcher.group(3);
 			}
 			else {
-				int pos = s.indexOf('{');
-
-				if (pos != -1) {
-					annotationParameters += s.substring(pos + 1);
-				}
+				annotationParameters = s.substring(s.indexOf('('));
 
 				while (st.nextToken() != StreamTokenizer.TT_EOF) {
 					if (st.ttype != StreamTokenizer.TT_WORD) {
@@ -325,7 +316,7 @@ public class ClassUtil {
 					int openParenthesesCount = StringUtil.count(
 						annotationParameters, '(');
 
-					if (closeParenthesesCount > openParenthesesCount) {
+					if (closeParenthesesCount == openParenthesesCount) {
 						break;
 					}
 				}
@@ -334,7 +325,7 @@ public class ClassUtil {
 			tokens = _processAnnotationParameters(annotationParameters, tokens);
 		}
 
-		return tokens.toArray(new String[tokens.size()]);
+		return tokens.toArray(new String[0]);
 	}
 
 	private static List<String> _processAnnotationParameters(
@@ -403,7 +394,5 @@ public class ClassUtil {
 		"@(\\w+)\\.?(\\w*)$");
 	private static final Pattern _annotationParametersPattern = Pattern.compile(
 		"@(\\w+)\\.?(\\w*)\\({0,1}\\{{0,1}([^)}]+)\\}{0,1}\\){0,1}");
-	private static final Pattern _fullyQualifiedNamePattern = Pattern.compile(
-		"^([a-z]\\w*\\.){2,}([A-Z]\\w*)(\\.|\\Z)");
 
 }

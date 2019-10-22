@@ -84,7 +84,7 @@ public class BaseTestResult implements TestResult {
 
 		if ((errorStackTrace != null) && !errorStackTrace.isEmpty()) {
 			String trimmedStackTrace = StringUtils.abbreviate(
-				errorStackTrace, _MAX_ERROR_STACK_DISPLAY_LENGTH);
+				errorStackTrace, _LINES_ERROR_STACK_DISPLAY_SIZE_MAX);
 
 			downstreamBuildListItemElement.add(
 				Dom4JUtil.toCodeSnippetElement(trimmedStackTrace));
@@ -142,7 +142,7 @@ public class BaseTestResult implements TestResult {
 		}
 
 		if (logBaseURL == null) {
-			logBaseURL = _DEFAULT_LOG_BASE_URL;
+			logBaseURL = _URL_BASE_LOGS_DEFAULT;
 		}
 
 		Build build = getBuild();
@@ -189,9 +189,20 @@ public class BaseTestResult implements TestResult {
 		return testReportURL;
 	}
 
+	@Override
+	public boolean isFailing() {
+		if (_status.equals("FIXED") || _status.equals("PASSED") ||
+			_status.equals("SKIPPED")) {
+
+			return false;
+		}
+
+		return true;
+	}
+
 	protected BaseTestResult(Build build, JSONObject caseJSONObject) {
 		if (build == null) {
-			throw new IllegalArgumentException("Build is NULL");
+			throw new IllegalArgumentException("Build is null");
 		}
 
 		_build = build;
@@ -213,12 +224,10 @@ public class BaseTestResult implements TestResult {
 	}
 
 	protected String getAxisNumber() {
-		AxisBuild axisBuild = null;
-
 		Build build = getBuild();
 
 		if (build instanceof AxisBuild) {
-			axisBuild = (AxisBuild)build;
+			AxisBuild axisBuild = (AxisBuild)build;
 
 			return axisBuild.getAxisNumber();
 		}
@@ -240,10 +249,10 @@ public class BaseTestResult implements TestResult {
 		return sb.toString();
 	}
 
-	private static final String _DEFAULT_LOG_BASE_URL =
-		"https://testray.liferay.com/reports/production/logs";
+	private static final int _LINES_ERROR_STACK_DISPLAY_SIZE_MAX = 1500;
 
-	private static final int _MAX_ERROR_STACK_DISPLAY_LENGTH = 1500;
+	private static final String _URL_BASE_LOGS_DEFAULT =
+		"https://testray.liferay.com/reports/production/logs";
 
 	private final Build _build;
 	private final String _className;

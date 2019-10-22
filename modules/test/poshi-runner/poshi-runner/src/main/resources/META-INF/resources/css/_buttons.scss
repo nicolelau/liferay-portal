@@ -1,10 +1,10 @@
 /* ---------- Buttons ---------- */
 
-.btn-command-log, .btn-error, .btn-jump-to-error, .btn-screenshot, .btn-sidebar {
+.btn-command-log, .btn-error, .btn-jump-to-details, .btn-screenshot, .btn-sidebar {
 	font-family: 'FontAwesome' !important;
 }
 
-.sidebar-btn-container, .sidebar-toolbar, .xml-log {
+.sidebar-btn-container, .sidebar-toolbar, .syntax-log {
 	.btn {
 		background-color: transparentize($off-white, 0.84);
 		border: 1px solid $button-border-color;
@@ -63,7 +63,7 @@
 	}
 }
 
-.xml-log {
+.syntax-log {
 	.btn-error, .btn-screenshot {
 		bottom: 0;
 		display: inline-block;
@@ -121,7 +121,7 @@
 		display: block;
 	}
 
-	.btn-jump-to-error {
+	.btn-jump-to-details {
 		display: none;
 
 		&:before {
@@ -134,7 +134,7 @@
 	display: none;
 }
 
-.command-logger .btn.btn-jump-to-error {
+.command-logger .btn.btn-jump-to-details {
 	display: block;
 }
 

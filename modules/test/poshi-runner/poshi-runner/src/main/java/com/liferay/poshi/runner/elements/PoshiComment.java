@@ -14,6 +14,9 @@
 
 package com.liferay.poshi.runner.elements;
 
+import com.liferay.poshi.runner.script.PoshiScriptParserException;
+import com.liferay.poshi.runner.util.PropsValues;
+
 import org.dom4j.Comment;
 import org.dom4j.tree.DefaultComment;
 
@@ -27,16 +30,36 @@ public abstract class PoshiComment
 		super(null);
 	}
 
-	public abstract boolean isReadableSyntaxComment(String readableSyntax);
+	@Override
+	public String getPoshiScript() {
+		return _poshiScript;
+	}
+
+	public abstract boolean isPoshiScriptComment(String poshiScript);
+
+	@Override
+	public void setPoshiScript(String poshiScript) {
+		_poshiScript = poshiScript;
+	}
 
 	protected PoshiComment(Comment comment) {
 		super(comment.getText());
 	}
 
-	protected PoshiComment(String readableSyntax) {
+	protected PoshiComment(String poshiScript)
+		throws PoshiScriptParserException {
+
 		this();
 
-		parseReadableSyntax(readableSyntax);
+		setPoshiScript(poshiScript);
+
+		parsePoshiScript(poshiScript.trim());
+
+		if (PropsValues.TEST_POSHI_SCRIPT_VALIDATION) {
+			validatePoshiScript();
+		}
 	}
+
+	private String _poshiScript;
 
 }

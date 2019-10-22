@@ -34,8 +34,6 @@ public class JavaEmptyLinesCheck extends EmptyLinesCheck {
 
 		content = fixRedundantEmptyLines(content);
 
-		content = fixIncorrectEmptyLineBeforeCloseCurlyBrace(content);
-
 		content = fixMissingEmptyLineAfterSettingVariable(content);
 
 		content = _fixRedundantEmptyLineInLambdaExpression(content);
@@ -69,14 +67,14 @@ public class JavaEmptyLinesCheck extends EmptyLinesCheck {
 			}
 
 			String lineBefore = StringUtil.trim(
-				getLine(content, getLineCount(content, previousPos)));
+				getLine(content, getLineNumber(content, previousPos)));
 
 			if (lineBefore.startsWith("//")) {
 				continue;
 			}
 
 			String lineAfter = StringUtil.trim(
-				getLine(content, getLineCount(content, pos + 2)));
+				getLine(content, getLineNumber(content, pos + 2)));
 
 			if (lineAfter.startsWith("//")) {
 				continue;
@@ -115,15 +113,17 @@ public class JavaEmptyLinesCheck extends EmptyLinesCheck {
 	private String _fixRedundantEmptyLineInLambdaExpression(String content) {
 		Matcher matcher = _redundantEmptyLinePattern.matcher(content);
 
-		if (matcher.find()) {
-			return StringUtil.replaceFirst(
-				content, "\n\n", "\n", matcher.start());
+		while (matcher.find()) {
+			if (getLevel(matcher.group(1)) == 0) {
+				return StringUtil.replaceFirst(
+					content, "\n\n", "\n", matcher.start());
+			}
 		}
 
 		return content;
 	}
 
-	private final Pattern _redundantEmptyLinePattern = Pattern.compile(
-		"-> \\{\n\n[\t ]*(?!// )\\S");
+	private static final Pattern _redundantEmptyLinePattern = Pattern.compile(
+		"\n(.*)-> \\{\n\n[\t ]*(?!// )\\S");
 
 }

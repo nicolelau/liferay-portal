@@ -10,12 +10,7 @@
 <tbody>
 <tr>
 	<td>PERMISSION_HEADER</td>
-	<td>//form/h3[contains(.,'${permissionNavigationValue}')]</td>
-	<td></td>
-</tr>
-<tr>
-	<td>SUCCESS_MESSAGE</td>
-	<td>//div[contains(@class,'alert') and contains(@class,'alert-success')]</td>
+	<td>//form//h3[contains(.,'${permissionNavigationValue}')]</td>
 	<td></td>
 </tr>
 <tr>
@@ -211,6 +206,11 @@
 <tr>
 	<td>SITE_ADMIN_CONFIGURATION_SITE_SETTINGS_RESOURCE_PERMISSIONS_SITE_VIEW_SITE_ADMINISTRATION_MENU_CHECKBOX</td>
 	<td>//input[@type='checkbox' and contains(@value,'GroupVIEW_SITE_ADMINISTRATION')]</td>
+	<td></td>
+</tr>
+<tr>
+	<td></td>
+	<td></td>
 	<td></td>
 </tr>
 <!--SITE_ADMIN_PAGES_SITE_PAGES_GENERAL_PERMISSIONS-->
@@ -700,10 +700,20 @@
 	<td>//input[contains(@value,'FormAdminPortletACCESS_IN_CONTROL_PANEL')]</td>
 	<td></td>
 </tr>
+<tr>
+	<td></td>
+	<td></td>
+	<td></td>
+</tr>
 <!--SITE_ADMIN_CONTENT_FORMS_RESOURCE_PERMISSIONS-->
 <tr>
 	<td>SITE_ADMIN_CONTENT_FORMS_ADMIN_RESOURCE_PERMISSIONS_LISTS_ACTION_CHECKBOX</td>
 	<td>//h4[contains(.,'Resource')]/following-sibling::div/h5[contains(.,'Lists')][1]/..//div[contains(@class,'search-container')][1]//input[contains(@name,'allRowIds')]</td>
+	<td></td>
+</tr>
+<tr>
+	<td></td>
+	<td></td>
 	<td></td>
 </tr>
 <!--SITE_ADMIN_CONTENT_KALEO_FORMS_ADMIN_GENERAL_PERMISSIONS-->
@@ -848,19 +858,19 @@
 	<td></td>
 	<td></td>
 </tr>
-<!--SITE_ADMIN_CONTENT_CATEGORIES_GENERAL_PERMISSIONS-->
+<!--SITE_ADMIN_CATEGORIES_GENERAL_PERMISSIONS-->
 <tr>
-	<td>SITE_ADMIN_CONTENT_CATEGORIES_GENERAL_PERMISSIONS_ACCESS_IN_SITE_ADMINISTRATION_CHECKBOX</td>
+	<td>SITE_ADMIN_CATEGORIES_GENERAL_PERMISSIONS_ACCESS_IN_SITE_ADMINISTRATION_CHECKBOX</td>
 	<td>//input[contains(@value,'AssetCategoriesAdminPortletACCESS_IN_CONTROL_PANEL')]</td>
 	<td></td>
 </tr>
 <tr>
-	<td>SITE_ADMIN_CONTENT_CATEGORIES_GENERAL_PERMISSIONS_CONFIGURATION_CHECKBOX</td>
+	<td>SITE_ADMIN_CATEGORIES_GENERAL_PERMISSIONS_CONFIGURATION_CHECKBOX</td>
 	<td>//input[contains(@value,'AssetCategoriesAdminPortletCONFIGURATION')]</td>
 	<td></td>
 </tr>
 <tr>
-	<td>SITE_ADMIN_CONTENT_CATEGORIES_GENERAL_PERMISSIONS_VIEW_CHECKBOX</td>
+	<td>SITE_ADMIN_CATEGORIES_GENERAL_PERMISSIONS_VIEW_CHECKBOX</td>
 	<td>//input[contains(@value,'AssetCategoriesAdminPortletVIEW')]</td>
 	<td></td>
 </tr>
@@ -869,19 +879,19 @@
 	<td></td>
 	<td></td>
 </tr>
-<!--SITE_ADMIN_CONTENT_CATEGORIES_RESOURCE_PERMISSIONS_ASSET_ENTRIES-->
+<!--SITE_ADMIN_CATEGORIES_RESOURCE_PERMISSIONS_ASSET_ENTRIES-->
 <tr>
-	<td>SITE_ADMIN_CONTENT_CATEGORIES_RESOURCE_PERMISSIONS_ASSET_ENTRIES_ADD_CATEGORY_CHECKBOX</td>
+	<td>SITE_ADMIN_CATEGORIES_RESOURCE_PERMISSIONS_ASSET_ENTRIES_ADD_CATEGORY_CHECKBOX</td>
 	<td>//label/input[contains(@value,'categoriesADD_CATEGORY')]</td>
 	<td></td>
 </tr>
 <tr>
-	<td>SITE_ADMIN_CONTENT_CATEGORIES_RESOURCE_PERMISSIONS_ASSET_ENTRIES_ADD_VOCABULARY_CHECKBOX</td>
+	<td>SITE_ADMIN_CATEGORIES_RESOURCE_PERMISSIONS_ASSET_ENTRIES_ADD_VOCABULARY_CHECKBOX</td>
 	<td>//input[contains(@value,'categoriesADD_VOCABULARY')]</td>
 	<td></td>
 </tr>
 <tr>
-	<td>SITE_ADMIN_CONTENT_CATEGORIES_RESOURCE_PERMISSIONS_ASSET_ENTRIES_ADD_TAG_CHECKBOX</td>
+	<td>SITE_ADMIN_CATEGORIES_RESOURCE_PERMISSIONS_ASSET_ENTRIES_ADD_TAG_CHECKBOX</td>
 	<td>//input[contains(@value,'assetADD_TAG')]</td>
 	<td></td>
 </tr>
@@ -890,9 +900,9 @@
 	<td></td>
 	<td></td>
 </tr>
-<!--SITE_ADMIN_CONTENT_CATEGORIES_RESOURCE_PERMISSIONS_CATEGORY_VOCABULARY-->
+<!--SITE_ADMIN_CATEGORIES_RESOURCE_PERMISSIONS_CATEGORY_VOCABULARY-->
 <tr>
-	<td>SITE_ADMIN_CONTENT_CATEGORIES_RESOURCE_PERMISSIONS_CATEGORY_VOCABULARY_VIEW_CHECKBOX</td>
+	<td>SITE_ADMIN_CATEGORIES_RESOURCE_PERMISSIONS_CATEGORY_VOCABULARY_VIEW_CHECKBOX</td>
 	<td>//input[contains(@value,'AssetVocabularyVIEW')]</td>
 	<td></td>
 </tr>
@@ -901,9 +911,9 @@
 	<td></td>
 	<td></td>
 </tr>
-<!--SITE_ADMIN_CONTENT_CATEGORIES_RESOURCE_PERMISSIONS_CATEGORY-->
+<!--SITE_ADMIN_CATEGORIES_RESOURCE_PERMISSIONS_CATEGORY-->
 <tr>
-	<td>SITE_ADMIN_CONTENT_CATEGORIES_RESOURCE_PERMISSIONS_CATEGORY_ADD_CATEGORY_CHECKBOX</td>
+	<td>SITE_ADMIN_CATEGORIES_RESOURCE_PERMISSIONS_CATEGORY_ADD_CATEGORY_CHECKBOX</td>
 	<td>//label/input[contains(@value,'AssetCategoryADD_CATEGORY')]</td>
 	<td></td>
 </tr>

@@ -485,6 +485,7 @@ public class CharPipeTest {
 		CharPipe charPipe = new CharPipe(4);
 
 		Reader reader = charPipe.getReader();
+
 		Writer writer = charPipe.getWriter();
 
 		writer.write("abcd");
@@ -844,14 +845,14 @@ public class CharPipeTest {
 					if (result == _buffer.length) {
 						continue;
 					}
-					else if (_close && !_force && (result == -1)) {
+
+					if (_close && !_force && (result == -1)) {
 						return;
 					}
-					else {
-						_failed = true;
 
-						break;
-					}
+					_failed = true;
+
+					break;
 				}
 
 				if (_close && _force) {

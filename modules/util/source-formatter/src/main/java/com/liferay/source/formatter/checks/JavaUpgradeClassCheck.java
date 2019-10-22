@@ -27,7 +27,7 @@ import java.util.regex.Pattern;
 public class JavaUpgradeClassCheck extends BaseFileCheck {
 
 	@Override
-	public boolean isPortalCheck() {
+	public boolean isLiferaySourceCheck() {
 		return true;
 	}
 
@@ -82,7 +82,7 @@ public class JavaUpgradeClassCheck extends BaseFileCheck {
 				fileName,
 				"Use UpgradeProcessUtil.getDefaultLanguageId(companyId) " +
 					"instead of LocaleUtil.getDefault()",
-				"upgrade_locale_util.markdown", getLineCount(content, pos));
+				"upgrade_locale_util.markdown", getLineNumber(content, pos));
 		}
 	}
 
@@ -123,7 +123,7 @@ public class JavaUpgradeClassCheck extends BaseFileCheck {
 						"Break up Upgrade classes with a minor version " +
 							"increment or order alphabetically",
 						"upgrade_register.markdown",
-						getLineCount(content, matcher1.start()));
+						getLineNumber(content, matcher1.start()));
 
 					break;
 				}
@@ -148,7 +148,7 @@ public class JavaUpgradeClassCheck extends BaseFileCheck {
 					fileName,
 					"Do not use *ServiceUtil classes in upgrade classes",
 					"upgrade_service_util.markdown",
-					getLineCount(content, pos));
+					getLineNumber(content, pos));
 			}
 		}
 	}
@@ -159,18 +159,18 @@ public class JavaUpgradeClassCheck extends BaseFileCheck {
 		if (pos != -1) {
 			addMessage(
 				fileName, "Use rs.getTimestamp instead of rs.getDate",
-				"upgrade_timestamp.markdown", getLineCount(content, pos));
+				"upgrade_timestamp.markdown", getLineNumber(content, pos));
 		}
 	}
 
 	private static final String _UPGRADE_SERVICE_UTIL_EXCLUDES =
 		"upgrade.service.util.excludes";
 
-	private final Pattern _componentAnnotationPattern = Pattern.compile(
+	private static final Pattern _componentAnnotationPattern = Pattern.compile(
 		"@Component(\n|\\([\\s\\S]*?\\)\n)");
-	private final Pattern _registryRegisterPattern = Pattern.compile(
+	private static final Pattern _registryRegisterPattern = Pattern.compile(
 		"registry\\.register\\((.*?)\\);\n", Pattern.DOTALL);
-	private final Pattern _upgradeClassNamePattern = Pattern.compile(
+	private static final Pattern _upgradeClassNamePattern = Pattern.compile(
 		"new .*?(\\w+)\\(", Pattern.DOTALL);
 
 }

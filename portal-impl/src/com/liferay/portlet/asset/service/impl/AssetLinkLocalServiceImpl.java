@@ -19,10 +19,8 @@ import com.liferay.asset.kernel.model.AssetEntry;
 import com.liferay.asset.kernel.model.AssetLink;
 import com.liferay.asset.kernel.model.AssetLinkConstants;
 import com.liferay.asset.kernel.model.adapter.StagedAssetLink;
-import com.liferay.exportimport.kernel.lar.PortletDataContext;
 import com.liferay.exportimport.kernel.lar.StagedModelType;
 import com.liferay.petra.string.StringPool;
-import com.liferay.portal.kernel.dao.orm.ExportActionableDynamicQuery;
 import com.liferay.portal.kernel.dao.orm.QueryUtil;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.log.Log;
@@ -255,17 +253,6 @@ public class AssetLinkLocalServiceImpl extends AssetLinkLocalServiceBaseImpl {
 	}
 
 	/**
-	 * @deprecated As of 7.0.0, with no direct replacement
-	 */
-	@Deprecated
-	@Override
-	public ExportActionableDynamicQuery getExportActionbleDynamicQuery(
-		final PortletDataContext portletDataContext) {
-
-		return new ExportActionableDynamicQuery();
-	}
-
-	/**
 	 * Returns all the asset links whose first or second entry ID is the given
 	 * entry ID.
 	 *
@@ -327,8 +314,8 @@ public class AssetLinkLocalServiceImpl extends AssetLinkLocalServiceBaseImpl {
 	/**
 	 * Returns all the asset links of an AssetEntry.
 	 *
-	 * @param classNameId AssetEntry's classNameId
-	 * @param classPK AssetEntry's classPK
+	 * @param  classNameId AssetEntry's classNameId
+	 * @param  classPK AssetEntry's classPK
 	 * @return the asset links of the given entry params
 	 */
 	@Override
@@ -429,17 +416,17 @@ public class AssetLinkLocalServiceImpl extends AssetLinkLocalServiceBaseImpl {
 	}
 
 	protected void addDeletionSystemEvent(AssetLink assetLink) {
-		StagedAssetLink stagedAssetLink = ModelAdapterUtil.adapt(
-			assetLink, AssetLink.class, StagedAssetLink.class);
-
-		StagedModelType stagedModelType = stagedAssetLink.getStagedModelType();
-
 		AssetEntry assetEntry = assetEntryLocalService.fetchEntry(
 			assetLink.getEntryId1());
 
 		if (assetEntry == null) {
 			return;
 		}
+
+		StagedAssetLink stagedAssetLink = ModelAdapterUtil.adapt(
+			assetLink, AssetLink.class, StagedAssetLink.class);
+
+		StagedModelType stagedModelType = stagedAssetLink.getStagedModelType();
 
 		try {
 			systemEventLocalService.addSystemEvent(
@@ -474,9 +461,6 @@ public class AssetLinkLocalServiceImpl extends AssetLinkLocalServiceBaseImpl {
 
 		return assetLinks;
 	}
-
-	private static final String _FIND_BY_ASSET_ENTRY_GROUP_ID =
-		AssetLinkLocalServiceImpl.class.getName() + ".findByAssetEntryGroupId";
 
 	private static final Log _log = LogFactoryUtil.getLog(
 		AssetLinkLocalServiceImpl.class);

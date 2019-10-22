@@ -85,7 +85,7 @@ public class ProppatchMethodImpl extends BasePropMethodImpl {
 
 		Resource resource = storage.getResource(webDAVRequest);
 
-		WebDAVProps webDavProps = null;
+		WebDAVProps webDAVProps = null;
 
 		if (resource.getPrimaryKey() <= 0) {
 			if (_log.isWarnEnabled()) {
@@ -108,11 +108,11 @@ public class ProppatchMethodImpl extends BasePropMethodImpl {
 			}
 		}
 
-		webDavProps = WebDAVPropsLocalServiceUtil.getWebDAVProps(
+		webDAVProps = WebDAVPropsLocalServiceUtil.getWebDAVProps(
 			webDAVRequest.getCompanyId(), resource.getClassName(),
 			resource.getPrimaryKey());
 
-		return webDavProps;
+		return webDAVProps;
 	}
 
 	protected Set<QName> processInstructions(WebDAVRequest webDAVRequest)
@@ -121,12 +121,11 @@ public class ProppatchMethodImpl extends BasePropMethodImpl {
 		try {
 			Set<QName> newProps = new HashSet<>();
 
-			HttpServletRequest request = webDAVRequest.getHttpServletRequest();
-
-			WebDAVProps webDavProps = getStoredProperties(webDAVRequest);
+			HttpServletRequest httpServletRequest =
+				webDAVRequest.getHttpServletRequest();
 
 			String xml = new String(
-				FileUtil.getBytes(request.getInputStream()));
+				FileUtil.getBytes(httpServletRequest.getInputStream()));
 
 			if (Validator.isNull(xml)) {
 				return newProps;
@@ -137,6 +136,8 @@ public class ProppatchMethodImpl extends BasePropMethodImpl {
 					"Request XML: \n" +
 						Dom4jUtil.toString(xml, StringPool.FOUR_SPACES));
 			}
+
+			WebDAVProps webDAVProps = getStoredProperties(webDAVRequest);
 
 			Document document = SAXReaderUtil.read(xml);
 
@@ -150,7 +151,7 @@ public class ProppatchMethodImpl extends BasePropMethodImpl {
 				if (propElements.size() != 1) {
 					throw new InvalidRequestException(
 						"There should only be one <prop /> per set or remove " +
-							"instruction.");
+							"instruction");
 				}
 
 				Element propElement = propElements.get(0);
@@ -169,23 +170,25 @@ public class ProppatchMethodImpl extends BasePropMethodImpl {
 				List<Element> customPropElements = propElement.elements();
 
 				for (Element customPropElement : customPropElements) {
-					String name = customPropElement.getName();
 					String prefix = customPropElement.getNamespacePrefix();
 					String uri = customPropElement.getNamespaceURI();
-					String text = customPropElement.getText();
 
 					Namespace namespace = WebDAVUtil.createNamespace(
 						prefix, uri);
+
+					String name = customPropElement.getName();
 
 					String instructionElementName =
 						instructionElement.getName();
 
 					if (instructionElementName.equals("set")) {
+						String text = customPropElement.getText();
+
 						if (Validator.isNull(text)) {
-							webDavProps.addProp(name, prefix, uri);
+							webDAVProps.addProp(name, prefix, uri);
 						}
 						else {
-							webDavProps.addProp(name, prefix, uri, text);
+							webDAVProps.addProp(name, prefix, uri, text);
 						}
 
 						newProps.add(
@@ -193,7 +196,7 @@ public class ProppatchMethodImpl extends BasePropMethodImpl {
 								customPropElement.getName(), namespace));
 					}
 					else if (instructionElementName.equals("remove")) {
-						webDavProps.removeProp(name, prefix, uri);
+						webDAVProps.removeProp(name, prefix, uri);
 					}
 					else {
 						throw new InvalidRequestException(
@@ -203,7 +206,7 @@ public class ProppatchMethodImpl extends BasePropMethodImpl {
 				}
 			}
 
-			WebDAVPropsLocalServiceUtil.storeWebDAVProps(webDavProps);
+			WebDAVPropsLocalServiceUtil.storeWebDAVProps(webDAVProps);
 
 			return newProps;
 		}

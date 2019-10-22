@@ -15,18 +15,18 @@
 package com.liferay.adaptive.media.image.web.internal.html;
 
 import com.liferay.adaptive.media.image.html.AMImageHTMLTagFactory;
+import com.liferay.adaptive.media.image.html.constants.AMImageHTMLConstants;
 import com.liferay.adaptive.media.image.media.query.Condition;
 import com.liferay.adaptive.media.image.media.query.MediaQuery;
 import com.liferay.adaptive.media.image.media.query.MediaQueryProvider;
+import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.repository.model.FileEntry;
-import com.liferay.portal.kernel.util.StringBundler;
+import com.liferay.portal.kernel.util.StringUtil;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -49,28 +49,21 @@ public class AMImageHTMLTagFactoryImpl implements AMImageHTMLTagFactory {
 			return originalImgTag;
 		}
 
-		StringBundler sb = new StringBundler(3 + sourceElements.size());
+		StringBundler sb = new StringBundler(5 + sourceElements.size());
 
-		sb.append("<picture data-fileEntryId=\"");
+		sb.append("<picture ");
+		sb.append(AMImageHTMLConstants.ATTRIBUTE_NAME_FILE_ENTRY_ID);
+		sb.append("=\"");
 		sb.append(fileEntry.getFileEntryId());
 		sb.append("\">");
 
 		sourceElements.forEach(sb::append);
 
-		Matcher matcher = _pattern.matcher(originalImgTag);
-
-		sb.append(matcher.replaceAll(""));
+		sb.append(originalImgTag);
 
 		sb.append("</picture>");
 
 		return sb.toString();
-	}
-
-	@Reference(unbind = "-")
-	protected void setMediaQueryProvider(
-		MediaQueryProvider mediaQueryProvider) {
-
-		_mediaQueryProvider = mediaQueryProvider;
 	}
 
 	private Optional<String> _getMediaQueryString(MediaQuery mediaQuery) {
@@ -96,7 +89,7 @@ public class AMImageHTMLTagFactoryImpl implements AMImageHTMLTagFactory {
 			conditionStrings[i] = sb.toString();
 		}
 
-		return Optional.of(String.join(" and ", conditionStrings));
+		return Optional.of(StringUtil.merge(conditionStrings, " and "));
 	}
 
 	private String _getSourceElement(MediaQuery mediaQuery) {
@@ -112,7 +105,6 @@ public class AMImageHTMLTagFactoryImpl implements AMImageHTMLTagFactory {
 				sb.append("\" srcset=\"");
 				sb.append(mediaQuery.getSrc());
 				sb.append("\" />");
-
 			});
 
 		return sb.toString();
@@ -133,9 +125,7 @@ public class AMImageHTMLTagFactoryImpl implements AMImageHTMLTagFactory {
 		);
 	}
 
-	private static final Pattern _pattern = Pattern.compile(
-		"\\s*data-fileEntryId=\"(\\d+)\"", Pattern.CASE_INSENSITIVE);
-
+	@Reference
 	private MediaQueryProvider _mediaQueryProvider;
 
 }

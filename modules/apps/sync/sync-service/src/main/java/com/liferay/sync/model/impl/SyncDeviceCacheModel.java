@@ -14,12 +14,9 @@
 
 package com.liferay.sync.model.impl;
 
-import aQute.bnd.annotation.ProviderType;
-
+import com.liferay.petra.lang.HashUtil;
+import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.model.CacheModel;
-import com.liferay.portal.kernel.util.HashUtil;
-import com.liferay.portal.kernel.util.StringBundler;
-
 import com.liferay.sync.model.SyncDevice;
 
 import java.io.Externalizable;
@@ -33,12 +30,11 @@ import java.util.Date;
  * The cache model class for representing SyncDevice in entity cache.
  *
  * @author Brian Wing Shun Chan
- * @see SyncDevice
  * @generated
  */
-@ProviderType
-public class SyncDeviceCacheModel implements CacheModel<SyncDevice>,
-	Externalizable {
+public class SyncDeviceCacheModel
+	implements CacheModel<SyncDevice>, Externalizable {
+
 	@Override
 	public boolean equals(Object obj) {
 		if (this == obj) {
@@ -179,8 +175,7 @@ public class SyncDeviceCacheModel implements CacheModel<SyncDevice>,
 	}
 
 	@Override
-	public void writeExternal(ObjectOutput objectOutput)
-		throws IOException {
+	public void writeExternal(ObjectOutput objectOutput) throws IOException {
 		if (uuid == null) {
 			objectOutput.writeUTF("");
 		}
@@ -237,4 +232,5 @@ public class SyncDeviceCacheModel implements CacheModel<SyncDevice>,
 	public int featureSet;
 	public String hostname;
 	public int status;
+
 }

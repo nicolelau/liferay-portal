@@ -1,8 +1,21 @@
-import core from 'metal';
-import dom from 'metal-dom';
-import { EventHandler } from 'metal-events';
+/**
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
+ *
+ * This library is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU Lesser General Public License as published by the Free
+ * Software Foundation; either version 2.1 of the License, or (at your option)
+ * any later version.
+ *
+ * This library is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+ * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
+ * details.
+ */
 
-import PortletBase from 'frontend-js-web/liferay/PortletBase.es';
+import {PortletBase} from 'frontend-js-web';
+import dom from 'metal-dom';
+import {EventHandler} from 'metal-events';
+import core from 'metal';
 
 /**
  * Enables/disables the actions of the configuration entry's while
@@ -24,18 +37,13 @@ class AdaptiveMediaOptionsHandler extends PortletBase {
 	 * @inheritDoc
 	 */
 	attached() {
-		let progressBarComponent = this.getProgressBarComponent_();
-
-		this.eventHandler_.add(
-			progressBarComponent.on('start', () => this.onStart_())
-		);
-
-		this.eventHandler_.add(
-			progressBarComponent.on('finish', () => this.onFinish_())
-		);
+		this.bindEventsProgressBarComponent_();
 
 		this.disableIcon = this.one('#icon-disable-' + this.uuid, 'body');
-		this.adaptRemainingIcon = this.one('#icon-adapt-remaining' + this.uuid, 'body');
+		this.adaptRemainingIcon = this.one(
+			'#icon-adapt-remaining' + this.uuid,
+			'body'
+		);
 	}
 
 	/**
@@ -47,18 +55,29 @@ class AdaptiveMediaOptionsHandler extends PortletBase {
 	}
 
 	/**
-	 * Get the progress bar component associated to
+	 * Bind events to the bar component associated to
 	 * the configuration entry.
 	 *
 	 * @protected
-	 * @return {AdaptiveMediaProgress} progressbar component
 	 */
-	getProgressBarComponent_() {
+	bindEventsProgressBarComponent_() {
 		if (!this.progressBarComponent_) {
-			this.progressBarComponent_ = Liferay.component(this.ns('AdaptRemaining' + this.uuid));
-		}
+			Liferay.componentReady(this.ns('AdaptRemaining' + this.uuid)).then(
+				progressBarComponent => {
+					this.progressBarComponent_ = progressBarComponent;
 
-		return this.progressBarComponent_;
+					this.eventHandler_.add(
+						progressBarComponent.on('start', () => this.onStart_())
+					);
+
+					this.eventHandler_.add(
+						progressBarComponent.on('finish', () =>
+							this.onFinish_()
+						)
+					);
+				}
+			);
+		}
 	}
 
 	/**

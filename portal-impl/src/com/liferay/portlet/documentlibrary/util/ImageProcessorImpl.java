@@ -20,6 +20,7 @@ import com.liferay.document.library.kernel.store.DLStoreUtil;
 import com.liferay.document.library.kernel.util.DLPreviewableProcessor;
 import com.liferay.document.library.kernel.util.ImageProcessor;
 import com.liferay.exportimport.kernel.lar.PortletDataContext;
+import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.image.ImageBag;
@@ -28,12 +29,13 @@ import com.liferay.portal.kernel.image.ImageToolUtil;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.messaging.DestinationNames;
+import com.liferay.portal.kernel.repository.event.FileVersionPreviewEventListener;
 import com.liferay.portal.kernel.repository.model.FileEntry;
 import com.liferay.portal.kernel.repository.model.FileVersion;
 import com.liferay.portal.kernel.util.ContentTypes;
 import com.liferay.portal.kernel.util.FileUtil;
+import com.liferay.portal.kernel.util.ServiceProxyFactory;
 import com.liferay.portal.kernel.util.SetUtil;
-import com.liferay.portal.kernel.util.StringBundler;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.kernel.xml.Element;
 import com.liferay.portal.util.PropsValues;
@@ -290,6 +292,9 @@ public class ImageProcessorImpl
 				RenderedImage renderedImage = imageBag.getRenderedImage();
 
 				if (renderedImage == null) {
+					_fileVersionPreviewEventListener.onFailure(
+						destinationFileVersion);
+
 					return;
 				}
 
@@ -301,6 +306,9 @@ public class ImageProcessorImpl
 							bytes, imageBag.getType());
 
 					if (future == null) {
+						_fileVersionPreviewEventListener.onFailure(
+							destinationFileVersion);
+
 						return;
 					}
 
@@ -323,12 +331,17 @@ public class ImageProcessorImpl
 				if (!hasThumbnails(destinationFileVersion)) {
 					storeThumbnailImages(destinationFileVersion, renderedImage);
 				}
+
+				_fileVersionPreviewEventListener.onSuccess(
+					destinationFileVersion);
 			}
 		}
 		catch (NoSuchFileEntryException nsfee) {
 			if (_log.isDebugEnabled()) {
 				_log.debug(nsfee, nsfee);
 			}
+
+			_fileVersionPreviewEventListener.onFailure(destinationFileVersion);
 		}
 		finally {
 			_fileVersionIds.remove(destinationFileVersion.getFileVersionId());
@@ -390,9 +403,8 @@ public class ImageProcessorImpl
 		if (mimeType.contains("tiff") || mimeType.contains("tif")) {
 			return true;
 		}
-		else {
-			return false;
-		}
+
+		return false;
 	}
 
 	private void _queueGeneration(
@@ -476,6 +488,12 @@ public class ImageProcessorImpl
 
 	private static final Log _log = LogFactoryUtil.getLog(
 		ImageProcessorImpl.class);
+
+	private static volatile FileVersionPreviewEventListener
+		_fileVersionPreviewEventListener =
+			ServiceProxyFactory.newServiceTrackedInstance(
+				FileVersionPreviewEventListener.class, ImageProcessorImpl.class,
+				"_fileVersionPreviewEventListener", false, false);
 
 	private final List<Long> _fileVersionIds = new Vector<>();
 	private final Set<String> _imageMimeTypes = SetUtil.fromArray(

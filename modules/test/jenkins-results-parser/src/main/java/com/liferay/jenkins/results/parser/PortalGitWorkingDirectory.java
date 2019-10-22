@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.PathMatcher;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 
@@ -29,6 +30,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.json.JSONException;
 import org.json.JSONObject;
 
 /**
@@ -37,59 +39,67 @@ import org.json.JSONObject;
  */
 public class PortalGitWorkingDirectory extends GitWorkingDirectory {
 
-	public PortalGitWorkingDirectory(
-			String upstreamBranchName, String workingDirectoryPath)
-		throws IOException {
-
-		super(upstreamBranchName, workingDirectoryPath);
-	}
-
-	public PortalGitWorkingDirectory(
-			String upstreamBranchName, String workingDirectoryPath,
-			String repositoryName)
-		throws IOException {
-
-		super(upstreamBranchName, workingDirectoryPath, repositoryName);
-	}
-
 	public List<File> getModifiedModuleDirsList() throws IOException {
-		List<File> modifiedModuleDirsList = new ArrayList<>();
+		return getModifiedModuleDirsList(null, null);
+	}
 
-		List<File> modifiedFilesList = getModifiedFilesList();
+	public List<File> getModifiedModuleDirsList(
+			List<PathMatcher> excludesPathMatchers,
+			List<PathMatcher> includesPathMatchers)
+		throws IOException {
 
-		for (File moduleDir : getModuleDirsList()) {
-			for (File modifiedFile : modifiedFilesList) {
-				if (JenkinsResultsParserUtil.isFileInDirectory(
-						moduleDir, modifiedFile)) {
-
-					modifiedModuleDirsList.add(moduleDir);
-
-					break;
-				}
-			}
-		}
-
-		return modifiedModuleDirsList;
+		return JenkinsResultsParserUtil.getDirectoriesContainingFiles(
+			getModuleDirsList(excludesPathMatchers, includesPathMatchers),
+			getModifiedFilesList());
 	}
 
 	public List<File> getModifiedNPMTestModuleDirsList() throws IOException {
-		List<File> modifiedModuleDirsList = new ArrayList<>();
+		List<File> modifiedModuleDirsList = getModifiedModuleDirsList();
 
-		for (File modifiedModuleDir : getModifiedModuleDirsList()) {
+		List<File> modifiedNPMTestModuleDirsList = new ArrayList<>(
+			modifiedModuleDirsList.size());
+
+		for (File modifiedModuleDir : modifiedModuleDirsList) {
 			if (_isNPMTestModuleDir(modifiedModuleDir)) {
-				modifiedModuleDirsList.add(modifiedModuleDir);
+				modifiedNPMTestModuleDirsList.add(modifiedModuleDir);
 			}
 		}
 
-		return modifiedModuleDirsList;
+		return modifiedNPMTestModuleDirsList;
+	}
+
+	public List<File> getModuleAppDirs() {
+		List<File> moduleAppDirs = new ArrayList<>();
+
+		List<File> moduleAppBndFiles = JenkinsResultsParserUtil.findFiles(
+			new File(getWorkingDirectory(), "modules"), "app\\.bnd");
+
+		for (File moduleAppBndFile : moduleAppBndFiles) {
+			moduleAppDirs.add(moduleAppBndFile.getParentFile());
+		}
+
+		return moduleAppDirs;
 	}
 
 	public List<File> getModuleDirsList() throws IOException {
+		return getModuleDirsList(null, null);
+	}
+
+	public List<File> getModuleDirsList(
+			List<PathMatcher> excludesPathMatchers,
+			List<PathMatcher> includesPathMatchers)
+		throws IOException {
+
 		final File modulesDir = new File(getWorkingDirectory(), "modules");
 
 		if (!modulesDir.exists()) {
 			return new ArrayList<>();
 		}
+
+		final List<PathMatcher> excludedModulesPathMatchers =
+			excludesPathMatchers;
+		final List<PathMatcher> includedModulesPathMatchers =
+			includesPathMatchers;
 
 		final List<File> moduleDirsList = new ArrayList<>();
 
@@ -126,6 +136,13 @@ public class PortalGitWorkingDirectory extends GitWorkingDirectory {
 				public FileVisitResult preVisitDirectory(
 					Path filePath, BasicFileAttributes attrs) {
 
+					if (!JenkinsResultsParserUtil.isFileIncluded(
+							excludedModulesPathMatchers,
+							includedModulesPathMatchers, filePath)) {
+
+						return FileVisitResult.CONTINUE;
+					}
+
 					Module currentModule = Module.getModule(filePath);
 
 					if (currentModule == null) {
@@ -156,6 +173,33 @@ public class PortalGitWorkingDirectory extends GitWorkingDirectory {
 		return moduleDirsList;
 	}
 
+	public List<File> getNPMTestModuleDirsList() throws IOException {
+		List<File> npmModuleDirsList = new ArrayList<>();
+
+		for (File moduleDir : getModuleDirsList()) {
+			if (_isNPMTestModuleDir(moduleDir)) {
+				npmModuleDirsList.add(moduleDir);
+			}
+		}
+
+		return npmModuleDirsList;
+	}
+
+	protected PortalGitWorkingDirectory(
+			String upstreamBranchName, String workingDirectoryPath)
+		throws IOException {
+
+		super(upstreamBranchName, workingDirectoryPath);
+	}
+
+	protected PortalGitWorkingDirectory(
+			String upstreamBranchName, String workingDirectoryPath,
+			String gitRepositoryName)
+		throws IOException {
+
+		super(upstreamBranchName, workingDirectoryPath, gitRepositoryName);
+	}
+
 	private boolean _isNPMTestModuleDir(File moduleDir) {
 		List<File> packageJSONFiles = JenkinsResultsParserUtil.findFiles(
 			moduleDir, "package\\.json");
@@ -168,8 +212,16 @@ public class PortalGitWorkingDirectory extends GitWorkingDirectory {
 					JenkinsResultsParserUtil.read(packageJSONFile));
 			}
 			catch (IOException ioe) {
-				throw new RuntimeException(
-					"Unable to read file " + packageJSONFile.getPath(), ioe);
+				System.out.println(
+					"Unable to read invalid JSON " + packageJSONFile.getPath());
+
+				continue;
+			}
+			catch (JSONException jsone) {
+				System.out.println(
+					"Invalid JSON file " + packageJSONFile.getPath());
+
+				continue;
 			}
 
 			if (!jsonObject.has("scripts")) {
@@ -221,7 +273,7 @@ public class PortalGitWorkingDirectory extends GitWorkingDirectory {
 		@Override
 		public String toString() {
 			return JenkinsResultsParserUtil.combine(
-				Integer.toString(_priority), " ", _file.toString());
+				String.valueOf(_priority), " ", _file.toString());
 		}
 
 		private Module(File file, int priority) {
@@ -230,15 +282,16 @@ public class PortalGitWorkingDirectory extends GitWorkingDirectory {
 		}
 
 		private static Map<Integer, String[]> _markerFileNames =
-			new HashMap<>();
-
-		static {
-			_markerFileNames.put(0, new String[] {"subsystem.bnd", ".gitrepo"});
-			_markerFileNames.put(1, new String[] {"app.bnd"});
-			_markerFileNames.put(2, new String[] {"bnd.bnd"});
-			_markerFileNames.put(
-				3, new String[] {"build.gradle", "build.xml", "pom.xml"});
-		}
+			new HashMap<Integer, String[]>() {
+				{
+					put(0, new String[] {".lfrbuild-release-src", ".gitrepo"});
+					put(1, new String[] {"app.bnd"});
+					put(2, new String[] {"bnd.bnd"});
+					put(
+						3,
+						new String[] {"build.gradle", "build.xml", "pom.xml"});
+				}
+			};
 
 		private final File _file;
 		private final int _priority;

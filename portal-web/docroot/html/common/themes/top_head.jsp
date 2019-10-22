@@ -20,46 +20,7 @@
 
 <liferay-util:dynamic-include key="/html/common/themes/top_head.jsp#pre" />
 
-<link data-senna-track="temporary" href="<%= themeDisplay.getPathThemeImages() %>/<%= PropsValues.THEME_SHORTCUT_ICON %>" rel="Shortcut Icon" />
-
-<%-- Available Translations --%>
-
-<%
-if (!themeDisplay.isSignedIn() && layout.isPublicLayout()) {
-	String completeURL = PortalUtil.getCurrentCompleteURL(request);
-
-	String canonicalURL = PortalUtil.getCanonicalURL(completeURL, themeDisplay, layout);
-%>
-
-	<link data-senna-track="temporary" href="<%= HtmlUtil.escapeAttribute(canonicalURL) %>" rel="canonical" />
-
-	<%
-	Set<Locale> availableLocales = LanguageUtil.getAvailableLocales(themeDisplay.getSiteGroupId());
-
-	if (availableLocales.size() > 1) {
-		Map<Locale, String> alternateURLs = PortalUtil.getAlternateURLs(canonicalURL, themeDisplay, layout);
-
-		Locale defaultLocale = LocaleUtil.getDefault();
-
-		for (Map.Entry<Locale, String> entry : alternateURLs.entrySet()) {
-			Locale availableLocale = entry.getKey();
-			String alternateURL = entry.getValue();
-	%>
-
-			<c:if test="<%= availableLocale.equals(defaultLocale) %>">
-				<link data-senna-track="temporary" href="<%= HtmlUtil.escapeAttribute(canonicalURL) %>" hreflang="x-default" rel="alternate" />
-			</c:if>
-
-			<link data-senna-track="temporary" href="<%= HtmlUtil.escapeAttribute(alternateURL) %>" hreflang="<%= LocaleUtil.toW3cLanguageId(availableLocale) %>" rel="alternate" />
-
-	<%
-		}
-	}
-	%>
-
-<%
-}
-%>
+<link href="<%= BrowserSnifferUtil.isIe(request) ? StringPool.BLANK : themeDisplay.getPathThemeImages() %>/<%= PropsValues.THEME_SHORTCUT_ICON %>" rel="icon" />
 
 <%-- Portal CSS --%>
 
@@ -82,7 +43,7 @@ if (layout != null) {
 	String ppid = ParamUtil.getString(request, "p_p_id");
 
 	if (layout.isTypeEmbedded() || layout.isTypePortlet()) {
-		if (themeDisplay.isStateMaximized() || themeDisplay.isStatePopUp()) {
+		if (themeDisplay.isStateMaximized() || themeDisplay.isStatePopUp() || (layout.isSystem() && Objects.equals(layout.getFriendlyURL(), PropsValues.CONTROL_PANEL_LAYOUT_FRIENDLY_URL))) {
 			if (Validator.isNotNull(ppid)) {
 				Portlet portlet = PortletLocalServiceUtil.getPortletById(company.getCompanyId(), ppid);
 
@@ -163,7 +124,7 @@ if (markupHeaders != null) {
 	}
 }
 
-StringBundler pageTopSB = OutputTag.getData(request, WebKeys.PAGE_TOP);
+com.liferay.petra.string.StringBundler pageTopSB = OutputTag.getDataSB(request, WebKeys.PAGE_TOP);
 %>
 
 <c:if test="<%= pageTopSB != null %>">
@@ -172,6 +133,36 @@ StringBundler pageTopSB = OutputTag.getData(request, WebKeys.PAGE_TOP);
 	pageTopSB.writeTo(out);
 	%>
 
+</c:if>
+
+<%
+boolean portletHubRequired = false;
+
+for (Portlet portlet : portlets) {
+	List<PortletDependency> portletDependencies = portlet.getPortletDependencies();
+
+	for (PortletDependency portletDependency : portletDependencies) {
+		if (Objects.equals(portletDependency.getName(), "PortletHub") && Objects.equals(portletDependency.getScope(), "javax.portlet")) {
+			portletHubRequired = true;
+
+			break;
+		}
+	}
+
+	if (portletHubRequired) {
+		break;
+	}
+}
+%>
+
+<c:if test="<%= portletHubRequired %>">
+	<script type="text/javascript">
+		var portlet = portlet || {};
+
+		portlet.data = portlet.data || {};
+
+		portlet.data.pageRenderState = <%= RenderStateUtil.generateJSON(request, themeDisplay) %>;
+	</script>
 </c:if>
 
 <%-- Theme CSS --%>

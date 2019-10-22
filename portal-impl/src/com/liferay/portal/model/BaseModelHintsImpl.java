@@ -14,6 +14,7 @@
 
 package com.liferay.portal.model;
 
+import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
@@ -22,7 +23,6 @@ import com.liferay.portal.kernel.model.ModelHintsCallback;
 import com.liferay.portal.kernel.model.ModelHintsConstants;
 import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.ListUtil;
-import com.liferay.portal.kernel.util.StringBundler;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Tuple;
 import com.liferay.portal.kernel.util.Validator;
@@ -82,8 +82,7 @@ public abstract class BaseModelHintsImpl implements ModelHints {
 						if (_log.isDebugEnabled()) {
 							_log.debug(
 								StringBundler.concat(
-									"Loading ", name, " from ",
-									String.valueOf(url)));
+									"Loading ", name, " from ", url));
 						}
 
 						InputStream inputStream = url.openStream();
@@ -118,8 +117,11 @@ public abstract class BaseModelHintsImpl implements ModelHints {
 
 	@Override
 	public String buildCustomValidatorName(String validatorName) {
-		return validatorName.concat(StringPool.UNDERLINE).concat(
-			StringUtil.randomId());
+		return validatorName.concat(
+			StringPool.UNDERLINE
+		).concat(
+			StringUtil.randomId()
+		);
 	}
 
 	@Override
@@ -141,9 +143,8 @@ public abstract class BaseModelHintsImpl implements ModelHints {
 		if (fieldsEl == null) {
 			return null;
 		}
-		else {
-			return fieldsEl;
-		}
+
+		return fieldsEl;
 	}
 
 	@Override
@@ -154,9 +155,8 @@ public abstract class BaseModelHintsImpl implements ModelHints {
 		if (fields == null) {
 			return null;
 		}
-		else {
-			return (Map<String, String>)fields.get(field + _HINTS_SUFFIX);
-		}
+
+		return (Map<String, String>)fields.get(field + _HINTS_SUFFIX);
 	}
 
 	@Override
@@ -192,9 +192,8 @@ public abstract class BaseModelHintsImpl implements ModelHints {
 		if (fields == null) {
 			return null;
 		}
-		else {
-			return (Tuple)fields.get(field + _SANITIZE_SUFFIX);
-		}
+
+		return (Tuple)fields.get(field + _SANITIZE_SUFFIX);
 	}
 
 	@Override
@@ -231,9 +230,8 @@ public abstract class BaseModelHintsImpl implements ModelHints {
 		if (fields == null) {
 			return null;
 		}
-		else {
-			return (String)fields.get(field + _TYPE_SUFFIX);
-		}
+
+		return (String)fields.get(field + _TYPE_SUFFIX);
 	}
 
 	@Override
@@ -246,9 +244,8 @@ public abstract class BaseModelHintsImpl implements ModelHints {
 
 			return null;
 		}
-		else {
-			return (List<Tuple>)fields.get(field + _VALIDATORS_SUFFIX);
-		}
+
+		return (List<Tuple>)fields.get(field + _VALIDATORS_SUFFIX);
 	}
 
 	@Override
@@ -299,9 +296,8 @@ public abstract class BaseModelHintsImpl implements ModelHints {
 		if (localized != null) {
 			return localized;
 		}
-		else {
-			return false;
-		}
+
+		return false;
 	}
 
 	@Override
@@ -327,10 +323,9 @@ public abstract class BaseModelHintsImpl implements ModelHints {
 
 			return;
 		}
-		else {
-			if (_log.isDebugEnabled()) {
-				_log.debug("Loading " + source);
-			}
+
+		if (_log.isDebugEnabled()) {
+			_log.debug("Loading " + source);
 		}
 
 		SAXReader saxReader = getSAXReader();
@@ -459,6 +454,7 @@ public abstract class BaseModelHintsImpl implements ModelHints {
 						validatorElement.attributeValue("error-message"));
 					String validatorValue = GetterUtil.getString(
 						validatorElement.getText());
+
 					boolean customValidator = isCustomValidator(validatorName);
 
 					if (customValidator) {
@@ -501,9 +497,8 @@ public abstract class BaseModelHintsImpl implements ModelHints {
 		if (value.length() > maxLength) {
 			return value.substring(0, maxLength);
 		}
-		else {
-			return value;
-		}
+
+		return value;
 	}
 
 	private static final String _ELEMENTS_SUFFIX = "_ELEMENTS";

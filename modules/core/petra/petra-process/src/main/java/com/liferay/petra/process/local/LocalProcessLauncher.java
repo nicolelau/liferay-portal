@@ -43,6 +43,10 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -95,9 +99,11 @@ public class LocalProcessLauncher {
 			String processCallableName =
 				(String)bootstrapObjectInputStream.readObject();
 
-			String logPrefixString =
-				StringPool.OPEN_BRACKET.concat(processCallableName).concat(
-					StringPool.CLOSE_BRACKET);
+			String logPrefixString = StringPool.OPEN_BRACKET.concat(
+				processCallableName
+			).concat(
+				StringPool.CLOSE_BRACKET
+			);
 
 			byte[] logPrefix = logPrefixString.getBytes(StringPool.UTF8);
 
@@ -119,8 +125,8 @@ public class LocalProcessLauncher {
 				(ProcessCallable<?>)objectInputStream.readObject();
 
 			Thread thread = new Thread(
-				new ProcessCallableRunner(objectInputStream),
-				"ProcessCallable-Runner");
+				new ProcessCallableDispatcher(objectInputStream),
+				"ProcessCallable-Dispatcher");
 
 			thread.setDaemon(true);
 
@@ -196,9 +202,8 @@ public class LocalProcessLauncher {
 			if (heartbeatThread != null) {
 				return true;
 			}
-			else {
-				return false;
-			}
+
+			return false;
 		}
 
 		public static void writeProcessCallable(
@@ -253,7 +258,7 @@ public class LocalProcessLauncher {
 			urls.add(uri.toURL());
 		}
 
-		return urls.toArray(new URL[urls.size()]);
+		return urls.toArray(new URL[0]);
 	}
 
 	private static class HeartbeatThread extends Thread {
@@ -274,11 +279,10 @@ public class LocalProcessLauncher {
 					if (_detach) {
 						return;
 					}
-					else {
-						shutdownThrowable = ie;
 
-						shutdownCode = ShutdownHook.INTERRUPTION_CODE;
-					}
+					shutdownThrowable = ie;
+
+					shutdownCode = ShutdownHook.INTERRUPTION_CODE;
 				}
 				catch (IOException ioe) {
 					shutdownThrowable = ioe;
@@ -377,16 +381,35 @@ public class LocalProcessLauncher {
 
 	}
 
-	private static class ProcessCallableRunner implements Runnable {
+	private static class ProcessCallableDispatcher implements Runnable {
 
 		@Override
 		public void run() {
+			ExecutorService executorService = Executors.newCachedThreadPool(
+				new ThreadFactory() {
+
+					@Override
+					public Thread newThread(Runnable runnable) {
+						Thread thread = new Thread(
+							runnable,
+							"ProcessCallable-runner-" +
+								_counter.getAndIncrement());
+
+						thread.setDaemon(true);
+
+						return thread;
+					}
+
+					private final AtomicLong _counter = new AtomicLong();
+
+				});
+
 			while (true) {
 				try {
 					ProcessCallable<?> processCallable =
 						(ProcessCallable<?>)_objectInputStream.readObject();
 
-					processCallable.call();
+					executorService.submit(() -> processCallable.call());
 				}
 				catch (Exception e) {
 					UnsyncByteArrayOutputStream unsyncByteArrayOutputStream =
@@ -411,7 +434,7 @@ public class LocalProcessLauncher {
 			}
 		}
 
-		private ProcessCallableRunner(ObjectInputStream objectInputStream) {
+		private ProcessCallableDispatcher(ObjectInputStream objectInputStream) {
 			_objectInputStream = objectInputStream;
 		}
 

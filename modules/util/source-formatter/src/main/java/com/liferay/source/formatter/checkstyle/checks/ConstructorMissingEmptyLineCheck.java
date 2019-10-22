@@ -33,9 +33,10 @@ public class ConstructorMissingEmptyLineCheck extends BaseCheck {
 
 	@Override
 	protected void doVisitToken(DetailAST detailAST) {
-		DetailAST statementsAST = detailAST.findFirstToken(TokenTypes.SLIST);
+		DetailAST statementsDetailAST = detailAST.findFirstToken(
+			TokenTypes.SLIST);
 
-		if (statementsAST == null) {
+		if (statementsDetailAST == null) {
 			return;
 		}
 
@@ -46,78 +47,97 @@ public class ConstructorMissingEmptyLineCheck extends BaseCheck {
 			return;
 		}
 
-		DetailAST nextExpressionAST = statementsAST.getFirstChild();
+		DetailAST nextExpressionDetailAST = statementsDetailAST.getFirstChild();
 
-		if (!_isExpressionAssignsParameter(nextExpressionAST, parameterNames)) {
+		if (!_isExpressionAssignsParameter(
+				nextExpressionDetailAST, parameterNames)) {
+
 			return;
 		}
 
-		int endLine = DetailASTUtil.getEndLine(nextExpressionAST);
+		int endLineNumber = DetailASTUtil.getEndLineNumber(
+			nextExpressionDetailAST);
 
 		while (true) {
-			nextExpressionAST = nextExpressionAST.getNextSibling();
+			nextExpressionDetailAST = nextExpressionDetailAST.getNextSibling();
 
-			nextExpressionAST = nextExpressionAST.getNextSibling();
+			nextExpressionDetailAST = nextExpressionDetailAST.getNextSibling();
 
-			if ((nextExpressionAST != null) &&
-				(nextExpressionAST.getType() == TokenTypes.RCURLY)) {
+			if ((nextExpressionDetailAST != null) &&
+				(nextExpressionDetailAST.getType() == TokenTypes.RCURLY)) {
 
 				return;
 			}
 
 			if (!_isExpressionAssignsParameter(
-					nextExpressionAST, parameterNames)) {
+					nextExpressionDetailAST, parameterNames)) {
 
-				int startLine = DetailASTUtil.getStartLine(nextExpressionAST);
+				int startLineNumber = DetailASTUtil.getStartLineNumber(
+					nextExpressionDetailAST);
 
-				if ((endLine + 1) != startLine) {
+				if ((endLineNumber + 1) != startLineNumber) {
 					return;
 				}
 
-				log(startLine, _MSG_MISSING_EMPTY_LINE, startLine);
+				log(startLineNumber, _MSG_MISSING_EMPTY_LINE, startLineNumber);
 
 				return;
 			}
 
-			endLine = DetailASTUtil.getEndLine(nextExpressionAST);
+			endLineNumber = DetailASTUtil.getEndLineNumber(
+				nextExpressionDetailAST);
 		}
 	}
 
 	private boolean _isExpressionAssignsParameter(
-		DetailAST expressionAST, List<String> parameters) {
+		DetailAST expressionDetailAST, List<String> parameters) {
 
-		if ((expressionAST == null) ||
-			(expressionAST.getType() != TokenTypes.EXPR)) {
-
-			return false;
-		}
-
-		DetailAST childAST = expressionAST.getFirstChild();
-
-		if (childAST.getType() != TokenTypes.ASSIGN) {
-			return false;
-		}
-
-		if (childAST.getChildCount() != 2) {
-			return false;
-		}
-
-		DetailAST firstChildAST = childAST.getFirstChild();
-		DetailAST lastChildAST = childAST.getLastChild();
-
-		if ((firstChildAST.getType() != TokenTypes.IDENT) ||
-			(lastChildAST.getType() != TokenTypes.IDENT)) {
+		if ((expressionDetailAST == null) ||
+			(expressionDetailAST.getType() != TokenTypes.EXPR)) {
 
 			return false;
 		}
 
-		if (!parameters.contains(lastChildAST.getText())) {
+		DetailAST childDetailAST = expressionDetailAST.getFirstChild();
+
+		if (childDetailAST.getType() != TokenTypes.ASSIGN) {
 			return false;
 		}
 
-		DetailAST nextSiblingAST = expressionAST.getNextSibling();
+		if (childDetailAST.getChildCount() != 2) {
+			return false;
+		}
 
-		if (nextSiblingAST.getType() != TokenTypes.SEMI) {
+		DetailAST firstChildDetailAST = childDetailAST.getFirstChild();
+
+		if (firstChildDetailAST.getType() != TokenTypes.IDENT) {
+			if (firstChildDetailAST.getChildCount() != 2) {
+				return false;
+			}
+
+			DetailAST detailAST1 = firstChildDetailAST.getFirstChild();
+			DetailAST detailAST2 = firstChildDetailAST.getLastChild();
+
+			if ((detailAST1.getType() != TokenTypes.LITERAL_THIS) ||
+				(detailAST2.getType() != TokenTypes.IDENT)) {
+
+				return false;
+			}
+		}
+
+		DetailAST lastChildDetailAST = childDetailAST.getLastChild();
+
+		if (lastChildDetailAST.getType() == TokenTypes.IDENT) {
+			String text = lastChildDetailAST.getText();
+
+			if (!parameters.contains(text) && !text.matches("^[A-Z0-9_]+$")) {
+				return false;
+			}
+		}
+
+		DetailAST nextSiblingDetailAST = expressionDetailAST.getNextSibling();
+
+		if (nextSiblingDetailAST.getType() != TokenTypes.SEMI) {
 			return false;
 		}
 

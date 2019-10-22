@@ -14,8 +14,6 @@
 
 package com.liferay.portal.kernel.notifications;
 
-import aQute.bnd.annotation.ProviderType;
-
 import com.liferay.asset.kernel.AssetRendererFactoryRegistryUtil;
 import com.liferay.asset.kernel.model.AssetRenderer;
 import com.liferay.asset.kernel.model.AssetRendererFactory;
@@ -31,6 +29,8 @@ import com.liferay.portal.kernel.util.HttpUtil;
 import com.liferay.portal.kernel.util.PortalUtil;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
+
+import org.osgi.annotation.versioning.ProviderType;
 
 /**
  * @author Brian Wing Shun Chan
@@ -124,11 +124,14 @@ public abstract class BaseModelUserNotificationHandler
 
 		String entryURL = jsonObject.getString("entryURL");
 
+		if (Validator.isNull(entryURL)) {
+			return StringPool.BLANK;
+		}
+
 		String entryURLDomain = HttpUtil.getDomain(entryURL);
 
-		String portalURL = serviceContext.getPortalURL();
-
-		String portalURLDomain = HttpUtil.getDomain(portalURL);
+		String portalURLDomain = HttpUtil.getDomain(
+			serviceContext.getPortalURL());
 
 		if (!entryURLDomain.equals(portalURLDomain)) {
 			entryURL = StringUtil.replaceFirst(

@@ -14,9 +14,8 @@
 
 package com.liferay.portal.bean;
 
-import com.liferay.petra.memory.FinalizeManager;
 import com.liferay.petra.process.ClassPathUtil;
-import com.liferay.petra.string.StringPool;
+import com.liferay.portal.kernel.test.FinalizeManagerUtil;
 import com.liferay.portal.kernel.test.GCUtil;
 import com.liferay.portal.kernel.test.ReflectionTestUtil;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
@@ -327,9 +326,6 @@ public class ConstantsBeanFactoryImplTest {
 
 	@Test
 	public void testToConstantsBean() throws Exception {
-		System.setProperty(
-			FinalizeManager.class.getName() + ".thread.enabled",
-			StringPool.FALSE);
 
 		// First create
 
@@ -349,10 +345,10 @@ public class ConstantsBeanFactoryImplTest {
 		Class<?> constantsClass1 = classLoader1.loadClass(
 			Constants.class.getName());
 
-		ConstantsBeanFactoryImpl constantsBeanImpl =
+		ConstantsBeanFactoryImpl constantsBeanFactoryImpl =
 			new ConstantsBeanFactoryImpl();
 
-		Object constantsBean1 = constantsBeanImpl.getConstantsBean(
+		Object constantsBean1 = constantsBeanFactoryImpl.getConstantsBean(
 			constantsClass1);
 
 		Class<?> constantsBeanClass1 = constantsBean1.getClass();
@@ -369,7 +365,7 @@ public class ConstantsBeanFactoryImplTest {
 
 		Assert.assertSame(
 			constantsBean1,
-			constantsBeanImpl.getConstantsBean(constantsClass1));
+			constantsBeanFactoryImpl.getConstantsBean(constantsClass1));
 		Assert.assertEquals(
 			constantsBeans.toString(), 1, constantsBeans.size());
 
@@ -380,7 +376,7 @@ public class ConstantsBeanFactoryImplTest {
 		Class<?> constantsClass2 = classLoader2.loadClass(
 			Constants.class.getName());
 
-		Object constantsBean2 = constantsBeanImpl.getConstantsBean(
+		Object constantsBean2 = constantsBeanFactoryImpl.getConstantsBean(
 			constantsClass2);
 
 		Assert.assertNotSame(constantsBean1, constantsBean2);
@@ -393,7 +389,7 @@ public class ConstantsBeanFactoryImplTest {
 
 		Assert.assertSame(
 			constantsBean2,
-			constantsBeanImpl.getConstantsBean(constantsClass2));
+			constantsBeanFactoryImpl.getConstantsBean(constantsClass2));
 		Assert.assertEquals(
 			constantsBeans.toString(), 2, constantsBeans.size());
 
@@ -406,12 +402,11 @@ public class ConstantsBeanFactoryImplTest {
 
 		GCUtil.gc(true);
 
-		ReflectionTestUtil.invoke(
-			FinalizeManager.class, "_pollingCleanup", new Class<?>[0]);
+		FinalizeManagerUtil.drainPendingFinalizeActions();
 
 		Assert.assertSame(
 			constantsBean2,
-			constantsBeanImpl.getConstantsBean(constantsClass2));
+			constantsBeanFactoryImpl.getConstantsBean(constantsClass2));
 		Assert.assertEquals(
 			constantsBeans.toString(), 1, constantsBeans.size());
 
@@ -421,8 +416,7 @@ public class ConstantsBeanFactoryImplTest {
 
 		GCUtil.gc(true);
 
-		ReflectionTestUtil.invoke(
-			FinalizeManager.class, "_pollingCleanup", new Class<?>[0]);
+		FinalizeManagerUtil.drainPendingFinalizeActions();
 
 		Assert.assertTrue(constantsBeans.toString(), constantsBeans.isEmpty());
 	}

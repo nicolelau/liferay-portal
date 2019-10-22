@@ -75,9 +75,11 @@ public class ClassLoaderTrackerTest {
 		String bundleSymbolicName = ClassLoaderTrackerTest.class.getName();
 		String bundleVersion = "1.0.0";
 
-		String contextName =
-			bundleSymbolicName.concat(StringPool.UNDERLINE).concat(
-				bundleVersion);
+		String contextName = bundleSymbolicName.concat(
+			StringPool.UNDERLINE
+		).concat(
+			bundleVersion
+		);
 
 		try {
 
@@ -113,6 +115,11 @@ public class ClassLoaderTrackerTest {
 
 			Assert.assertEquals(Bundle.STARTING, bundle.getState());
 
+			BundleWiring bundleWiring = bundle.adapt(BundleWiring.class);
+
+			Assert.assertSame(
+				bundleWiring.getClassLoader(), classLoaders.get(contextName));
+
 			// Test 4, load class cause lazy activation
 
 			Assert.assertNotSame(
@@ -120,8 +127,6 @@ public class ClassLoaderTrackerTest {
 				bundle.loadClass(ClassLoaderTrackerTest.class.getName()));
 
 			Assert.assertEquals(Bundle.ACTIVE, bundle.getState());
-
-			BundleWiring bundleWiring = bundle.adapt(BundleWiring.class);
 
 			Assert.assertSame(
 				bundleWiring.getClassLoader(), classLoaders.get(contextName));

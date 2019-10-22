@@ -20,6 +20,8 @@ import com.liferay.portal.kernel.io.unsync.UnsyncStringReader;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
 
+import java.io.IOException;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -33,7 +35,7 @@ public class JSPIndentationCheck extends BaseFileCheck {
 	@Override
 	protected String doProcess(
 			String fileName, String absolutePath, String content)
-		throws Exception {
+		throws IOException {
 
 		if (!fileName.endsWith(".jsp") && !fileName.endsWith(".jspf") &&
 			!fileName.endsWith(".tag")) {
@@ -107,8 +109,8 @@ public class JSPIndentationCheck extends BaseFileCheck {
 		return level;
 	}
 
-	private String _fixTabs(String content, int lineCount, int diff) {
-		return _fixTabs(content, lineCount, lineCount, diff);
+	private String _fixTabs(String content, int lineNumber, int diff) {
+		return _fixTabs(content, lineNumber, lineNumber, diff);
 	}
 
 	private String _fixTabs(
@@ -171,10 +173,19 @@ public class JSPIndentationCheck extends BaseFileCheck {
 
 			if (tabs.length() != minimumTabCount) {
 				int diff = minimumTabCount - tabs.length();
-				int end = getLineCount(content, matcher.end(2));
-				int start = getLineCount(content, matcher.start(3));
+				int end = getLineNumber(content, matcher.end(2));
+				int start = getLineNumber(content, matcher.start(3));
 
 				return _fixTabs(content, start, end, diff);
+			}
+
+			String javaCloseTagTabs = matcher.group(4);
+
+			if (!tabs.equals(javaCloseTagTabs)) {
+				int diff = javaCloseTagTabs.length() - tabs.length();
+
+				return _fixTabs(
+					content, getLineNumber(content, matcher.end(4)), diff);
 			}
 		}
 
@@ -187,8 +198,8 @@ public class JSPIndentationCheck extends BaseFileCheck {
 
 			if ((tabs.length() + 1) != minimumTabCount) {
 				int diff = minimumTabCount - (tabs.length() + 1);
-				int end = getLineCount(content, matcher.end(2));
-				int start = getLineCount(content, matcher.start(3));
+				int end = getLineNumber(content, matcher.end(2));
+				int start = getLineNumber(content, matcher.start(3));
 
 				return _fixTabs(content, start, end, diff);
 			}
@@ -198,7 +209,7 @@ public class JSPIndentationCheck extends BaseFileCheck {
 	}
 
 	private String _formatTabs(String content, String originalContent)
-		throws Exception {
+		throws IOException {
 
 		List<JSPLine> jspLines = _getJSPLines(content);
 
@@ -232,7 +243,7 @@ public class JSPIndentationCheck extends BaseFileCheck {
 
 					if (expectedTabCount != actualTabCount) {
 						return _fixTabs(
-							content, jspLine.getLineCount(),
+							content, jspLine.getLineNumber(),
 							actualTabCount - expectedTabCount);
 					}
 				}
@@ -266,16 +277,16 @@ public class JSPIndentationCheck extends BaseFileCheck {
 
 				if (actualOpenTagTabCount == actualCloseTagTabCount) {
 					return _fixTabs(
-						content, jspLine.getLineCount(),
-						closeTagJSPLine.getLineCount(), diff);
+						content, jspLine.getLineNumber(),
+						closeTagJSPLine.getLineNumber(), diff);
 				}
 
-				return _fixTabs(content, jspLine.getLineCount(), diff);
+				return _fixTabs(content, jspLine.getLineNumber(), diff);
 			}
 
 			if (expectedTabCount != actualCloseTagTabCount) {
 				return _fixTabs(
-					content, closeTagJSPLine.getLineCount(),
+					content, closeTagJSPLine.getLineNumber(),
 					actualCloseTagTabCount - expectedTabCount);
 			}
 
@@ -348,7 +359,7 @@ public class JSPIndentationCheck extends BaseFileCheck {
 		}
 	}
 
-	private List<JSPLine> _getJSPLines(String content) throws Exception {
+	private List<JSPLine> _getJSPLines(String content) throws IOException {
 		List<JSPLine> jspLines = new ArrayList<>();
 
 		try (UnsyncBufferedReader unsyncBufferedReader =
@@ -356,7 +367,7 @@ public class JSPIndentationCheck extends BaseFileCheck {
 
 			String line = null;
 
-			int lineCount = 0;
+			int lineNumber = 0;
 
 			int tabLevel = 0;
 
@@ -366,13 +377,19 @@ public class JSPIndentationCheck extends BaseFileCheck {
 			boolean insideUnformattedTextTag = false;
 
 			while ((line = unsyncBufferedReader.readLine()) != null) {
-				lineCount++;
+				lineNumber++;
 
 				if (Validator.isNull(line)) {
 					continue;
 				}
 
 				String trimmedLine = StringUtil.trimLeading(line);
+
+				if (trimmedLine.matches(
+						"(<%@ )?(page import|tag import|taglib uri)=.*")) {
+
+					continue;
+				}
 
 				if (javaSource) {
 					if (trimmedLine.matches("%>[\"']?")) {
@@ -438,7 +455,7 @@ public class JSPIndentationCheck extends BaseFileCheck {
 					}
 
 					JSPLine jspLine = new JSPLine(
-						line, lineCount, tabLevel, lineTabLevel, javaSource);
+						line, lineNumber, tabLevel, lineTabLevel, javaSource);
 
 					jspLines.add(jspLine);
 				}
@@ -520,20 +537,20 @@ public class JSPIndentationCheck extends BaseFileCheck {
 		}
 	}
 
-	private final Pattern _javaSourcePattern1 = Pattern.compile(
-		"\n(\t*)(<%\n(\t*[^\t%].*?))\n\t*%>\n", Pattern.DOTALL);
-	private final Pattern _javaSourcePattern2 = Pattern.compile(
+	private static final Pattern _javaSourcePattern1 = Pattern.compile(
+		"\n(\t*)(<%\n(\t*[^\t%].*?))\n(\t*)%>\n", Pattern.DOTALL);
+	private static final Pattern _javaSourcePattern2 = Pattern.compile(
 		"\n(\t*)([^\t\n]+[\"']<%=\n(\t*[^\t%].*?))\n\t*%>[\"']\n",
 		Pattern.DOTALL);
 
 	private class JSPLine {
 
 		public JSPLine(
-			String line, int lineCount, int tabLevel, int lineTabLevel,
+			String line, int lineNumber, int tabLevel, int lineTabLevel,
 			boolean javaSource) {
 
 			_line = line;
-			_lineCount = lineCount;
+			_lineNumber = lineNumber;
 			_tabLevel = tabLevel;
 			_lineTabLevel = lineTabLevel;
 			_javaSource = javaSource;
@@ -547,8 +564,8 @@ public class JSPIndentationCheck extends BaseFileCheck {
 			return _line;
 		}
 
-		public int getLineCount() {
-			return _lineCount;
+		public int getLineNumber() {
+			return _lineNumber;
 		}
 
 		public int getLineTabLevel() {
@@ -596,7 +613,9 @@ public class JSPIndentationCheck extends BaseFileCheck {
 		}
 
 		public boolean isOpenTag() {
-			if (!_javaSource && (_lineTabLevel == 1)) {
+			if (!_javaSource && (_lineTabLevel == 1) &&
+				_line.matches("^\\s*<.*")) {
+
 				return true;
 			}
 
@@ -612,7 +631,7 @@ public class JSPIndentationCheck extends BaseFileCheck {
 			"</([\\-:\\w]+?)>");
 		private final boolean _javaSource;
 		private final String _line;
-		private final int _lineCount;
+		private final int _lineNumber;
 		private int _lineTabLevel;
 		private final Pattern _openTagNamePattern = Pattern.compile(
 			"<([\\-:\\w]+?)([ >\n].*|$)");

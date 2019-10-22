@@ -26,12 +26,12 @@ import com.liferay.opensocial.service.OAuthConsumerLocalServiceUtil;
 import com.liferay.opensocial.service.OAuthTokenLocalServiceUtil;
 import com.liferay.opensocial.shindig.util.ShindigUtil;
 import com.liferay.opensocial.util.PortletPropsValues;
+import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.exception.SystemException;
 import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.service.UserLocalServiceUtil;
 import com.liferay.portal.kernel.util.GetterUtil;
-import com.liferay.portal.kernel.util.StringBundler;
 
 import net.oauth.OAuth;
 import net.oauth.OAuthServiceProvider;
@@ -109,11 +109,9 @@ public class LiferayOAuthStore implements OAuthStore {
 			return null;
 		}
 
-		TokenInfo tokenInfo = new TokenInfo(
+		return new TokenInfo(
 			oAuthToken.getAccessToken(), oAuthToken.getTokenSecret(),
 			oAuthToken.getSessionHandle(), oAuthToken.getExpiration());
-
-		return tokenInfo;
 	}
 
 	public void removeToken(

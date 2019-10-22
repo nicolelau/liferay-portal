@@ -1,5 +1,5 @@
 compileJava {
-	deleteAllActions()
+	setActions([])
 
 	doLast {
 		ant.taskdef classpath: configurations.ajc.asPath, resource: "org/aspectj/tools/ant/taskdefs/aspectjTaskdefs.properties"
@@ -29,4 +29,5 @@ dependencies {
 	compileOnly group: "com.liferay.portal", name: "com.liferay.portal.impl", version: "default"
 	compileOnly group: "com.liferay.portal", name: "com.liferay.portal.kernel", version: "default"
 	compileOnly group: "org.hibernate", name: "hibernate-core", version: "3.6.10.Final"
+	compileOnly project(":core:petra:petra-lang")
 }

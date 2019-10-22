@@ -46,7 +46,9 @@ import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.PosixFilePermissions;
 
+import java.util.Arrays;
 import java.util.Date;
+import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -136,6 +138,54 @@ public class BundleSupportCommandsTest {
 	}
 
 	@Test
+	public void testCopyConfigs() throws Exception {
+		File liferayHomeDir = temporaryFolder.newFolder("bundles");
+
+		File configsDir = temporaryFolder.newFolder("configs");
+
+		File commonConfigsDir = _createDirectory(configsDir, "common");
+
+		_createFile(commonConfigsDir, "common-configs.properties");
+
+		File prodConfigsDir = _createDirectory(configsDir, "prod");
+
+		_createFile(prodConfigsDir, "prod-configs.properties");
+
+		File devOpsDir = temporaryFolder.newFolder("devops");
+
+		File commonDevOpsDir = _createDirectory(devOpsDir, "common");
+
+		_createFile(commonDevOpsDir, "common-devops.properties");
+
+		File prodDevOpsDir = _createDirectory(devOpsDir, "prod");
+
+		_createFile(prodDevOpsDir, "prod-devops.properties");
+
+		copyConfigs(
+			Arrays.asList(configsDir, devOpsDir), "prod", liferayHomeDir);
+
+		File deployedCommonConfigsFile = new File(
+			liferayHomeDir, "common-configs.properties");
+
+		Assert.assertTrue(deployedCommonConfigsFile.exists());
+
+		File deployedProdConfigsFile = new File(
+			liferayHomeDir, "prod-configs.properties");
+
+		Assert.assertTrue(deployedProdConfigsFile.exists());
+
+		File deployedCommonDevOpsFile = new File(
+			liferayHomeDir, "common-devops.properties");
+
+		Assert.assertTrue(deployedCommonDevOpsFile.exists());
+
+		File deployedProdDevOpsFile = new File(
+			liferayHomeDir, "prod-devops.properties");
+
+		Assert.assertTrue(deployedProdDevOpsFile.exists());
+	}
+
+	@Test
 	public void testCreateToken() throws Exception {
 		_testCreateToken(_CONTEXT_PATH_TOKEN);
 	}
@@ -197,6 +247,11 @@ public class BundleSupportCommandsTest {
 	}
 
 	@Test
+	public void testDistBundle7z() throws Exception {
+		_testDistBundle("7z");
+	}
+
+	@Test
 	public void testDistBundleTar() throws Exception {
 		_testDistBundle("tar.gz");
 	}
@@ -204,6 +259,13 @@ public class BundleSupportCommandsTest {
 	@Test
 	public void testDistBundleZip() throws Exception {
 		_testDistBundle("zip");
+	}
+
+	@Test
+	public void testInitBundle7z() throws Exception {
+		_testInitBundle(
+			_getHttpServerUrl(_CONTEXT_PATH_7Z), _HTTP_SERVER_PASSWORD,
+			_HTTP_SERVER_USER_NAME);
 	}
 
 	@Test
@@ -241,7 +303,7 @@ public class BundleSupportCommandsTest {
 	}
 
 	@Test
-	public void testInitBundleTarProxyNonProxyHosts() throws Exception {
+	public void testInitBundleTarProxyNonproxyHosts() throws Exception {
 		_testInitBundleTar(
 			"localhost", _HTTP_PROXY_SERVER_PORT, null, null,
 			"localhost2.localdomain", _httpProxyHit, Boolean.TRUE);
@@ -265,19 +327,23 @@ public class BundleSupportCommandsTest {
 
 	@Test
 	public void testInitBundleZip() throws Exception {
-		_testInitBundleZip(null, _HTTP_SERVER_PASSWORD, _HTTP_SERVER_USER_NAME);
+		_testInitBundle(
+			_getHttpServerUrl(_CONTEXT_PATH_ZIP), _HTTP_SERVER_PASSWORD,
+			_HTTP_SERVER_USER_NAME);
 	}
 
 	@Test
 	public void testInitBundleZipFile() throws Exception {
-		_testInitBundleZip(_bundleZipFile, null, null);
+		URI uri = _bundleZipFile.toURI();
+
+		_testInitBundle(uri.toURL(), null, null);
 	}
 
 	@Test
 	public void testInitBundleZipUnauthorized() throws Exception {
 		expectedException.expectMessage("Unauthorized");
 
-		_testInitBundleZip(null, null, null);
+		_testInitBundle(_getHttpServerUrl(_CONTEXT_PATH_ZIP), null, null);
 	}
 
 	@Rule
@@ -295,6 +361,19 @@ public class BundleSupportCommandsTest {
 		cleanCommand.setLiferayHomeDir(liferayHomeDir);
 
 		cleanCommand.execute();
+	}
+
+	protected void copyConfigs(
+			List<File> configsDirs, String environment, File liferayHomeDir)
+		throws Exception {
+
+		CopyConfigsCommand copyConfigsCommand = new CopyConfigsCommand();
+
+		copyConfigsCommand.setConfigsDirs(configsDirs);
+		copyConfigsCommand.setEnvironment(environment);
+		copyConfigsCommand.setLiferayHomeDir(liferayHomeDir);
+
+		copyConfigsCommand.execute();
 	}
 
 	protected void createToken(
@@ -558,24 +637,23 @@ public class BundleSupportCommandsTest {
 		HttpServer httpServer = HttpServer.create(
 			new InetSocketAddress(_HTTP_SERVER_PORT), 0);
 
-		Authenticator authenticator =
-			new BasicAuthenticator(_HTTP_SERVER_REALM) {
+		Authenticator authenticator = new BasicAuthenticator(
+			_HTTP_SERVER_REALM) {
 
-				@Override
-				public boolean checkCredentials(
-					String username, String password) {
+			@Override
+			public boolean checkCredentials(String username, String password) {
+				if (username.equals(_HTTP_SERVER_USER_NAME) &&
+					password.equals(_HTTP_SERVER_PASSWORD)) {
 
-					if (username.equals(_HTTP_SERVER_USER_NAME) &&
-						password.equals(_HTTP_SERVER_PASSWORD)) {
-
-						return true;
-					}
-
-					return false;
+					return true;
 				}
 
-			};
+				return false;
+			}
 
+		};
+		_createHttpContext(
+			httpServer, _CONTEXT_PATH_7Z, "application/x-7z-compressed", null);
 		_createHttpContext(
 			httpServer, _CONTEXT_PATH_TAR, "application/tar+gzip", null);
 		_createHttpContext(
@@ -594,29 +672,25 @@ public class BundleSupportCommandsTest {
 	}
 
 	private void _initBundle(
-			File configsDir, File file, File liferayHomeDir, String password,
-			String userName)
+			File configsDir, File liferayHomeDir, String password,
+			int stripComponent, URL url, String userName)
 		throws Exception {
 
 		File cacheDir = temporaryFolder.newFolder();
-		URI uri = file.toURI();
 
 		initBundle(
 			cacheDir, configsDir, _INIT_BUNDLE_ENVIRONMENT, liferayHomeDir,
-			password, _INIT_BUNDLE_STRIP_COMPONENTS, uri.toURL(), userName);
+			password, stripComponent, url, userName);
 	}
 
 	private void _initBundle(
-			File configsDir, String contextPath, File liferayHomeDir,
-			String password, String userName)
+			File configsDir, File liferayHomeDir, String password, URL url,
+			String userName)
 		throws Exception {
 
-		File cacheDir = temporaryFolder.newFolder();
-		URL url = _getHttpServerUrl(contextPath);
-
-		initBundle(
-			cacheDir, configsDir, _INIT_BUNDLE_ENVIRONMENT, liferayHomeDir,
-			password, _INIT_BUNDLE_STRIP_COMPONENTS, url, userName);
+		_initBundle(
+			configsDir, liferayHomeDir, password, _INIT_BUNDLE_STRIP_COMPONENTS,
+			url, userName);
 	}
 
 	private void _testCreateToken(String contextPath) throws Exception {
@@ -661,6 +735,43 @@ public class BundleSupportCommandsTest {
 		Assert.assertTrue(outputFile.exists());
 	}
 
+	private void _testInitBundle(URL url, String password, String userName)
+		throws Exception {
+
+		File liferayHomeDir = temporaryFolder.newFolder("bundles");
+
+		File configsDir = temporaryFolder.newFolder("configs");
+
+		File configsLocalDir = _createDirectory(
+			configsDir, _INIT_BUNDLE_ENVIRONMENT);
+
+		File localPropertiesFile = _createFile(
+			configsLocalDir, "portal-ext.properties");
+
+		File configsProdDir = _createDirectory(configsDir, "prod");
+
+		File prodPropertiesFile = _createFile(
+			configsProdDir, "portal-prod.properties");
+
+		_initBundle(configsDir, liferayHomeDir, password, url, userName);
+
+		_assertExists(liferayHomeDir, "README.markdown");
+		_assertExists(liferayHomeDir, "empty-folder");
+		_assertExists(liferayHomeDir, localPropertiesFile.getName());
+		_assertNotExists(liferayHomeDir, prodPropertiesFile.getName());
+		_assertPosixFilePermissions(
+			liferayHomeDir, "bin/hello.sh", _expectedPosixFilePermissions);
+
+		_initBundle(configsDir, liferayHomeDir, password, 1, url, userName);
+
+		_assertExists(liferayHomeDir, "README.markdown");
+		_assertExists(liferayHomeDir, localPropertiesFile.getName());
+		_assertNotExists(liferayHomeDir, "empty-folder");
+		_assertNotExists(liferayHomeDir, prodPropertiesFile.getName());
+		_assertPosixFilePermissions(
+			liferayHomeDir, "hello.sh", _expectedPosixFilePermissions);
+	}
+
 	private void _testInitBundleTar(
 			String proxyHost, Integer proxyPort, String proxyUser,
 			String proxyPassword, String nonProxyHosts, AtomicBoolean proxyHit,
@@ -685,7 +796,9 @@ public class BundleSupportCommandsTest {
 		try {
 			File liferayHomeDir = temporaryFolder.newFolder("bundles");
 
-			_initBundle(null, _CONTEXT_PATH_TAR, liferayHomeDir, null, null);
+			URL url = _getHttpServerUrl(_CONTEXT_PATH_TAR);
+
+			_initBundle(null, liferayHomeDir, null, url, null);
 
 			if (proxyHit != null) {
 				Assert.assertEquals(
@@ -707,41 +820,9 @@ public class BundleSupportCommandsTest {
 		}
 	}
 
-	private void _testInitBundleZip(File file, String password, String userName)
-		throws Exception {
-
-		File liferayHomeDir = temporaryFolder.newFolder("bundles");
-
-		File configsDir = temporaryFolder.newFolder("configs");
-
-		File configsLocalDir = _createDirectory(
-			configsDir, _INIT_BUNDLE_ENVIRONMENT);
-
-		File localPropertiesFile = _createFile(
-			configsLocalDir, "portal-ext.properties");
-
-		File configsProdDir = _createDirectory(configsDir, "prod");
-
-		File prodPropertiesFile = _createFile(
-			configsProdDir, "portal-prod.properties");
-
-		if (file != null) {
-			_initBundle(configsDir, file, liferayHomeDir, password, userName);
-		}
-		else {
-			_initBundle(
-				configsDir, _CONTEXT_PATH_ZIP, liferayHomeDir, password,
-				userName);
-		}
-
-		_assertExists(liferayHomeDir, "README.markdown");
-		_assertExists(liferayHomeDir, localPropertiesFile.getName());
-		_assertNotExists(liferayHomeDir, prodPropertiesFile.getName());
-		_assertPosixFilePermissions(
-			liferayHomeDir, "bin/hello.sh", _expectedPosixFilePermissions);
-	}
-
 	private static final int _AUTHENTICATED_HTTP_PROXY_SERVER_PORT;
+
+	private static final String _CONTEXT_PATH_7Z = "/test.7z";
 
 	private static final String _CONTEXT_PATH_TAR = "/test.tar.gz";
 

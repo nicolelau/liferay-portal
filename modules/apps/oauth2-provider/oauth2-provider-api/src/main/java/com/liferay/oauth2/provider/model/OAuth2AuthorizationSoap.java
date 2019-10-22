@@ -14,8 +14,6 @@
 
 package com.liferay.oauth2.provider.model;
 
-import aQute.bnd.annotation.ProviderType;
-
 import java.io.Serializable;
 
 import java.util.ArrayList;
@@ -26,12 +24,13 @@ import java.util.List;
  * This class is used by SOAP remote services, specifically {@link com.liferay.oauth2.provider.service.http.OAuth2AuthorizationServiceSoap}.
  *
  * @author Brian Wing Shun Chan
- * @see com.liferay.oauth2.provider.service.http.OAuth2AuthorizationServiceSoap
  * @generated
  */
-@ProviderType
 public class OAuth2AuthorizationSoap implements Serializable {
-	public static OAuth2AuthorizationSoap toSoapModel(OAuth2Authorization model) {
+
+	public static OAuth2AuthorizationSoap toSoapModel(
+		OAuth2Authorization model) {
+
 		OAuth2AuthorizationSoap soapModel = new OAuth2AuthorizationSoap();
 
 		soapModel.setOAuth2AuthorizationId(model.getOAuth2AuthorizationId());
@@ -40,21 +39,30 @@ public class OAuth2AuthorizationSoap implements Serializable {
 		soapModel.setUserName(model.getUserName());
 		soapModel.setCreateDate(model.getCreateDate());
 		soapModel.setOAuth2ApplicationId(model.getOAuth2ApplicationId());
-		soapModel.setOAuth2ApplicationScopeAliasesId(model.getOAuth2ApplicationScopeAliasesId());
+		soapModel.setOAuth2ApplicationScopeAliasesId(
+			model.getOAuth2ApplicationScopeAliasesId());
 		soapModel.setAccessTokenContent(model.getAccessTokenContent());
+		soapModel.setAccessTokenContentHash(model.getAccessTokenContentHash());
 		soapModel.setAccessTokenCreateDate(model.getAccessTokenCreateDate());
-		soapModel.setAccessTokenExpirationDate(model.getAccessTokenExpirationDate());
+		soapModel.setAccessTokenExpirationDate(
+			model.getAccessTokenExpirationDate());
+		soapModel.setRemoteHostInfo(model.getRemoteHostInfo());
 		soapModel.setRemoteIPInfo(model.getRemoteIPInfo());
 		soapModel.setRefreshTokenContent(model.getRefreshTokenContent());
+		soapModel.setRefreshTokenContentHash(
+			model.getRefreshTokenContentHash());
 		soapModel.setRefreshTokenCreateDate(model.getRefreshTokenCreateDate());
-		soapModel.setRefreshTokenExpirationDate(model.getRefreshTokenExpirationDate());
+		soapModel.setRefreshTokenExpirationDate(
+			model.getRefreshTokenExpirationDate());
 
 		return soapModel;
 	}
 
 	public static OAuth2AuthorizationSoap[] toSoapModels(
 		OAuth2Authorization[] models) {
-		OAuth2AuthorizationSoap[] soapModels = new OAuth2AuthorizationSoap[models.length];
+
+		OAuth2AuthorizationSoap[] soapModels =
+			new OAuth2AuthorizationSoap[models.length];
 
 		for (int i = 0; i < models.length; i++) {
 			soapModels[i] = toSoapModel(models[i]);
@@ -65,10 +73,12 @@ public class OAuth2AuthorizationSoap implements Serializable {
 
 	public static OAuth2AuthorizationSoap[][] toSoapModels(
 		OAuth2Authorization[][] models) {
+
 		OAuth2AuthorizationSoap[][] soapModels = null;
 
 		if (models.length > 0) {
-			soapModels = new OAuth2AuthorizationSoap[models.length][models[0].length];
+			soapModels =
+				new OAuth2AuthorizationSoap[models.length][models[0].length];
 		}
 		else {
 			soapModels = new OAuth2AuthorizationSoap[0][0];
@@ -83,13 +93,16 @@ public class OAuth2AuthorizationSoap implements Serializable {
 
 	public static OAuth2AuthorizationSoap[] toSoapModels(
 		List<OAuth2Authorization> models) {
-		List<OAuth2AuthorizationSoap> soapModels = new ArrayList<OAuth2AuthorizationSoap>(models.size());
+
+		List<OAuth2AuthorizationSoap> soapModels =
+			new ArrayList<OAuth2AuthorizationSoap>(models.size());
 
 		for (OAuth2Authorization model : models) {
 			soapModels.add(toSoapModel(model));
 		}
 
-		return soapModels.toArray(new OAuth2AuthorizationSoap[soapModels.size()]);
+		return soapModels.toArray(
+			new OAuth2AuthorizationSoap[soapModels.size()]);
 	}
 
 	public OAuth2AuthorizationSoap() {
@@ -157,6 +170,7 @@ public class OAuth2AuthorizationSoap implements Serializable {
 
 	public void setOAuth2ApplicationScopeAliasesId(
 		long oAuth2ApplicationScopeAliasesId) {
+
 		_oAuth2ApplicationScopeAliasesId = oAuth2ApplicationScopeAliasesId;
 	}
 
@@ -166,6 +180,14 @@ public class OAuth2AuthorizationSoap implements Serializable {
 
 	public void setAccessTokenContent(String accessTokenContent) {
 		_accessTokenContent = accessTokenContent;
+	}
+
+	public long getAccessTokenContentHash() {
+		return _accessTokenContentHash;
+	}
+
+	public void setAccessTokenContentHash(long accessTokenContentHash) {
+		_accessTokenContentHash = accessTokenContentHash;
 	}
 
 	public Date getAccessTokenCreateDate() {
@@ -184,6 +206,14 @@ public class OAuth2AuthorizationSoap implements Serializable {
 		_accessTokenExpirationDate = accessTokenExpirationDate;
 	}
 
+	public String getRemoteHostInfo() {
+		return _remoteHostInfo;
+	}
+
+	public void setRemoteHostInfo(String remoteHostInfo) {
+		_remoteHostInfo = remoteHostInfo;
+	}
+
 	public String getRemoteIPInfo() {
 		return _remoteIPInfo;
 	}
@@ -198,6 +228,14 @@ public class OAuth2AuthorizationSoap implements Serializable {
 
 	public void setRefreshTokenContent(String refreshTokenContent) {
 		_refreshTokenContent = refreshTokenContent;
+	}
+
+	public long getRefreshTokenContentHash() {
+		return _refreshTokenContentHash;
+	}
+
+	public void setRefreshTokenContentHash(long refreshTokenContentHash) {
+		_refreshTokenContentHash = refreshTokenContentHash;
 	}
 
 	public Date getRefreshTokenCreateDate() {
@@ -224,10 +262,14 @@ public class OAuth2AuthorizationSoap implements Serializable {
 	private long _oAuth2ApplicationId;
 	private long _oAuth2ApplicationScopeAliasesId;
 	private String _accessTokenContent;
+	private long _accessTokenContentHash;
 	private Date _accessTokenCreateDate;
 	private Date _accessTokenExpirationDate;
+	private String _remoteHostInfo;
 	private String _remoteIPInfo;
 	private String _refreshTokenContent;
+	private long _refreshTokenContentHash;
 	private Date _refreshTokenCreateDate;
 	private Date _refreshTokenExpirationDate;
+
 }

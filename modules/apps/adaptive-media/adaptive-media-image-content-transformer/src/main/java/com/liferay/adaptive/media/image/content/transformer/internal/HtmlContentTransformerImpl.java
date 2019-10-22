@@ -19,10 +19,10 @@ import com.liferay.adaptive.media.content.transformer.ContentTransformer;
 import com.liferay.adaptive.media.content.transformer.ContentTransformerContentType;
 import com.liferay.adaptive.media.content.transformer.constants.ContentTransformerContentTypes;
 import com.liferay.adaptive.media.image.html.AMImageHTMLTagFactory;
+import com.liferay.adaptive.media.image.html.constants.AMImageHTMLConstants;
 import com.liferay.document.library.kernel.service.DLAppLocalService;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.repository.model.FileEntry;
-import com.liferay.portal.kernel.util.StringUtil;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -53,9 +53,7 @@ public class HtmlContentTransformerImpl
 			return null;
 		}
 
-		String lowerCaseHtml = StringUtil.toLowerCase(html);
-
-		if (!lowerCaseHtml.contains("data-fileentryid")) {
+		if (!html.contains(AMImageHTMLConstants.ATTRIBUTE_NAME_FILE_ENTRY_ID)) {
 			return html;
 		}
 
@@ -81,23 +79,15 @@ public class HtmlContentTransformerImpl
 		return _amImageHTMLTagFactory.create(originalImgTag, fileEntry);
 	}
 
-	@Reference(unbind = "-")
-	protected void setAMImageHTMLTagFactory(
-		AMImageHTMLTagFactory amImageHTMLTagFactory) {
-
-		_amImageHTMLTagFactory = amImageHTMLTagFactory;
-	}
-
-	@Reference(unbind = "-")
-	protected void setDLAppLocalService(DLAppLocalService dlAppLocalService) {
-		_dlAppLocalService = dlAppLocalService;
-	}
-
 	private static final Pattern _pattern = Pattern.compile(
-		"<img [^>]*?\\s*data-fileEntryId=\"(\\d+)\".*?/>",
+		"<img [^>]*?\\s*" + AMImageHTMLConstants.ATTRIBUTE_NAME_FILE_ENTRY_ID +
+			"=\"(\\d+)\".*?/>",
 		Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
 
+	@Reference
 	private AMImageHTMLTagFactory _amImageHTMLTagFactory;
+
+	@Reference
 	private DLAppLocalService _dlAppLocalService;
 
 }

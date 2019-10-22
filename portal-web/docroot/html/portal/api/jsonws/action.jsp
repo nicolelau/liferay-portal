@@ -350,7 +350,7 @@ String signature = ParamUtil.getString(request, "signature");
 
 					<%
 					}
-					else if (methodParameterTypeClass.isArray() ||methodParameterTypeClass.isPrimitive() ||methodParameterTypeClass.equals(Byte.class) ||methodParameterTypeClass.equals(Character.class) ||methodParameterTypeClass.equals(Date.class) ||methodParameterTypeClass.equals(Double.class) ||methodParameterTypeClass.equals(Float.class) ||methodParameterTypeClass.equals(Integer.class) ||methodParameterTypeClass.equals(List.class) ||methodParameterTypeClass.equals(Long.class) ||methodParameterTypeClass.equals(Map.class) ||methodParameterTypeClass.equals(Short.class) ||methodParameterTypeClass.equals(String.class) ||methodParameterTypeClass.equals(Void.class)) {
+					else if (methodParameterTypeClass.isArray() || methodParameterTypeClass.isEnum() || methodParameterTypeClass.isPrimitive() || methodParameterTypeClass.equals(Byte.class) || methodParameterTypeClass.equals(Character.class) || methodParameterTypeClass.equals(Date.class) || methodParameterTypeClass.equals(Double.class) || methodParameterTypeClass.equals(Float.class) || methodParameterTypeClass.equals(Integer.class) || methodParameterTypeClass.equals(List.class) || methodParameterTypeClass.equals(Locale.class) || methodParameterTypeClass.equals(Long.class) || methodParameterTypeClass.equals(Map.class) || methodParameterTypeClass.equals(Short.class) || methodParameterTypeClass.equals(String.class) || methodParameterTypeClass.equals(Void.class)) {
 						int size = 10;
 
 						if (methodParameterTypeClass.equals(String.class)) {
@@ -358,7 +358,7 @@ String signature = ParamUtil.getString(request, "signature");
 						}
 					%>
 
-						<aui:input id='<%= "field" + i %>' label="<%= methodParameterName %>" name="<%= methodParameterName %>" size="<%= size %>" suffix="<%= methodParameterTypeClassName %>" />
+						<aui:input id='<%= "field" + i %>' label="<%= methodParameterName %>" name="<%= methodParameterName %>" rows="1" size="<%= size %>" suffix="<%= methodParameterTypeClassName %>" type="textarea" />
 
 					<%
 					}
@@ -400,7 +400,7 @@ String signature = ParamUtil.getString(request, "signature");
 			</aui:form>
 		</div>
 
-		<aui:script use="aui-io,aui-template-deprecated,querystring-parse">
+		<aui:script use="aui-io,aui-template-deprecated,io-form,querystring-parse">
 			var REGEX_QUERY_STRING = new RegExp('([^?=&]+)(?:=([^&]*))?', 'g');
 
 			var form = A.one('#execute');

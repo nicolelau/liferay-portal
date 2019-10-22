@@ -15,10 +15,10 @@
 package com.liferay.portal.kernel.portlet;
 
 import com.liferay.petra.string.CharPool;
+import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.ObjectValuePair;
-import com.liferay.portal.kernel.util.StringBundler;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
 
@@ -78,8 +78,8 @@ public class PortletIdCodec {
 			portletId.substring(x + _USER_SEPARATOR.length()));
 	}
 
-	public static ObjectValuePair<Long, String>
-		decodeUserIdAndInstanceId(String userIdAndInstanceId) {
+	public static ObjectValuePair<Long, String> decodeUserIdAndInstanceId(
+		String userIdAndInstanceId) {
 
 		if (userIdAndInstanceId == null) {
 			throw new InvalidParameterException(

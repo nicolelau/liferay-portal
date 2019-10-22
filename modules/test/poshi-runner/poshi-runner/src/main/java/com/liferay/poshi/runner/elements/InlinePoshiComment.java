@@ -14,6 +14,7 @@
 
 package com.liferay.poshi.runner.elements;
 
+import com.liferay.poshi.runner.script.PoshiScriptParserException;
 import com.liferay.poshi.runner.util.StringUtil;
 
 import org.dom4j.Comment;
@@ -25,21 +26,31 @@ public class InlinePoshiComment extends PoshiComment {
 
 	@Override
 	public PoshiComment clone(Comment comment) {
-		return new InlinePoshiComment(comment);
-	}
+		String commentText = comment.getText();
 
-	@Override
-	public PoshiComment clone(String readableSyntax) {
-		if (isReadableSyntaxComment(readableSyntax)) {
-			return new InlinePoshiComment(readableSyntax);
+		if (!commentText.contains("\n")) {
+			return new InlinePoshiComment(comment);
 		}
 
 		return null;
 	}
 
 	@Override
-	public boolean isReadableSyntaxComment(String readableSyntax) {
-		if (readableSyntax.startsWith("//")) {
+	public PoshiComment clone(String poshiScript)
+		throws PoshiScriptParserException {
+
+		if (isPoshiScriptComment(poshiScript)) {
+			return new InlinePoshiComment(poshiScript);
+		}
+
+		return null;
+	}
+
+	@Override
+	public boolean isPoshiScriptComment(String poshiScript) {
+		poshiScript = poshiScript.trim();
+
+		if (poshiScript.startsWith("//")) {
 			return true;
 		}
 
@@ -47,19 +58,21 @@ public class InlinePoshiComment extends PoshiComment {
 	}
 
 	@Override
-	public void parseReadableSyntax(String readableSyntax) {
-		if (isReadableSyntaxComment(readableSyntax)) {
-			String text = readableSyntax.substring(2);
+	public void parsePoshiScript(String poshiScript)
+		throws PoshiScriptParserException {
+
+		if (isPoshiScriptComment(poshiScript)) {
+			String text = poshiScript.substring(2);
 
 			setText(" " + text.trim() + " ");
 		}
 	}
 
 	@Override
-	public String toReadableSyntax() {
+	public String toPoshiScript() {
 		StringBuilder sb = new StringBuilder();
 
-		sb.append("\n\t//");
+		sb.append("\n\n\t//");
 		sb.append(StringUtil.trimTrailing(getText()));
 
 		return sb.toString();
@@ -72,8 +85,10 @@ public class InlinePoshiComment extends PoshiComment {
 		super(comment);
 	}
 
-	protected InlinePoshiComment(String readableSyntax) {
-		super(readableSyntax);
+	protected InlinePoshiComment(String poshiScript)
+		throws PoshiScriptParserException {
+
+		super(poshiScript);
 	}
 
 }

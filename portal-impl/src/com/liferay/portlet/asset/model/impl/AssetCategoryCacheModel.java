@@ -14,13 +14,11 @@
 
 package com.liferay.portlet.asset.model.impl;
 
-import aQute.bnd.annotation.ProviderType;
-
 import com.liferay.asset.kernel.model.AssetCategory;
-
+import com.liferay.petra.lang.HashUtil;
+import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.model.CacheModel;
-import com.liferay.portal.kernel.util.HashUtil;
-import com.liferay.portal.kernel.util.StringBundler;
+import com.liferay.portal.kernel.model.MVCCModel;
 
 import java.io.Externalizable;
 import java.io.IOException;
@@ -33,12 +31,11 @@ import java.util.Date;
  * The cache model class for representing AssetCategory in entity cache.
  *
  * @author Brian Wing Shun Chan
- * @see AssetCategory
  * @generated
  */
-@ProviderType
-public class AssetCategoryCacheModel implements CacheModel<AssetCategory>,
-	Externalizable {
+public class AssetCategoryCacheModel
+	implements CacheModel<AssetCategory>, Externalizable, MVCCModel {
+
 	@Override
 	public boolean equals(Object obj) {
 		if (this == obj) {
@@ -49,9 +46,12 @@ public class AssetCategoryCacheModel implements CacheModel<AssetCategory>,
 			return false;
 		}
 
-		AssetCategoryCacheModel assetCategoryCacheModel = (AssetCategoryCacheModel)obj;
+		AssetCategoryCacheModel assetCategoryCacheModel =
+			(AssetCategoryCacheModel)obj;
 
-		if (categoryId == assetCategoryCacheModel.categoryId) {
+		if ((categoryId == assetCategoryCacheModel.categoryId) &&
+			(mvccVersion == assetCategoryCacheModel.mvccVersion)) {
+
 			return true;
 		}
 
@@ -60,15 +60,31 @@ public class AssetCategoryCacheModel implements CacheModel<AssetCategory>,
 
 	@Override
 	public int hashCode() {
-		return HashUtil.hash(0, categoryId);
+		int hashCode = HashUtil.hash(0, categoryId);
+
+		return HashUtil.hash(hashCode, mvccVersion);
+	}
+
+	@Override
+	public long getMvccVersion() {
+		return mvccVersion;
+	}
+
+	@Override
+	public void setMvccVersion(long mvccVersion) {
+		this.mvccVersion = mvccVersion;
 	}
 
 	@Override
 	public String toString() {
-		StringBundler sb = new StringBundler(33);
+		StringBundler sb = new StringBundler(35);
 
-		sb.append("{uuid=");
+		sb.append("{mvccVersion=");
+		sb.append(mvccVersion);
+		sb.append(", uuid=");
 		sb.append(uuid);
+		sb.append(", externalReferenceCode=");
+		sb.append(externalReferenceCode);
 		sb.append(", categoryId=");
 		sb.append(categoryId);
 		sb.append(", groupId=");
@@ -85,10 +101,8 @@ public class AssetCategoryCacheModel implements CacheModel<AssetCategory>,
 		sb.append(modifiedDate);
 		sb.append(", parentCategoryId=");
 		sb.append(parentCategoryId);
-		sb.append(", leftCategoryId=");
-		sb.append(leftCategoryId);
-		sb.append(", rightCategoryId=");
-		sb.append(rightCategoryId);
+		sb.append(", treePath=");
+		sb.append(treePath);
 		sb.append(", name=");
 		sb.append(name);
 		sb.append(", title=");
@@ -108,11 +122,20 @@ public class AssetCategoryCacheModel implements CacheModel<AssetCategory>,
 	public AssetCategory toEntityModel() {
 		AssetCategoryImpl assetCategoryImpl = new AssetCategoryImpl();
 
+		assetCategoryImpl.setMvccVersion(mvccVersion);
+
 		if (uuid == null) {
 			assetCategoryImpl.setUuid("");
 		}
 		else {
 			assetCategoryImpl.setUuid(uuid);
+		}
+
+		if (externalReferenceCode == null) {
+			assetCategoryImpl.setExternalReferenceCode("");
+		}
+		else {
+			assetCategoryImpl.setExternalReferenceCode(externalReferenceCode);
 		}
 
 		assetCategoryImpl.setCategoryId(categoryId);
@@ -142,8 +165,13 @@ public class AssetCategoryCacheModel implements CacheModel<AssetCategory>,
 		}
 
 		assetCategoryImpl.setParentCategoryId(parentCategoryId);
-		assetCategoryImpl.setLeftCategoryId(leftCategoryId);
-		assetCategoryImpl.setRightCategoryId(rightCategoryId);
+
+		if (treePath == null) {
+			assetCategoryImpl.setTreePath("");
+		}
+		else {
+			assetCategoryImpl.setTreePath(treePath);
+		}
 
 		if (name == null) {
 			assetCategoryImpl.setName("");
@@ -182,7 +210,9 @@ public class AssetCategoryCacheModel implements CacheModel<AssetCategory>,
 
 	@Override
 	public void readExternal(ObjectInput objectInput) throws IOException {
+		mvccVersion = objectInput.readLong();
 		uuid = objectInput.readUTF();
+		externalReferenceCode = objectInput.readUTF();
 
 		categoryId = objectInput.readLong();
 
@@ -196,10 +226,7 @@ public class AssetCategoryCacheModel implements CacheModel<AssetCategory>,
 		modifiedDate = objectInput.readLong();
 
 		parentCategoryId = objectInput.readLong();
-
-		leftCategoryId = objectInput.readLong();
-
-		rightCategoryId = objectInput.readLong();
+		treePath = objectInput.readUTF();
 		name = objectInput.readUTF();
 		title = objectInput.readUTF();
 		description = objectInput.readUTF();
@@ -209,13 +236,21 @@ public class AssetCategoryCacheModel implements CacheModel<AssetCategory>,
 	}
 
 	@Override
-	public void writeExternal(ObjectOutput objectOutput)
-		throws IOException {
+	public void writeExternal(ObjectOutput objectOutput) throws IOException {
+		objectOutput.writeLong(mvccVersion);
+
 		if (uuid == null) {
 			objectOutput.writeUTF("");
 		}
 		else {
 			objectOutput.writeUTF(uuid);
+		}
+
+		if (externalReferenceCode == null) {
+			objectOutput.writeUTF("");
+		}
+		else {
+			objectOutput.writeUTF(externalReferenceCode);
 		}
 
 		objectOutput.writeLong(categoryId);
@@ -238,9 +273,12 @@ public class AssetCategoryCacheModel implements CacheModel<AssetCategory>,
 
 		objectOutput.writeLong(parentCategoryId);
 
-		objectOutput.writeLong(leftCategoryId);
-
-		objectOutput.writeLong(rightCategoryId);
+		if (treePath == null) {
+			objectOutput.writeUTF("");
+		}
+		else {
+			objectOutput.writeUTF(treePath);
+		}
 
 		if (name == null) {
 			objectOutput.writeUTF("");
@@ -267,7 +305,9 @@ public class AssetCategoryCacheModel implements CacheModel<AssetCategory>,
 		objectOutput.writeLong(lastPublishDate);
 	}
 
+	public long mvccVersion;
 	public String uuid;
+	public String externalReferenceCode;
 	public long categoryId;
 	public long groupId;
 	public long companyId;
@@ -276,11 +316,11 @@ public class AssetCategoryCacheModel implements CacheModel<AssetCategory>,
 	public long createDate;
 	public long modifiedDate;
 	public long parentCategoryId;
-	public long leftCategoryId;
-	public long rightCategoryId;
+	public String treePath;
 	public String name;
 	public String title;
 	public String description;
 	public long vocabularyId;
 	public long lastPublishDate;
+
 }

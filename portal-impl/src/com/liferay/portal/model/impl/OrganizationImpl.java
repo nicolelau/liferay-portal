@@ -63,7 +63,7 @@ public class OrganizationImpl extends OrganizationBaseImpl {
 			}
 		}
 
-		return parentTypes.toArray(new String[parentTypes.size()]);
+		return parentTypes.toArray(new String[0]);
 	}
 
 	public static boolean isParentable(String type) {
@@ -72,9 +72,8 @@ public class OrganizationImpl extends OrganizationBaseImpl {
 		if (childrenTypes.length > 0) {
 			return true;
 		}
-		else {
-			return false;
-		}
+
+		return false;
 	}
 
 	public static boolean isRootable(String type) {
@@ -238,12 +237,11 @@ public class OrganizationImpl extends OrganizationBaseImpl {
 			if (group == null) {
 				return 0;
 			}
-			else {
-				return group.getPrivateLayoutsPageCount();
-			}
+
+			return group.getPrivateLayoutsPageCount();
 		}
 		catch (Exception e) {
-			_log.error(e);
+			_log.error(e, e);
 		}
 
 		return 0;
@@ -257,12 +255,11 @@ public class OrganizationImpl extends OrganizationBaseImpl {
 			if (group == null) {
 				return 0;
 			}
-			else {
-				return group.getPublicLayoutsPageCount();
-			}
+
+			return group.getPublicLayoutsPageCount();
 		}
 		catch (Exception e) {
-			_log.error(e);
+			_log.error(e, e);
 		}
 
 		return 0;
@@ -275,11 +272,9 @@ public class OrganizationImpl extends OrganizationBaseImpl {
 
 	@Override
 	public Set<String> getReminderQueryQuestions(String languageId) {
-		PortletPreferences preferences = getPreferences();
-
 		String[] questions = StringUtil.splitLines(
 			LocalizationUtil.getPreferencesValue(
-				preferences, "reminderQueries", languageId, false));
+				getPreferences(), "reminderQueries", languageId, false));
 
 		return SetUtil.fromArray(questions);
 	}
@@ -316,9 +311,8 @@ public class OrganizationImpl extends OrganizationBaseImpl {
 		if (getPrivateLayoutsPageCount() > 0) {
 			return true;
 		}
-		else {
-			return false;
-		}
+
+		return false;
 	}
 
 	@Override
@@ -326,9 +320,8 @@ public class OrganizationImpl extends OrganizationBaseImpl {
 		if (getPublicLayoutsPageCount() > 0) {
 			return true;
 		}
-		else {
-			return false;
-		}
+
+		return false;
 	}
 
 	@Override
@@ -336,9 +329,8 @@ public class OrganizationImpl extends OrganizationBaseImpl {
 		if (getSuborganizationsSize() > 0) {
 			return true;
 		}
-		else {
-			return false;
-		}
+
+		return false;
 	}
 
 	@Override

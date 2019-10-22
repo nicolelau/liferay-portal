@@ -1,7 +1,8 @@
 package ${apiPackagePath}.service;
 
-import aQute.bnd.annotation.ProviderType;
+import ${serviceBuilder.getCompatJavaClassName("ProviderType")};
 
+import com.liferay.petra.function.UnsafeFunction;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.exception.SystemException;
 import com.liferay.portal.kernel.jsonwebservice.JSONWebService;
@@ -10,6 +11,9 @@ import com.liferay.portal.kernel.service.Base${sessionTypeName}Service;
 import com.liferay.portal.kernel.service.PermissionedModelLocalService;
 import com.liferay.portal.kernel.service.PersistedModelLocalService;
 import com.liferay.portal.kernel.service.PersistedResourcedModelLocalService;
+import com.liferay.portal.kernel.service.change.tracking.CTService;
+import com.liferay.portal.kernel.service.persistence.change.tracking.CTPersistence;
+import com.liferay.portal.kernel.service.version.VersionService;
 import com.liferay.portal.kernel.spring.osgi.OSGiBeanProperties;
 import com.liferay.portal.kernel.transaction.Isolation;
 import com.liferay.portal.kernel.transaction.Propagation;
@@ -18,6 +22,12 @@ import com.liferay.portal.kernel.transaction.Transactional;
 <#list imports as import>
 import ${import};
 </#list>
+
+<#if entity.versionEntity??>
+	<#assign versionEntity = entity.versionEntity />
+
+	import ${apiPackagePath}.model.${versionEntity.name};
+</#if>
 
 <#if stringUtil.equals(sessionTypeName, "Local")>
 /**
@@ -28,8 +38,6 @@ import ${import};
  *
  * @author ${author}
  * @see ${entity.name}LocalServiceUtil
- * @see ${packagePath}.service.base.${entity.name}LocalServiceBaseImpl
- * @see ${packagePath}.service.impl.${entity.name}LocalServiceImpl
 <#if classDeprecated>
  * @deprecated ${classDeprecatedComment}
 </#if>
@@ -43,8 +51,6 @@ import ${import};
  *
  * @author ${author}
  * @see ${entity.name}ServiceUtil
- * @see ${packagePath}.service.base.${entity.name}ServiceBaseImpl
- * @see ${packagePath}.service.impl.${entity.name}ServiceImpl
 <#if classDeprecated>
  * @deprecated ${classDeprecatedComment}
 </#if>
@@ -58,17 +64,31 @@ import ${import};
 
 <#if entity.hasRemoteService() && !stringUtil.equals(sessionTypeName, "Local")>
 	@AccessControlled
-	@JSONWebService
+
+	<#if entity.isJsonEnabled()>
+		@JSONWebService
+	</#if>
 </#if>
 
-<#if entity.hasRemoteService() && !stringUtil.equals(sessionTypeName, "Local") && osgiModule>
-	@OSGiBeanProperties(
-		property = {
-			"json.web.service.context.name=${portletShortName?lower_case}",
-			"json.web.service.context.path=${entity.name}"
-		},
-		service = ${entity.name}${sessionTypeName}Service.class
-	)
+<#if !dependencyInjectorDS>
+	<#if entity.hasRemoteService() && !stringUtil.equals(sessionTypeName, "Local") && osgiModule>
+		@OSGiBeanProperties(
+			property = {
+				"json.web.service.context.name=${portletShortName?lower_case}",
+				"json.web.service.context.path=${entity.name}"
+			},
+			service = ${entity.name}${sessionTypeName}Service.class
+		)
+	<#elseif stringUtil.equals(sessionTypeName, "Local") && entity.versionEntity??>
+		<#assign versionEntity = entity.versionEntity />
+
+		@OSGiBeanProperties(
+			property = {
+				"model.class.name=${apiPackagePath}.model.${entity.name}",
+				"version.model.class.name=${apiPackagePath}.model.${versionEntity.name}"
+			}
+		)
+	</#if>
 </#if>
 
 @ProviderType
@@ -78,12 +98,23 @@ public interface ${entity.name}${sessionTypeName}Service
 
 	<#assign overrideMethodNames = [] />
 
-	<#if stringUtil.equals(sessionTypeName, "Local") && entity.hasEntityColumns()>
+	<#if stringUtil.equals(sessionTypeName, "Local") && entity.hasEntityColumns() && entity.hasPersistence()>
+		<#if entity.isChangeTrackingEnabled()>
+			, CTService<${entity.name}>
+		</#if>
+
 		<#if entity.isPermissionedModel()>
 			, PermissionedModelLocalService
 		<#elseif entity.isResourcedModel()>
 			, PersistedModelLocalService
 			, PersistedResourcedModelLocalService
+		<#elseif entity.versionEntity??>
+			<#assign versionEntity = entity.versionEntity />
+
+			, PersistedModelLocalService
+			, VersionService<${entity.name}, ${versionEntity.name}>
+
+			<#assign overrideMethodNames = overrideMethodNames + ["checkout", "create", "delete", "deleteDraft", "deleteVersion", "fetchDraft", "fetchLatestVersion", "fetchPublished", "getDraft", "getVersion", "getVersions", "publishDraft", "registerListener", "unregisterListener", "updateDraft"] />
 		<#else>
 			, PersistedModelLocalService
 		</#if>
@@ -93,13 +124,13 @@ public interface ${entity.name}${sessionTypeName}Service
 
 	{
 
-	/*
+	/**
 	 * NOTE FOR DEVELOPERS:
 	 *
 <#if stringUtil.equals(sessionTypeName, "Local")>
-	 * Never modify or reference this interface directly. Always use {@link ${entity.name}LocalServiceUtil} to access the ${entity.humanName} local service. Add custom service methods to {@link ${packagePath}.service.impl.${entity.name}LocalServiceImpl} and rerun ServiceBuilder to automatically copy the method declarations to this interface.
+	 * Never modify or reference this interface directly. Always use {@link ${entity.name}LocalServiceUtil} to access the ${entity.humanName} local service. Add custom service methods to <code>${packagePath}.service.impl.${entity.name}LocalServiceImpl</code> and rerun ServiceBuilder to automatically copy the method declarations to this interface.
 <#else>
-	 * Never modify or reference this interface directly. Always use {@link ${entity.name}ServiceUtil} to access the ${entity.humanName} remote service. Add custom service methods to {@link ${packagePath}.service.impl.${entity.name}ServiceImpl} and rerun ServiceBuilder to automatically copy the method declarations to this interface.
+	 * Never modify or reference this interface directly. Always use {@link ${entity.name}ServiceUtil} to access the ${entity.humanName} remote service. Add custom service methods to <code>${packagePath}.service.impl.${entity.name}ServiceImpl</code> and rerun ServiceBuilder to automatically copy the method declarations to this interface.
 </#if>
 	 */
 
@@ -168,4 +199,17 @@ public interface ${entity.name}${sessionTypeName}Service
 		</#if>
 	</#list>
 
+	<#if stringUtil.equals(sessionTypeName, "Local") && entity.hasEntityColumns() && entity.hasPersistence() && entity.isChangeTrackingEnabled()>
+		@Transactional(enabled = false)
+		@Override
+		public CTPersistence<${entity.name}> getCTPersistence();
+
+		@Transactional(enabled = false)
+		@Override
+		public Class<${entity.name}> getModelClass();
+
+		@Transactional(rollbackFor = Throwable.class)
+		@Override
+		public <R, E extends Throwable> R updateWithUnsafeFunction(UnsafeFunction<CTPersistence<${entity.name}>, R, E> updateUnsafeFunction) throws E;
+	</#if>
 }

@@ -27,7 +27,7 @@
 					</execution>
 				</executions>
 				<configuration>
-					<docrootDirName>src/main/resources</docrootDirName>
+					<baseDir>src/main/resources</baseDir>
 				</configuration>
 			</plugin>
 			<plugin>
@@ -42,7 +42,7 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-jar-plugin</artifactId>
-				<version>2.6</version>
+				<version>3.1.2</version>
 				<configuration>
 					<archive>
 						<manifestFile>${project.build.outputDirectory}/META-INF/MANIFEST.MF</manifestFile>
@@ -52,7 +52,7 @@
 			<plugin>
 				<groupId>biz.aQute.bnd</groupId>
 				<artifactId>bnd-maven-plugin</artifactId>
-				<version>3.3.0</version>
+				<version>@biz.aQute.bnd.version@</version>
 				<executions>
 					<execution>
 						<goals>
@@ -64,7 +64,7 @@
 					<dependency>
 						<groupId>biz.aQute.bnd</groupId>
 						<artifactId>biz.aQute.bndlib</artifactId>
-						<version>3.2.0</version>
+						<version>@biz.aQute.bnd.version@</version>
 					</dependency>
 					<dependency>
 						<groupId>com.liferay</groupId>

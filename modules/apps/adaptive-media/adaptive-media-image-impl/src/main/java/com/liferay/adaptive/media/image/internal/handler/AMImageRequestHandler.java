@@ -62,11 +62,12 @@ public class AMImageRequestHandler
 
 	@Override
 	public Optional<AdaptiveMedia<AMImageProcessor>> handleRequest(
-			HttpServletRequest request)
+			HttpServletRequest httpServletRequest)
 		throws IOException, ServletException {
 
 		Optional<Tuple<FileVersion, AMImageAttributeMapping>>
-			interpretedPathOptional = _interpretPath(request.getPathInfo());
+			interpretedPathOptional = _interpretPath(
+				httpServletRequest.getPathInfo());
 
 		return interpretedPathOptional.flatMap(
 			tuple -> {
@@ -80,30 +81,6 @@ public class AMImageRequestHandler
 
 				return adaptiveMediaOptional;
 			});
-	}
-
-	@Reference(unbind = "-")
-	public void setAMAsyncProcessorLocator(
-		AMAsyncProcessorLocator amAsyncProcessorLocator) {
-
-		_amAsyncProcessorLocator = amAsyncProcessorLocator;
-	}
-
-	@Reference(unbind = "-")
-	public void setAMImageConfigurationHelper(
-		AMImageConfigurationHelper amImageConfigurationHelper) {
-
-		_amImageConfigurationHelper = amImageConfigurationHelper;
-	}
-
-	@Reference(unbind = "-")
-	public void setAMImageFinder(AMImageFinder amImageFinder) {
-		_amImageFinder = amImageFinder;
-	}
-
-	@Reference(unbind = "-")
-	public void setPathInterpreter(PathInterpreter pathInterpreter) {
-		_pathInterpreter = pathInterpreter;
 	}
 
 	private AdaptiveMedia<AMImageProcessor> _createRawAdaptiveMedia(
@@ -305,7 +282,7 @@ public class AMImageRequestHandler
 			return Optional.of(Tuple.of(fileVersion, amImageAttributeMapping));
 		}
 		catch (AMRuntimeException | NumberFormatException e) {
-			_log.error(e);
+			_log.error(e, e);
 
 			return Optional.empty();
 		}
@@ -347,9 +324,16 @@ public class AMImageRequestHandler
 	private static final Log _log = LogFactoryUtil.getLog(
 		AMImageRequestHandler.class);
 
+	@Reference
 	private AMAsyncProcessorLocator _amAsyncProcessorLocator;
+
+	@Reference
 	private AMImageConfigurationHelper _amImageConfigurationHelper;
+
+	@Reference
 	private AMImageFinder _amImageFinder;
+
+	@Reference
 	private PathInterpreter _pathInterpreter;
 
 }

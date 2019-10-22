@@ -15,6 +15,7 @@
 package com.liferay.portal.language;
 
 import com.liferay.petra.string.CharPool;
+import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.language.LanguageUtil;
 import com.liferay.portal.kernel.log.Log;
@@ -25,7 +26,6 @@ import com.liferay.portal.kernel.util.PropertiesUtil;
 import com.liferay.portal.kernel.util.ResourceBundleLoader;
 import com.liferay.portal.kernel.util.ResourceBundleLoaderUtil;
 import com.liferay.portal.kernel.util.ResourceBundleUtil;
-import com.liferay.portal.kernel.util.StringBundler;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.tools.LangBuilder;
@@ -65,7 +65,7 @@ public class LanguageResources {
 			}
 
 			/**
-			 * @deprecated As of 7.0.0, replaced by {@link #loadResourceBundle(
+			 * @deprecated As of Judson (7.1.x), replaced by {@link #loadResourceBundle(
 			 *             Locale)}
 			 */
 			@Deprecated
@@ -95,6 +95,7 @@ public class LanguageResources {
 
 		for (Map.Entry<Object, Object> entry : properties.entrySet()) {
 			String key = (String)entry.getKey();
+
 			String value = (String)entry.getValue();
 
 			value = fixValue(value);
@@ -119,9 +120,8 @@ public class LanguageResources {
 		if (value == null) {
 			return getMessage(getSuperLocale(locale), key);
 		}
-		else {
-			return value;
-		}
+
+		return value;
 	}
 
 	public static ResourceBundle getResourceBundle(Locale locale) {
@@ -170,7 +170,7 @@ public class LanguageResources {
 
 	public void setConfig(String config) {
 		_configNames = StringUtil.split(
-			config.replace(CharPool.PERIOD, CharPool.SLASH));
+			StringUtil.replace(config, CharPool.PERIOD, CharPool.SLASH));
 	}
 
 	private static Locale _getSuperLocale(Locale locale) {
@@ -260,8 +260,7 @@ public class LanguageResources {
 
 				if (_log.isInfoEnabled()) {
 					_log.info(
-						StringBundler.concat(
-							"Loading ", name, " from ", String.valueOf(url)));
+						StringBundler.concat("Loading ", name, " from ", url));
 				}
 
 				try (InputStream inputStream = url.openStream()) {
@@ -273,9 +272,8 @@ public class LanguageResources {
 					if (_log.isInfoEnabled()) {
 						_log.info(
 							StringBundler.concat(
-								"Loading ", String.valueOf(url), " with ",
-								String.valueOf(inputStreamProperties.size()),
-								" values"));
+								"Loading ", url, " with ",
+								inputStreamProperties.size(), " values"));
 					}
 				}
 			}

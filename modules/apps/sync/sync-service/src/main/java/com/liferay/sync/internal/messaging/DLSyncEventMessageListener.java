@@ -22,10 +22,8 @@ import com.liferay.document.library.kernel.service.DLFolderLocalService;
 import com.liferay.document.library.sync.model.DLSyncEvent;
 import com.liferay.document.library.sync.service.DLSyncEventLocalService;
 import com.liferay.portal.kernel.dao.orm.ActionableDynamicQuery;
-import com.liferay.portal.kernel.dao.orm.DynamicQuery;
 import com.liferay.portal.kernel.dao.orm.Property;
 import com.liferay.portal.kernel.dao.orm.PropertyFactoryUtil;
-import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.messaging.BaseMessageListener;
@@ -62,38 +60,25 @@ public class DLSyncEventMessageListener extends BaseMessageListener {
 			_dlSyncEventLocalService.getActionableDynamicQuery();
 
 		actionableDynamicQuery.setAddCriteriaMethod(
-			new ActionableDynamicQuery.AddCriteriaMethod() {
+			dynamicQuery -> {
+				Property modifiedTimeProperty = PropertyFactoryUtil.forName(
+					"modifiedTime");
 
-				@Override
-				public void addCriteria(DynamicQuery dynamicQuery) {
-					Property modifiedTimeProperty = PropertyFactoryUtil.forName(
-						"modifiedTime");
-
-					dynamicQuery.add(
-						modifiedTimeProperty.gt(
-							_syncDLObjectLocalService.getLatestModifiedTime()));
-				}
-
+				dynamicQuery.add(
+					modifiedTimeProperty.gt(
+						_syncDLObjectLocalService.getLatestModifiedTime()));
 			});
 
 		actionableDynamicQuery.setPerformActionMethod(
-			new ActionableDynamicQuery.PerformActionMethod<DLSyncEvent>() {
-
-				@Override
-				public void performAction(DLSyncEvent dlSyncEvent)
-					throws PortalException {
-
-					try {
-						processDLSyncEvent(
-							dlSyncEvent.getModifiedTime(),
-							dlSyncEvent.getEvent(), dlSyncEvent.getType(),
-							dlSyncEvent.getTypePK());
-					}
-					catch (Exception e) {
-						_log.error(e, e);
-					}
+			(DLSyncEvent dlSyncEvent) -> {
+				try {
+					processDLSyncEvent(
+						dlSyncEvent.getModifiedTime(), dlSyncEvent.getEvent(),
+						dlSyncEvent.getType(), dlSyncEvent.getTypePK(), false);
 				}
-
+				catch (Exception e) {
+					_log.error(e, e);
+				}
 			});
 
 		try {
@@ -112,7 +97,7 @@ public class DLSyncEventMessageListener extends BaseMessageListener {
 		long typePK = message.getLong("typePK");
 
 		try {
-			processDLSyncEvent(modifiedTime, event, type, typePK);
+			processDLSyncEvent(modifiedTime, event, type, typePK, true);
 		}
 		catch (Exception e) {
 			_log.error(e, e);
@@ -120,7 +105,8 @@ public class DLSyncEventMessageListener extends BaseMessageListener {
 	}
 
 	protected void processDLSyncEvent(
-			long modifiedTime, String event, String type, long typePK)
+			long modifiedTime, String event, String type, long typePK,
+			boolean calculateChecksum)
 		throws Exception {
 
 		SyncDLObject syncDLObject = null;
@@ -130,6 +116,7 @@ public class DLSyncEventMessageListener extends BaseMessageListener {
 
 			setUser(syncDLObject);
 
+			syncDLObject.setModifiedTime(System.currentTimeMillis());
 			syncDLObject.setEvent(event);
 			syncDLObject.setType(type);
 			syncDLObject.setTypePK(typePK);
@@ -148,16 +135,18 @@ public class DLSyncEventMessageListener extends BaseMessageListener {
 				return;
 			}
 
-			boolean calculateChecksum = false;
-
 			String checksum = _syncHelper.getChecksum(modifiedTime, typePK);
 
-			if ((checksum == null) && !dlFileEntry.isInTrash()) {
-				calculateChecksum = true;
+			if (calculateChecksum &&
+				((checksum != null) || dlFileEntry.isInTrash())) {
+
+				calculateChecksum = false;
 			}
 
 			syncDLObject = _syncHelper.toSyncDLObject(
 				dlFileEntry, event, calculateChecksum);
+
+			syncDLObject.setModifiedTime(modifiedTime);
 
 			if (checksum != null) {
 				syncDLObject.setChecksum(checksum);
@@ -180,9 +169,9 @@ public class DLSyncEventMessageListener extends BaseMessageListener {
 			}
 
 			syncDLObject = _syncHelper.toSyncDLObject(dlFolder, event);
-		}
 
-		syncDLObject.setModifiedTime(modifiedTime);
+			syncDLObject.setModifiedTime(modifiedTime);
+		}
 
 		_syncHelper.addSyncDLObject(syncDLObject, _syncDLObjectLocalService);
 	}

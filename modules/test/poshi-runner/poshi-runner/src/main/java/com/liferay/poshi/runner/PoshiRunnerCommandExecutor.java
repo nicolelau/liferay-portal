@@ -19,7 +19,7 @@ import com.liferay.poshi.runner.util.FileUtil;
 import java.io.FileInputStream;
 import java.io.InputStream;
 
-import java.util.Map.Entry;
+import java.util.Map;
 import java.util.Properties;
 
 import org.junit.runner.JUnitCore;
@@ -43,6 +43,11 @@ public class PoshiRunnerCommandExecutor {
 			populateSystemProperties();
 
 			evaluatePoshiConsole();
+		}
+		else if (command.equals("executePQLQuery")) {
+			populateSystemProperties();
+
+			executePQLQuery();
 		}
 		else if (command.equals("help")) {
 			commandHelp();
@@ -77,7 +82,9 @@ public class PoshiRunnerCommandExecutor {
 		sb.append("command options include:\n");
 		sb.append(
 			"\tevaluatePoshiConsole\tEvaluate the console output errors.\n");
-		sb.append("\trunPoshi\t\t\tExecute tests using Poshi Runner.\n");
+		sb.append(
+			"\texecutePQLQuery\t\tPrints test commands found by the query.\n");
+		sb.append("\trunPoshi\t\tExecute tests using Poshi Runner.\n");
 		sb.append("\tvalidatePoshi\t\tValidates the Poshi files syntax.\n");
 		sb.append(
 			"\twritePoshiProperties\tWrite the Poshi properties files.\n");
@@ -89,6 +96,12 @@ public class PoshiRunnerCommandExecutor {
 		System.out.println("Executing task: evaluatePoshiConsole");
 
 		PoshiRunnerConsoleEvaluator.main(null);
+	}
+
+	protected static void executePQLQuery() throws Exception {
+		System.out.println("Executing task: executePQLQuery");
+
+		PoshiRunnerContext.executePQLQuery();
 	}
 
 	protected static void populateSystemProperties() throws Exception {
@@ -115,7 +128,7 @@ public class PoshiRunnerCommandExecutor {
 	protected static void printSystemProperties() throws Exception {
 		Properties systemProperties = System.getProperties();
 
-		for (Entry<Object, Object> entry : systemProperties.entrySet()) {
+		for (Map.Entry<Object, Object> entry : systemProperties.entrySet()) {
 			System.out.println(entry);
 		}
 	}

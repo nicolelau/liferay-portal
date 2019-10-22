@@ -81,10 +81,10 @@ import java.util.Arrays;
  *
  * <p>
  * On object serialization, the Serializer uses the {@link ClassLoaderPool} to
- * look up the servlet context name corresponding to the object's ClassLoader.
- * The servlet context name is written to the serialization stream. On object
+ * look up the context name corresponding to the object's ClassLoader. The
+ * context name is written to the serialization stream. On object
  * deserialization, the {@link Deserializer} uses the ClassLoaderPool to look up
- * the ClassLoader corresponding to the servlet context name read from the
+ * the ClassLoader corresponding to the context name read from the
  * deserialization stream. ObjectOutputStream and ObjectInputStream lack these
  * features, making Serializer and Deserializer better choices for
  * ClassLoader-aware Object serialization/deserialization, especially when
@@ -190,9 +190,8 @@ public class Serializer {
 		else if (serializable instanceof Class) {
 			Class<?> clazz = (Class<?>)serializable;
 
-			ClassLoader classLoader = clazz.getClassLoader();
-
-			String contextName = ClassLoaderPool.getContextName(classLoader);
+			String contextName = ClassLoaderPool.getContextName(
+				clazz.getClassLoader());
 
 			writeByte(SerializationConstants.TC_CLASS);
 			writeString(contextName);
@@ -513,9 +512,7 @@ public class Serializer {
 
 		@Override
 		public void write(byte[] bytes, int offset, int length) {
-			byte[] buffer = getBuffer(length);
-
-			System.arraycopy(bytes, offset, buffer, index, length);
+			System.arraycopy(bytes, offset, getBuffer(length), index, length);
 
 			index += length;
 		}

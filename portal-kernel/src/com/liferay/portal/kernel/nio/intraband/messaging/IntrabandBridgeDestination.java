@@ -102,11 +102,8 @@ public class IntrabandBridgeDestination extends DestinationWrapper {
 				messageRoutingBag.appendRoutingId(routingId);
 
 				if (!messageRoutingBag.isRoutingDowncast()) {
-					RegistrationReference registrationReference =
-						spi.getRegistrationReference();
-
 					sendMessageRoutingBag(
-						registrationReference, messageRoutingBag);
+						spi.getRegistrationReference(), messageRoutingBag);
 				}
 			}
 			catch (Exception e) {
@@ -127,11 +124,8 @@ public class IntrabandBridgeDestination extends DestinationWrapper {
 					String routingId = toRoutingId(spi);
 
 					if (!messageRoutingBag.isVisited(routingId)) {
-						RegistrationReference registrationReference =
-							spi.getRegistrationReference();
-
 						sendMessageRoutingBag(
-							registrationReference, messageRoutingBag);
+							spi.getRegistrationReference(), messageRoutingBag);
 					}
 				}
 			}
@@ -178,9 +172,11 @@ public class IntrabandBridgeDestination extends DestinationWrapper {
 
 		SPIConfiguration spiConfiguration = spi.getSPIConfiguration();
 
-		String spiId = spiConfiguration.getSPIId();
-
-		return spiProviderName.concat(StringPool.POUND).concat(spiId);
+		return spiProviderName.concat(
+			StringPool.POUND
+		).concat(
+			spiConfiguration.getSPIId()
+		);
 	}
 
 }

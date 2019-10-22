@@ -14,7 +14,8 @@
 
 package com.liferay.portal.split.packages;
 
-import com.liferay.portal.kernel.util.StringBundler;
+import com.liferay.petra.string.StringBundler;
+import com.liferay.portal.kernel.util.StringUtil;
 
 import java.io.IOException;
 
@@ -122,25 +123,23 @@ public class SplitPackagesTest {
 			Path modulePath = entry.getKey();
 
 			if (!modulePackageNames.isEmpty() &&
-				modulePath.equals(Paths.get("portal-impl"))) {
+				modulePath.equals(Paths.get("portal-impl")) &&
+				Files.exists(dirPath.resolve(".lfrbuild-app-server-lib"))) {
 
-				if (Files.exists(dirPath.resolve(".lfrbuild-app-server-lib"))) {
-					Set<String> portalImplPackages = entry.getValue();
+				Set<String> portalImplPackages = entry.getValue();
 
-					portalImplPackages.addAll(packageNames);
+				portalImplPackages.addAll(packageNames);
 
-					addedToImpl = true;
+				addedToImpl = true;
 
-					modulePackageNames.clear();
-				}
+				modulePackageNames.clear();
 			}
 
 			Assert.assertTrue(
 				StringBundler.concat(
 					"Detected split packages in ",
-					String.valueOf(portalPath.relativize(dirPath)), " and ",
-					String.valueOf(modulePath), ": ",
-					String.valueOf(modulePackageNames)),
+					portalPath.relativize(dirPath), " and ", modulePath, ": ",
+					modulePackageNames),
 				modulePackageNames.isEmpty());
 		}
 
@@ -172,7 +171,8 @@ public class SplitPackagesTest {
 							String relativePathString = relativePath.toString();
 
 							packageNames.add(
-								relativePathString.replace('/', '.'));
+								StringUtil.replace(
+									relativePathString, '/', '.'));
 						}
 					}
 

@@ -25,8 +25,8 @@ import javax.servlet.http.HttpServletResponseWrapper;
  */
 public class ReadOnlyServletResponse extends HttpServletResponseWrapper {
 
-	public ReadOnlyServletResponse(HttpServletResponse response) {
-		super(response);
+	public ReadOnlyServletResponse(HttpServletResponse httpServletResponse) {
+		super(httpServletResponse);
 	}
 
 	@Override
@@ -109,7 +109,7 @@ public class ReadOnlyServletResponse extends HttpServletResponseWrapper {
 	}
 
 	/**
-	 * @deprecated As of 7.0.0
+	 * @deprecated As of Wilberforce (7.0.x)
 	 */
 	@Deprecated
 	@Override

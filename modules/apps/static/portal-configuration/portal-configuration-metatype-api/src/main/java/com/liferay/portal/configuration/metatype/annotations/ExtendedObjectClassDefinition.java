@@ -16,8 +16,8 @@ package com.liferay.portal.configuration.metatype.annotations;
 
 import aQute.bnd.annotation.xml.XMLAttribute;
 
+import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
-import com.liferay.portal.kernel.util.StringBundler;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -42,7 +42,13 @@ public @interface ExtendedObjectClassDefinition {
 
 	public String category() default "";
 
+	public String[] descriptionArguments() default {};
+
 	public String factoryInstanceLabelAttribute() default "";
+
+	public boolean generateUI() default true;
+
+	public String[] nameArguments() default {};
 
 	public Scope scope() default Scope.SYSTEM;
 
@@ -50,8 +56,9 @@ public @interface ExtendedObjectClassDefinition {
 
 	public enum Scope {
 
-		COMPANY("company"), GROUP("group"),
-		PORTLET_INSTANCE("portlet-instance"), SYSTEM("system");
+		COMPANY("companyId", "company"), GROUP("groupId", "group"),
+		PORTLET_INSTANCE("portletInstanceId", "portlet-instance"),
+		SYSTEM(null, "system");
 
 		public boolean equals(String value) {
 			return _value.equals(value);
@@ -59,6 +66,10 @@ public @interface ExtendedObjectClassDefinition {
 
 		public String getDelimiterString() {
 			return StringBundler.concat(_SEPARATOR, name(), _SEPARATOR);
+		}
+
+		public String getPropertyKey() {
+			return _propertyKey;
 		}
 
 		public String getValue() {
@@ -70,12 +81,14 @@ public @interface ExtendedObjectClassDefinition {
 			return _value;
 		}
 
-		private Scope(String value) {
+		private Scope(String propertyKey, String value) {
+			_propertyKey = propertyKey;
 			_value = value;
 		}
 
 		private static final String _SEPARATOR = StringPool.DOUBLE_UNDERLINE;
 
+		private final String _propertyKey;
 		private final String _value;
 
 	}

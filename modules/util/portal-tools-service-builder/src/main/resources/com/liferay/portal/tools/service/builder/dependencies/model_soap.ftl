@@ -4,8 +4,6 @@ package ${apiPackagePath}.model;
 	import ${apiPackagePath}.service.persistence.${entity.name}PK;
 </#if>
 
-import aQute.bnd.annotation.ProviderType;
-
 import java.io.Serializable;
 
 import java.math.BigDecimal;
@@ -21,9 +19,6 @@ import java.util.Map;
  * This class is used by SOAP remote services<#if entity.hasRemoteService()>, specifically {@link ${packagePath}.service.http.${entity.name}ServiceSoap}</#if>.
  *
  * @author ${author}
-<#if entity.hasRemoteService()>
- * @see ${packagePath}.service.http.${entity.name}ServiceSoap
-</#if>
 <#if classDeprecated>
  * @deprecated ${classDeprecatedComment}
 </#if>
@@ -33,15 +28,17 @@ import java.util.Map;
 <#if classDeprecated>
 	@Deprecated
 </#if>
-
-@ProviderType
 public class ${entity.name}Soap implements Serializable {
 
 	public static ${entity.name}Soap toSoapModel(${entity.name} model) {
 		${entity.name}Soap soapModel = new ${entity.name}Soap();
 
 		<#list entity.regularEntityColumns as entityColumn>
-			soapModel.set${entityColumn.methodName}(model.get${entityColumn.methodName}());
+			<#if stringUtil.equals(entityColumn.type, "boolean")>
+				soapModel.set${entityColumn.methodName}(model.is${entityColumn.methodName}());
+			<#else>
+				soapModel.set${entityColumn.methodName}(model.get${entityColumn.methodName}());
+			</#if>
 		</#list>
 
 		return soapModel;

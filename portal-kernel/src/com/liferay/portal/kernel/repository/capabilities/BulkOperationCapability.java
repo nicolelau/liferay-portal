@@ -19,9 +19,12 @@ import com.liferay.portal.kernel.repository.model.RepositoryModelOperation;
 
 import java.util.Date;
 
+import org.osgi.annotation.versioning.ProviderType;
+
 /**
  * @author Adolfo Pérez
  */
+@ProviderType
 public interface BulkOperationCapability extends Capability {
 
 	public void execute(
@@ -34,6 +37,9 @@ public interface BulkOperationCapability extends Capability {
 	public interface Field<T> {
 
 		public interface CreateDate extends Field<Date> {
+		}
+
+		public interface FolderId extends Field<Long> {
 		}
 
 	}

@@ -21,6 +21,7 @@ import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
 
+import org.talend.components.common.SchemaProperties;
 import org.talend.daikon.properties.presentation.Form;
 import org.talend.daikon.properties.presentation.Widget;
 
@@ -31,6 +32,8 @@ public class TLiferayInputPropertiesTest {
 
 	/**
 	 * Checks initial layout
+	 *
+	 * @review
 	 */
 	@Ignore
 	@Test
@@ -52,6 +55,8 @@ public class TLiferayInputPropertiesTest {
 
 	/**
 	 * Checks forms are filled with required widgets
+	 *
+	 * @review
 	 */
 	@Ignore
 	@Test
@@ -76,11 +81,15 @@ public class TLiferayInputPropertiesTest {
 
 	/**
 	 * Checks default values are set correctly
+	 *
+	 * @review
 	 */
 	@Test
 	public void testSetupProperties() {
 		TLiferayInputProperties tLiferayInputProperties =
 			new TLiferayInputProperties("root");
+
+		tLiferayInputProperties.setSchema(SchemaProperties.EMPTY_SCHEMA);
 
 		tLiferayInputProperties.setupProperties();
 	}

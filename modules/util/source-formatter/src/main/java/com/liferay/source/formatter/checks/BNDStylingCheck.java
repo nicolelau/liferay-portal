@@ -43,6 +43,10 @@ public class BNDStylingCheck extends BaseFileCheck {
 		content = _formatMultipleValuesOnSingleLine(content);
 		content = _formatSingleValueOnMultipleLines(content);
 
+		if (!absolutePath.endsWith("/app.bnd")) {
+			content = _removeNoValueDefinitionKey(content);
+		}
+
 		return content;
 	}
 
@@ -91,7 +95,9 @@ public class BNDStylingCheck extends BaseFileCheck {
 
 			String s = content.substring(x + 1, matcher.start());
 
-			if (s.contains("-Description: ")) {
+			if (s.contains("-Description:") ||
+				s.contains("Liferay-Versions:")) {
+
 				continue;
 			}
 
@@ -125,15 +131,27 @@ public class BNDStylingCheck extends BaseFileCheck {
 		return content;
 	}
 
-	private final Pattern _incorrectIndentPattern = Pattern.compile(
+	private String _removeNoValueDefinitionKey(String content) {
+		Matcher matcher = _noValueDefinitionKeyPattern.matcher(content);
+
+		if (matcher.find()) {
+			content = StringUtil.removeSubstring(content, matcher.group(2));
+		}
+
+		return content;
+	}
+
+	private static final Pattern _incorrectIndentPattern = Pattern.compile(
 		"\n[^\t].*:\\\\\n(\t{2,})[^\t]");
-	private final Pattern _incorrectLineBreakPattern = Pattern.compile(
+	private static final Pattern _incorrectLineBreakPattern = Pattern.compile(
 		"(\\A|[^\\\\]\n)(\t*)([-\\w]+:)\\s*(.*,\\\\(\n|\\Z))");
-	private final Pattern _multipleValuesOnSingleLinePattern = Pattern.compile(
-		",(?!\\\\(\n|\\Z)).");
-	private final Pattern _singleValueOnMultipleLinesPattern = Pattern.compile(
-		"\n.*:(\\\\\n\t).*(\n[^\t]|\\Z)");
-	private final Pattern _trailingSemiColonPattern = Pattern.compile(
+	private static final Pattern _multipleValuesOnSingleLinePattern =
+		Pattern.compile(",(?!\\\\(\n|\\Z)).");
+	private static final Pattern _noValueDefinitionKeyPattern = Pattern.compile(
+		"(\\A|\n)(.*:\\s*(\n|\\Z))");
+	private static final Pattern _singleValueOnMultipleLinesPattern =
+		Pattern.compile("\n.*:(\\\\\n\t).*(\n[^\t]|\\Z)");
+	private static final Pattern _trailingSemiColonPattern = Pattern.compile(
 		";(\n|\\Z)");
 
 }

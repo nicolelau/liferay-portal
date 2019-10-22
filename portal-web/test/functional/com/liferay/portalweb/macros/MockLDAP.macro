@@ -1,17 +1,19 @@
-<definition>
-	<command name="selectJsonFile">
-		<execute macro="Navigator#gotoNavTab">
-			<var name="navTab" value="${tabName}" />
-		</execute>
+definition {
 
-		<execute function="UploadCommonFile" locator1="MockLDAP#BROWSE_BUTTON" value1="${fileName}">
-			<var name="key_tab" value="${tabName}" />
-		</execute>
+	macro selectJsonFile {
+		Navigator.gotoNavTab(navTab = "${tabName}");
 
-		<execute function="AssertClick" locator1="Button#TAB_SUBMIT_BTN" value1="Add ${tabName}">
-			<var name="key_tab" value="${tabName}" />
-		</execute>
+		UploadCommonFile(
+			key_tab = "${tabName}",
+			locator1 = "MockLDAP#BROWSE_BUTTON",
+			value1 = "${fileName}");
 
-		<execute macro="Alert#viewSuccessMessage" />
-	</command>
-</definition>
+		AssertClick(
+			key_tab = "${tabName}",
+			locator1 = "Button#TAB_SUBMIT_BTN",
+			value1 = "Add ${tabName}");
+
+		Alert.viewSuccessMessage();
+	}
+
+}

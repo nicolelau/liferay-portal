@@ -25,21 +25,28 @@ import java.util.List;
  */
 public class MethodParameter {
 
-	public MethodParameter(String name, String signatures, Class<?> type) {
+	public MethodParameter(
+		ClassLoader classLoader, String name, String signatures,
+		Class<?> type) {
+
 		_name = name;
 		_type = type;
 
 		try {
-			Thread currentThread = Thread.currentThread();
-
-			ClassLoader contextClassLoader =
-				currentThread.getContextClassLoader();
-
-			_genericTypes = _getGenericTypes(contextClassLoader, signatures);
+			_genericTypes = _getGenericTypes(classLoader, signatures);
 		}
 		catch (ClassNotFoundException cnfe) {
 			throw new IllegalArgumentException(cnfe);
 		}
+	}
+
+	/**
+	 * @deprecated As of Judson (7.1.x), replaced by {@link
+	 *             #MethodParameter(ClassLoader, String, String, Class)}
+	 */
+	@Deprecated
+	public MethodParameter(String name, String signatures, Class<?> type) {
+		this(_getContextClassLoader(), name, signatures, type);
 	}
 
 	public Class<?>[] getGenericTypes() {
@@ -52,6 +59,12 @@ public class MethodParameter {
 
 	public Class<?> getType() {
 		return _type;
+	}
+
+	private static ClassLoader _getContextClassLoader() {
+		Thread currentThread = Thread.currentThread();
+
+		return currentThread.getContextClassLoader();
 	}
 
 	private String _getClassName(String signature) {
@@ -67,10 +80,12 @@ public class MethodParameter {
 		}
 		else if (c == 'L') {
 			className = className.substring(1, className.length() - 1);
-			className = className.replace(CharPool.SLASH, CharPool.PERIOD);
+			className = StringUtil.replace(
+				className, CharPool.SLASH, CharPool.PERIOD);
 		}
 		else if (c == '[') {
-			className = className.replace(CharPool.SLASH, CharPool.PERIOD);
+			className = StringUtil.replace(
+				className, CharPool.SLASH, CharPool.PERIOD);
 		}
 		else {
 			throw new IllegalArgumentException(
@@ -208,7 +223,7 @@ public class MethodParameter {
 			return null;
 		}
 
-		return genericTypeslist.toArray(new Class<?>[genericTypeslist.size()]);
+		return genericTypeslist.toArray(new Class<?>[0]);
 	}
 
 	private boolean _isPrimitive(char c) {
@@ -218,9 +233,8 @@ public class MethodParameter {
 
 			return true;
 		}
-		else {
-			return false;
-		}
+
+		return false;
 	}
 
 	private final Class<?>[] _genericTypes;

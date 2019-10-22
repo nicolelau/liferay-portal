@@ -27,7 +27,7 @@ import javax.servlet.http.HttpServletRequest;
 
 /**
  * @author     Jorge Ferrer
- * @deprecated As of 7.0.0, with no direct replacement
+ * @deprecated As of Judson (7.1.x), with no direct replacement
  */
 @Deprecated
 public class FacebookUtil {
@@ -36,8 +36,10 @@ public class FacebookUtil {
 
 	public static final String FACEBOOK_SERVLET_PATH = "/facebook/";
 
-	public static String[] getFacebookData(HttpServletRequest request) {
-		String path = GetterUtil.getString(request.getPathInfo());
+	public static String[] getFacebookData(
+		HttpServletRequest httpServletRequest) {
+
+		String path = GetterUtil.getString(httpServletRequest.getPathInfo());
 
 		if (Validator.isNull(path)) {
 			return null;
@@ -97,9 +99,8 @@ public class FacebookUtil {
 		if (path.startsWith(FACEBOOK_SERVLET_PATH)) {
 			return true;
 		}
-		else {
-			return false;
-		}
+
+		return false;
 	}
 
 	private static final Log _log = LogFactoryUtil.getLog(FacebookUtil.class);

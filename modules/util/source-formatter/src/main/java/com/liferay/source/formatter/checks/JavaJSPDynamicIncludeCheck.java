@@ -15,8 +15,8 @@
 package com.liferay.source.formatter.checks;
 
 import com.liferay.petra.string.CharPool;
+import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
-import com.liferay.portal.kernel.util.StringBundler;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.source.formatter.BNDSettings;
 import com.liferay.source.formatter.checks.util.BNDSourceUtil;
@@ -27,6 +27,7 @@ import com.liferay.source.formatter.parser.JavaTerm;
 import com.liferay.source.formatter.util.FileUtil;
 
 import java.io.File;
+import java.io.IOException;
 
 import java.util.List;
 import java.util.Objects;
@@ -39,7 +40,7 @@ import java.util.regex.Pattern;
 public class JavaJSPDynamicIncludeCheck extends BaseJavaTermCheck {
 
 	@Override
-	public boolean isPortalCheck() {
+	public boolean isLiferaySourceCheck() {
 		return true;
 	}
 
@@ -47,7 +48,7 @@ public class JavaJSPDynamicIncludeCheck extends BaseJavaTermCheck {
 	protected String doProcess(
 			String fileName, String absolutePath, JavaTerm javaTerm,
 			String fileContent)
-		throws Exception {
+		throws IOException {
 
 		String className = javaTerm.getName();
 
@@ -57,9 +58,11 @@ public class JavaJSPDynamicIncludeCheck extends BaseJavaTermCheck {
 
 		JavaClass javaClass = (JavaClass)javaTerm;
 
-		List<String> extendedClassNames = javaClass.getExtendedClassNames();
+		List<String> extendedClassNames = javaClass.getExtendedClassNames(true);
 
-		if (extendedClassNames.contains("BaseJSPDynamicInclude") &&
+		if (extendedClassNames.contains(
+				"com.liferay.portal.kernel.servlet.taglib." +
+					"BaseJSPDynamicInclude") &&
 			!className.endsWith("JSPDynamicInclude")) {
 
 			addMessage(
@@ -101,7 +104,7 @@ public class JavaJSPDynamicIncludeCheck extends BaseJavaTermCheck {
 		return new String[] {JAVA_CLASS};
 	}
 
-	private BNDSettings _getBNDSettings(String fileName) throws Exception {
+	private BNDSettings _getBNDSettings(String fileName) throws IOException {
 		String bndFileLocation = fileName;
 
 		while (true) {
@@ -125,7 +128,7 @@ public class JavaJSPDynamicIncludeCheck extends BaseJavaTermCheck {
 		}
 	}
 
-	private String _getBundleSymbolicName(String fileName) throws Exception {
+	private String _getBundleSymbolicName(String fileName) throws IOException {
 		BNDSettings bndSettings = _getBNDSettings(fileName);
 
 		if (bndSettings == null) {
@@ -152,9 +155,7 @@ public class JavaJSPDynamicIncludeCheck extends BaseJavaTermCheck {
 
 			JavaSignature javaSignature = javaMethod.getSignature();
 
-			String returnType = javaSignature.getReturnType();
-
-			if (!Objects.equals(returnType, "String")) {
+			if (!Objects.equals(javaSignature.getReturnType(), "String")) {
 				continue;
 			}
 
@@ -172,7 +173,7 @@ public class JavaJSPDynamicIncludeCheck extends BaseJavaTermCheck {
 		return null;
 	}
 
-	private final Pattern _jspPathPattern = Pattern.compile(
+	private static final Pattern _jspPathPattern = Pattern.compile(
 		".*\\s+return\\s+\"(\\S+)\";.*", Pattern.DOTALL);
 
 }

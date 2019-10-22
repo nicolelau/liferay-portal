@@ -14,13 +14,11 @@
 
 package com.liferay.portal.model.impl;
 
-import aQute.bnd.annotation.ProviderType;
-
+import com.liferay.petra.lang.HashUtil;
+import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.model.CacheModel;
 import com.liferay.portal.kernel.model.Contact;
 import com.liferay.portal.kernel.model.MVCCModel;
-import com.liferay.portal.kernel.util.HashUtil;
-import com.liferay.portal.kernel.util.StringBundler;
 
 import java.io.Externalizable;
 import java.io.IOException;
@@ -33,12 +31,11 @@ import java.util.Date;
  * The cache model class for representing Contact in entity cache.
  *
  * @author Brian Wing Shun Chan
- * @see Contact
  * @generated
  */
-@ProviderType
-public class ContactCacheModel implements CacheModel<Contact>, Externalizable,
-	MVCCModel {
+public class ContactCacheModel
+	implements CacheModel<Contact>, Externalizable, MVCCModel {
+
 	@Override
 	public boolean equals(Object obj) {
 		if (this == obj) {
@@ -52,7 +49,8 @@ public class ContactCacheModel implements CacheModel<Contact>, Externalizable,
 		ContactCacheModel contactCacheModel = (ContactCacheModel)obj;
 
 		if ((contactId == contactCacheModel.contactId) &&
-				(mvccVersion == contactCacheModel.mvccVersion)) {
+			(mvccVersion == contactCacheModel.mvccVersion)) {
+
 			return true;
 		}
 
@@ -336,8 +334,7 @@ public class ContactCacheModel implements CacheModel<Contact>, Externalizable,
 	}
 
 	@Override
-	public void writeExternal(ObjectOutput objectOutput)
-		throws IOException {
+	public void writeExternal(ObjectOutput objectOutput) throws IOException {
 		objectOutput.writeLong(mvccVersion);
 
 		objectOutput.writeLong(contactId);
@@ -499,4 +496,5 @@ public class ContactCacheModel implements CacheModel<Contact>, Externalizable,
 	public String jobTitle;
 	public String jobClass;
 	public String hoursOfOperation;
+
 }

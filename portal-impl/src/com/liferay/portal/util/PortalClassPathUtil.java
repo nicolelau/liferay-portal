@@ -16,18 +16,16 @@ package com.liferay.portal.util;
 
 import com.liferay.petra.lang.CentralizedThreadLocal;
 import com.liferay.petra.process.ProcessConfig;
-import com.liferay.petra.process.ProcessConfig.Builder;
-import com.liferay.petra.process.ProcessLog.Level;
+import com.liferay.petra.process.ProcessLog;
 import com.liferay.petra.string.CharPool;
+import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.util.ArrayUtil;
-import com.liferay.portal.kernel.util.ClassLoaderUtil;
 import com.liferay.portal.kernel.util.PortalClassLoaderUtil;
 import com.liferay.portal.kernel.util.ServerDetector;
-import com.liferay.portal.kernel.util.StringBundler;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.URLCodec;
 
@@ -53,31 +51,35 @@ import javax.servlet.ServletException;
 public class PortalClassPathUtil {
 
 	public static ProcessConfig createProcessConfig(Class<?>... classes) {
-		Builder builder = new Builder();
+		ProcessConfig.Builder builder = new ProcessConfig.Builder();
 
 		builder.setArguments(Arrays.asList("-Djava.awt.headless=true"));
 
 		String classpath = _buildClassPath(classes);
 
-		classpath = classpath.concat(File.pathSeparator).concat(
-			_portalProcessConfig.getBootstrapClassPath());
+		classpath = classpath.concat(
+			File.pathSeparator
+		).concat(
+			_portalProcessConfig.getBootstrapClassPath()
+		);
 
 		builder.setBootstrapClassPath(classpath);
+
 		builder.setProcessLogConsumer(
 			processLog -> {
-				if (Level.DEBUG == processLog.getLevel()) {
+				if (ProcessLog.Level.DEBUG == processLog.getLevel()) {
 					if (_log.isDebugEnabled()) {
 						_log.debug(
 							processLog.getMessage(), processLog.getThrowable());
 					}
 				}
-				else if (Level.INFO == processLog.getLevel()) {
+				else if (ProcessLog.Level.INFO == processLog.getLevel()) {
 					if (_log.isInfoEnabled()) {
 						_log.info(
 							processLog.getMessage(), processLog.getThrowable());
 					}
 				}
-				else if (Level.WARN == processLog.getLevel()) {
+				else if (ProcessLog.Level.WARN == processLog.getLevel()) {
 					if (_log.isWarnEnabled()) {
 						_log.warn(
 							processLog.getMessage(), processLog.getThrowable());
@@ -102,7 +104,9 @@ public class PortalClassPathUtil {
 		ClassLoader classLoader = PortalClassLoaderUtil.getClassLoader();
 
 		if (classLoader == null) {
-			classLoader = ClassLoaderUtil.getContextClassLoader();
+			Thread currentThread = Thread.currentThread();
+
+			classLoader = currentThread.getContextClassLoader();
 		}
 
 		StringBundler sb = new StringBundler(8);
@@ -125,7 +129,8 @@ public class PortalClassPathUtil {
 		sb.append(File.pathSeparator);
 		sb.append(
 			_buildClassPath(
-				classLoader, "com.liferay.portal.servlet.MainServlet"));
+				classLoader,
+				"com.liferay.portal.internal.servlet.MainServlet"));
 
 		if (servletContext != null) {
 			sb.append(File.pathSeparator);
@@ -135,7 +140,7 @@ public class PortalClassPathUtil {
 
 		String portalClassPath = sb.toString();
 
-		Builder builder = new Builder();
+		ProcessConfig.Builder builder = new ProcessConfig.Builder();
 
 		builder.setArguments(Arrays.asList("-Djava.awt.headless=true"));
 		builder.setBootstrapClassPath(globalClassPath);
@@ -163,19 +168,19 @@ public class PortalClassPathUtil {
 	}
 
 	private static String _buildClassPath(
-		ClassLoader classloader, String... classNames) {
+		ClassLoader classLoader, String... classNames) {
 
 		Set<File> fileSet = new HashSet<>();
 
 		for (String className : classNames) {
-			File[] files = _listClassPathFiles(classloader, className);
+			File[] files = _listClassPathFiles(classLoader, className);
 
 			if (files != null) {
 				Collections.addAll(fileSet, files);
 			}
 		}
 
-		File[] files = fileSet.toArray(new File[fileSet.size()]);
+		File[] files = fileSet.toArray(new File[0]);
 
 		Arrays.sort(files);
 
@@ -192,14 +197,14 @@ public class PortalClassPathUtil {
 	}
 
 	private static File[] _listClassPathFiles(
-		ClassLoader classloader, String className) {
+		ClassLoader classLoader, String className) {
 
 		String pathOfClass = StringUtil.replace(
 			className, CharPool.PERIOD, CharPool.SLASH);
 
 		pathOfClass = pathOfClass.concat(".class");
 
-		URL url = classloader.getResource(pathOfClass);
+		URL url = classLoader.getResource(pathOfClass);
 
 		if (_log.isDebugEnabled()) {
 			_log.debug("Build class path from " + url);

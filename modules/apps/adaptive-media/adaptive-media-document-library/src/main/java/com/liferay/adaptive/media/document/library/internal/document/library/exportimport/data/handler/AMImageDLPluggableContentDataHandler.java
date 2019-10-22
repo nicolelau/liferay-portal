@@ -27,12 +27,12 @@ import com.liferay.adaptive.media.image.service.AMImageEntryLocalService;
 import com.liferay.adaptive.media.image.util.AMImageSerializer;
 import com.liferay.document.library.exportimport.data.handler.DLPluggableContentDataHandler;
 import com.liferay.exportimport.kernel.lar.PortletDataContext;
+import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.repository.model.FileEntry;
 import com.liferay.portal.kernel.repository.model.FileVersion;
-import com.liferay.portal.kernel.util.StringBundler;
 import com.liferay.portal.kernel.xml.Element;
 
 import java.io.IOException;
@@ -116,12 +116,10 @@ public class AMImageDLPluggableContentDataHandler
 					fileVersion
 				).done());
 
-		List<AdaptiveMedia<AMImageProcessor>> adaptiveMediaList =
+		List<AdaptiveMedia<AMImageProcessor>> adaptiveMedias =
 			adaptiveMediaStream.collect(Collectors.toList());
 
-		for (AdaptiveMedia<AMImageProcessor> adaptiveMedia :
-				adaptiveMediaList) {
-
+		for (AdaptiveMedia<AMImageProcessor> adaptiveMedia : adaptiveMedias) {
 			_exportMedia(portletDataContext, fileEntry, adaptiveMedia);
 		}
 	}
@@ -145,6 +143,18 @@ public class AMImageDLPluggableContentDataHandler
 		if (!portletDataContext.isPerformDirectBinaryImport()) {
 			try (InputStream inputStream = adaptiveMedia.getInputStream()) {
 				portletDataContext.addZipEntry(basePath + ".bin", inputStream);
+			}
+			catch (Exception e) {
+				if (_log.isWarnEnabled()) {
+					_log.warn(
+						StringBundler.concat(
+							"Unable to find adaptive media for file entry ",
+							fileEntry.getFileEntryId(), " and configuration ",
+							configurationUuidOptional.get()),
+						e);
+				}
+
+				return;
 			}
 		}
 

@@ -14,7 +14,6 @@
 
 package com.liferay.jenkins.results.parser.failure.message.generator;
 
-import com.liferay.jenkins.results.parser.Build;
 import com.liferay.jenkins.results.parser.Dom4JUtil;
 
 import org.dom4j.Element;
@@ -26,9 +25,7 @@ public class LocalGitMirrorFailureMessageGenerator
 	extends BaseFailureMessageGenerator {
 
 	@Override
-	public Element getMessageElement(Build build) {
-		String consoleText = build.getConsoleText();
-
+	public Element getMessageElement(String consoleText) {
 		if (!consoleText.contains(_TOKEN_LOCAL_GIT_FAILURE_END) ||
 			!consoleText.contains(_TOKEN_LOCAL_GIT_FAILURE_START)) {
 
@@ -53,10 +50,8 @@ public class LocalGitMirrorFailureMessageGenerator
 		for (String string : new String[] {"error: ", "fatal: "}) {
 			int index = consoleText.indexOf(string);
 
-			if (index != -1) {
-				if (index < minIndex) {
-					minIndex = index;
-				}
+			if ((index != -1) && (index < minIndex)) {
+				minIndex = index;
 			}
 		}
 

@@ -33,7 +33,7 @@ import org.gradle.api.Project;
 public class LiferayRootDefaultsPlugin implements Plugin<Project> {
 
 	@Override
-	public void apply(Project project) {
+	public void apply(final Project project) {
 		if (FileUtil.exists(project, "app.bnd")) {
 			GradleUtil.applyPlugin(project, LiferayAppDefaultsPlugin.class);
 		}
@@ -53,6 +53,22 @@ public class LiferayRootDefaultsPlugin implements Plugin<Project> {
 				GradleUtil.applyPlugin(subproject, LiferayDefaultsPlugin.class);
 			}
 		}
+
+		if ((portalRootDir == null) && _hasYarnScriptFile(project)) {
+			GradleUtil.applyPlugin(project, LiferayYarnDefaultsPlugin.class);
+		}
+	}
+
+	private boolean _hasYarnScriptFile(Project project) {
+		File projectDir = project.getProjectDir();
+
+		File[] files = FileUtil.getFiles(projectDir, "yarn-", ".js");
+
+		if ((files != null) && (files.length > 0)) {
+			return true;
+		}
+
+		return false;
 	}
 
 }

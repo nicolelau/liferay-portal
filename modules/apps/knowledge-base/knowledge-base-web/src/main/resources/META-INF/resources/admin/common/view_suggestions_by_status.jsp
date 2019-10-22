@@ -19,6 +19,7 @@
 <%
 KBSuggestionListDisplayContext kbSuggestionListDisplayContext = (KBSuggestionListDisplayContext)request.getAttribute(KBWebKeys.KNOWLEDGE_BASE_KB_SUGGESTION_LIST_DISPLAY_CONTEXT);
 
+KBSuggestionListManagementToolbarDisplayContext kbSuggestionListManagementToolbarDisplayContext = (KBSuggestionListManagementToolbarDisplayContext)request.getAttribute("view_suggestions.jsp-kbSuggestionListManagementToolbarDisplayContext");
 SearchContainer kbCommentsSearchContainer = (SearchContainer)request.getAttribute("view_suggestions.jsp-searchContainer");
 
 KBCommentResultRowSplitter resultRowSplitter = (KBCommentResultRowSplitter)request.getAttribute("view_suggestions.jsp-resultRowSplitter");
@@ -38,6 +39,18 @@ KBCommentResultRowSplitter resultRowSplitter = (KBCommentResultRowSplitter)reque
 			keyProperty="kbCommentId"
 			modelVar="kbComment"
 		>
+			<c:if test="<%= kbSuggestionListManagementToolbarDisplayContext != null %>">
+
+				<%
+				Map<String, Object> rowData = new HashMap<String, Object>();
+
+				rowData.put("actions", StringUtil.merge(kbSuggestionListManagementToolbarDisplayContext.getAvailableActions(kbComment)));
+
+				row.setData(rowData);
+				%>
+
+			</c:if>
+
 			<liferay-ui:search-container-column-user
 				showDetails="<%= false %>"
 				userId="<%= kbComment.getUserId() %>"
@@ -53,11 +66,11 @@ KBCommentResultRowSplitter resultRowSplitter = (KBCommentResultRowSplitter)reque
 				String modifiedDateDescription = LanguageUtil.getTimeDescription(request, System.currentTimeMillis() - modifiedDate.getTime(), true);
 				%>
 
-				<h5 class="text-default">
+				<span class="text-default">
 					<liferay-ui:message arguments="<%= new String[] {HtmlUtil.escape(kbComment.getUserName()), modifiedDateDescription} %>" key="x-suggested-x-ago" />
-				</h5>
+				</span>
 
-				<h4>
+				<h2 class="h5">
 					<liferay-portlet:renderURL varImpl="rowURL">
 						<portlet:param name="mvcPath" value='<%= templatePath + "view_suggestion.jsp" %>' />
 						<portlet:param name="kbCommentId" value="<%= String.valueOf(kbComment.getKbCommentId()) %>" />
@@ -67,9 +80,9 @@ KBCommentResultRowSplitter resultRowSplitter = (KBCommentResultRowSplitter)reque
 					<aui:a href="<%= rowURL.toString() %>">
 						<%= StringUtil.shorten(HtmlUtil.escape(kbComment.getContent()), 100) %>
 					</aui:a>
-				</h4>
+				</h2>
 
-				<h5>
+				<span>
 					<span class="kb-comment-status text-default">
 						<liferay-ui:message key="<%= KBUtil.getStatusLabel(kbComment.getStatus()) %>" />
 					</span>
@@ -87,7 +100,7 @@ KBCommentResultRowSplitter resultRowSplitter = (KBCommentResultRowSplitter)reque
 					<c:if test="<%= kbSuggestionListDisplayContext.isShowKBArticleTitle() %>">
 						<a class="kb-article-link text-default" href="<%= viewKBArticleURL.toString() %>"><%= HtmlUtil.escape(kbArticle.getTitle()) %></a>
 					</c:if>
-				</h5>
+				</span>
 			</liferay-ui:search-container-column-text>
 
 			<liferay-ui:search-container-column-jsp

@@ -14,6 +14,7 @@
 
 package com.liferay.portal.kernel.portlet;
 
+import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.exception.NoSuchLayoutException;
 import com.liferay.portal.kernel.exception.PortalException;
@@ -31,7 +32,6 @@ import com.liferay.portal.kernel.service.permission.LayoutPermissionUtil;
 import com.liferay.portal.kernel.theme.ThemeDisplay;
 import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.ObjectValuePair;
-import com.liferay.portal.kernel.util.StringBundler;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.sites.kernel.util.SitesUtil;
 
@@ -88,10 +88,12 @@ public abstract class BasePortletLayoutFinder implements PortletLayoutFinder {
 		Object[] plidAndPortletId = fetchPlidAndPortletId(
 			themeDisplay.getPermissionChecker(), groupId, portletIds);
 
+		Group scopeGroup = themeDisplay.getScopeGroup();
+
 		if ((plidAndPortletId == null) &&
-			SitesUtil.isUserGroupLayoutSetViewable(
-				themeDisplay.getPermissionChecker(),
-				themeDisplay.getScopeGroup())) {
+			(scopeGroup.isSite() ||
+			 SitesUtil.isUserGroupLayoutSetViewable(
+				 themeDisplay.getPermissionChecker(), scopeGroup))) {
 
 			plidAndPortletId = fetchPlidAndPortletId(
 				themeDisplay.getPermissionChecker(),
@@ -135,10 +137,9 @@ public abstract class BasePortletLayoutFinder implements PortletLayoutFinder {
 				continue;
 			}
 
-			Layout layout = LayoutLocalServiceUtil.getLayout(plid);
-
 			if (!LayoutPermissionUtil.contains(
-					permissionChecker, layout, ActionKeys.VIEW)) {
+					permissionChecker, LayoutLocalServiceUtil.getLayout(plid),
+					ActionKeys.VIEW)) {
 
 				continue;
 			}

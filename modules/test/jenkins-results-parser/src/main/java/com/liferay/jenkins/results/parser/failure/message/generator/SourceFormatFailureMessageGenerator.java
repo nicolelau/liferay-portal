@@ -14,8 +14,6 @@
 
 package com.liferay.jenkins.results.parser.failure.message.generator;
 
-import com.liferay.jenkins.results.parser.Build;
-
 import org.dom4j.Element;
 
 /**
@@ -26,37 +24,29 @@ public class SourceFormatFailureMessageGenerator
 	extends BaseFailureMessageGenerator {
 
 	@Override
-	public Element getMessageElement(Build build) {
-		String consoleText = build.getConsoleText();
-
+	public Element getMessageElement(String consoleText) {
 		if (!consoleText.contains(_TOKEN_SOURCE_FORMAT)) {
 			return null;
 		}
 
-		int start = consoleText.lastIndexOf(_TOKEN_FORMAT_SOURCE);
+		int start = consoleText.lastIndexOf(_TOKEN_SOURCE_FORMAT);
 
-		start = consoleText.indexOf(_TOKEN_UTIL_SYSTEM_EXT_PROPERTIES, start);
+		if (consoleText.contains(_TOKEN_FORMATTING_ISSUES)) {
+			start = consoleText.lastIndexOf(_TOKEN_FORMATTING_ISSUES, start);
+		}
 
-		start = consoleText.indexOf("\n", start);
+		start = consoleText.lastIndexOf("\n", start);
 
-		int end = consoleText.indexOf(_TOKEN_MERGE_TEST_RESULTS, start);
+		int end = start + CHARS_CONSOLE_TEXT_SNIPPET_SIZE_MAX;
 
-		end = consoleText.lastIndexOf(_TOKEN_SOURCE_FORMAT, end);
+		end = consoleText.lastIndexOf("\n", end);
 
-		end = consoleText.indexOf("\n", end);
-
-		return getConsoleTextSnippetElement(consoleText, true, start, end);
+		return getConsoleTextSnippetElement(consoleText, false, start, end);
 	}
 
-	private static final String _TOKEN_FORMAT_SOURCE = "format-source:";
-
-	private static final String _TOKEN_MERGE_TEST_RESULTS =
-		"merge-test-results:";
+	private static final String _TOKEN_FORMATTING_ISSUES = "formatting issues:";
 
 	private static final String _TOKEN_SOURCE_FORMAT =
 		"at com.liferay.source.formatter";
-
-	private static final String _TOKEN_UTIL_SYSTEM_EXT_PROPERTIES =
-		"util-java/test-classes/unit/system-ext.properties";
 
 }

@@ -1,0 +1,43 @@
+{namespace com.liferay.layout.content.page.editor.web.FragmentsEditor}
+
+/**
+ * FragmentsEditor
+ */
+{template .render}
+	{@param fragmentEntryLinks: ?}
+	{@param layoutData: ?}
+	{@param masterPageLayoutData: ?}
+	{@param? hasUpdatePermissions: bool}
+	{@param? id: string}
+	{@param? store: ?}
+
+	{let $fragmentsEditorClasses kind="text"}
+		fragments-editor
+
+		{if $hasUpdatePermissions}
+			{sp}fragments-editor--with-update-permissions
+		{/if}
+	{/let}
+
+	<div class="{$fragmentsEditorClasses}" id="{$id}">
+		{call com.liferay.layout.content.page.editor.web.FragmentsEditorSidebar.render}
+			{param ref: 'sidebar' /}
+			{param store: $store /}
+		{/call}
+
+		{if $masterPageLayoutData and $masterPageLayoutData.structure and (length($masterPageLayoutData.structure) > 0)}
+			{call com.liferay.layout.content.page.editor.web.MasterFragmentEntryLinkList.render}
+				{param fragmentEntryLinks: $fragmentEntryLinks /}
+				{param layoutData: $layoutData /}
+				{param masterPageLayoutData: $masterPageLayoutData /}
+				{param store: $store /}
+			{/call}
+		{else}
+			{call com.liferay.layout.content.page.editor.web.FragmentEntryLinkList.render}
+				{param fragmentEntryLinks: $fragmentEntryLinks /}
+				{param layoutData: $layoutData /}
+				{param store: $store /}
+			{/call}
+		{/if}
+	</div>
+{/template}

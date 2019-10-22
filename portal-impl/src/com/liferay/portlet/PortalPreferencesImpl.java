@@ -14,6 +14,7 @@
 
 package com.liferay.portlet;
 
+import com.liferay.petra.lang.HashUtil;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.exception.SystemException;
@@ -25,7 +26,6 @@ import com.liferay.portal.kernel.service.persistence.PortalPreferencesUtil;
 import com.liferay.portal.kernel.transaction.Propagation;
 import com.liferay.portal.kernel.transaction.TransactionConfig;
 import com.liferay.portal.kernel.transaction.TransactionInvokerUtil;
-import com.liferay.portal.kernel.util.HashUtil;
 import com.liferay.portal.kernel.util.SetUtil;
 import com.liferay.portal.kernel.util.Validator;
 
@@ -131,17 +131,17 @@ public class PortalPreferencesImpl
 			return false;
 		}
 
-		PortalPreferencesImpl portalPreferences = (PortalPreferencesImpl)obj;
+		PortalPreferencesImpl portalPreferencesImpl =
+			(PortalPreferencesImpl)obj;
 
-		if ((getOwnerId() == portalPreferences.getOwnerId()) &&
-			(getOwnerType() == portalPreferences.getOwnerType()) &&
-			getPreferences().equals(portalPreferences.getPreferences())) {
+		if ((getOwnerId() == portalPreferencesImpl.getOwnerId()) &&
+			(getOwnerType() == portalPreferencesImpl.getOwnerType()) &&
+			getPreferences().equals(portalPreferencesImpl.getPreferences())) {
 
 			return true;
 		}
-		else {
-			return false;
-		}
+
+		return false;
 	}
 
 	public long getMvccVersion() {
@@ -433,11 +433,9 @@ public class PortalPreferencesImpl
 			}
 			catch (Exception e) {
 				if (isCausedByStaleObjectException(e)) {
-					long ownerId = getOwnerId();
-					int ownerType = getOwnerType();
-
 					com.liferay.portal.kernel.model.PortalPreferences
-						portalPreferences = _reload(ownerId, ownerType);
+						portalPreferences = _reload(
+							getOwnerId(), getOwnerType());
 
 					if (portalPreferences == null) {
 						continue;
@@ -475,9 +473,12 @@ public class PortalPreferencesImpl
 		if (Validator.isNull(namespace)) {
 			return key;
 		}
-		else {
-			return namespace.concat(StringPool.POUND).concat(key);
-		}
+
+		return namespace.concat(
+			StringPool.POUND
+		).concat(
+			key
+		);
 	}
 
 	private com.liferay.portal.kernel.model.PortalPreferences _reload(

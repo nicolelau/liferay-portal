@@ -80,7 +80,7 @@ boolean enabled = false;
 if (!inTrash) {
 	Group group = themeDisplay.getSiteGroup();
 
-	if (!group.isStagingGroup()) {
+	if (!group.isStagingGroup() && !group.isStagedRemotely()) {
 		enabled = true;
 	}
 }
@@ -88,6 +88,85 @@ if (!inTrash) {
 
 <div class="taglib-ratings <%= type %>" id="<%= randomNamespace %>ratingContainer">
 	<c:choose>
+		<c:when test="<%= type.equals(RatingsType.STACKED_STARS.getValue()) %>">
+			<div class="liferay-rating-score" id="<%= randomNamespace %>ratingScore">
+				<div id="<%= randomNamespace %>ratingScoreContent">
+					<liferay-util:whitespace-remover>
+
+						<%
+						for (int i = 1; i <= numberOfStars; i++) {
+							String message = StringPool.BLANK;
+
+							if (inTrash) {
+								message = LanguageUtil.get(resourceBundle, "ratings-are-disabled-because-this-entry-is-in-the-recycle-bin");
+							}
+							else if (!enabled) {
+								message = LanguageUtil.get(resourceBundle, "ratings-are-disabled-in-staging");
+							}
+							else if (i == 1) {
+								message = LanguageUtil.format(request, ((formattedAverageScore == 1.0) ? "the-average-rating-is-x-star-out-of-x" : "the-average-rating-is-x-stars-out-of-x"), new Object[] {formattedAverageScore, numberOfStars}, false);
+							}
+						%>
+
+							<span class="rating-element <%= (i <= averageIndex) ? "icon-star-on" : "icon-star-off" %>" title="<%= message %>">
+								<svg aria-hidden="true" class="lexicon-icon lexicon-icon-star" role="img">
+									<use xlink:href="<%= themeDisplay.getPathThemeImages() %>/lexicon/icons.svg#star" />
+								</svg>
+
+								<svg aria-hidden="true" class="lexicon-icon lexicon-icon-star-o" role="img">
+									<use xlink:href="<%= themeDisplay.getPathThemeImages() %>/lexicon/icons.svg#star-o" />
+								</svg>
+							</span>
+
+						<%
+						}
+						%>
+
+					</liferay-util:whitespace-remover>
+
+					<div class="rating-label">
+						(<%= totalEntries %> <liferay-ui:message key='<%= (totalEntries == 1) ? "vote" : "votes" %>' />)
+					</div>
+				</div>
+			</div>
+
+			<c:if test="<%= themeDisplay.isSignedIn() && enabled %>">
+				<div class="liferay-rating-vote" id="<%= randomNamespace %>ratingStar">
+					<div id="<%= randomNamespace %>ratingStarContent">
+						<liferay-util:whitespace-remover>
+
+							<%
+							double yourScoreStars = (yourScore != -1.0) ? yourScore * numberOfStars : 0.0;
+
+							for (int i = 1; i <= numberOfStars; i++) {
+								String ratingId = PortalUtil.generateRandomKey(request, "taglib_ui_ratings_page_rating");
+							%>
+
+								<a class="btn btn-unstyled rating-element <%= (i <= yourScoreStars) ? "icon-star-on" : "icon-star-off" %>" href="javascript:;">
+									<svg aria-hidden="true" class="lexicon-icon lexicon-icon-star" role="img">
+										<use xlink:href="<%= themeDisplay.getPathThemeImages() %>/lexicon/icons.svg#star" />
+									</svg>
+
+									<svg aria-hidden="true" class="lexicon-icon lexicon-icon-star-o" role="img">
+										<use xlink:href="<%= themeDisplay.getPathThemeImages() %>/lexicon/icons.svg#star-o" />
+									</svg>
+								</a>
+
+								<div class="rating-input-container">
+									<label for="<%= ratingId %>"><liferay-ui:message arguments="<%= new Object[] {i, numberOfStars} %>" key='<%= (yourScoreStars == i) ? ((i == 1) ? "you-have-rated-this-x-star-out-of-x" : "you-have-rated-this-x-stars-out-of-x") : ((i == 1) ? "rate-this-x-star-out-of-x" : "rate-this-x-stars-out-of-x") %>' translateArguments="<%= false %>" /></label>
+
+									<input checked="<%= i == yourScoreStars %>" class="rating-input" id="<%= ratingId %>" name="<portlet:namespace />rating" type="radio" value="<%= i %>" />
+								</div>
+
+							<%
+							}
+							%>
+
+						</liferay-util:whitespace-remover>
+					</div>
+				</div>
+			</c:if>
+		</c:when>
 		<c:when test="<%= type.equals(RatingsType.STARS.getValue()) %>">
 			<c:if test="<%= themeDisplay.isSignedIn() && enabled %>">
 				<div class="liferay-rating-vote" id="<%= randomNamespace %>ratingStar">
@@ -103,12 +182,20 @@ if (!inTrash) {
 								String ratingId = PortalUtil.generateRandomKey(request, "taglib_ui_ratings_page_rating");
 							%>
 
-								<a class="rating-element <%= (i <= yourScoreStars) ? "icon-star" : "icon-star-empty" %>" href="javascript:;"></a>
+								<a class="btn btn-unstyled rating-element <%= (i <= yourScoreStars) ? "icon-star-on" : "icon-star-off" %>" href="javascript:;">
+									<svg aria-hidden="true" class="lexicon-icon lexicon-icon-star" role="img">
+										<use xlink:href="<%= themeDisplay.getPathThemeImages() %>/lexicon/icons.svg#star" />
+									</svg>
+
+									<svg aria-hidden="true" class="lexicon-icon lexicon-icon-star-o" role="img">
+										<use xlink:href="<%= themeDisplay.getPathThemeImages() %>/lexicon/icons.svg#star-o" />
+									</svg>
+								</a>
 
 								<div class="rating-input-container">
-									<label for="<%= ratingId %>"><liferay-ui:message arguments="<%= new Object[] {i, numberOfStars} %>" key='<%= (yourScoreStars == i) ? (i == 1 ? "you-have-rated-this-x-star-out-of-x" : "you-have-rated-this-x-stars-out-of-x") : (i == 1 ? "rate-this-x-star-out-of-x" : "rate-this-x-stars-out-of-x") %>' translateArguments="<%= false %>" /></label>
+									<label for="<%= ratingId %>"><liferay-ui:message arguments="<%= new Object[] {i, numberOfStars} %>" key='<%= (yourScoreStars == i) ? ((i == 1) ? "you-have-rated-this-x-star-out-of-x" : "you-have-rated-this-x-stars-out-of-x") : ((i == 1) ? "rate-this-x-star-out-of-x" : "rate-this-x-stars-out-of-x") %>' translateArguments="<%= false %>" /></label>
 
-									<input checked="<%= i == yourScoreStars %>" class="rating-input" id="<%= ratingId %>" name="<portlet:namespace />rating" type="radio" value="<%= i %>">
+									<input checked="<%= i == yourScoreStars %>" class="rating-input" id="<%= ratingId %>" name="<portlet:namespace />rating" type="radio" value="<%= i %>" />
 								</div>
 
 							<%
@@ -145,7 +232,15 @@ if (!inTrash) {
 							}
 						%>
 
-							<span class="rating-element <%= (i <= averageIndex) ? "icon-star" : "icon-star-empty" %>" title="<%= message %>"></span>
+							<span class="rating-element <%= (i <= averageIndex) ? "icon-star-on" : "icon-star-off" %>" title="<%= message %>">
+								<svg aria-hidden="true" class="lexicon-icon lexicon-icon-star" role="img">
+									<use xlink:href="<%= themeDisplay.getPathThemeImages() %>/lexicon/icons.svg#star" />
+								</svg>
+
+								<svg aria-hidden="true" class="lexicon-icon lexicon-icon-star-o" role="img">
+									<use xlink:href="<%= themeDisplay.getPathThemeImages() %>/lexicon/icons.svg#star-o" />
+								</svg>
+							</span>
 
 						<%
 						}
@@ -192,19 +287,23 @@ if (!inTrash) {
 								}
 								%>
 
-								<span class="btn btn-outline-borderless btn-outline-secondary btn-sm rating-element rating-thumb-up rating-<%= (thumbUp) ? "on" : "off" %>" title="<%= thumbsTitle %>">
-									<svg aria-hidden="true" class="lexicon-icon lexicon-icon-thumbs-up">
-										<use xlink:href="<%= themeDisplay.getPathThemeImages() %>/lexicon/icons.svg#thumbs-up" />
-									</svg>
+								<span class="btn-sm rating-element rating-thumb-up rating-<%= thumbUp ? "on" : "off" %>" title="<%= thumbsTitle %>">
+									<span class="inline-item inline-item-before">
+										<svg aria-hidden="true" class="lexicon-icon lexicon-icon-thumbs-up" role="img">
+											<use xlink:href="<%= themeDisplay.getPathThemeImages() %>/lexicon/icons.svg#thumbs-up" />
+										</svg>
+									</span>
 
 									<%= positiveVotes %>
 								</span>
 
 								<c:if test="<%= type.equals(RatingsType.THUMBS.getValue()) %>">
-									<span class="rating-element rating-thumb-down rating-<%= (thumbDown) ? "on" : "off" %>" title="<%= thumbsTitle %>">
-										<svg aria-hidden="true" class="lexicon-icon lexicon-icon-thumbs-down">
-											<use xlink:href="<%= themeDisplay.getPathThemeImages() %>/lexicon/icons.svg#thumbs-down" />
-										</svg>
+									<span class="btn-sm rating-element rating-thumb-down rating-<%= thumbDown ? "on" : "off" %>" title="<%= thumbsTitle %>">
+										<span class="inline-item inline-item-before">
+											<svg aria-hidden="true" class="lexicon-icon lexicon-icon-thumbs-down" role="img">
+												<use xlink:href="<%= themeDisplay.getPathThemeImages() %>/lexicon/icons.svg#thumbs-down" />
+											</svg>
+										</span>
 
 										<%= negativeVotes %>
 									</span>
@@ -223,21 +322,23 @@ if (!inTrash) {
 								}
 								%>
 
-								<a class="btn btn-outline-borderless btn-outline-secondary btn-sm rating-element rating-thumb-up rating-<%= (thumbUp) ? "on" : "off" %>" href="javascript:;" title="<liferay-ui:message key="<%= positiveRatingMessage %>" />">
-									<svg aria-hidden="true" class="lexicon-icon lexicon-icon-thumbs-up">
-										<use xlink:href="<%= themeDisplay.getPathThemeImages() %>/lexicon/icons.svg#thumbs-up" />
-									</svg>
-
-									<%= positiveVotes %>
+								<a class="btn btn-outline-borderless btn-outline-secondary btn-sm rating-element rating-thumb-up rating-<%= thumbUp ? "on" : "off" %>" href="javascript:;" title="<liferay-ui:message key="<%= positiveRatingMessage %>" />">
+									<span class="inline-item inline-item-before">
+										<svg aria-hidden="true" class="lexicon-icon lexicon-icon-thumbs-up" role="img">
+											<use xlink:href="<%= themeDisplay.getPathThemeImages() %>/lexicon/icons.svg#thumbs-up" />
+										</svg>
+									</span>
+									<span class="votes"><%= positiveVotes %></span>
 								</a>
 
 								<c:if test="<%= type.equals(RatingsType.THUMBS.getValue()) %>">
-									<a class="btn btn-outline-borderless btn-outline-secondary btn-sm rating-element rating-thumb-down rating-<%= (thumbDown) ? "on" : "off" %>" href="javascript:;" title="<liferay-ui:message key='<%= (thumbDown) ? "you-have-rated-this-as-bad" : "rate-this-as-bad" %>' />">
-										<svg aria-hidden="true" class="lexicon-icon lexicon-icon-thumbs-down">
-											<use xlink:href="<%= themeDisplay.getPathThemeImages() %>/lexicon/icons.svg#thumbs-down" />
-										</svg>
-
-										<%= negativeVotes %>
+									<a class="btn btn-outline-borderless btn-outline-secondary btn-sm rating-element rating-thumb-down rating-<%= thumbDown ? "on" : "off" %>" href="javascript:;" title="<liferay-ui:message key='<%= thumbDown ? "you-have-rated-this-as-bad" : "rate-this-as-bad" %>' />">
+										<span class="inline-item inline-item-before">
+											<svg aria-hidden="true" class="lexicon-icon lexicon-icon-thumbs-down" role="img">
+												<use xlink:href="<%= themeDisplay.getPathThemeImages() %>/lexicon/icons.svg#thumbs-down" />
+											</svg>
+										</span>
+										<span class="votes"><%= negativeVotes %></span>
 									</a>
 								</c:if>
 
@@ -247,7 +348,7 @@ if (!inTrash) {
 									String ratingId = PortalUtil.generateRandomKey(request, "taglib_ui_ratings_page_rating");
 									%>
 
-									<input class="rating-input" id="<%= ratingId %>" name="<portlet:namespace /><%= ratingIdPrefix %>" type="radio" value="up">
+									<input class="rating-input" id="<%= ratingId %>" name="<portlet:namespace /><%= ratingIdPrefix %>" type="radio" value="up" />
 
 									<c:if test="<%= type.equals(RatingsType.THUMBS.getValue()) %>">
 
@@ -255,7 +356,7 @@ if (!inTrash) {
 										ratingId = PortalUtil.generateRandomKey(request, "taglib_ui_ratings_page_rating");
 										%>
 
-										<input class="rating-input" id="<%= ratingId %>" name="<portlet:namespace /><%= ratingIdPrefix %>" type="radio" value="down">
+										<input class="rating-input" id="<%= ratingId %>" name="<portlet:namespace /><%= ratingIdPrefix %>" type="radio" value="down" />
 									</c:if>
 								</div>
 							</c:otherwise>

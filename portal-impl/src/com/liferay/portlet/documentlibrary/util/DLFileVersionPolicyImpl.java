@@ -47,8 +47,10 @@ import java.util.Map;
 import java.util.Objects;
 
 /**
- * @author Adolfo Pérez
+ * @author     Adolfo Pérez
+ * @deprecated As of Judson (7.1.x), with no direct replacement
  */
+@Deprecated
 public class DLFileVersionPolicyImpl implements DLFileVersionPolicy {
 
 	public void destroy() {

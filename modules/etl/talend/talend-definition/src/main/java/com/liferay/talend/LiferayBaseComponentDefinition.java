@@ -14,7 +14,10 @@
 
 package com.liferay.talend;
 
+import com.liferay.talend.common.oas.OASSource;
 import com.liferay.talend.connection.LiferayConnectionProperties;
+import com.liferay.talend.properties.ExceptionUtils;
+import com.liferay.talend.source.LiferayOASSource;
 
 import org.talend.components.api.component.AbstractComponentDefinition;
 import org.talend.components.api.component.runtime.DependenciesReader;
@@ -28,6 +31,7 @@ import org.talend.daikon.sandbox.SandboxedInstance;
 
 /**
  * @author Zoltán Takács
+ * @author Igor Beslic
  */
 public abstract class LiferayBaseComponentDefinition
 	extends AbstractComponentDefinition {
@@ -49,38 +53,21 @@ public abstract class LiferayBaseComponentDefinition
 			className);
 	}
 
-	public static SandboxedInstance getSandboxedInstance(
-		String runtimeClassName) {
+	public static LiferayOASSource getLiferayOASSource(
+		LiferayConnectionProperties liferayConnectionProperties) {
 
-		return getSandboxedInstance(runtimeClassName, false);
-	}
+		try (SandboxedInstance sandboxedInstance = _getSandboxedInstance(
+				RUNTIME_SOURCE_OR_SINK_CLASS_NAME)) {
 
-	public static SandboxedInstance getSandboxedInstance(
-		String runtimeClassName, boolean useCurrentJvmProperties) {
+			OASSource oasSource = (OASSource)sandboxedInstance.getInstance();
 
-		return _sandboxedInstanceProvider.getSandboxedInstance(
-			runtimeClassName, useCurrentJvmProperties);
-	}
-
-	public static SandboxedInstanceProvider getSandboxedInstanceProvider() {
-		return _sandboxedInstanceProvider;
-	}
-
-	/**
-	 * Set provider of SandboxedInstances.
-	 *
-	 * <p>
-	 * The method is intended for debug/test purposes only and should not be
-	 * used in production.
-	 * </p>
-	 *
-	 * @param sandboxedInstanceProvider provider to be set, can't be {@code
-	 *        null}
-	 */
-	public static void setSandboxedInstanceProvider(
-		SandboxedInstanceProvider sandboxedInstanceProvider) {
-
-		_sandboxedInstanceProvider = sandboxedInstanceProvider;
+			return new LiferayOASSource(
+				oasSource, oasSource.initialize(liferayConnectionProperties));
+		}
+		catch (Exception e) {
+			return new LiferayOASSource(
+				null, ExceptionUtils.exceptionToValidationResult(e));
+		}
 	}
 
 	public LiferayBaseComponentDefinition(
@@ -99,8 +86,9 @@ public abstract class LiferayBaseComponentDefinition
 	public Class<? extends ComponentProperties>[]
 		getNestedCompatibleComponentPropertiesClass() {
 
-		return (Class<? extends ComponentProperties>[])
-			new Class<?>[] {LiferayConnectionProperties.class};
+		return (Class<? extends ComponentProperties>[])new Class<?>[] {
+			LiferayConnectionProperties.class
+		};
 	}
 
 	/**
@@ -136,6 +124,8 @@ public abstract class LiferayBaseComponentDefinition
 	 * As for Number of records property see Reader implementation in runtime
 	 * part.
 	 * </p>
+	 *
+	 * @review
 	 */
 	@Override
 	public Property<?>[] getReturnProperties() {
@@ -163,11 +153,23 @@ public abstract class LiferayBaseComponentDefinition
 				return RuntimeUtil.createRuntimeClassWithCurrentJVMProperties(
 					runtimeInfo, classLoader);
 			}
-			else {
-				return RuntimeUtil.createRuntimeClass(runtimeInfo, classLoader);
-			}
+
+			return RuntimeUtil.createRuntimeClass(runtimeInfo, classLoader);
 		}
 
+	}
+
+	private static SandboxedInstance _getSandboxedInstance(
+		String runtimeClassName) {
+
+		return _getSandboxedInstance(runtimeClassName, false);
+	}
+
+	private static SandboxedInstance _getSandboxedInstance(
+		String runtimeClassName, boolean useCurrentJvmProperties) {
+
+		return _sandboxedInstanceProvider.getSandboxedInstance(
+			runtimeClassName, useCurrentJvmProperties);
 	}
 
 	private static final String _MAVEN_GROUP_ID = "com.liferay";

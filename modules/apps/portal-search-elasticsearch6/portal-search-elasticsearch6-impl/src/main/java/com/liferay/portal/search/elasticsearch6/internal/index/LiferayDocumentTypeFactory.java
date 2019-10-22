@@ -26,16 +26,14 @@ import com.liferay.portal.search.elasticsearch6.internal.util.LogUtil;
 import com.liferay.portal.search.elasticsearch6.internal.util.ResourceUtil;
 import com.liferay.portal.search.elasticsearch6.settings.TypeMappingsHelper;
 
-import java.io.IOException;
-
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import org.elasticsearch.action.ActionResponse;
 import org.elasticsearch.action.admin.indices.create.CreateIndexRequestBuilder;
 import org.elasticsearch.action.admin.indices.mapping.get.GetMappingsRequestBuilder;
 import org.elasticsearch.action.admin.indices.mapping.get.GetMappingsResponse;
 import org.elasticsearch.action.admin.indices.mapping.put.PutMappingRequestBuilder;
-import org.elasticsearch.action.admin.indices.mapping.put.PutMappingResponse;
 import org.elasticsearch.client.IndicesAdminClient;
 import org.elasticsearch.cluster.metadata.MappingMetaData;
 import org.elasticsearch.common.collect.ImmutableOpenMap;
@@ -68,14 +66,9 @@ public class LiferayDocumentTypeFactory implements TypeMappingsHelper {
 		putMappingRequestBuilder.setType(
 			LiferayTypeMappingsConstants.LIFERAY_DOCUMENT_TYPE);
 
-		PutMappingResponse putMappingResponse = putMappingRequestBuilder.get();
+		ActionResponse actionResponse = putMappingRequestBuilder.get();
 
-		try {
-			LogUtil.logActionResponse(_log, putMappingResponse);
-		}
-		catch (IOException ioe) {
-			throw new RuntimeException(ioe);
-		}
+		LogUtil.logActionResponse(_log, actionResponse);
 	}
 
 	public void createLiferayDocumentTypeMappings(

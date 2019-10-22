@@ -42,7 +42,7 @@ public class Base64 {
 	}
 
 	/**
-	 * @deprecated As of 7.0.0, with no direct replacement
+	 * @deprecated As of Judson (7.1.x), with no direct replacement
 	 */
 	@Deprecated
 	public static String encode(byte[] raw, int offset, int length) {
@@ -54,7 +54,8 @@ public class Base64 {
 	}
 
 	/**
-	 * @deprecated As of 7.0.0, replaced by {@link ##decodeFromURL(String)}
+	 * @deprecated As of Judson (7.1.x), replaced by {@link
+	 *             ##decodeFromURL(String)}
 	 */
 	@Deprecated
 	public static String fromURLSafe(String base64) {
@@ -95,7 +96,7 @@ public class Base64 {
 	}
 
 	/**
-	 * @deprecated As of 7.0.0, with no direct replacement
+	 * @deprecated As of Judson (7.1.x), with no direct replacement
 	 */
 	@Deprecated
 	public static Object stringToObjectSilent(
@@ -105,7 +106,8 @@ public class Base64 {
 	}
 
 	/**
-	 * @deprecated As of 7.0.0, replaced by {@link #encodeToURL(byte[])}
+	 * @deprecated As of Judson (7.1.x), replaced by {@link
+	 *             #encodeToURL(byte[])}
 	 */
 	@Deprecated
 	public static String toURLSafe(String base64) {
@@ -115,7 +117,7 @@ public class Base64 {
 	}
 
 	/**
-	 * @deprecated As of 7.0.0, with no direct replacement
+	 * @deprecated As of Judson (7.1.x), with no direct replacement
 	 */
 	@Deprecated
 	protected static char[] encodeBlock(byte[] raw, int offset, int lastIndex) {
@@ -123,7 +125,7 @@ public class Base64 {
 	}
 
 	/**
-	 * @deprecated As of 7.0.0, with no direct replacement
+	 * @deprecated As of Judson (7.1.x), with no direct replacement
 	 */
 	@Deprecated
 	protected static char getChar(int sixbit) {
@@ -131,7 +133,7 @@ public class Base64 {
 	}
 
 	/**
-	 * @deprecated As of 7.0.0, with no direct replacement
+	 * @deprecated As of Judson (7.1.x), with no direct replacement
 	 */
 	@Deprecated
 	protected static int getValue(char c) {
@@ -146,7 +148,7 @@ public class Base64 {
 		int pad = 0;
 
 		for (int i = base64.length() - 1; base64.charAt(i) == CharPool.EQUAL;
-			i--) {
+			 i--) {
 
 			pad++;
 		}
@@ -164,8 +166,8 @@ public class Base64 {
 			block += _getValue(base64.charAt(i + 2), url) << 6;
 			block += _getValue(base64.charAt(i + 3), url);
 
-			for (int j = 0; j < 3 && rawindex + j < raw.length; j++) {
-				raw[rawindex + j] = (byte)(block >> 8 * (2 - j) & 0xff);
+			for (int j = 0; (j < 3) && ((rawindex + j) < raw.length); j++) {
+				raw[rawindex + j] = (byte)((block >> (8 * (2 - j))) & 0xff);
 			}
 
 			rawindex += 3;
@@ -196,20 +198,20 @@ public class Base64 {
 
 		int slack = lastIndex - offset - 1;
 
-		int end = slack < 2 ? slack : 2;
+		int end = (slack < 2) ? slack : 2;
 
 		for (int i = 0; i <= end; i++) {
 			byte b = raw[offset + i];
 
-			int neuter = b >= 0 ? ((int)b) : b + 256;
+			int neuter = (b >= 0) ? (int)b : b + 256;
 
-			block += neuter << 8 * (2 - i);
+			block += neuter << (8 * (2 - i));
 		}
 
 		char[] base64 = new char[4];
 
 		for (int i = 0; i < 4; i++) {
-			int sixbit = block >>> 6 * (3 - i) & 0x3f;
+			int sixbit = (block >>> (6 * (3 - i))) & 0x3f;
 
 			base64[i] = _getChar(sixbit, url);
 		}

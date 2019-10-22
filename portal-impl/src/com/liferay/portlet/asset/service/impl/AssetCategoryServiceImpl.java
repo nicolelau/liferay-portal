@@ -36,7 +36,6 @@ import com.liferay.portlet.asset.service.base.AssetCategoryServiceBaseImpl;
 import com.liferay.portlet.asset.service.permission.AssetCategoryPermission;
 import com.liferay.util.dao.orm.CustomSQLUtil;
 
-import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
@@ -95,47 +94,6 @@ public class AssetCategoryServiceImpl extends AssetCategoryServiceBaseImpl {
 		assetCategoryLocalService.deleteCategories(categoryIds);
 	}
 
-	/**
-	 * @deprecated As of 7.0.0, Replaced by {@link #deleteCategories(long[])}
-	 */
-	@Deprecated
-	@Override
-	public List<AssetCategory> deleteCategories(
-			long[] categoryIds, ServiceContext serviceContext)
-		throws PortalException {
-
-		List<AssetCategory> failedCategories = new ArrayList<>();
-
-		for (long categoryId : categoryIds) {
-			try {
-				AssetCategoryPermission.check(
-					getPermissionChecker(), categoryId, ActionKeys.DELETE);
-
-				assetCategoryLocalService.deleteCategory(categoryId);
-			}
-			catch (PortalException pe) {
-				if (serviceContext == null) {
-					return null;
-				}
-
-				if (serviceContext.isFailOnPortalException()) {
-					throw pe;
-				}
-
-				AssetCategory category =
-					assetCategoryPersistence.fetchByPrimaryKey(categoryId);
-
-				if (category == null) {
-					category = assetCategoryPersistence.create(categoryId);
-				}
-
-				failedCategories.add(category);
-			}
-		}
-
-		return failedCategories;
-	}
-
 	@Override
 	public void deleteCategory(long categoryId) throws PortalException {
 		AssetCategoryPermission.check(
@@ -157,12 +115,43 @@ public class AssetCategoryServiceImpl extends AssetCategoryServiceBaseImpl {
 		return category;
 	}
 
+	/**
+	 * Returns a range of assetCategories related to an AssetEntry with the
+	 * given "classNameId-classPK".
+	 *
+	 * @param  classNameId the className of the asset
+	 * @param  classPK the classPK of the asset
+	 * @param  start the lower bound of the range of results
+	 * @param  end the upper bound of the range of results (not inclusive)
+	 * @return the matching assetCategories
+	 */
+	@Override
+	public List<AssetCategory> getCategories(
+		long classNameId, long classPK, int start, int end) {
+
+		return assetCategoryFinder.filterFindByC_C(
+			classNameId, classPK, start, end);
+	}
+
 	@Override
 	public List<AssetCategory> getCategories(String className, long classPK)
 		throws PortalException {
 
 		return filterCategories(
 			assetCategoryLocalService.getCategories(className, classPK));
+	}
+
+	/**
+	 * Returns the number of assetCategories related to an AssetEntry with the
+	 * given "classNameId-classPK".
+	 *
+	 * @param  classNameId the className of the asset
+	 * @param  classPK the classPK of the asset
+	 * @return the number of matching assetCategories
+	 */
+	@Override
+	public int getCategoriesCount(long classNameId, long classPK) {
+		return assetCategoryFinder.filterCountByC_C(classNameId, classPK);
 	}
 
 	@Override
@@ -191,15 +180,60 @@ public class AssetCategoryServiceImpl extends AssetCategoryServiceBaseImpl {
 			assetCategoryLocalService.getChildCategories(parentCategoryId));
 	}
 
+	/**
+	 * eturns a range of child assetCategories.
+	 *
+	 * @param  parentCategoryId the parent category ID
+	 * @param  start the lower bound of the range of results
+	 * @param  end the upper bound of the range of results (not inclusive)
+	 * @param  obc the comparator
+	 * @return the matching categories
+	 * @throws PortalException
+	 */
 	@Override
 	public List<AssetCategory> getChildCategories(
 			long parentCategoryId, int start, int end,
 			OrderByComparator<AssetCategory> obc)
 		throws PortalException {
 
+		if (parentCategoryId != 0) {
+			AssetCategory parent = assetCategoryLocalService.fetchAssetCategory(
+				parentCategoryId);
+
+			if (parent != null) {
+				return assetCategoryPersistence.filterFindByG_P(
+					parent.getGroupId(), parentCategoryId, start, end, obc);
+			}
+		}
+
 		return filterCategories(
 			assetCategoryLocalService.getChildCategories(
 				parentCategoryId, start, end, obc));
+	}
+
+	/**
+	 * Returns the number of child categories
+	 *
+	 * @param  parentCategoryId the parent category ID
+	 * @return the number of child categories
+	 * @throws PortalException
+	 */
+	@Override
+	public int getChildCategoriesCount(long parentCategoryId)
+		throws PortalException {
+
+		if (parentCategoryId != 0) {
+			AssetCategory parent = assetCategoryLocalService.fetchAssetCategory(
+				parentCategoryId);
+
+			if (parent != null) {
+				return assetCategoryPersistence.filterCountByG_P(
+					parent.getGroupId(), parentCategoryId);
+			}
+		}
+
+		return assetCategoryPersistence.countByParentCategoryId(
+			parentCategoryId);
 	}
 
 	@Override
@@ -242,10 +276,9 @@ public class AssetCategoryServiceImpl extends AssetCategoryServiceBaseImpl {
 			return assetCategoryPersistence.filterFindByG_V(
 				groupId, vocabularyId, start, end, obc);
 		}
-		else {
-			return assetCategoryPersistence.filterFindByG_LikeN_V(
-				groupId, name, vocabularyId, start, end, obc);
-		}
+
+		return assetCategoryPersistence.filterFindByG_LikeN_V(
+			groupId, name, vocabularyId, start, end, obc);
 	}
 
 	@Override
@@ -269,10 +302,9 @@ public class AssetCategoryServiceImpl extends AssetCategoryServiceBaseImpl {
 			return assetCategoryPersistence.filterCountByG_V(
 				groupId, vocabularyId);
 		}
-		else {
-			return assetCategoryPersistence.filterCountByG_LikeN_V(
-				groupId, name, vocabularyId);
-		}
+
+		return assetCategoryPersistence.filterCountByG_LikeN_V(
+			groupId, name, vocabularyId);
 	}
 
 	@Override
@@ -299,7 +331,7 @@ public class AssetCategoryServiceImpl extends AssetCategoryServiceBaseImpl {
 		int total = 0;
 
 		if (Validator.isNotNull(name)) {
-			name = (CustomSQLUtil.keywords(name))[0];
+			name = CustomSQLUtil.keywords(name)[0];
 
 			categories = getVocabularyCategories(
 				groupId, name, vocabularyId, start, end, obc);
@@ -356,10 +388,9 @@ public class AssetCategoryServiceImpl extends AssetCategoryServiceBaseImpl {
 			return assetCategoryPersistence.filterFindByG_V(
 				groupId, vocabularyId, start, end, obc);
 		}
-		else {
-			return assetCategoryPersistence.filterFindByG_LikeN_V(
-				groupId, name, vocabularyId, start, end, obc);
-		}
+
+		return assetCategoryPersistence.filterFindByG_LikeN_V(
+			groupId, name, vocabularyId, start, end, obc);
 	}
 
 	@Override

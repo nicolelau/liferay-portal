@@ -14,22 +14,18 @@
 
 package com.liferay.portal.plugin;
 
+import com.liferay.petra.io.StreamUtil;
+import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
-import com.liferay.portal.kernel.model.CompanyConstants;
 import com.liferay.portal.kernel.model.Plugin;
 import com.liferay.portal.kernel.plugin.License;
 import com.liferay.portal.kernel.plugin.PluginPackage;
 import com.liferay.portal.kernel.plugin.RemotePluginPackageRepository;
 import com.liferay.portal.kernel.plugin.Screenshot;
 import com.liferay.portal.kernel.plugin.Version;
-import com.liferay.portal.kernel.search.Hits;
-import com.liferay.portal.kernel.search.Indexer;
-import com.liferay.portal.kernel.search.IndexerRegistryUtil;
-import com.liferay.portal.kernel.search.QueryConfig;
-import com.liferay.portal.kernel.search.SearchContext;
 import com.liferay.portal.kernel.util.ArrayUtil;
 import com.liferay.portal.kernel.util.DateFormatFactoryUtil;
 import com.liferay.portal.kernel.util.GetterUtil;
@@ -40,7 +36,6 @@ import com.liferay.portal.kernel.util.ListUtil;
 import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.PropertiesUtil;
 import com.liferay.portal.kernel.util.ReleaseInfo;
-import com.liferay.portal.kernel.util.StringBundler;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Time;
 import com.liferay.portal.kernel.util.Validator;
@@ -53,7 +48,6 @@ import com.liferay.portal.util.PropsValues;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.Serializable;
 
 import java.net.MalformedURLException;
 
@@ -85,168 +79,165 @@ import org.apache.commons.lang.time.StopWatch;
 public class PluginPackageUtil {
 
 	public static void endPluginPackageInstallation(String preliminaryContext) {
-		_instance._endPluginPackageInstallation(preliminaryContext);
+		_pluginPackageUtil._endPluginPackageInstallation(preliminaryContext);
 	}
 
 	public static List<PluginPackage> getAllAvailablePluginPackages()
 		throws PortalException {
 
-		return _instance._getAllAvailablePluginPackages();
+		return _pluginPackageUtil._getAllAvailablePluginPackages();
 	}
 
 	public static Collection<String> getAvailableTags() {
-		return _instance._getAvailableTags();
+		return _pluginPackageUtil._getAvailableTags();
 	}
 
 	public static PluginPackage getInstalledPluginPackage(String context) {
-		return _instance._getInstalledPluginPackage(context);
+		return _pluginPackageUtil._getInstalledPluginPackage(context);
 	}
 
 	public static List<PluginPackage> getInstalledPluginPackages() {
-		return _instance._getInstalledPluginPackages();
+		return _pluginPackageUtil._getInstalledPluginPackages();
 	}
 
 	public static Date getLastUpdateDate() {
-		return _instance._getLastUpdateDate();
+		return _pluginPackageUtil._getLastUpdateDate();
 	}
 
 	public static PluginPackage getLatestAvailablePluginPackage(
 			String groupId, String artifactId)
 		throws PortalException {
 
-		return _instance._getLatestAvailablePluginPackage(groupId, artifactId);
+		return _pluginPackageUtil._getLatestAvailablePluginPackage(
+			groupId, artifactId);
 	}
 
 	public static PluginPackage getLatestInstalledPluginPackage(
 		String groupId, String artifactId) {
 
-		return _instance._getLatestInstalledPluginPackage(groupId, artifactId);
+		return _pluginPackageUtil._getLatestInstalledPluginPackage(
+			groupId, artifactId);
 	}
 
 	public static PluginPackage getPluginPackageByModuleId(
 			String moduleId, String repositoryURL)
 		throws PortalException {
 
-		return _instance._getPluginPackageByModuleId(moduleId, repositoryURL);
+		return _pluginPackageUtil._getPluginPackageByModuleId(
+			moduleId, repositoryURL);
 	}
 
 	public static PluginPackage getPluginPackageByURL(String url)
 		throws PortalException {
 
-		return _instance._getPluginPackageByURL(url);
+		return _pluginPackageUtil._getPluginPackageByURL(url);
 	}
 
 	public static RemotePluginPackageRepository getRepository(
 			String repositoryURL)
 		throws PortalException {
 
-		return _instance._getRepository(repositoryURL);
+		return _pluginPackageUtil._getRepository(repositoryURL);
 	}
 
 	public static String[] getRepositoryURLs() {
-		return _instance._getRepositoryURLs();
+		return _pluginPackageUtil._getRepositoryURLs();
 	}
 
 	public static String[] getStatusAndInstalledVersion(
 		PluginPackage pluginPackage) {
 
-		return _instance._getStatusAndInstalledVersion(pluginPackage);
+		return _pluginPackageUtil._getStatusAndInstalledVersion(pluginPackage);
 	}
 
 	public static String[] getSupportedTypes() {
-		return _instance._getSupportedTypes();
+		return _pluginPackageUtil._getSupportedTypes();
 	}
 
 	public static boolean isCurrentVersionSupported(List<String> versions) {
-		return _instance._isCurrentVersionSupported(versions);
+		return _pluginPackageUtil._isCurrentVersionSupported(versions);
 	}
 
 	public static boolean isIgnored(PluginPackage pluginPackage) {
-		return _instance._isIgnored(pluginPackage);
+		return _pluginPackageUtil._isIgnored(pluginPackage);
 	}
 
 	public static boolean isInstallationInProcess(String context) {
-		return _instance._isInstallationInProcess(context);
+		return _pluginPackageUtil._isInstallationInProcess(context);
 	}
 
 	public static boolean isInstalled(String context) {
-		return _instance._isInstalled(context);
+		return _pluginPackageUtil._isInstalled(context);
 	}
 
 	public static boolean isTrusted(String repositoryURL) {
-		return _instance._isTrusted(repositoryURL);
+		return _pluginPackageUtil._isTrusted(repositoryURL);
 	}
 
 	public static boolean isUpdateAvailable() {
-		return _instance._isUpdateAvailable();
+		return _pluginPackageUtil._isUpdateAvailable();
 	}
 
 	public static PluginPackage readPluginPackageProperties(
 		String displayName, Properties properties) {
 
-		return _instance._readPluginPackageProperties(displayName, properties);
+		return _pluginPackageUtil._readPluginPackageProperties(
+			displayName, properties);
 	}
 
 	public static PluginPackage readPluginPackageServletContext(
 			ServletContext servletContext)
 		throws DocumentException, IOException {
 
-		return _instance._readPluginPackageServletContext(servletContext);
+		return _pluginPackageUtil._readPluginPackageServletContext(
+			servletContext);
 	}
 
 	public static PluginPackage readPluginPackageXml(
 		Element pluginPackageElement) {
 
-		return _instance._readPluginPackageXml(pluginPackageElement);
+		return _pluginPackageUtil._readPluginPackageXml(pluginPackageElement);
 	}
 
 	public static PluginPackage readPluginPackageXml(String xml)
 		throws DocumentException {
 
-		return _instance._readPluginPackageXml(xml);
+		return _pluginPackageUtil._readPluginPackageXml(xml);
 	}
 
 	public static void refreshUpdatesAvailableCache() {
-		_instance._refreshUpdatesAvailableCache();
+		_pluginPackageUtil._refreshUpdatesAvailableCache();
 	}
 
 	public static void registerInstalledPluginPackage(
 			PluginPackage pluginPackage)
 		throws PortalException {
 
-		_instance._registerInstalledPluginPackage(pluginPackage);
+		_pluginPackageUtil._registerInstalledPluginPackage(pluginPackage);
 	}
 
 	public static void registerPluginPackageInstallation(
 		String preliminaryContext) {
 
-		_instance._registerPluginPackageInstallation(preliminaryContext);
+		_pluginPackageUtil._registerPluginPackageInstallation(
+			preliminaryContext);
 	}
 
 	public static RepositoryReport reloadRepositories() throws PortalException {
-		return _instance._reloadRepositories();
-	}
-
-	public static Hits search(
-			String keywords, String type, String tag, String license,
-			String repositoryURL, String status, int start, int end)
-		throws PortalException {
-
-		return _instance._search(
-			keywords, type, tag, license, repositoryURL, status, start, end);
+		return _pluginPackageUtil._reloadRepositories();
 	}
 
 	public static void unregisterInstalledPluginPackage(
 			PluginPackage pluginPackage)
 		throws PortalException {
 
-		_instance._unregisterInstalledPluginPackage(pluginPackage);
+		_pluginPackageUtil._unregisterInstalledPluginPackage(pluginPackage);
 	}
 
 	public static void updateInstallingPluginPackage(
 		String preliminaryContext, PluginPackage pluginPackage) {
 
-		_instance._updateInstallingPluginPackage(
+		_pluginPackageUtil._updateInstallingPluginPackage(
 			preliminaryContext, pluginPackage);
 	}
 
@@ -254,23 +245,6 @@ public class PluginPackageUtil {
 		_installedPluginPackages = new LocalPluginPackageRepository();
 		_repositoryCache = new HashMap<>();
 		_availableTagsCache = new TreeSet<>();
-	}
-
-	private void _checkRepositories(String repositoryURL)
-		throws PortalException {
-
-		String[] repositoryURLs = null;
-
-		if (Validator.isNotNull(repositoryURL)) {
-			repositoryURLs = new String[] {repositoryURL};
-		}
-		else {
-			repositoryURLs = _getRepositoryURLs();
-		}
-
-		for (int i = 0; i < repositoryURLs.length; i++) {
-			_getRepository(repositoryURLs[i]);
-		}
 	}
 
 	private void _endPluginPackageInstallation(String preliminaryContext) {
@@ -301,10 +275,10 @@ public class PluginPackageUtil {
 
 		String[] repositoryURLs = _getRepositoryURLs();
 
-		for (int i = 0; i < repositoryURLs.length; i++) {
+		for (String repositoryURL : repositoryURLs) {
 			try {
 				RemotePluginPackageRepository repository = _getRepository(
-					repositoryURLs[i]);
+					repositoryURL);
 
 				pluginPackages.addAll(repository.getPluginPackages());
 			}
@@ -333,9 +307,9 @@ public class PluginPackageUtil {
 
 		String[] repositoryURLs = _getRepositoryURLs();
 
-		for (int i = 0; i < repositoryURLs.length; i++) {
+		for (String repositoryURL : repositoryURLs) {
 			RemotePluginPackageRepository repository = _getRepository(
-				repositoryURLs[i]);
+				repositoryURL);
 
 			List<PluginPackage> curPluginPackages =
 				repository.findPluginsByGroupIdAndArtifactId(
@@ -474,15 +448,6 @@ public class PluginPackageUtil {
 		return PropsValues.PLUGIN_TYPES;
 	}
 
-	private void _indexPluginPackage(PluginPackage pluginPackage)
-		throws PortalException {
-
-		Indexer<PluginPackage> indexer = IndexerRegistryUtil.getIndexer(
-			PluginPackage.class);
-
-		indexer.reindex(pluginPackage);
-	}
-
 	private boolean _isCurrentVersionSupported(List<String> versions) {
 		Version currentVersion = Version.getInstance(ReleaseInfo.getVersion());
 
@@ -528,9 +493,8 @@ public class PluginPackageUtil {
 
 			return true;
 		}
-		else {
-			return false;
-		}
+
+		return false;
 	}
 
 	private boolean _isInstalled(String context) {
@@ -540,9 +504,8 @@ public class PluginPackageUtil {
 		if (pluginPackage != null) {
 			return true;
 		}
-		else {
-			return false;
-		}
+
+		return false;
 	}
 
 	private boolean _isTrusted(String repositoryURL)
@@ -554,9 +517,8 @@ public class PluginPackageUtil {
 			if (ArrayUtil.contains(trusted, repositoryURL)) {
 				return true;
 			}
-			else {
-				return false;
-			}
+
+			return false;
 		}
 		catch (Exception e) {
 			throw new PluginPackageException(
@@ -588,8 +550,6 @@ public class PluginPackageUtil {
 
 	private RemotePluginPackageRepository _loadRepository(String repositoryURL)
 		throws PluginPackageException, PortalException {
-
-		RemotePluginPackageRepository repository = null;
 
 		StringBundler sb = new StringBundler(8);
 
@@ -651,13 +611,12 @@ public class PluginPackageUtil {
 					throw new PluginPackageException(
 						StringBundler.concat(
 							"Unable to download file ", pluginsXmlURL,
-							" because of response code ",
-							String.valueOf(responseCode)));
+							" because of response code ", responseCode));
 				}
 			}
 
 			if (ArrayUtil.isNotEmpty(bytes)) {
-				repository = _parseRepositoryXml(
+				RemotePluginPackageRepository repository = _parseRepositoryXml(
 					new String(bytes), repositoryURL);
 
 				_repositoryCache.put(repositoryURL, repository);
@@ -698,8 +657,6 @@ public class PluginPackageUtil {
 			String xml, String repositoryURL)
 		throws DocumentException, PortalException {
 
-		List<String> supportedPluginTypes = Arrays.asList(getSupportedTypes());
-
 		if (_log.isDebugEnabled()) {
 			_log.debug(
 				StringBundler.concat(
@@ -712,6 +669,8 @@ public class PluginPackageUtil {
 		if (xml == null) {
 			return pluginPackageRepository;
 		}
+
+		List<String> supportedPluginTypes = Arrays.asList(getSupportedTypes());
 
 		Document document = SAXReaderUtil.read(xml);
 
@@ -754,8 +713,6 @@ public class PluginPackageUtil {
 			pluginPackage.setRepository(pluginPackageRepository);
 
 			pluginPackageRepository.addPluginPackage(pluginPackage);
-
-			_indexPluginPackage(pluginPackage);
 		}
 
 		return pluginPackageRepository;
@@ -837,7 +794,7 @@ public class PluginPackageUtil {
 		if (pos == -1) {
 			pos = displayName.indexOf("-ext");
 
-			pluginType = Plugin.TYPE_EXT;
+			pluginType = _TYPE_EXT;
 		}
 
 		if (pos == -1) {
@@ -919,10 +876,10 @@ public class PluginPackageUtil {
 		String[] licensesArray = StringUtil.split(
 			properties.getProperty("licenses"));
 
-		for (int i = 0; i < licensesArray.length; i++) {
+		for (String curLicenses : licensesArray) {
 			License license = new License();
 
-			license.setName(licensesArray[i].trim());
+			license.setName(curLicenses.trim());
 			license.setOsiApproved(true);
 
 			licenses.add(license);
@@ -995,26 +952,27 @@ public class PluginPackageUtil {
 
 		String servletContextName = servletContext.getServletContextName();
 
-		if (_log.isInfoEnabled()) {
+		if (_log.isDebugEnabled()) {
 			if (servletContextName == null) {
-				_log.info("Reading plugin package for the root context");
+				_log.debug("Reading plugin package for the root context");
 			}
 			else {
-				_log.info("Reading plugin package for " + servletContextName);
+				_log.debug("Reading plugin package for " + servletContextName);
 			}
 		}
 
 		PluginPackage pluginPackage = null;
 
-		String xml = HttpUtil.URLtoString(
-			servletContext.getResource("/WEB-INF/liferay-plugin-package.xml"));
+		String xml = StreamUtil.toString(
+			servletContext.getResourceAsStream(
+				"/WEB-INF/liferay-plugin-package.xml"));
 
 		if (xml != null) {
 			pluginPackage = _readPluginPackageXml(xml);
 		}
 		else {
-			String propertiesString = HttpUtil.URLtoString(
-				servletContext.getResource(
+			String propertiesString = StreamUtil.toString(
+				servletContext.getResourceAsStream(
 					"/WEB-INF/liferay-plugin-package.properties"));
 
 			if (propertiesString != null) {
@@ -1196,9 +1154,7 @@ public class PluginPackageUtil {
 
 		Document document = SAXReaderUtil.read(xml);
 
-		Element rootElement = document.getRootElement();
-
-		return _readPluginPackageXml(rootElement);
+		return _readPluginPackageXml(document.getRootElement());
 	}
 
 	private Properties _readProperties(Element parentElement, String name) {
@@ -1252,8 +1208,6 @@ public class PluginPackageUtil {
 		_installedPluginPackages.addPluginPackage(pluginPackage);
 
 		_updateAvailable = null;
-
-		_indexPluginPackage(pluginPackage);
 	}
 
 	private void _registerPluginPackageInstallation(String preliminaryContext) {
@@ -1262,8 +1216,8 @@ public class PluginPackageUtil {
 	}
 
 	private RepositoryReport _reloadRepositories() throws PortalException {
-		if (_log.isInfoEnabled()) {
-			_log.info("Reloading repositories");
+		if (_log.isDebugEnabled()) {
+			_log.debug("Reloading repositories");
 		}
 
 		RepositoryReport repositoryReport = new RepositoryReport();
@@ -1286,71 +1240,13 @@ public class PluginPackageUtil {
 			}
 		}
 
-		Indexer<PluginPackage> indexer = IndexerRegistryUtil.getIndexer(
-			PluginPackage.class);
-
-		indexer.reindex(new String[0]);
-
 		return repositoryReport;
-	}
-
-	private Hits _search(
-			String keywords, String type, String tag, String license,
-			String repositoryURL, String status, int start, int end)
-		throws PortalException {
-
-		_checkRepositories(repositoryURL);
-
-		SearchContext searchContext = new SearchContext();
-
-		Map<String, Serializable> attributes = new HashMap<>();
-
-		attributes.put("license", license);
-		attributes.put("repositoryURL", repositoryURL);
-		attributes.put("status", status);
-		attributes.put("tag", tag);
-		attributes.put("type", type);
-
-		searchContext.setAttributes(attributes);
-
-		searchContext.setCompanyId(CompanyConstants.SYSTEM);
-		searchContext.setEnd(end);
-		searchContext.setKeywords(keywords);
-
-		QueryConfig queryConfig = searchContext.getQueryConfig();
-
-		queryConfig.setHighlightEnabled(false);
-		queryConfig.setScoreEnabled(false);
-
-		searchContext.setStart(start);
-
-		Indexer<PluginPackage> indexer = IndexerRegistryUtil.getIndexer(
-			PluginPackage.class);
-
-		return indexer.search(searchContext);
 	}
 
 	private void _unregisterInstalledPluginPackage(PluginPackage pluginPackage)
 		throws PortalException {
 
 		_installedPluginPackages.removePluginPackage(pluginPackage);
-
-		try {
-			List<PluginPackage> pluginPackages = _getAvailablePluginPackages(
-				pluginPackage.getGroupId(), pluginPackage.getArtifactId());
-
-			for (PluginPackage availablePackage : pluginPackages) {
-				_indexPluginPackage(availablePackage);
-			}
-		}
-		catch (PluginPackageException ppe) {
-			if (_log.isWarnEnabled()) {
-				_log.warn(
-					StringBundler.concat(
-						"Unable to reindex unistalled package ",
-						pluginPackage.getContext(), ": ", ppe.getMessage()));
-			}
-		}
 	}
 
 	private void _updateInstallingPluginPackage(
@@ -1362,10 +1258,13 @@ public class PluginPackageUtil {
 			pluginPackage);
 	}
 
+	private static final String _TYPE_EXT = "ext";
+
 	private static final Log _log = LogFactoryUtil.getLog(
 		PluginPackageUtil.class);
 
-	private static final PluginPackageUtil _instance = new PluginPackageUtil();
+	private static final PluginPackageUtil _pluginPackageUtil =
+		new PluginPackageUtil();
 
 	private final Set<String> _availableTagsCache;
 	private final LocalPluginPackageRepository _installedPluginPackages;
@@ -1400,13 +1299,11 @@ public class PluginPackageUtil {
 			for (PluginPackage pluginPackage :
 					_installedPluginPackages.getPluginPackages()) {
 
-				PluginPackage availablePluginPackage = null;
-
 				if (_isIgnored(pluginPackage)) {
 					continue;
 				}
 
-				availablePluginPackage =
+				PluginPackage availablePluginPackage =
 					PluginPackageUtil.getLatestAvailablePluginPackage(
 						pluginPackage.getGroupId(),
 						pluginPackage.getArtifactId());

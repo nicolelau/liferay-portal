@@ -110,7 +110,7 @@ public class SQLFunctionTransformerTest {
 	}
 
 	@Test
-	public void testNonUpperCaseFunctionPrefixThrowsException() {
+	public void testNonupperCaseFunctionPrefixThrowsException() {
 		try {
 			new SQLFunctionTransformer("World(", "", "", "Hello World()");
 
@@ -213,6 +213,16 @@ public class SQLFunctionTransformerTest {
 			Assert.assertEquals(
 				"Unclosed function in: TEST(a, b, c", iae.getMessage());
 		}
+	}
+
+	@Test
+	public void testUnspacedArgumentsFunctionCall() {
+		SQLFunctionTransformer sqlFunctionTransformer =
+			new SQLFunctionTransformer("TEST(", "", " DELIMITER ", "");
+
+		String transformedSQL = sqlFunctionTransformer.transform("TEST(a,' ')");
+
+		Assert.assertEquals("a DELIMITER ' '", transformedSQL);
 	}
 
 }

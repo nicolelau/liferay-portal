@@ -14,6 +14,8 @@
 
 package com.liferay.deployment.helper;
 
+import com.liferay.portal.kernel.util.StringUtil;
+
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
@@ -115,7 +117,7 @@ public class DeploymentHelper {
 					"/DeploymentHelperContextListener.class"));
 
 		ZipUtil.pack(
-			zipEntrySources.toArray(new ZipEntrySource[zipEntrySources.size()]),
+			zipEntrySources.toArray(new ZipEntrySource[0]),
 			new File(outputFileName));
 	}
 
@@ -177,8 +179,10 @@ public class DeploymentHelper {
 
 		String content = new String(bytes);
 
-		content = content.replace("${deployment.files}", deploymentFileNames);
-		content = content.replace("${deployment.path}", deploymentPath);
+		content = StringUtil.replace(
+			content, "${deployment.files}", deploymentFileNames);
+		content = StringUtil.replace(
+			content, "${deployment.path}", deploymentPath);
 
 		return new ByteSource(
 			"WEB-INF/web.xml", content.getBytes(StandardCharsets.UTF_8));
@@ -190,8 +194,8 @@ public class DeploymentHelper {
 
 		ClassLoader classLoader = DeploymentHelper.class.getClassLoader();
 
-		try (InputStream inputStream =
-				classLoader.getResourceAsStream(fileName)) {
+		try (InputStream inputStream = classLoader.getResourceAsStream(
+				fileName)) {
 
 			byte[] bytes = new byte[1024];
 			int length = 0;

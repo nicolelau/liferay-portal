@@ -14,12 +14,12 @@
 
 package com.liferay.analytics.client;
 
-import aQute.bnd.annotation.ProviderType;
-
 import com.liferay.analytics.model.AnalyticsEventsMessage;
 
+import org.osgi.annotation.versioning.ProviderType;
+
 /**
- * @author Eduardo Garcia
+ * @author Eduardo García
  */
 @ProviderType
 public interface AnalyticsClient {

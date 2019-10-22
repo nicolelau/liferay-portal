@@ -17,19 +17,21 @@ package com.liferay.adaptive.media.image.internal.mime.type;
 import com.liferay.adaptive.media.image.internal.configuration.AMImageConfiguration;
 import com.liferay.adaptive.media.image.mime.type.AMImageMimeTypeProvider;
 import com.liferay.portal.configuration.metatype.bnd.util.ConfigurableUtil;
-import com.liferay.portal.kernel.util.ArrayUtil;
 
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
-import org.osgi.service.component.annotations.Modified;
 
 /**
  * @author Sergio González
  */
 @Component(
-	configurationPid = "com.liferay.adaptive.media.image.internal.configuration.AMImageConfiguration"
+	configurationPid = "com.liferay.adaptive.media.image.internal.configuration.AMImageConfiguration",
+	service = AMImageMimeTypeProvider.class
 )
 public class AMImageMimeTypeProviderImpl implements AMImageMimeTypeProvider {
 
@@ -40,16 +42,19 @@ public class AMImageMimeTypeProviderImpl implements AMImageMimeTypeProvider {
 
 	@Override
 	public boolean isMimeTypeSupported(String mimeType) {
-		return ArrayUtil.contains(getSupportedMimeTypes(), mimeType);
+		return _supportedMimeTypes.contains(mimeType);
 	}
 
 	@Activate
-	@Modified
 	protected void activate(Map<String, Object> properties) {
 		_amImageConfiguration = ConfigurableUtil.createConfigurable(
 			AMImageConfiguration.class, properties);
+
+		_supportedMimeTypes = new HashSet<>(
+			Arrays.asList(_amImageConfiguration.supportedMimeTypes()));
 	}
 
-	private volatile AMImageConfiguration _amImageConfiguration;
+	private AMImageConfiguration _amImageConfiguration;
+	private Set<String> _supportedMimeTypes;
 
 }

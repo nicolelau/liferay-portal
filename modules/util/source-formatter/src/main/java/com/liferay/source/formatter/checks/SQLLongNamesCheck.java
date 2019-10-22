@@ -14,7 +14,7 @@
 
 package com.liferay.source.formatter.checks;
 
-import com.liferay.portal.kernel.util.StringBundler;
+import com.liferay.petra.string.StringBundler;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -34,7 +34,7 @@ public class SQLLongNamesCheck extends BaseFileCheck {
 	}
 
 	private void _checkColumns(
-		String fileName, String tableContent, int startLineCount) {
+		String fileName, String tableContent, int startLineNumber) {
 
 		Matcher matcher = _columnPattern.matcher(tableContent);
 
@@ -46,10 +46,10 @@ public class SQLLongNamesCheck extends BaseFileCheck {
 					fileName,
 					StringBundler.concat(
 						"Column name '", columnName, "' should not exceed ",
-						String.valueOf(_MAX_NAME_LENGTH), " characters"),
+						_MAX_NAME_LENGTH, " characters"),
 					"oracle_naming_rules.markdown",
-					startLineCount +
-						getLineCount(tableContent, matcher.start()));
+					startLineNumber +
+						getLineNumber(tableContent, matcher.start()));
 			}
 		}
 	}
@@ -65,9 +65,9 @@ public class SQLLongNamesCheck extends BaseFileCheck {
 					fileName,
 					StringBundler.concat(
 						"Table name '", tableName, "' should not exceed ",
-						String.valueOf(_MAX_NAME_LENGTH), " characters"),
+						_MAX_NAME_LENGTH, " characters"),
 					"oracle_naming_rules.markdown",
-					getLineCount(content, matcher.start()));
+					getLineNumber(content, matcher.start()));
 			}
 
 			int x = matcher.end();
@@ -84,7 +84,7 @@ public class SQLLongNamesCheck extends BaseFileCheck {
 				if (getLevel(tableContent) == 0) {
 					_checkColumns(
 						fileName, tableContent,
-						getLineCount(content, matcher.end()));
+						getLineNumber(content, matcher.end()));
 
 					break;
 				}
@@ -94,8 +94,9 @@ public class SQLLongNamesCheck extends BaseFileCheck {
 
 	private static final int _MAX_NAME_LENGTH = 30;
 
-	private final Pattern _columnPattern = Pattern.compile("\n\t*(\\w+) ");
-	private final Pattern _createTablePattern = Pattern.compile(
+	private static final Pattern _columnPattern = Pattern.compile(
+		"\n\t*(\\w+) ");
+	private static final Pattern _createTablePattern = Pattern.compile(
 		"create table (\\w+) \\(");
 
 }

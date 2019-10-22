@@ -13,10 +13,11 @@
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 	</properties>
 	<dependencies>
+#if (${liferayVersion.startsWith("7.0")})
 		<dependency>
 			<groupId>com.liferay</groupId>
 			<artifactId>com.liferay.frontend.js.loader.modules.extender.api</artifactId>
-			<version>1.0.0</version>
+			<version>1.0.2</version>
 			<scope>provided</scope>
 		</dependency>
 		<dependency>
@@ -25,18 +26,41 @@
 			<version>2.0.0</version>
 			<scope>provided</scope>
 		</dependency>
+#elseif (${liferayVersion.startsWith("7.1")})
+		<dependency>
+			<groupId>com.liferay</groupId>
+			<artifactId>com.liferay.frontend.js.loader.modules.extender.api</artifactId>
+			<version>2.0.2</version>
+			<scope>provided</scope>
+		</dependency>
+		<dependency>
+			<groupId>com.liferay.portal</groupId>
+			<artifactId>com.liferay.portal.kernel</artifactId>
+			<version>3.0.0</version>
+			<scope>provided</scope>
+		</dependency>
+#end
 		<dependency>
 			<groupId>com.liferay.portal</groupId>
 			<artifactId>com.liferay.util.taglib</artifactId>
 			<version>2.0.0</version>
 			<scope>provided</scope>
 		</dependency>
+#if (${liferayVersion.startsWith("7.0")})
 		<dependency>
 			<groupId>javax.portlet</groupId>
 			<artifactId>portlet-api</artifactId>
 			<version>2.0</version>
 			<scope>provided</scope>
 		</dependency>
+#elseif (${liferayVersion.startsWith("7.1")})
+		<dependency>
+			<groupId>javax.portlet</groupId>
+			<artifactId>portlet-api</artifactId>
+			<version>3.0.0</version>
+			<scope>provided</scope>
+		</dependency>
+#end
 		<dependency>
 			<groupId>javax.servlet</groupId>
 			<artifactId>javax.servlet-api</artifactId>
@@ -106,7 +130,7 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-jar-plugin</artifactId>
-				<version>2.6</version>
+				<version>3.1.2</version>
 				<configuration>
 					<archive>
 						<manifestFile>${project.build.outputDirectory}/META-INF/MANIFEST.MF</manifestFile>
@@ -119,7 +143,7 @@
 			<plugin>
 				<groupId>biz.aQute.bnd</groupId>
 				<artifactId>bnd-maven-plugin</artifactId>
-				<version>3.3.0</version>
+				<version>@biz.aQute.bnd.version@</version>
 				<executions>
 					<execution>
 						<goals>
@@ -131,7 +155,7 @@
 					<dependency>
 						<groupId>biz.aQute.bnd</groupId>
 						<artifactId>biz.aQute.bndlib</artifactId>
-						<version>3.2.0</version>
+						<version>@biz.aQute.bnd.version@</version>
 					</dependency>
 					<dependency>
 						<groupId>com.liferay</groupId>
@@ -153,7 +177,7 @@
 					</execution>
 				</executions>
 				<configuration>
-					<docrootDirName>src/main/resources</docrootDirName>
+					<baseDir>src/main/resources</baseDir>
 				</configuration>
 			</plugin>
 		</plugins>

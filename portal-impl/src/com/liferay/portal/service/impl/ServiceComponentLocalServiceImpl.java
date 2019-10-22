@@ -14,6 +14,7 @@
 
 package com.liferay.portal.service.impl;
 
+import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.cache.CacheRegistryUtil;
 import com.liferay.portal.kernel.dao.db.DB;
@@ -37,7 +38,6 @@ import com.liferay.portal.kernel.upgrade.util.UpgradeTableListener;
 import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.InstanceFactory;
 import com.liferay.portal.kernel.util.ListUtil;
-import com.liferay.portal.kernel.util.StringBundler;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.xml.Document;
 import com.liferay.portal.kernel.xml.DocumentException;
@@ -58,11 +58,11 @@ import java.io.OutputStream;
 
 import java.lang.reflect.Field;
 
-import java.security.PrivilegedExceptionAction;
-
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * @author Brian Wing Shun Chan
@@ -136,11 +136,12 @@ public class ServiceComponentLocalServiceImpl
 		ServiceComponent previousServiceComponent = null;
 		ServiceComponent serviceComponent = null;
 
-		List<ServiceComponent> serviceComponents =
-			serviceComponentPersistence.findByBuildNamespace(
-				buildNamespace, 0, 1);
+		Map<String, ServiceComponent> serviceComponents =
+			_getServiceComponents();
 
-		if (serviceComponents.isEmpty()) {
+		serviceComponent = serviceComponents.get(buildNamespace);
+
+		if (serviceComponent == null) {
 			long serviceComponentId = counterLocalService.increment();
 
 			serviceComponent = serviceComponentPersistence.create(
@@ -151,8 +152,6 @@ public class ServiceComponentLocalServiceImpl
 			serviceComponent.setBuildDate(buildDate);
 		}
 		else {
-			serviceComponent = serviceComponents.get(0);
-
 			previousBuildNumber = serviceComponent.getBuildNumber();
 
 			if (previousBuildNumber < buildNumber) {
@@ -171,9 +170,8 @@ public class ServiceComponentLocalServiceImpl
 				throw new OldServiceComponentException(
 					StringBundler.concat(
 						"Build namespace ", buildNamespace,
-						" has build number ",
-						String.valueOf(previousBuildNumber),
-						" which is newer than ", String.valueOf(buildNumber)));
+						" has build number ", previousBuildNumber,
+						" which is newer than ", buildNumber));
 			}
 			else {
 				return serviceComponent;
@@ -211,7 +209,8 @@ public class ServiceComponentLocalServiceImpl
 
 			serviceComponent.setData(dataXML);
 
-			serviceComponentPersistence.update(serviceComponent);
+			serviceComponent = serviceComponentPersistence.update(
+				serviceComponent);
 
 			if (((serviceComponentConfiguration instanceof
 					ServletServiceContextComponentConfiguration) &&
@@ -225,6 +224,8 @@ public class ServiceComponentLocalServiceImpl
 					indexesSQL);
 			}
 
+			serviceComponents.put(buildNamespace, serviceComponent);
+
 			removeOldServiceComponents(buildNamespace);
 
 			return serviceComponent;
@@ -232,43 +233,6 @@ public class ServiceComponentLocalServiceImpl
 		catch (Exception e) {
 			throw new SystemException(e);
 		}
-	}
-
-	/**
-	 * @deprecated As of 7.0.0, replaced by {@link
-	 *             #initServiceComponent(ServiceComponentConfiguration,
-	 *             ClassLoader, String, long, long)}
-	 */
-	@Deprecated
-	@Override
-	public ServiceComponent initServiceComponent(
-			ServiceComponentConfiguration serviceComponentConfiguration,
-			ClassLoader classLoader, String buildNamespace, long buildNumber,
-			long buildDate, boolean buildAutoUpgrade)
-		throws PortalException {
-
-		return initServiceComponent(
-			serviceComponentConfiguration, classLoader, buildNamespace,
-			buildNumber, buildDate);
-	}
-
-	/**
-	 * @deprecated As of 7.0.0, replaced by {@link #upgradeDB(ClassLoader,
-	 *             String, long, ServiceComponent, String, String, String)}
-	 */
-	@Deprecated
-	@Override
-	public void upgradeDB(
-			final ClassLoader classLoader, final String buildNamespace,
-			final long buildNumber, final boolean buildAutoUpgrade,
-			final ServiceComponent previousServiceComponent,
-			final String tablesSQL, final String sequencesSQL,
-			final String indexesSQL)
-		throws Exception {
-
-		upgradeDB(
-			classLoader, buildNamespace, buildNumber, previousServiceComponent,
-			tablesSQL, sequencesSQL, indexesSQL);
 	}
 
 	@Override
@@ -280,10 +244,9 @@ public class ServiceComponentLocalServiceImpl
 			final String indexesSQL)
 		throws Exception {
 
-		_pacl.doUpgradeDB(
-			new DoUpgradeDBPrivilegedExceptionAction(
-				classLoader, buildNamespace, buildNumber,
-				previousServiceComponent, tablesSQL, sequencesSQL, indexesSQL));
+		_upgradeDB(
+			classLoader, buildNamespace, buildNumber, previousServiceComponent,
+			tablesSQL, sequencesSQL, indexesSQL);
 	}
 
 	@Override
@@ -335,71 +298,6 @@ public class ServiceComponentLocalServiceImpl
 				_log.error(e, e);
 			}
 		}
-	}
-
-	public class DoUpgradeDBPrivilegedExceptionAction
-		implements PrivilegedExceptionAction<Void> {
-
-		public DoUpgradeDBPrivilegedExceptionAction(
-			ClassLoader classLoader, String buildNamespace, long buildNumber,
-			ServiceComponent previousServiceComponent, String tablesSQL,
-			String sequencesSQL, String indexesSQL) {
-
-			_classLoader = classLoader;
-			_buildNamespace = buildNamespace;
-			_buildNumber = buildNumber;
-			_previousServiceComponent = previousServiceComponent;
-			_tablesSQL = tablesSQL;
-			_sequencesSQL = sequencesSQL;
-			_indexesSQL = indexesSQL;
-		}
-
-		public ClassLoader getClassLoader() {
-			return _classLoader;
-		}
-
-		@Override
-		public Void run() throws Exception {
-			_doUpgradeDB(
-				_classLoader, _buildNamespace, _buildNumber,
-				_previousServiceComponent, _tablesSQL, _sequencesSQL,
-				_indexesSQL);
-
-			return null;
-		}
-
-		private final String _buildNamespace;
-		private final long _buildNumber;
-		private final ClassLoader _classLoader;
-		private final String _indexesSQL;
-		private final ServiceComponent _previousServiceComponent;
-		private final String _sequencesSQL;
-		private final String _tablesSQL;
-
-	}
-
-	public interface PACL {
-
-		public void doUpgradeDB(
-				DoUpgradeDBPrivilegedExceptionAction
-					doUpgradeDBPrivilegedExceptionAction)
-			throws Exception;
-
-	}
-
-	/**
-	 * @deprecated As of 7.0.0, with no direct replacement
-	 */
-	@Deprecated
-	protected void doUpgradeDB(
-			ClassLoader classLoader, String buildNamespace, long buildNumber,
-			boolean buildAutoUpgrade, ServiceComponent previousServiceComponent,
-			String tablesSQL, String sequencesSQL, String indexesSQL)
-		throws Exception {
-
-		_doUpgradeDB(
-			classLoader, buildNamespace, buildNumber, previousServiceComponent,
-			tablesSQL, sequencesSQL, indexesSQL);
 	}
 
 	protected List<String> getModelNames(ClassLoader classLoader)
@@ -585,7 +483,42 @@ public class ServiceComponentLocalServiceImpl
 		}
 	}
 
-	private void _doUpgradeDB(
+	private Map<String, ServiceComponent> _getServiceComponents() {
+		if (_serviceComponents != null) {
+			return _serviceComponents;
+		}
+
+		synchronized (this) {
+			if (_serviceComponents != null) {
+				return _serviceComponents;
+			}
+
+			Map<String, ServiceComponent> serviceComponents =
+				new ConcurrentHashMap<>();
+
+			for (ServiceComponent serviceComponent :
+					serviceComponentPersistence.findAll()) {
+
+				String buildNamespace = serviceComponent.getBuildNamespace();
+
+				ServiceComponent previousServiceComponent =
+					serviceComponents.get(buildNamespace);
+
+				if ((previousServiceComponent == null) ||
+					(serviceComponent.getBuildNumber() >
+						previousServiceComponent.getBuildNumber())) {
+
+					serviceComponents.put(buildNamespace, serviceComponent);
+				}
+			}
+
+			_serviceComponents = serviceComponents;
+		}
+
+		return _serviceComponents;
+	}
+
+	private void _upgradeDB(
 			ClassLoader classLoader, String buildNamespace, long buildNumber,
 			ServiceComponent previousServiceComponent, String tablesSQL,
 			String sequencesSQL, String indexesSQL)
@@ -656,23 +589,9 @@ public class ServiceComponentLocalServiceImpl
 	private static final Log _log = LogFactoryUtil.getLog(
 		ServiceComponentLocalServiceImpl.class);
 
-	private static final PACL _pacl = new NoPACL();
-
+	private volatile Map<String, ServiceComponent> _serviceComponents;
 	private final ServiceTracker<UpgradeStep, UpgradeStepHolder>
 		_upgradeStepServiceTracker;
-
-	private static class NoPACL implements PACL {
-
-		@Override
-		public void doUpgradeDB(
-				DoUpgradeDBPrivilegedExceptionAction
-					doUpgradeDBPrivilegedExceptionAction)
-			throws Exception {
-
-			doUpgradeDBPrivilegedExceptionAction.run();
-		}
-
-	}
 
 	private static class UpgradeStepHolder {
 
@@ -685,7 +604,7 @@ public class ServiceComponentLocalServiceImpl
 			_upgradeStep = upgradeStep;
 		}
 
-		private int _buildNumber;
+		private final int _buildNumber;
 		private final String _servletContextName;
 		private final UpgradeStep _upgradeStep;
 

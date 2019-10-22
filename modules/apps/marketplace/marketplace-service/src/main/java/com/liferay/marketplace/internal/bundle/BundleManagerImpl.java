@@ -23,7 +23,6 @@ import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.ListUtil;
 import com.liferay.portal.kernel.util.PropsKeys;
 import com.liferay.portal.kernel.util.PropsUtil;
-import com.liferay.portal.lpkg.deployer.LPKGDeployer;
 import com.liferay.portal.lpkg.deployer.LPKGVerifier;
 import com.liferay.portal.util.ShutdownUtil;
 
@@ -33,7 +32,6 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Properties;
@@ -58,6 +56,7 @@ import org.osgi.service.component.annotations.Reference;
 )
 public class BundleManagerImpl implements BundleManager {
 
+	@Override
 	public Bundle getBundle(String symbolicName, String versionString) {
 		Version version = Version.parseVersion(versionString);
 
@@ -72,6 +71,7 @@ public class BundleManagerImpl implements BundleManager {
 		return null;
 	}
 
+	@Override
 	public List<Bundle> getBundles() {
 		return ListUtil.fromArray(_bundleContext.getBundles());
 	}
@@ -111,9 +111,7 @@ public class BundleManagerImpl implements BundleManager {
 		return null;
 	}
 
-	public List<Bundle> installLPKG(File file) throws Exception {
-		_lpkgVerifier.verify(file);
-
+	public void installLPKG(File file) throws Exception {
 		File installFile = new File(getInstallDirName(), file.getName());
 
 		Files.move(
@@ -122,29 +120,15 @@ public class BundleManagerImpl implements BundleManager {
 
 		if (isRestartRequired(installFile)) {
 			ShutdownUtil.shutdown(0);
-
-			return Collections.emptyList();
 		}
-
-		List<Bundle> bundles = _lpkgDeployer.deploy(
-			_bundleContext, installFile);
-
-		for (int i = 1; i < bundles.size(); i++) {
-			Bundle bundle = bundles.get(i);
-
-			bundle.start();
-		}
-
-		return bundles;
 	}
 
 	public boolean isInstalled(Bundle bundle) {
 		if (ArrayUtil.contains(_INSTALLED_BUNDLE_STATES, bundle.getState())) {
 			return true;
 		}
-		else {
-			return false;
-		}
+
+		return false;
 	}
 
 	public boolean isInstalled(String symbolicName, String version) {
@@ -232,16 +216,14 @@ public class BundleManagerImpl implements BundleManager {
 		return false;
 	}
 
-	private static final int[] _INSTALLED_BUNDLE_STATES =
-		{Bundle.ACTIVE, Bundle.INSTALLED, Bundle.RESOLVED};
+	private static final int[] _INSTALLED_BUNDLE_STATES = {
+		Bundle.ACTIVE, Bundle.INSTALLED, Bundle.RESOLVED
+	};
 
 	private static final Log _log = LogFactoryUtil.getLog(
 		BundleManagerImpl.class);
 
 	private BundleContext _bundleContext;
-
-	@Reference
-	private LPKGDeployer _lpkgDeployer;
 
 	@Reference
 	private LPKGVerifier _lpkgVerifier;

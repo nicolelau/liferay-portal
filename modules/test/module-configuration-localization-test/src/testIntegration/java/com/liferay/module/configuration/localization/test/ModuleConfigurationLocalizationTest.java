@@ -15,6 +15,7 @@
 package com.liferay.module.configuration.localization.test;
 
 import com.liferay.arquillian.extension.junit.bridge.junit.Arquillian;
+import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.configuration.metatype.definitions.ExtendedAttributeDefinition;
 import com.liferay.portal.configuration.metatype.definitions.ExtendedMetaTypeInformation;
@@ -22,11 +23,11 @@ import com.liferay.portal.configuration.metatype.definitions.ExtendedMetaTypeSer
 import com.liferay.portal.configuration.metatype.definitions.ExtendedObjectClassDefinition;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
 import com.liferay.portal.kernel.util.AggregateResourceBundleLoader;
+import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.ResourceBundleLoader;
 import com.liferay.portal.kernel.util.ResourceBundleLoaderUtil;
 import com.liferay.portal.kernel.util.ResourceBundleUtil;
-import com.liferay.portal.kernel.util.StringBundler;
 import com.liferay.portal.test.rule.Inject;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
 
@@ -34,6 +35,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.ResourceBundle;
 
 import org.junit.Assert;
@@ -73,7 +75,8 @@ public class ModuleConfigurationLocalizationTest {
 				continue;
 			}
 
-			sb.append("\nBundle {id: ");
+			sb.append(StringPool.NEW_LINE);
+			sb.append("Bundle {id: ");
 			sb.append(bundle.getBundleId());
 			sb.append(", name: ");
 			sb.append(bundle.getSymbolicName());
@@ -81,10 +84,12 @@ public class ModuleConfigurationLocalizationTest {
 			sb.append(bundle.getVersion());
 			sb.append(StringPool.CLOSE_CURLY_BRACE);
 			sb.append(bundleError);
+			sb.append(StringPool.NEW_LINE);
 		}
 
-		Assert.assertEquals(
-			"Test failed due to: " + sb.toString(), 0, sb.index());
+		String message = sb.toString();
+
+		Assert.assertTrue("Test failed due to: " + message, message.isEmpty());
 	}
 
 	private String _collectBundleError(Bundle bundle) {
@@ -153,18 +158,33 @@ public class ModuleConfigurationLocalizationTest {
 		String pid, ExtendedMetaTypeInformation extendedMetaTypeInformation,
 		ResourceBundle resourceBundle) {
 
-		StringBundler sb = new StringBundler();
-
 		Locale locale = LocaleUtil.getDefault();
 
 		ExtendedObjectClassDefinition extendedObjectClassDefinition =
 			extendedMetaTypeInformation.getObjectClassDefinition(
 				pid, locale.getLanguage());
 
-		if (ResourceBundleUtil.getString(
-				resourceBundle, extendedObjectClassDefinition.getName()) ==
-					null) {
+		for (String extensionUri :
+				extendedObjectClassDefinition.getExtensionUris()) {
 
+			Map<String, String> extensionAttributes =
+				extendedObjectClassDefinition.getExtensionAttributes(
+					extensionUri);
+
+			boolean generateUI = GetterUtil.getBoolean(
+				extensionAttributes.get("generateUI"), true);
+
+			if (!generateUI) {
+				return StringPool.BLANK;
+			}
+		}
+
+		StringBundler sb = new StringBundler();
+
+		String extendedObjectClassDefinitionName = ResourceBundleUtil.getString(
+			resourceBundle, extendedObjectClassDefinition.getName());
+
+		if (extendedObjectClassDefinitionName == null) {
 			sb.append("\n\t\tMissing localization for configuration pid: ");
 			sb.append(extendedObjectClassDefinition.getID());
 		}
@@ -175,10 +195,11 @@ public class ModuleConfigurationLocalizationTest {
 				extendedObjectClassDefinition.getAttributeDefinitions(
 					ExtendedObjectClassDefinition.ALL)) {
 
-			if (ResourceBundleUtil.getString(
-					resourceBundle, extendedAttributeDefinition.getName()) ==
-						null) {
+			String extendedAttributeDefinitionName =
+				ResourceBundleUtil.getString(
+					resourceBundle, extendedAttributeDefinition.getName());
 
+			if (extendedAttributeDefinitionName == null) {
 				missingAttributeNames.add(extendedAttributeDefinition.getID());
 			}
 		}

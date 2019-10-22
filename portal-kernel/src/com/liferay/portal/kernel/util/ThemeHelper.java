@@ -21,25 +21,22 @@ import com.liferay.portal.kernel.portlet.PortletIdCodec;
 import com.liferay.portal.kernel.template.TemplateConstants;
 import com.liferay.portal.kernel.template.TemplateResourceLoaderUtil;
 
-import java.net.URL;
-
 import java.util.Objects;
 
 import javax.servlet.ServletContext;
 
 /**
- * @author Raymond Augé
+ * @author     Raymond Augé
+ * @deprecated As of Judson (7.1.x), replaced by {@link
+ *             com.liferay.portal.model.impl.ThemeImpl}
  */
+@Deprecated
 public class ThemeHelper {
 
 	public static final String TEMPLATE_EXTENSION_FTL = "ftl";
 
 	public static final String TEMPLATE_EXTENSION_JSP = "jsp";
 
-	/**
-	 * @deprecated As of 7.0.0, with no direct replacement
-	 */
-	@Deprecated
 	public static final String TEMPLATE_EXTENSION_VM = "vm";
 
 	public static String getResourcePath(
@@ -55,15 +52,25 @@ public class ThemeHelper {
 
 		String servletContextName = StringPool.BLANK;
 
-		String contextPath = servletContext.getContextPath();
-
 		if (!Objects.equals(
-				PortalUtil.getPathContext(contextPath),
+				PortalUtil.getPathContext(servletContext.getContextPath()),
 				PortalUtil.getPathContext())) {
 
 			servletContextName = GetterUtil.getString(
 				servletContext.getServletContextName());
 		}
+
+		sb.append(theme.getFreeMarkerTemplateLoader());
+		sb.append(theme.getTemplatesPath());
+
+		if (Validator.isNotNull(servletContextName) &&
+			!path.startsWith(StringPool.SLASH.concat(servletContextName))) {
+
+			sb.append(StringPool.SLASH);
+			sb.append(servletContextName);
+		}
+
+		sb.append(StringPool.SLASH);
 
 		int start = 0;
 
@@ -73,35 +80,18 @@ public class ThemeHelper {
 
 		int end = path.lastIndexOf(CharPool.PERIOD);
 
-		String extension = theme.getTemplateExtension();
+		sb.append(path.substring(start, end));
 
-		if (extension.equals(TEMPLATE_EXTENSION_FTL)) {
-			sb.append(theme.getFreeMarkerTemplateLoader());
-			sb.append(theme.getTemplatesPath());
+		sb.append(StringPool.PERIOD);
 
-			if (Validator.isNotNull(servletContextName) &&
-				!path.startsWith(StringPool.SLASH.concat(servletContextName))) {
-
-				sb.append(StringPool.SLASH);
-				sb.append(servletContextName);
-			}
-
-			sb.append(StringPool.SLASH);
-			sb.append(path.substring(start, end));
+		if (Validator.isNotNull(portletId)) {
+			sb.append(portletId);
 			sb.append(StringPool.PERIOD);
-
-			if (Validator.isNotNull(portletId)) {
-				sb.append(portletId);
-				sb.append(StringPool.PERIOD);
-			}
-
-			sb.append(TEMPLATE_EXTENSION_FTL);
-
-			return sb.toString();
 		}
-		else {
-			return path;
-		}
+
+		sb.append(TEMPLATE_EXTENSION_FTL);
+
+		return sb.toString();
 	}
 
 	public static boolean resourceExists(
@@ -143,35 +133,9 @@ public class ThemeHelper {
 			return false;
 		}
 
-		String resourcePath = getResourcePath(
-			servletContext, theme, portletId, path);
-
-		String extension = theme.getTemplateExtension();
-
-		if (extension.equals(TEMPLATE_EXTENSION_FTL)) {
-			return TemplateResourceLoaderUtil.hasTemplateResource(
-				TemplateConstants.LANG_TYPE_FTL, resourcePath);
-		}
-		else {
-			URL url = null;
-
-			if (theme.isWARFile()) {
-				ServletContext themeServletContext = servletContext.getContext(
-					theme.getContextPath());
-
-				url = themeServletContext.getResource(resourcePath);
-			}
-			else {
-				url = servletContext.getResource(resourcePath);
-			}
-
-			if (url == null) {
-				return false;
-			}
-			else {
-				return true;
-			}
-		}
+		return TemplateResourceLoaderUtil.hasTemplateResource(
+			TemplateConstants.LANG_TYPE_FTL,
+			getResourcePath(servletContext, theme, portletId, path));
 	}
 
 }

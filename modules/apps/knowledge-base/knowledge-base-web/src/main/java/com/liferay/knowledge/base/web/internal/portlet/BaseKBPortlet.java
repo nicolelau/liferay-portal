@@ -16,10 +16,8 @@ package com.liferay.knowledge.base.web.internal.portlet;
 
 import com.liferay.asset.kernel.exception.AssetCategoryException;
 import com.liferay.asset.kernel.exception.AssetTagException;
-import com.liferay.document.library.display.context.DLMimeTypeDisplayContext;
 import com.liferay.document.library.kernel.antivirus.AntivirusScannerException;
 import com.liferay.document.library.kernel.exception.DuplicateFileEntryException;
-import com.liferay.document.library.kernel.exception.DuplicateFileException;
 import com.liferay.document.library.kernel.exception.FileExtensionException;
 import com.liferay.document.library.kernel.exception.FileNameException;
 import com.liferay.document.library.kernel.exception.FileSizeException;
@@ -46,7 +44,6 @@ import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.json.JSONFactory;
 import com.liferay.portal.kernel.json.JSONObject;
-import com.liferay.portal.kernel.portlet.LiferayWindowState;
 import com.liferay.portal.kernel.portlet.PortletResponseUtil;
 import com.liferay.portal.kernel.portlet.bridges.mvc.MVCPortlet;
 import com.liferay.portal.kernel.security.auth.PrincipalException;
@@ -86,16 +83,10 @@ import javax.portlet.RenderRequest;
 import javax.portlet.RenderResponse;
 import javax.portlet.ResourceRequest;
 import javax.portlet.ResourceResponse;
-import javax.portlet.WindowState;
 
 import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 
 import org.osgi.service.component.annotations.Reference;
-import org.osgi.service.component.annotations.ReferenceCardinality;
-import org.osgi.service.component.annotations.ReferencePolicy;
-import org.osgi.service.component.annotations.ReferencePolicyOption;
 
 /**
  * @author Adolfo Pérez
@@ -118,8 +109,8 @@ public abstract class BaseKBPortlet extends MVCPortlet {
 			actionRequest, "resourcePrimKey");
 		String sourceFileName = uploadPortletRequest.getFileName("file");
 
-		try (InputStream inputStream =
-				uploadPortletRequest.getFileAsStream("file")) {
+		try (InputStream inputStream = uploadPortletRequest.getFileAsStream(
+				"file")) {
 
 			String mimeType = uploadPortletRequest.getContentType("file");
 
@@ -219,8 +210,11 @@ public abstract class BaseKBPortlet extends MVCPortlet {
 			String errorMessage = themeDisplay.translate(
 				"an-unexpected-error-occurred-while-deleting-the-file");
 
-			jsonObject.put("deleted", Boolean.FALSE);
-			jsonObject.put("errorMessage", errorMessage);
+			jsonObject.put(
+				"deleted", Boolean.FALSE
+			).put(
+				"errorMessage", errorMessage
+			);
 		}
 
 		writeJSON(actionRequest, actionResponse, jsonObject);
@@ -234,18 +228,19 @@ public abstract class BaseKBPortlet extends MVCPortlet {
 			actionRequest, "resourceClassNameId");
 		long resourcePrimKey = ParamUtil.getLong(
 			actionRequest, "resourcePrimKey");
-		long parentResourceClassNameId = ParamUtil.getLong(
-			actionRequest, "parentResourceClassNameId",
-			portal.getClassNameId(KBFolderConstants.getClassName()));
 		long parentResourcePrimKey = ParamUtil.getLong(
 			actionRequest, "parentResourcePrimKey",
 			KBFolderConstants.DEFAULT_PARENT_FOLDER_ID);
-		double priority = ParamUtil.getDouble(actionRequest, "priority");
 
 		long kbArticleClassNameId = portal.getClassNameId(
 			KBArticleConstants.getClassName());
 
 		if (resourceClassNameId == kbArticleClassNameId) {
+			long parentResourceClassNameId = ParamUtil.getLong(
+				actionRequest, "parentResourceClassNameId",
+				portal.getClassNameId(KBFolderConstants.getClassName()));
+			double priority = ParamUtil.getDouble(actionRequest, "priority");
+
 			kbArticleService.moveKBArticle(
 				resourcePrimKey, parentResourceClassNameId,
 				parentResourcePrimKey, priority);
@@ -333,12 +328,11 @@ public abstract class BaseKBPortlet extends MVCPortlet {
 				}
 				catch (Exception e) {
 					try {
-						HttpServletRequest request =
-							PortalUtil.getHttpServletRequest(resourceRequest);
-						HttpServletResponse response =
-							PortalUtil.getHttpServletResponse(resourceResponse);
-
-						PortalUtil.sendError(e, request, response);
+						PortalUtil.sendError(
+							e,
+							PortalUtil.getHttpServletRequest(resourceRequest),
+							PortalUtil.getHttpServletResponse(
+								resourceResponse));
 					}
 					catch (ServletException se) {
 					}
@@ -403,31 +397,18 @@ public abstract class BaseKBPortlet extends MVCPortlet {
 			ActionRequest actionRequest, ActionResponse actionResponse)
 		throws Exception {
 
-		String portletId = portal.getPortletId(actionRequest);
-
 		String cmd = ParamUtil.getString(actionRequest, Constants.CMD);
 
 		long resourcePrimKey = ParamUtil.getLong(
 			actionRequest, "resourcePrimKey");
-		long parentResourceClassNameId = ParamUtil.getLong(
-			actionRequest, "parentResourceClassNameId",
-			portal.getClassNameId(KBFolderConstants.getClassName()));
-		long parentResourcePrimKey = ParamUtil.getLong(
-			actionRequest, "parentResourcePrimKey",
-			KBFolderConstants.DEFAULT_PARENT_FOLDER_ID);
 
 		String title = ParamUtil.getString(actionRequest, "title");
-		String urlTitle = ParamUtil.getString(actionRequest, "urlTitle");
 		String content = ParamUtil.getString(actionRequest, "content");
 		String description = ParamUtil.getString(actionRequest, "description");
 		String sourceURL = ParamUtil.getString(actionRequest, "sourceURL");
 		String[] sections = actionRequest.getParameterValues("sections");
 		String[] selectedFileNames = ParamUtil.getParameterValues(
 			actionRequest, "selectedFileName");
-		long[] removeFileEntryIds = ParamUtil.getLongValues(
-			actionRequest, "removeFileEntryIds");
-		int workflowAction = ParamUtil.getInteger(
-			actionRequest, "workflowAction");
 
 		KBArticle kbArticle = null;
 
@@ -435,10 +416,18 @@ public abstract class BaseKBPortlet extends MVCPortlet {
 			KBArticle.class.getName(), actionRequest);
 
 		if (cmd.equals(Constants.ADD)) {
+			long parentResourceClassNameId = ParamUtil.getLong(
+				actionRequest, "parentResourceClassNameId",
+				portal.getClassNameId(KBFolderConstants.getClassName()));
+			long parentResourcePrimKey = ParamUtil.getLong(
+				actionRequest, "parentResourcePrimKey",
+				KBFolderConstants.DEFAULT_PARENT_FOLDER_ID);
+			String urlTitle = ParamUtil.getString(actionRequest, "urlTitle");
+
 			kbArticle = kbArticleService.addKBArticle(
-				portletId, parentResourceClassNameId, parentResourcePrimKey,
-				title, urlTitle, content, description, sourceURL, sections,
-				selectedFileNames, serviceContext);
+				portal.getPortletId(actionRequest), parentResourceClassNameId,
+				parentResourcePrimKey, title, urlTitle, content, description,
+				sourceURL, sections, selectedFileNames, serviceContext);
 		}
 		else if (cmd.equals(Constants.REVERT)) {
 			int version = ParamUtil.getInteger(
@@ -448,6 +437,9 @@ public abstract class BaseKBPortlet extends MVCPortlet {
 				resourcePrimKey, version, serviceContext);
 		}
 		else if (cmd.equals(Constants.UPDATE)) {
+			long[] removeFileEntryIds = ParamUtil.getLongValues(
+				actionRequest, "removeFileEntryIds");
+
 			kbArticle = kbArticleService.updateKBArticle(
 				resourcePrimKey, title, content, description, sourceURL,
 				sections, selectedFileNames, removeFileEntryIds,
@@ -457,6 +449,9 @@ public abstract class BaseKBPortlet extends MVCPortlet {
 		if (!cmd.equals(Constants.ADD) && !cmd.equals(Constants.UPDATE)) {
 			return;
 		}
+
+		int workflowAction = ParamUtil.getInteger(
+			actionRequest, "workflowAction");
 
 		if (workflowAction == WorkflowConstants.ACTION_SAVE_DRAFT) {
 			String editURL = buildEditURL(
@@ -468,11 +463,7 @@ public abstract class BaseKBPortlet extends MVCPortlet {
 		String redirect = PortalUtil.escapeRedirect(
 			ParamUtil.getString(actionRequest, "redirect"));
 
-		WindowState windowState = actionRequest.getWindowState();
-
-		if (cmd.equals(Constants.ADD) && Validator.isNotNull(redirect) &&
-			windowState.equals(LiferayWindowState.POP_UP)) {
-
+		if (cmd.equals(Constants.ADD) && Validator.isNotNull(redirect)) {
 			actionRequest.setAttribute(
 				WebKeys.REDIRECT,
 				getContentRedirect(
@@ -493,13 +484,9 @@ public abstract class BaseKBPortlet extends MVCPortlet {
 
 		String cmd = ParamUtil.getString(actionRequest, Constants.CMD);
 
-		long kbCommentId = ParamUtil.getLong(actionRequest, "kbCommentId");
-
 		long classNameId = ParamUtil.getLong(actionRequest, "classNameId");
 		long classPK = ParamUtil.getLong(actionRequest, "classPK");
 		String content = ParamUtil.getString(actionRequest, "content");
-		int status = ParamUtil.getInteger(
-			actionRequest, "status", KBCommentConstants.STATUS_ANY);
 
 		ServiceContext serviceContext = ServiceContextFactory.getInstance(
 			KBComment.class.getName(), actionRequest);
@@ -510,6 +497,11 @@ public abstract class BaseKBPortlet extends MVCPortlet {
 				serviceContext);
 		}
 		else if (cmd.equals(Constants.UPDATE)) {
+			long kbCommentId = ParamUtil.getLong(actionRequest, "kbCommentId");
+
+			int status = ParamUtil.getInteger(
+				actionRequest, "status", KBCommentConstants.STATUS_ANY);
+
 			if (status == KBCommentConstants.STATUS_ANY) {
 				KBComment kbComment = kbCommentService.getKBComment(
 					kbCommentId);
@@ -636,14 +628,17 @@ public abstract class BaseKBPortlet extends MVCPortlet {
 	protected String getContentRedirect(
 		Class<?> clazz, long classPK, String redirect) {
 
-		String portletId = HttpUtil.getParameter(redirect, "p_p_id", false);
+		String portletId = HttpUtil.getParameter(
+			redirect, "portletResource", false);
 
 		String namespace = PortalUtil.getPortletNamespace(portletId);
 
-		redirect = HttpUtil.addParameter(
-			redirect, namespace + "className", clazz.getName());
-		redirect = HttpUtil.addParameter(
-			redirect, namespace + "classPK", classPK);
+		if (Validator.isNotNull(portletId)) {
+			redirect = HttpUtil.addParameter(
+				redirect, namespace + "className", clazz.getName());
+			redirect = HttpUtil.addParameter(
+				redirect, namespace + "classPK", classPK);
+		}
 
 		return redirect;
 	}
@@ -652,7 +647,6 @@ public abstract class BaseKBPortlet extends MVCPortlet {
 	protected boolean isSessionErrorException(Throwable cause) {
 		if (cause instanceof AssetCategoryException ||
 			cause instanceof AssetTagException ||
-			cause instanceof DuplicateFileException ||
 			cause instanceof FileNameException ||
 			cause instanceof FileSizeException ||
 			cause instanceof KBArticleContentException ||
@@ -674,17 +668,6 @@ public abstract class BaseKBPortlet extends MVCPortlet {
 	@Reference(unbind = "-")
 	protected void setAdminUtilHelper(AdminHelper adminHelper) {
 		this.adminHelper = adminHelper;
-	}
-
-	@Reference(
-		cardinality = ReferenceCardinality.OPTIONAL,
-		policy = ReferencePolicy.DYNAMIC,
-		policyOption = ReferencePolicyOption.GREEDY
-	)
-	protected void setDLMimeTypeDisplayContext(
-		DLMimeTypeDisplayContext dlMimeTypeDisplayContext) {
-
-		this.dlMimeTypeDisplayContext = dlMimeTypeDisplayContext;
 	}
 
 	@Reference(unbind = "-")
@@ -731,14 +714,7 @@ public abstract class BaseKBPortlet extends MVCPortlet {
 		this.uploadResponseHandler = uploadResponseHandler;
 	}
 
-	protected void unsetDLMimeTypeDisplayContext(
-		DLMimeTypeDisplayContext dlMimeTypeDisplayContext) {
-
-		this.dlMimeTypeDisplayContext = null;
-	}
-
 	protected AdminHelper adminHelper;
-	protected DLMimeTypeDisplayContext dlMimeTypeDisplayContext;
 	protected JSONFactory jsonFactory;
 	protected KBArticleService kbArticleService;
 	protected KBCommentLocalService kbCommentLocalService;

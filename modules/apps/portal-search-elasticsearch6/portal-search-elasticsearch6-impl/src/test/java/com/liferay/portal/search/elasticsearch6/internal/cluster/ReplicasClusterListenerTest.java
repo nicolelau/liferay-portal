@@ -25,7 +25,6 @@ import java.util.logging.LogRecord;
 
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import org.mockito.Mock;
@@ -35,7 +34,6 @@ import org.mockito.MockitoAnnotations;
 /**
  * @author André de Oliveira
  */
-@Ignore
 public class ReplicasClusterListenerTest {
 
 	@Before
@@ -105,7 +103,7 @@ public class ReplicasClusterListenerTest {
 	}
 
 	@Test
-	public void testNonMasterLiferayNodeDoesNothing() {
+	public void testNonmasterLiferayNodeDoesNothing() {
 		setMasterExecutor(false);
 
 		processClusterEvent();
@@ -196,8 +194,9 @@ public class ReplicasClusterListenerTest {
 		);
 	}
 
-	private static final String[] _INDICES =
-		{RandomTestUtil.randomString(), RandomTestUtil.randomString()};
+	private static final String[] _INDICES = {
+		RandomTestUtil.randomString(), RandomTestUtil.randomString()
+	};
 
 	private static final int _REPLICAS = RandomTestUtil.randomInt() - 1;
 

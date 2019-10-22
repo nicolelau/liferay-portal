@@ -33,17 +33,6 @@ import java.util.Map;
 @MessagingProxy(mode = ProxyMode.SYNC)
 public interface WorkflowDefinitionManager {
 
-	/**
-	 * @deprecated As of 7.0.0, replaced by {@link
-	 *             #deployWorkflowDefinition(long, long, String, String,
-	 *             byte[])}
-	 * @review
-	 */
-	@Deprecated
-	public WorkflowDefinition deployWorkflowDefinition(
-			long companyId, long userId, String title, byte[] bytes)
-		throws WorkflowException;
-
 	public default WorkflowDefinition deployWorkflowDefinition(
 			long companyId, long userId, String title, String name,
 			byte[] bytes)
@@ -66,16 +55,6 @@ public interface WorkflowDefinitionManager {
 	public List<WorkflowDefinition> getActiveWorkflowDefinitions(
 			long companyId, String name, int start, int end,
 			OrderByComparator<WorkflowDefinition> orderByComparator)
-		throws WorkflowException;
-
-	/**
-	 * @deprecated As of 7.0.0, replaced by {@link
-	 *             #getLatestWorkflowDefinition(long, String)}
-	 * @review
-	 */
-	@Deprecated
-	public WorkflowDefinition getLatestKaleoDefinition(
-			long companyId, String name)
 		throws WorkflowException;
 
 	public default WorkflowDefinition getLatestWorkflowDefinition(

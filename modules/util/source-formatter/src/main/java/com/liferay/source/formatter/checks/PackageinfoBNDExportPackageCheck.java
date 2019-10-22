@@ -15,16 +15,11 @@
 package com.liferay.source.formatter.checks;
 
 import com.liferay.petra.string.CharPool;
-import com.liferay.petra.string.StringPool;
+import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.util.StringUtil;
-import com.liferay.portal.kernel.util.Validator;
 import com.liferay.source.formatter.BNDSettings;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.io.IOException;
 
 /**
  * @author Peter Shin
@@ -32,14 +27,14 @@ import java.util.regex.Pattern;
 public class PackageinfoBNDExportPackageCheck extends BaseFileCheck {
 
 	@Override
-	public boolean isModulesCheck() {
+	public boolean isModuleSourceCheck() {
 		return true;
 	}
 
 	@Override
 	protected String doProcess(
 			String fileName, String absolutePath, String content)
-		throws Exception {
+		throws IOException {
 
 		if (absolutePath.contains("/src/main/resources/") &&
 			!_hasBNDExportPackage(fileName)) {
@@ -50,48 +45,19 @@ public class PackageinfoBNDExportPackageCheck extends BaseFileCheck {
 		return content;
 	}
 
-	private List<String> _getBNDExportPackages(String fileName)
-		throws Exception {
-
+	private boolean _hasBNDExportPackage(String fileName) throws IOException {
 		BNDSettings bndSettings = getBNDSettings(fileName);
 
 		if (bndSettings == null) {
-			return Collections.emptyList();
+			return false;
 		}
 
-		Matcher matcher = _exportsPattern.matcher(bndSettings.getContent());
-
-		if (!matcher.find()) {
-			return Collections.emptyList();
-		}
-
-		List<String> exportPackages = new ArrayList<>();
-
-		for (String line : StringUtil.splitLines(matcher.group(3))) {
-			line = StringUtil.trim(line);
-
-			if (Validator.isNull(line) || line.equals("\\")) {
-				continue;
-			}
-
-			line = StringUtil.removeSubstring(line, ",\\");
-
-			if (line.indexOf(StringPool.SEMICOLON) != -1) {
-				line = line.substring(0, line.indexOf(StringPool.SEMICOLON));
-			}
-
-			exportPackages.add(line.replace(CharPool.PERIOD, CharPool.SLASH));
-		}
-
-		return exportPackages;
-	}
-
-	private boolean _hasBNDExportPackage(String fileName) throws Exception {
-		List<String> bndExportPackages = _getBNDExportPackages(fileName);
-
-		for (String bndExportPackage : bndExportPackages) {
-			String suffix =
-				"/src/main/resources/" + bndExportPackage + "/packageinfo";
+		for (String exportPackageName : bndSettings.getExportPackageNames()) {
+			String suffix = StringBundler.concat(
+				"/src/main/resources/",
+				StringUtil.replace(
+					exportPackageName, CharPool.PERIOD, CharPool.SLASH),
+				"/packageinfo");
 
 			if (fileName.endsWith(suffix)) {
 				return true;
@@ -100,9 +66,5 @@ public class PackageinfoBNDExportPackageCheck extends BaseFileCheck {
 
 		return false;
 	}
-
-	private final Pattern _exportsPattern = Pattern.compile(
-		"\nExport-Package:(\\\\\n| )((.*?)(\n[^\t]|\\Z))",
-		Pattern.DOTALL | Pattern.MULTILINE);
 
 }

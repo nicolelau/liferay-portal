@@ -14,12 +14,12 @@
 
 package com.liferay.exportimport.kernel.lar;
 
+import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.model.Portlet;
 import com.liferay.portal.kernel.util.GetterUtil;
-import com.liferay.portal.kernel.util.StringBundler;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
 
@@ -28,7 +28,7 @@ import java.util.Map;
 import javax.portlet.PortletPreferences;
 
 /**
- * @author Eduardo Garcia
+ * @author Eduardo García
  */
 public class DefaultConfigurationPortletDataHandler
 	extends BasePortletDataHandler {
@@ -117,8 +117,7 @@ public class DefaultConfigurationPortletDataHandler
 						_log.warn(
 							StringBundler.concat(
 								"Unable to get UUID for class ", className,
-								" with primary key ",
-								String.valueOf(primaryKeyLong)));
+								" with primary key ", primaryKeyLong));
 					}
 
 					continue;

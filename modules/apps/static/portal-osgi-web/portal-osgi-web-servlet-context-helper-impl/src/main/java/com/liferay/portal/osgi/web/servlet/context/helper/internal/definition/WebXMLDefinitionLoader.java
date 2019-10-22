@@ -14,10 +14,12 @@
 
 package com.liferay.portal.osgi.web.servlet.context.helper.internal.definition;
 
+import com.liferay.petra.string.StringBundler;
+import com.liferay.portal.kernel.log.Log;
+import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.util.ArrayUtil;
 import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.ListUtil;
-import com.liferay.portal.kernel.util.StringBundler;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.osgi.web.servlet.JSPServletFactory;
@@ -29,7 +31,6 @@ import com.liferay.portal.osgi.web.servlet.context.helper.definition.WebXMLDefin
 import com.liferay.portal.osgi.web.servlet.context.helper.internal.JspServletWrapper;
 import com.liferay.portal.osgi.web.servlet.context.helper.internal.order.OrderUtil;
 import com.liferay.portal.osgi.web.servlet.context.helper.order.Order;
-import com.liferay.portal.osgi.web.servlet.context.helper.order.Order.Path;
 
 import java.io.InputStream;
 
@@ -37,15 +38,14 @@ import java.net.URL;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.EnumMap;
 import java.util.Enumeration;
 import java.util.EventListener;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Objects;
+import java.util.Set;
 import java.util.Stack;
 
 import javax.servlet.DispatcherType;
@@ -59,10 +59,7 @@ import javax.servlet.annotation.WebServlet;
 import javax.xml.parsers.SAXParser;
 import javax.xml.parsers.SAXParserFactory;
 
-import org.apache.felix.utils.log.Logger;
-
 import org.osgi.framework.Bundle;
-import org.osgi.framework.wiring.BundleWiring;
 
 import org.xml.sax.Attributes;
 import org.xml.sax.InputSource;
@@ -78,12 +75,14 @@ public class WebXMLDefinitionLoader extends DefaultHandler {
 
 	public WebXMLDefinitionLoader(
 		Bundle bundle, JSPServletFactory jspServletFactory,
-		SAXParserFactory saxParserFactory, Logger logger) {
+		SAXParserFactory saxParserFactory, Set<Class<?>> classes,
+		Set<Class<?>> annotatedClasses) {
 
 		_bundle = bundle;
 		_jspServletFactory = jspServletFactory;
 		_saxParserFactory = saxParserFactory;
-		_logger = logger;
+		_classes = classes;
+		_annotatedClasses = annotatedClasses;
 
 		_webXMLDefinition = new WebXMLDefinition();
 	}
@@ -272,7 +271,7 @@ public class WebXMLDefinitionLoader extends DefaultHandler {
 				return;
 			}
 
-			EnumMap<Path, String[]> routes = _order.getRoutes();
+			EnumMap<Order.Path, String[]> routes = _order.getRoutes();
 
 			List<String> beforeNames = new ArrayList<>(2);
 
@@ -285,7 +284,8 @@ public class WebXMLDefinitionLoader extends DefaultHandler {
 			}
 
 			if (ListUtil.isNotEmpty(beforeNames)) {
-				routes.put(Path.BEFORE, beforeNames.toArray(new String[0]));
+				routes.put(
+					Order.Path.BEFORE, beforeNames.toArray(new String[0]));
 			}
 
 			List<String> afterNames = new ArrayList<>(2);
@@ -299,7 +299,7 @@ public class WebXMLDefinitionLoader extends DefaultHandler {
 			}
 
 			if (ListUtil.isNotEmpty(afterNames)) {
-				routes.put(Path.AFTER, afterNames.toArray(new String[0]));
+				routes.put(Order.Path.AFTER, afterNames.toArray(new String[0]));
 			}
 
 			_order.setRoutes(routes);
@@ -335,11 +335,12 @@ public class WebXMLDefinitionLoader extends DefaultHandler {
 		else if (qName.equals("role-name") ||
 				 qName.equals("transport-guarantee")) {
 
-			_logger.log(
-				Logger.LOG_WARNING,
-				StringBundler.concat(
-					qName, " from web.xml in bundle ", String.valueOf(_bundle),
-					" is not supported"));
+			if (_log.isWarnEnabled()) {
+				_log.warn(
+					StringBundler.concat(
+						qName, " from web.xml in bundle ", _bundle,
+						" is not supported"));
+			}
 		}
 		else if (qName.equals("servlet")) {
 			_webXMLDefinition.setServletDefinition(
@@ -449,7 +450,7 @@ public class WebXMLDefinitionLoader extends DefaultHandler {
 
 	@Override
 	public void error(SAXParseException e) {
-		_logger.log(Logger.LOG_ERROR, _bundle + ": " + e.getMessage(), e);
+		_log.error(_bundle + ": " + e.getMessage(), e);
 	}
 
 	public WebXMLDefinition loadWebXML() throws Exception {
@@ -472,26 +473,16 @@ public class WebXMLDefinitionLoader extends DefaultHandler {
 				WebXMLDefinitionLoader webXMLDefinitionLoader =
 					new WebXMLDefinitionLoader(
 						_bundle, _jspServletFactory, _saxParserFactory,
-						_logger);
+						_classes, _annotatedClasses);
 
 				webXMLDefinitions.add(
 					webXMLDefinitionLoader.loadWebXMLDefinition(url));
 			}
 		}
 
-		BundleWiring bundleWiring = _bundle.adapt(BundleWiring.class);
-
 		WebXMLDefinition annotationWebXMLDefinition = new WebXMLDefinition();
 
-		Collection<String> classResources = bundleWiring.listResources(
-			"/", "*.class", BundleWiring.LISTRESOURCES_RECURSE);
-
-		if (classResources == null) {
-			classResources = new ArrayList<>(0);
-		}
-
-		_collectAnnotatedClasses(
-			annotationWebXMLDefinition, _bundle, classResources);
+		_collectAnnotatedClasses(annotationWebXMLDefinition);
 
 		webXMLDefinitions.add(annotationWebXMLDefinition);
 
@@ -648,7 +639,7 @@ public class WebXMLDefinitionLoader extends DefaultHandler {
 		Map<String, String> assembledContextParameters,
 		Map<String, String> fragmentContextParameters) {
 
-		for (Entry<String, String> entry :
+		for (Map.Entry<String, String> entry :
 				fragmentContextParameters.entrySet()) {
 
 			String name = entry.getKey();
@@ -665,7 +656,7 @@ public class WebXMLDefinitionLoader extends DefaultHandler {
 			Map<String, FilterDefinition> fragmentFilterDefinitions)
 		throws Exception {
 
-		for (Entry<String, FilterDefinition> entry :
+		for (Map.Entry<String, FilterDefinition> entry :
 				fragmentFilterDefinitions.entrySet()) {
 
 			String filterName = entry.getKey();
@@ -697,7 +688,7 @@ public class WebXMLDefinitionLoader extends DefaultHandler {
 			Map<String, String> fragmentInitParameters =
 				fragmentFilterDefinition.getInitParameters();
 
-			for (Entry<String, String> initParametersEntry :
+			for (Map.Entry<String, String> initParametersEntry :
 					fragmentInitParameters.entrySet()) {
 
 				String initParameterName = initParametersEntry.getKey();
@@ -725,10 +716,9 @@ public class WebXMLDefinitionLoader extends DefaultHandler {
 								"Init paramter name ", initParameterName,
 								" conflicts with filter name ", filterName));
 					}
-					else {
-						assembledInitParameters.put(
-							initParameterName, initParametersEntry.getValue());
-					}
+
+					assembledInitParameters.put(
+						initParameterName, initParametersEntry.getValue());
 				}
 			}
 
@@ -791,7 +781,7 @@ public class WebXMLDefinitionLoader extends DefaultHandler {
 			Map<String, ServletDefinition> fragmentServletDefinitions)
 		throws Exception {
 
-		for (Entry<String, ServletDefinition> entry :
+		for (Map.Entry<String, ServletDefinition> entry :
 				fragmentServletDefinitions.entrySet()) {
 
 			String servletName = entry.getKey();
@@ -823,7 +813,7 @@ public class WebXMLDefinitionLoader extends DefaultHandler {
 			Map<String, String> fragmentServletInitParameters =
 				fragmentServletDefinition.getInitParameters();
 
-			for (Entry<String, String> initParameterEntry :
+			for (Map.Entry<String, String> initParameterEntry :
 					fragmentServletInitParameters.entrySet()) {
 
 				String initParameterName = initParameterEntry.getKey();
@@ -851,10 +841,9 @@ public class WebXMLDefinitionLoader extends DefaultHandler {
 								"Init paramter name ", initParameterName,
 								" conflicts with servlet name ", servletName));
 					}
-					else {
-						assembledInitInitParameters.put(
-							initParameterName, initParameterEntry.getValue());
-					}
+
+					assembledInitInitParameters.put(
+						initParameterName, initParameterEntry.getValue());
 				}
 			}
 
@@ -932,41 +921,14 @@ public class WebXMLDefinitionLoader extends DefaultHandler {
 		return assembledWebXMLDefinition;
 	}
 
-	private void _collectAnnotatedClasses(
-			WebXMLDefinition webXMLDefinition, Bundle bundle,
-			Collection<String> classResources)
-		throws Exception {
-
-		for (String classResource : classResources) {
-			_collectAnnotatedClasses(webXMLDefinition, bundle, classResource);
+	private void _collectAnnotatedClasses(WebXMLDefinition webXMLDefinition) {
+		for (Class<?> clazz : _classes) {
+			_collectAnnotatedClasses(webXMLDefinition, clazz);
 		}
 	}
 
 	private void _collectAnnotatedClasses(
-			WebXMLDefinition webXMLDefinition, Bundle bundle,
-			String classResource)
-		throws Exception {
-
-		URL url = _bundle.getResource(classResource);
-
-		if (url == null) {
-			return;
-		}
-
-		String className = classResource.replaceAll("\\.class$", "");
-
-		className = className.replaceAll("/", ".");
-
-		Class<?> clazz = null;
-
-		try {
-			clazz = bundle.loadClass(className);
-		}
-		catch (Throwable t) {
-			_logger.log(Logger.LOG_DEBUG, t.getMessage());
-
-			return;
-		}
+		WebXMLDefinition webXMLDefinition, Class<?> clazz) {
 
 		WebServlet webServlet = null;
 
@@ -977,21 +939,27 @@ public class WebXMLDefinitionLoader extends DefaultHandler {
 
 			// See http://bugs.java.com/view_bug.do?bug_id=7183985 and LPS-69679
 
-			StringBundler sb = new StringBundler(6);
+			if (_log.isDebugEnabled()) {
+				StringBundler sb = new StringBundler(6);
 
-			sb.append("Unexpected error retrieving the annotation ");
-			sb.append(WebServlet.class);
-			sb.append("from class ");
-			sb.append(clazz);
-			sb.append(" because a some dependency may not be present in the ");
-			sb.append("classpath");
+				sb.append("Unexpected error retrieving the annotation ");
+				sb.append(WebServlet.class);
+				sb.append("from class ");
+				sb.append(clazz);
+				sb.append(" because a some dependency may not be present in ");
+				sb.append("the classpath");
 
-			_logger.log(Logger.LOG_DEBUG, sb.toString(), e);
+				_log.debug(sb.toString(), e);
+			}
 
 			return;
 		}
 
+		boolean annotated = false;
+
 		if (webServlet != null) {
+			annotated = true;
+
 			ServletDefinition servletDefinition = new ServletDefinition();
 
 			servletDefinition.setAsyncSupported(webServlet.asyncSupported());
@@ -1021,6 +989,8 @@ public class WebXMLDefinitionLoader extends DefaultHandler {
 		WebFilter webFilter = clazz.getAnnotation(WebFilter.class);
 
 		if (webFilter != null) {
+			annotated = true;
+
 			FilterDefinition filterDefinition = new FilterDefinition();
 
 			filterDefinition.setAsyncSupported(webFilter.asyncSupported());
@@ -1065,11 +1035,17 @@ public class WebXMLDefinitionLoader extends DefaultHandler {
 		WebListener webListener = clazz.getAnnotation(WebListener.class);
 
 		if (webListener != null) {
+			annotated = true;
+
 			ListenerDefinition listenerDefinition = new ListenerDefinition();
 
 			_setEventListener(listenerDefinition, clazz.getCanonicalName());
 
 			webXMLDefinition.addListenerDefinition(listenerDefinition);
+		}
+
+		if (annotated) {
+			_annotatedClasses.add(clazz);
 		}
 	}
 
@@ -1083,11 +1059,10 @@ public class WebXMLDefinitionLoader extends DefaultHandler {
 			return filterClass.newInstance();
 		}
 		catch (Exception e) {
-			_logger.log(
-				Logger.LOG_ERROR,
+			_log.error(
 				StringBundler.concat(
-					"Bundle ", String.valueOf(_bundle),
-					" is unable to load filter ", filterClassName));
+					"Bundle ", _bundle, " is unable to load filter ",
+					filterClassName));
 
 			return null;
 		}
@@ -1103,11 +1078,10 @@ public class WebXMLDefinitionLoader extends DefaultHandler {
 			return eventListenerClass.newInstance();
 		}
 		catch (Exception e) {
-			_logger.log(
-				Logger.LOG_ERROR,
+			_log.error(
 				StringBundler.concat(
-					"Bundle ", String.valueOf(_bundle),
-					" is unable to load listener ", listenerClassName));
+					"Bundle ", _bundle, " is unable to load listener ",
+					listenerClassName));
 
 			return null;
 		}
@@ -1123,8 +1097,7 @@ public class WebXMLDefinitionLoader extends DefaultHandler {
 			return servletClass.newInstance();
 		}
 		catch (Exception e) {
-			_logger.log(
-				Logger.LOG_ERROR,
+			_log.error(
 				_bundle + " unable to load servlet " + servletClassName, e);
 
 			return null;
@@ -1169,18 +1142,22 @@ public class WebXMLDefinitionLoader extends DefaultHandler {
 		"taglib-uri", "url-pattern", "web-resource-name"
 	};
 
+	private static final Log _log = LogFactoryUtil.getLog(
+		WebXMLDefinitionLoader.class);
+
 	private List<String> _absoluteOrderingNames;
 	private boolean _after;
 	private String _afterName;
+	private final Set<Class<?>> _annotatedClasses;
 	private boolean _before;
 	private String _beforeName;
 	private final Bundle _bundle;
+	private final Set<Class<?>> _classes;
 	private FilterDefinition _filterDefinition;
 	private FilterMapping _filterMapping;
 	private JSPConfig _jspConfig;
 	private final JSPServletFactory _jspServletFactory;
 	private ListenerDefinition _listenerDefinition;
-	private final Logger _logger;
 	private String _name;
 	private Order _order;
 	private boolean _othersAbsoluteOrderingSet;

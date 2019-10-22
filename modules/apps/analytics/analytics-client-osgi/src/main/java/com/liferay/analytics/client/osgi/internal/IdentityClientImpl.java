@@ -31,17 +31,14 @@ import org.osgi.service.component.ComponentFactory;
 import org.osgi.service.component.ComponentInstance;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
-import org.osgi.service.component.annotations.ConfigurationPolicy;
-import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.service.component.annotations.Modified;
 import org.osgi.service.component.annotations.Reference;
 
 /**
- * @author Eduardo Garcia
+ * @author Eduardo García
  */
 @Component(
 	configurationPid = "com.liferay.analytics.client.osgi.internal.configuration.IdentifyClientConfiguration",
-	configurationPolicy = ConfigurationPolicy.REQUIRE, immediate = true,
 	service = IdentityClient.class
 )
 public class IdentityClientImpl implements IdentityClient {
@@ -54,7 +51,7 @@ public class IdentityClientImpl implements IdentityClient {
 			identityContextMessage);
 
 		String identityPath = String.format(
-			"/%s%s", identityContextMessage.getAnalyticsKey(),
+			"/%s%s", identityContextMessage.getDataSourceId(),
 			_identifyClientConfiguration.identifyGatewayPath());
 
 		if (_log.isDebugEnabled()) {
@@ -81,11 +78,6 @@ public class IdentityClientImpl implements IdentityClient {
 		initializeJSONWebServiceClient();
 	}
 
-	@Deactivate
-	protected void deactivate() {
-		_jsonWebServiceClient.destroy();
-	}
-
 	protected void initializeJSONWebServiceClient() {
 		Properties properties = new Properties();
 
@@ -105,29 +97,19 @@ public class IdentityClientImpl implements IdentityClient {
 			(JSONWebServiceClient)componentInstance.getInstance();
 	}
 
-	@Reference(
-		target = "(component.factory=JSONWebServiceClient)", unbind = "-"
-	)
-	protected void setComponentFactory(ComponentFactory componentFactory) {
-		_componentFactory = componentFactory;
-	}
-
-	@Reference(
-		target = "(model=com.liferay.analytics.model.IdentityContextMessage)",
-		unbind = "-"
-	)
-	protected void setJSONObjectMapper(
-		JSONObjectMapper<IdentityContextMessage> jsonObjectMapper) {
-
-		_jsonObjectMapper = jsonObjectMapper;
-	}
-
 	private static final Log _log = LogFactoryUtil.getLog(
 		IdentityClientImpl.class);
 
+	@Reference(target = "(component.factory=JSONWebServiceClient)")
 	private ComponentFactory _componentFactory;
+
 	private volatile IdentifyClientConfiguration _identifyClientConfiguration;
+
+	@Reference(
+		target = "(model=com.liferay.analytics.model.IdentityContextMessage)"
+	)
 	private JSONObjectMapper<IdentityContextMessage> _jsonObjectMapper;
+
 	private JSONWebServiceClient _jsonWebServiceClient;
 
 }

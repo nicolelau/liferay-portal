@@ -17,7 +17,8 @@ package com.liferay.portal.servlet.filters.strip;
 import com.liferay.petra.string.CharPool;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.cache.PortalCache;
-import com.liferay.portal.kernel.cache.SingleVMPoolUtil;
+import com.liferay.portal.kernel.cache.PortalCacheHelperUtil;
+import com.liferay.portal.kernel.cache.PortalCacheManagerNames;
 import com.liferay.portal.kernel.cache.key.CacheKeyGenerator;
 import com.liferay.portal.kernel.cache.key.CacheKeyGeneratorUtil;
 import com.liferay.portal.kernel.io.OutputStreamWriter;
@@ -65,8 +66,8 @@ public class StripFilter extends BasePortalFilter {
 
 	public StripFilter() {
 		if (PropsValues.MINIFIER_INLINE_CONTENT_CACHE_ENABLED) {
-			_minifierCache = SingleVMPoolUtil.getPortalCache(
-				StripFilter.class.getName());
+			_minifierCache = PortalCacheHelperUtil.getPortalCache(
+				PortalCacheManagerNames.SINGLE_VM, StripFilter.class.getName());
 		}
 		else {
 			_minifierCache = null;
@@ -84,16 +85,16 @@ public class StripFilter extends BasePortalFilter {
 
 	@Override
 	public boolean isFilterEnabled(
-		HttpServletRequest request, HttpServletResponse response) {
+		HttpServletRequest httpServletRequest,
+		HttpServletResponse httpServletResponse) {
 
-		if (isStrip(request) && !isInclude(request) &&
-			!isAlreadyFiltered(request)) {
+		if (isStrip(httpServletRequest) && !isInclude(httpServletRequest) &&
+			!isAlreadyFiltered(httpServletRequest)) {
 
 			return true;
 		}
-		else {
-			return false;
-		}
+
+		return false;
 	}
 
 	protected String extractContent(CharBuffer charBuffer, int length) {
@@ -126,10 +127,11 @@ public class StripFilter extends BasePortalFilter {
 			return false;
 		}
 
-		if (KMPSearch.search(
-				charBuffer, startPos, length, _MARKER_LANGUAGE,
-				_MARKER_LANGUAGE_NEXTS) == -1) {
+		int searchValue = KMPSearch.search(
+			charBuffer, startPos, length, _MARKER_LANGUAGE,
+			_MARKER_LANGUAGE_NEXTS);
 
+		if (searchValue == -1) {
 			return false;
 		}
 
@@ -162,33 +164,31 @@ public class StripFilter extends BasePortalFilter {
 		return true;
 	}
 
-	protected boolean isAlreadyFiltered(HttpServletRequest request) {
-		if (request.getAttribute(SKIP_FILTER) != null) {
+	protected boolean isAlreadyFiltered(HttpServletRequest httpServletRequest) {
+		if (httpServletRequest.getAttribute(SKIP_FILTER) != null) {
 			return true;
 		}
-		else {
-			return false;
-		}
+
+		return false;
 	}
 
-	protected boolean isInclude(HttpServletRequest request) {
-		String uri = (String)request.getAttribute(
+	protected boolean isInclude(HttpServletRequest httpServletRequest) {
+		String uri = (String)httpServletRequest.getAttribute(
 			JavaConstants.JAVAX_SERVLET_INCLUDE_REQUEST_URI);
 
 		if (uri == null) {
 			return false;
 		}
-		else {
-			return true;
-		}
+
+		return true;
 	}
 
-	protected boolean isStrip(HttpServletRequest request) {
-		if (!ParamUtil.getBoolean(request, _STRIP, true)) {
+	protected boolean isStrip(HttpServletRequest httpServletRequest) {
+		if (!ParamUtil.getBoolean(httpServletRequest, _STRIP, true)) {
 			return false;
 		}
 
-		String path = request.getPathInfo();
+		String path = httpServletRequest.getPathInfo();
 
 		if (_ignorePaths.contains(path)) {
 			if (_log.isDebugEnabled()) {
@@ -202,17 +202,17 @@ public class StripFilter extends BasePortalFilter {
 		// conditions is bad on performance the user will not start downloading
 		// the content until the entire content is modified.
 
-		String lifecycle = ParamUtil.getString(request, "p_p_lifecycle");
+		String lifecycle = ParamUtil.getString(
+			httpServletRequest, "p_p_lifecycle");
 
 		if ((lifecycle.equals("1") &&
-			 LiferayWindowState.isExclusive(request)) ||
+			 LiferayWindowState.isExclusive(httpServletRequest)) ||
 			lifecycle.equals("2")) {
 
 			return false;
 		}
-		else {
-			return true;
-		}
+
+		return true;
 	}
 
 	protected boolean isStripContentType(String contentType) {
@@ -256,8 +256,9 @@ public class StripFilter extends BasePortalFilter {
 	}
 
 	protected void processCSS(
-			HttpServletRequest request, HttpServletResponse response,
-			CharBuffer charBuffer, Writer writer, char[] openTag)
+			HttpServletRequest httpServletRequest,
+			HttpServletResponse httpServletResponse, CharBuffer charBuffer,
+			Writer writer, char[] openTag)
 		throws Exception {
 
 		outputOpenTag(charBuffer, writer, openTag);
@@ -325,24 +326,24 @@ public class StripFilter extends BasePortalFilter {
 
 	@Override
 	protected void processFilter(
-			HttpServletRequest request, HttpServletResponse response,
-			FilterChain filterChain)
+			HttpServletRequest httpServletRequest,
+			HttpServletResponse httpServletResponse, FilterChain filterChain)
 		throws Exception {
 
 		if (_log.isDebugEnabled()) {
-			String completeURL = HttpUtil.getCompleteURL(request);
+			String completeURL = HttpUtil.getCompleteURL(httpServletRequest);
 
 			_log.debug("Stripping " + completeURL);
 		}
 
-		request.setAttribute(SKIP_FILTER, Boolean.TRUE);
+		httpServletRequest.setAttribute(SKIP_FILTER, Boolean.TRUE);
 
 		BufferCacheServletResponse bufferCacheServletResponse =
-			new BufferCacheServletResponse(response);
+			new BufferCacheServletResponse(httpServletResponse);
 
 		processFilter(
-			StripFilter.class.getName(), request, bufferCacheServletResponse,
-			filterChain);
+			StripFilter.class.getName(), httpServletRequest,
+			bufferCacheServletResponse, filterChain);
 
 		String contentType = GetterUtil.getString(
 			bufferCacheServletResponse.getContentType());
@@ -353,7 +354,7 @@ public class StripFilter extends BasePortalFilter {
 			_log.debug("Stripping content of type " + contentType);
 		}
 
-		response.setContentType(contentType);
+		httpServletResponse.setContentType(contentType);
 
 		if (isStripContentType(contentType) &&
 			(bufferCacheServletResponse.getStatus() ==
@@ -363,26 +364,31 @@ public class StripFilter extends BasePortalFilter {
 				bufferCacheServletResponse.getCharBuffer();
 
 			boolean ensureContentLength = ParamUtil.getBoolean(
-				request, _ENSURE_CONTENT_LENGTH);
+				httpServletRequest, _ENSURE_CONTENT_LENGTH);
 
 			if (ensureContentLength) {
 				UnsyncByteArrayOutputStream unsyncByteArrayOutputStream =
 					new UnsyncByteArrayOutputStream();
 
 				strip(
-					request, response, oldCharBuffer,
+					httpServletRequest, httpServletResponse, oldCharBuffer,
 					new OutputStreamWriter(unsyncByteArrayOutputStream));
 
-				response.setContentLength(unsyncByteArrayOutputStream.size());
+				httpServletResponse.setContentLength(
+					unsyncByteArrayOutputStream.size());
 
-				unsyncByteArrayOutputStream.writeTo(response.getOutputStream());
+				unsyncByteArrayOutputStream.writeTo(
+					httpServletResponse.getOutputStream());
 			}
-			else if (!response.isCommitted()) {
-				strip(request, response, oldCharBuffer, response.getWriter());
+			else if (!httpServletResponse.isCommitted()) {
+				strip(
+					httpServletRequest, httpServletResponse, oldCharBuffer,
+					httpServletResponse.getWriter());
 			}
 		}
 		else {
-			ServletResponseUtil.write(response, bufferCacheServletResponse);
+			ServletResponseUtil.write(
+				httpServletResponse, bufferCacheServletResponse);
 		}
 	}
 
@@ -435,11 +441,12 @@ public class StripFilter extends BasePortalFilter {
 
 					int length = i - startPos;
 
+					int searchValue = KMPSearch.search(
+						charBuffer, startPos, length, _MARKER_TYPE_JAVASCRIPT,
+						_MARKER_TYPE_JAVASCRIPT_NEXTS);
+
 					if ((length < _MARKER_TYPE_JAVASCRIPT.length()) ||
-						(KMPSearch.search(
-							charBuffer, startPos, length,
-							_MARKER_TYPE_JAVASCRIPT,
-							_MARKER_TYPE_JAVASCRIPT_NEXTS) == -1)) {
+						(searchValue == -1)) {
 
 						// We have just determined that this is an open script
 						// tag that does not have the attribute
@@ -588,6 +595,7 @@ public class StripFilter extends BasePortalFilter {
 			}
 
 			outputOpenTag(oldCharBuffer, writer, _MARKER_TEXTAREA_OPEN);
+
 			return;
 		}
 
@@ -616,11 +624,10 @@ public class StripFilter extends BasePortalFilter {
 
 				continue;
 			}
-			else {
-				charBuffer.position(i);
 
-				break;
-			}
+			charBuffer.position(i);
+
+			break;
 		}
 
 		if (skipped && appendSeparator) {
@@ -631,8 +638,9 @@ public class StripFilter extends BasePortalFilter {
 	}
 
 	protected void strip(
-			HttpServletRequest request, HttpServletResponse response,
-			CharBuffer charBuffer, Writer writer)
+			HttpServletRequest httpServletRequest,
+			HttpServletResponse httpServletResponse, CharBuffer charBuffer,
+			Writer writer)
 		throws Exception {
 
 		skipWhiteSpace(charBuffer, writer, false);
@@ -659,7 +667,8 @@ public class StripFilter extends BasePortalFilter {
 					continue;
 				}
 				else if (hasMarker(charBuffer, _MARKER_SCRIPT_OPEN)) {
-					StringBuffer requestURL = request.getRequestURL();
+					StringBuffer requestURL =
+						httpServletRequest.getRequestURL();
 
 					processJavaScript(
 						requestURL.toString(), charBuffer, writer,
@@ -669,8 +678,8 @@ public class StripFilter extends BasePortalFilter {
 				}
 				else if (hasMarker(charBuffer, _MARKER_STYLE_OPEN)) {
 					processCSS(
-						request, response, charBuffer, writer,
-						_MARKER_STYLE_OPEN);
+						httpServletRequest, httpServletResponse, charBuffer,
+						writer, _MARKER_STYLE_OPEN);
 
 					continue;
 				}
@@ -679,8 +688,8 @@ public class StripFilter extends BasePortalFilter {
 							_MARKER_STYLE_DATA_SENNA_TRACK_PERMANENT)) {
 
 					processCSS(
-						request, response, charBuffer, writer,
-						_MARKER_STYLE_DATA_SENNA_TRACK_PERMANENT);
+						httpServletRequest, httpServletResponse, charBuffer,
+						writer, _MARKER_STYLE_DATA_SENNA_TRACK_PERMANENT);
 
 					continue;
 				}
@@ -689,8 +698,8 @@ public class StripFilter extends BasePortalFilter {
 							_MARKER_STYLE_DATA_SENNA_TRACK_TEMPORARY)) {
 
 					processCSS(
-						request, response, charBuffer, writer,
-						_MARKER_STYLE_DATA_SENNA_TRACK_TEMPORARY);
+						httpServletRequest, httpServletResponse, charBuffer,
+						writer, _MARKER_STYLE_DATA_SENNA_TRACK_TEMPORARY);
 
 					continue;
 				}

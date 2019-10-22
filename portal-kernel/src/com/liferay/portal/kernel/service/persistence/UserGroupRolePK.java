@@ -14,10 +14,8 @@
 
 package com.liferay.portal.kernel.service.persistence;
 
-import aQute.bnd.annotation.ProviderType;
-
-import com.liferay.portal.kernel.util.HashUtil;
-import com.liferay.portal.kernel.util.StringBundler;
+import com.liferay.petra.lang.HashUtil;
+import com.liferay.petra.string.StringBundler;
 
 import java.io.Serializable;
 
@@ -25,9 +23,9 @@ import java.io.Serializable;
  * @author Brian Wing Shun Chan
  * @generated
  */
-@ProviderType
-public class UserGroupRolePK implements Comparable<UserGroupRolePK>,
-	Serializable {
+public class UserGroupRolePK
+	implements Comparable<UserGroupRolePK>, Serializable {
+
 	public long userId;
 	public long groupId;
 	public long roleId;
@@ -131,7 +129,8 @@ public class UserGroupRolePK implements Comparable<UserGroupRolePK>,
 		UserGroupRolePK pk = (UserGroupRolePK)obj;
 
 		if ((userId == pk.userId) && (groupId == pk.groupId) &&
-				(roleId == pk.roleId)) {
+			(roleId == pk.roleId)) {
+
 			return true;
 		}
 		else {
@@ -170,4 +169,5 @@ public class UserGroupRolePK implements Comparable<UserGroupRolePK>,
 
 		return sb.toString();
 	}
+
 }

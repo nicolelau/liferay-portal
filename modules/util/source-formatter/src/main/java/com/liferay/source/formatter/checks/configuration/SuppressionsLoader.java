@@ -23,11 +23,13 @@ import com.liferay.source.formatter.util.FileUtil;
 import com.liferay.source.formatter.util.SourceFormatterUtil;
 
 import java.io.File;
+import java.io.IOException;
 
 import java.util.List;
 import java.util.Objects;
 
 import org.dom4j.Document;
+import org.dom4j.DocumentException;
 import org.dom4j.DocumentHelper;
 import org.dom4j.Element;
 
@@ -38,7 +40,7 @@ public class SuppressionsLoader {
 
 	public static SourceFormatterSuppressions loadSuppressions(
 			String baseDirName, List<File> files)
-		throws Exception {
+		throws DocumentException, IOException {
 
 		SourceFormatterSuppressions sourceFormatterSuppressions =
 			new SourceFormatterSuppressions();
@@ -107,7 +109,7 @@ public class SuppressionsLoader {
 			SourceFormatterSuppressions sourceFormatterSuppressions,
 			Element suppressionsElement, String absolutePath,
 			boolean moveToSourceFormatterSuppressionsFile)
-		throws Exception {
+		throws DocumentException, IOException {
 
 		if (suppressionsElement == null) {
 			return sourceFormatterSuppressions;
@@ -125,7 +127,7 @@ public class SuppressionsLoader {
 			sourceFormatterSuppressions.addSuppression(
 				CheckType.CHECKSTYLE, null,
 				suppressElement.attributeValue(_CHECK_ATTRIBUTE_NAME),
-				suppressElement.attributeValue(_FILE_ATTRIBUTE_NAME));
+				suppressElement.attributeValue(_FILE_REGEX_ATTRIBUTE_NAME));
 		}
 
 		return sourceFormatterSuppressions;
@@ -136,7 +138,7 @@ public class SuppressionsLoader {
 			Element suppressionsElement, String absolutePath,
 			String portalFileLocation,
 			boolean moveToSourceFormatterSuppressionsFile)
-		throws Exception {
+		throws DocumentException, IOException {
 
 		if (suppressionsElement == null) {
 			return sourceFormatterSuppressions;
@@ -153,17 +155,22 @@ public class SuppressionsLoader {
 		String suppressionsFileLocation = _getFileLocation(absolutePath);
 
 		for (Element suppressElement : suppressElements) {
-			String fileName = suppressElement.attributeValue(
-				_FILE_ATTRIBUTE_NAME);
+			String fileNameRegex = suppressElement.attributeValue(
+				_FILE_REGEX_ATTRIBUTE_NAME);
 
-			if (Objects.equals(portalFileLocation, suppressionsFileLocation)) {
-				fileName = portalFileLocation + fileName;
+			if (fileNameRegex == null) {
+				fileNameRegex = ".*";
+			}
+			else if (Objects.equals(
+						portalFileLocation, suppressionsFileLocation)) {
+
+				fileNameRegex = portalFileLocation + fileNameRegex;
 			}
 
 			sourceFormatterSuppressions.addSuppression(
 				CheckType.SOURCE_CHECK, suppressionsFileLocation,
 				suppressElement.attributeValue(_CHECK_ATTRIBUTE_NAME),
-				fileName);
+				fileNameRegex);
 		}
 
 		return sourceFormatterSuppressions;
@@ -171,7 +178,7 @@ public class SuppressionsLoader {
 
 	private static void _moveSuppressionsToSourceFormatterSuppressionsFile(
 			String absolutePath, List<Element> suppressElements, String name)
-		throws Exception {
+		throws DocumentException, IOException {
 
 		int pos = absolutePath.lastIndexOf(CharPool.SLASH);
 
@@ -240,7 +247,7 @@ public class SuppressionsLoader {
 
 	private static final String _CHECKSTYLE_ATTRIBUTE_NAME = "checkstyle";
 
-	private static final String _FILE_ATTRIBUTE_NAME = "files";
+	private static final String _FILE_REGEX_ATTRIBUTE_NAME = "files";
 
 	private static final String _SOURCE_CHECK_ATTRIBUTE_NAME = "source-check";
 

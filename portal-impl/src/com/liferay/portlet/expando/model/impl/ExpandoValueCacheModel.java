@@ -14,13 +14,10 @@
 
 package com.liferay.portlet.expando.model.impl;
 
-import aQute.bnd.annotation.ProviderType;
-
 import com.liferay.expando.kernel.model.ExpandoValue;
-
+import com.liferay.petra.lang.HashUtil;
+import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.model.CacheModel;
-import com.liferay.portal.kernel.util.HashUtil;
-import com.liferay.portal.kernel.util.StringBundler;
 
 import java.io.Externalizable;
 import java.io.IOException;
@@ -31,12 +28,11 @@ import java.io.ObjectOutput;
  * The cache model class for representing ExpandoValue in entity cache.
  *
  * @author Brian Wing Shun Chan
- * @see ExpandoValue
  * @generated
  */
-@ProviderType
-public class ExpandoValueCacheModel implements CacheModel<ExpandoValue>,
-	Externalizable {
+public class ExpandoValueCacheModel
+	implements CacheModel<ExpandoValue>, Externalizable {
+
 	@Override
 	public boolean equals(Object obj) {
 		if (this == obj) {
@@ -47,7 +43,8 @@ public class ExpandoValueCacheModel implements CacheModel<ExpandoValue>,
 			return false;
 		}
 
-		ExpandoValueCacheModel expandoValueCacheModel = (ExpandoValueCacheModel)obj;
+		ExpandoValueCacheModel expandoValueCacheModel =
+			(ExpandoValueCacheModel)obj;
 
 		if (valueId == expandoValueCacheModel.valueId) {
 			return true;
@@ -129,8 +126,7 @@ public class ExpandoValueCacheModel implements CacheModel<ExpandoValue>,
 	}
 
 	@Override
-	public void writeExternal(ObjectOutput objectOutput)
-		throws IOException {
+	public void writeExternal(ObjectOutput objectOutput) throws IOException {
 		objectOutput.writeLong(valueId);
 
 		objectOutput.writeLong(companyId);
@@ -161,4 +157,5 @@ public class ExpandoValueCacheModel implements CacheModel<ExpandoValue>,
 	public long classNameId;
 	public long classPK;
 	public String data;
+
 }

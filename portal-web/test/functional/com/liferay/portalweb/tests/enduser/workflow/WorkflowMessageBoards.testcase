@@ -1,238 +1,166 @@
-<definition component-name="portal-workflow">
-	<property name="portal.release" value="true" />
-	<property name="portal.upstream" value="true" />
-	<property name="testray.main.component.name" value="Workflow" />
+@component-name = "portal-workflow"
+definition {
 
-	<var name="pageName" value="Message Boards Page" />
-	<var name="portletName" value="Message Boards" />
-	<var name="workflowAssetType" value="Message Boards Message" />
+	property portal.release = "true";
+	property portal.upstream = "true";
+	property testray.main.component.name = "Workflow";
+	var pageName = "Message Boards Page";
+	var portletName = "Message Boards";
+	var workflowAssetType = "Message Boards Message";
 
-	<set-up>
-		<execute macro="TestCase#setUpPortalInstance" />
+	setUp {
+		TestCase.setUpPortalInstance();
 
-		<execute macro="User#firstLoginPG" />
+		User.firstLoginPG();
 
-		<execute macro="Navigator#openURL" />
+		Navigator.openURL();
 
-		<execute macro="ProductMenu#gotoPortlet">
-			<var name="category" value="Configuration" />
-			<var name="panel" value="Site Administration" />
-			<var name="portlet" value="Workflow" />
-		</execute>
+		ProductMenu.gotoPortlet(
+			category = "Configuration",
+			panel = "Site Administration",
+			portlet = "Workflow");
 
-		<execute macro="Workflow#configureWorkflow">
-			<var name="workflowDefinition" value="Single Approver" />
-			<var name="workflowResourceValue" value="Message Boards Message" />
-		</execute>
+		Workflow.configureWorkflow(
+			workflowDefinition = "Single Approver",
+			workflowResourceValue = "Message Boards Message");
 
-		<execute macro="ProductMenu#gotoPortlet">
-			<var name="category" value="Navigation" />
-			<var name="panel" value="Site Administration" />
-			<var name="portlet" value="Site Pages" />
-		</execute>
+		ProductMenu.gotoPortlet(
+			category = "Site Builder",
+			panel = "Site Administration",
+			portlet = "Pages");
 
-		<execute macro="SitePages#addPublicPage">
-			<var name="pageName" value="Message Boards Page" />
-		</execute>
+		SitePages.addPublicPage(pageName = "Message Boards Page");
 
-		<execute macro="Navigator#gotoPage">
-			<var name="pageName" value="Message Boards Page" />
-		</execute>
+		Navigator.gotoPage(pageName = "Message Boards Page");
 
-		<execute macro="Portlet#addPG">
-			<var name="portletName" value="Message Boards" />
-		</execute>
-	</set-up>
+		Portlet.addPG(portletName = "Message Boards");
+	}
 
-	<tear-down>
-		<var method="TestPropsUtil#get('test.portal.instance')" name="testPortalInstance" />
+	tearDown {
+		var testPortalInstance = PropsUtil.get("test.portal.instance");
 
-		<if>
-			<equals arg1="${testPortalInstance}" arg2="true" />
-			<then>
-				<execute macro="PortalInstances#tearDownCP" />
-			</then>
-			<else>
-				<execute macro="MessageboardsCategory#tearDownCP" />
+		if ("${testPortalInstance}" == "true") {
+			PortalInstances.tearDownCP();
+		}
+		else {
+			MessageboardsCategory.tearDownCP();
 
-				<execute macro="MessageboardsThread#tearDownCP" />
+			MessageboardsThread.tearDownCP();
 
-				<execute macro="MessageboardsPortlet#tearDownConfigurationGeneralCP" />
+			MessageboardsPortlet.tearDownConfigurationGeneralCP();
 
-				<execute macro="Page#tearDownPG" />
+			Page.tearDownPG();
 
-				<execute macro="Workflow#tearDownPortalWorkflow" />
+			Workflow.tearDownPortalWorkflow();
 
-				<execute macro="Workflow#tearDownSiteWorkflow" />
-			</else>
-		</if>
-	</tear-down>
+			Workflow.tearDownSiteWorkflow();
+		}
+	}
 
-	<command name="ApproveMessageBoardsThreadPG" priority="4">
-		<property name="portal.subrepo" value="false" />
+	@priority = "4"
+	test ApproveMessageBoardsThreadPG {
+		Navigator.gotoPage(pageName = "Message Boards Page");
 
-		<execute macro="Navigator#gotoPage">
-			<var name="pageName" value="Message Boards Page" />
-		</execute>
+		MessageboardsThread.addWithWorkflowPG(
+			threadBody = "MB Thread Body",
+			threadSubject = "MB Thread Subject");
 
-		<execute macro="MessageboardsThread#addWithWorkflowPG">
-			<var name="threadBody" value="MB Thread Body" />
-			<var name="threadSubject" value="MB Thread Subject" />
-		</execute>
+		Navigator.gotoPage(pageName = "Message Boards Page");
 
-		<execute macro="Navigator#gotoPage">
-			<var name="pageName" value="Message Boards Page" />
-		</execute>
+		MessageboardsThread.viewWithWorkflowPG(
+			threadBody = "MB Thread Body",
+			threadSubject = "MB Thread Subject",
+			workflowTask = "Review");
 
-		<execute macro="MessageboardsThread#viewWithWorkflowPG">
-			<var name="threadBody" value="MB Thread Body" />
-			<var name="threadSubject" value="MB Thread Subject" />
-			<var name="workflowTask" value="Review" />
-		</execute>
+		UserBar.gotoDropdownItem(dropdownItem = "My Workflow Tasks");
 
-		<execute macro="Navigator#openURL" />
+		Workflow.assignToMeTaskByActions(
+			workflowAssetTitle = "MB Thread Subject",
+			workflowAssetType = "Message Boards Message",
+			workflowTask = "Review");
 
-		<execute macro="ProductMenu#gotoPortlet">
-			<var name="category" value="My Account" />
-			<var name="panel" value="User" />
-			<var name="portlet" value="My Workflow Tasks" />
-		</execute>
+		Navigator.gotoPage(pageName = "Message Boards Page");
 
-		<execute macro="Workflow#assignToMeTaskByActions">
-			<var name="workflowAssetTitle" value="MB Thread Subject" />
-			<var name="workflowAssetType" value="Message Boards Message" />
-			<var name="workflowTask" value="Review" />
-		</execute>
+		MessageboardsThread.viewWithWorkflowPG(
+			pageName = "Message Boards Page",
+			threadBody = "MB Thread Body",
+			threadSubject = "MB Thread Subject",
+			workflowTask = "Review");
 
-		<execute macro="Navigator#gotoPage">
-			<var name="pageName" value="Message Boards Page" />
-		</execute>
+		UserBar.gotoDropdownItem(dropdownItem = "My Workflow Tasks");
 
-		<execute macro="MessageboardsThread#viewWithWorkflowPG">
-			<var name="pageName" value="Message Boards Page" />
-			<var name="threadBody" value="MB Thread Body" />
-			<var name="threadSubject" value="MB Thread Subject" />
-			<var name="workflowTask" value="Review" />
-		</execute>
+		Workflow.approveTaskByActions(
+			workflowAssetTitle = "MB Thread Subject",
+			workflowAssetType = "Message Boards Message",
+			workflowTask = "Review");
 
-		<execute macro="Navigator#openURL" />
+		Navigator.gotoPage(pageName = "Message Boards Page");
 
-		<execute macro="ProductMenu#gotoPortlet">
-			<var name="category" value="My Account" />
-			<var name="panel" value="User" />
-			<var name="portlet" value="My Workflow Tasks" />
-		</execute>
+		MessageboardsThread.gotoPG(
+			lastPostUserName = "Test Test",
+			replyCount = "0",
+			threadBody = "MB Thread Body",
+			threadSubject = "MB Thread Subject");
 
-		<execute macro="Workflow#approveTaskByActions">
-			<var name="workflowAssetTitle" value="MB Thread Subject" />
-			<var name="workflowAssetType" value="Message Boards Message" />
-			<var name="workflowTask" value="Review" />
-		</execute>
+		MessageboardsThread.viewPG(
+			threadBody = "MB Thread Body",
+			threadSubject = "MB Thread Subject");
 
-		<execute macro="Navigator#gotoPage">
-			<var name="pageName" value="Message Boards Page" />
-		</execute>
+		Navigator.openURL();
 
-		<execute macro="MessageboardsThread#gotoPG">
-			<var name="lastPostUserName" value="Test Test" />
-			<var name="replyCount" value="0" />
-			<var name="threadBody" value="MB Thread Body" />
-			<var name="threadSubject" value="MB Thread Subject" />
-		</execute>
+		UserBar.gotoDropdownItem(dropdownItem = "My Submissions");
 
-		<execute macro="MessageboardsThread#viewPG">
-			<var name="threadBody" value="MB Thread Body" />
-			<var name="threadSubject" value="MB Thread Subject" />
-		</execute>
+		Workflow.gotoViewCompletedAssetViaMySubmissions(workflowAssetTitle = "MB Thread Subject");
 
-		<execute macro="Navigator#openURL" />
+		MessageboardsThread.viewAsWorkflowAsset(
+			threadBody = "MB Thread Body",
+			threadSubject = "MB Thread Subject");
 
-		<execute macro="ProductMenu#gotoPortlet">
-			<var name="category" value="My Account" />
-			<var name="panel" value="User" />
-			<var name="portlet" value="My Submissions" />
-		</execute>
+		MessageboardsThread.gotoViewInContext();
 
-		<execute macro="Workflow#gotoViewCompletedAssetViaMySubmissions">
-			<var name="workflowAssetTitle" value="MB Thread Subject" />
-		</execute>
+		MessageboardsThread.viewPG(
+			threadBody = "MB Thread Body",
+			threadSubject = "MB Thread Subject");
+	}
 
-		<execute macro="MessageboardsThread#viewAsWorkflowAsset">
-			<var name="threadBody" value="MB Thread Body" />
-			<var name="threadSubject" value="MB Thread Subject" />
-		</execute>
+	@priority = "4"
+	test RejectMessageBoardsThreadPG {
+		property test.name.skip.portal.instance = "WorkflowadminPGMessageboards#RejectMessageBoardsThreadPG";
 
-		<execute macro="MessageboardsThread#gotoViewInContext" />
+		Navigator.gotoPage(pageName = "Message Boards Page");
 
-		<execute macro="MessageboardsThread#viewPG">
-			<var name="threadBody" value="MB Thread Body" />
-			<var name="threadSubject" value="MB Thread Subject" />
-		</execute>
-	</command>
+		MessageboardsThread.addWithWorkflowPG(
+			pageName = "Message Boards Page",
+			threadBody = "MB Thread Body",
+			threadSubject = "MB Thread Subject");
 
-	<command name="RejectMessageBoardsThreadPG" priority="4">
-		<property name="test.name.skip.portal.instance" value="WorkflowadminPGMessageboards#RejectMessageBoardsThreadPG" />
+		UserBar.gotoDropdownItem(dropdownItem = "My Workflow Tasks");
 
-		<execute macro="Navigator#gotoPage">
-			<var name="pageName" value="Message Boards Page" />
-		</execute>
+		Workflow.assignToMeTaskByActions(
+			workflowAssetTitle = "MB Thread Subject",
+			workflowAssetType = "Message Boards Message",
+			workflowTask = "Review");
 
-		<execute macro="MessageboardsThread#addWithWorkflowPG">
-			<var name="pageName" value="Message Boards Page" />
-			<var name="threadBody" value="MB Thread Body" />
-			<var name="threadSubject" value="MB Thread Subject" />
-		</execute>
+		UserBar.gotoDropdownItem(dropdownItem = "My Workflow Tasks");
 
-		<execute macro="Navigator#openURL" />
+		Workflow.rejectTaskByActions(
+			workflowAssetTitle = "MB Thread Subject",
+			workflowAssetType = "Message Boards Message",
+			workflowTask = "Review");
 
-		<execute macro="ProductMenu#gotoPortlet">
-			<var name="category" value="My Account" />
-			<var name="panel" value="User" />
-			<var name="portlet" value="My Workflow Tasks" />
-		</execute>
+		UserBar.gotoDropdownItem(dropdownItem = "My Workflow Tasks");
 
-		<execute macro="Workflow#assignToMeTaskByActions">
-			<var name="workflowAssetTitle" value="MB Thread Subject" />
-			<var name="workflowAssetType" value="Message Boards Message" />
-			<var name="workflowTask" value="Review" />
-		</execute>
+		Workflow.viewRejectedTask(
+			workflowAssetTitle = "MB Thread Subject",
+			workflowAssetType = "Message Boards Message");
 
-		<execute macro="Navigator#openURL" />
+		Navigator.gotoPage(pageName = "Message Boards Page");
 
-		<execute macro="ProductMenu#gotoPortlet">
-			<var name="category" value="My Account" />
-			<var name="panel" value="User" />
-			<var name="portlet" value="My Workflow Tasks" />
-		</execute>
+		MessageboardsThread.viewWithWorkflowPG(
+			pageName = "Message Boards Page",
+			threadBody = "MB Thread Body",
+			threadSubject = "MB Thread Subject",
+			workflowTask = "Update");
+	}
 
-		<execute macro="Workflow#rejectTaskByActions">
-			<var name="workflowAssetTitle" value="MB Thread Subject" />
-			<var name="workflowAssetType" value="Message Boards Message" />
-			<var name="workflowTask" value="Review" />
-		</execute>
-
-		<execute macro="Navigator#openURL" />
-
-		<execute macro="ProductMenu#gotoPortlet">
-			<var name="category" value="My Account" />
-			<var name="panel" value="User" />
-			<var name="portlet" value="My Workflow Tasks" />
-		</execute>
-
-		<execute macro="Workflow#viewRejectedTask">
-			<var name="workflowAssetTitle" value="MB Thread Subject" />
-			<var name="workflowAssetType" value="Message Boards Message" />
-		</execute>
-
-		<execute macro="Navigator#gotoPage">
-			<var name="pageName" value="Message Boards Page" />
-		</execute>
-
-		<execute macro="MessageboardsThread#viewWithWorkflowPG">
-			<var name="pageName" value="Message Boards Page" />
-			<var name="threadBody" value="MB Thread Body" />
-			<var name="threadSubject" value="MB Thread Subject" />
-			<var name="workflowTask" value="Update" />
-		</execute>
-	</command>
-</definition>
+}

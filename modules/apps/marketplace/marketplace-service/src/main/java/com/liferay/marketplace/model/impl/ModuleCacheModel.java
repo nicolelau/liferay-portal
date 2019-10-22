@@ -14,13 +14,10 @@
 
 package com.liferay.marketplace.model.impl;
 
-import aQute.bnd.annotation.ProviderType;
-
 import com.liferay.marketplace.model.Module;
-
+import com.liferay.petra.lang.HashUtil;
+import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.model.CacheModel;
-import com.liferay.portal.kernel.util.HashUtil;
-import com.liferay.portal.kernel.util.StringBundler;
 
 import java.io.Externalizable;
 import java.io.IOException;
@@ -31,11 +28,10 @@ import java.io.ObjectOutput;
  * The cache model class for representing Module in entity cache.
  *
  * @author Ryan Park
- * @see Module
  * @generated
  */
-@ProviderType
 public class ModuleCacheModel implements CacheModel<Module>, Externalizable {
+
 	@Override
 	public boolean equals(Object obj) {
 		if (this == obj) {
@@ -139,8 +135,7 @@ public class ModuleCacheModel implements CacheModel<Module>, Externalizable {
 	}
 
 	@Override
-	public void writeExternal(ObjectOutput objectOutput)
-		throws IOException {
+	public void writeExternal(ObjectOutput objectOutput) throws IOException {
 		if (uuid == null) {
 			objectOutput.writeUTF("");
 		}
@@ -183,4 +178,5 @@ public class ModuleCacheModel implements CacheModel<Module>, Externalizable {
 	public String bundleSymbolicName;
 	public String bundleVersion;
 	public String contextName;
+
 }

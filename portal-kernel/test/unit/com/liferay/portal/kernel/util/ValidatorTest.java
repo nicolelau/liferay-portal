@@ -116,11 +116,12 @@ public class ValidatorTest {
 	@Test
 	public void testIsInvalidEmailAddress() throws Exception {
 		String[] invalidEmailAddresses = {
-			"test", "liferay.com", "@liferay.com", "test(@liferay.com",
-			"test)@liferay.com", "test,@liferay.com", ".test@liferay.com",
-			"test.@liferay.com", "te..st@liferay.com", "test user@liferay.com",
-			"test@-liferay.com", "test@.liferay.com", "test@liferay.com-",
-			"test@liferay.com."
+			".test@liferay.com", "@liferay.com", "liferay.com",
+			"te..st@liferay.com", "test user@liferay.com", "test",
+			"test(@liferay.com", "test)@liferay.com", "test,@liferay.com",
+			"test.@liferay.com", "test@-liferay.com", "test@.liferay.com",
+			"test@liferay", "test@liferay.c", "test@liferay.com-",
+			"test@liferay.com.", "test@liferay.com.c"
 		};
 
 		testValidEmailAddreses(invalidEmailAddresses, false);
@@ -128,8 +129,9 @@ public class ValidatorTest {
 
 	@Test
 	public void testIsInvalidFileExtension() throws Exception {
-		String[] invalidFileExtensions =
-			{null, "", "\u0000", ".\u0000", "abc\u0000\u0000/", "a/b", "c\\d"};
+		String[] invalidFileExtensions = {
+			null, "", "\u0000", ".\u0000", "abc\u0000\u0000/", "a/b", "c\\d"
+		};
 
 		testValidFileExtensions(invalidFileExtensions, false);
 	}
@@ -147,16 +149,18 @@ public class ValidatorTest {
 
 	@Test
 	public void testIsInvalidFilePath() throws Exception {
-		String[] invalidFilePaths =
-			{null, "", "..", "./..", "../a", "/../a", "\u0000", "a\u0000/../a"};
+		String[] invalidFilePaths = {
+			null, "", "..", "./..", "../a", "/../a", "\u0000", "a\u0000/../a"
+		};
 
 		testValidFilePaths(invalidFilePaths, false, false);
 	}
 
 	@Test
 	public void testIsInvalidFilePathWithParentDirectories() throws Exception {
-		String[] invalidFilePathsWithParentDirectories =
-			{null, "", "\u0000", "a\u0000/../a"};
+		String[] invalidFilePathsWithParentDirectories = {
+			null, "", "\u0000", "a\u0000/../a"
+		};
 
 		testValidFilePaths(invalidFilePathsWithParentDirectories, true, false);
 	}
@@ -414,16 +418,18 @@ public class ValidatorTest {
 
 	@Test
 	public void testIsNull() throws Exception {
-		String[] nullStrings =
-			{null, "", "  ", "null", " null", "null ", "  null  "};
+		String[] nullStrings = {
+			null, "", "  ", "null", " null", "null ", "  null  "
+		};
 
 		testIsNull(nullStrings, true);
 	}
 
 	@Test
 	public void testIsNullInvalid() throws Exception {
-		String[] notNullStrings =
-			{"a", "anull", "nulla", " anull", " nulla ", "  null  a"};
+		String[] notNullStrings = {
+			"a", "anull", "nulla", " anull", " nulla ", "  null  a"
+		};
 
 		testIsNull(notNullStrings, false);
 	}
@@ -438,9 +444,9 @@ public class ValidatorTest {
 			"test-@liferay.com", "test/@liferay.com", "test=@liferay.com",
 			"test?@liferay.com", "test^@liferay.com", "test_@liferay.com",
 			"test`@liferay.com", "test{@liferay.com", "test|@liferay.com",
-			"test{@liferay.com", "test~@liferay.com", "test@liferay",
-			"test@liferay-abc.com", "test@liferay-abc-def.com",
-			"test@liferay_abc.com", "test@liferay.abc.com"
+			"test{@liferay.com", "test~@liferay.com", "test@liferay-abc.com",
+			"test@liferay-abc-def.com", "test@liferay_abc.com",
+			"test@liferay.abc.com"
 		};
 
 		testValidEmailAddreses(validEmailAddresses, true);

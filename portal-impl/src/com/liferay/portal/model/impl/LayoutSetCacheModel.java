@@ -14,13 +14,11 @@
 
 package com.liferay.portal.model.impl;
 
-import aQute.bnd.annotation.ProviderType;
-
+import com.liferay.petra.lang.HashUtil;
+import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.model.CacheModel;
 import com.liferay.portal.kernel.model.LayoutSet;
 import com.liferay.portal.kernel.model.MVCCModel;
-import com.liferay.portal.kernel.util.HashUtil;
-import com.liferay.portal.kernel.util.StringBundler;
 
 import java.io.Externalizable;
 import java.io.IOException;
@@ -33,12 +31,11 @@ import java.util.Date;
  * The cache model class for representing LayoutSet in entity cache.
  *
  * @author Brian Wing Shun Chan
- * @see LayoutSet
  * @generated
  */
-@ProviderType
-public class LayoutSetCacheModel implements CacheModel<LayoutSet>,
-	Externalizable, MVCCModel {
+public class LayoutSetCacheModel
+	implements CacheModel<LayoutSet>, Externalizable, MVCCModel {
+
 	@Override
 	public boolean equals(Object obj) {
 		if (this == obj) {
@@ -52,7 +49,8 @@ public class LayoutSetCacheModel implements CacheModel<LayoutSet>,
 		LayoutSetCacheModel layoutSetCacheModel = (LayoutSetCacheModel)obj;
 
 		if ((layoutSetId == layoutSetCacheModel.layoutSetId) &&
-				(mvccVersion == layoutSetCacheModel.mvccVersion)) {
+			(mvccVersion == layoutSetCacheModel.mvccVersion)) {
+
 			return true;
 		}
 
@@ -78,7 +76,7 @@ public class LayoutSetCacheModel implements CacheModel<LayoutSet>,
 
 	@Override
 	public String toString() {
-		StringBundler sb = new StringBundler(31);
+		StringBundler sb = new StringBundler(29);
 
 		sb.append("{mvccVersion=");
 		sb.append(mvccVersion);
@@ -102,8 +100,6 @@ public class LayoutSetCacheModel implements CacheModel<LayoutSet>,
 		sb.append(colorSchemeId);
 		sb.append(", css=");
 		sb.append(css);
-		sb.append(", pageCount=");
-		sb.append(pageCount);
 		sb.append(", settings=");
 		sb.append(settings);
 		sb.append(", layoutSetPrototypeUuid=");
@@ -162,8 +158,6 @@ public class LayoutSetCacheModel implements CacheModel<LayoutSet>,
 			layoutSetImpl.setCss(css);
 		}
 
-		layoutSetImpl.setPageCount(pageCount);
-
 		if (settings == null) {
 			layoutSetImpl.setSettings("");
 		}
@@ -178,11 +172,13 @@ public class LayoutSetCacheModel implements CacheModel<LayoutSet>,
 			layoutSetImpl.setLayoutSetPrototypeUuid(layoutSetPrototypeUuid);
 		}
 
-		layoutSetImpl.setLayoutSetPrototypeLinkEnabled(layoutSetPrototypeLinkEnabled);
+		layoutSetImpl.setLayoutSetPrototypeLinkEnabled(
+			layoutSetPrototypeLinkEnabled);
 
 		layoutSetImpl.resetOriginalValues();
 
-		layoutSetImpl.setCompanyFallbackVirtualHostname(_companyFallbackVirtualHostname);
+		layoutSetImpl.setCompanyFallbackVirtualHostname(
+			_companyFallbackVirtualHostname);
 
 		layoutSetImpl.setVirtualHostname(_virtualHostname);
 
@@ -192,6 +188,7 @@ public class LayoutSetCacheModel implements CacheModel<LayoutSet>,
 	@Override
 	public void readExternal(ObjectInput objectInput)
 		throws ClassNotFoundException, IOException {
+
 		mvccVersion = objectInput.readLong();
 
 		layoutSetId = objectInput.readLong();
@@ -208,20 +205,17 @@ public class LayoutSetCacheModel implements CacheModel<LayoutSet>,
 		themeId = objectInput.readUTF();
 		colorSchemeId = objectInput.readUTF();
 		css = objectInput.readUTF();
-
-		pageCount = objectInput.readInt();
 		settings = objectInput.readUTF();
 		layoutSetPrototypeUuid = objectInput.readUTF();
 
 		layoutSetPrototypeLinkEnabled = objectInput.readBoolean();
 
-		_companyFallbackVirtualHostname = (java.lang.String)objectInput.readObject();
-		_virtualHostname = (java.lang.String)objectInput.readObject();
+		_companyFallbackVirtualHostname = (String)objectInput.readObject();
+		_virtualHostname = (String)objectInput.readObject();
 	}
 
 	@Override
-	public void writeExternal(ObjectOutput objectOutput)
-		throws IOException {
+	public void writeExternal(ObjectOutput objectOutput) throws IOException {
 		objectOutput.writeLong(mvccVersion);
 
 		objectOutput.writeLong(layoutSetId);
@@ -257,8 +251,6 @@ public class LayoutSetCacheModel implements CacheModel<LayoutSet>,
 			objectOutput.writeUTF(css);
 		}
 
-		objectOutput.writeInt(pageCount);
-
 		if (settings == null) {
 			objectOutput.writeUTF("");
 		}
@@ -290,10 +282,10 @@ public class LayoutSetCacheModel implements CacheModel<LayoutSet>,
 	public String themeId;
 	public String colorSchemeId;
 	public String css;
-	public int pageCount;
 	public String settings;
 	public String layoutSetPrototypeUuid;
 	public boolean layoutSetPrototypeLinkEnabled;
-	public java.lang.String _companyFallbackVirtualHostname;
-	public java.lang.String _virtualHostname;
+	public String _companyFallbackVirtualHostname;
+	public String _virtualHostname;
+
 }

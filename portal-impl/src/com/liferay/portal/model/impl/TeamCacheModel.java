@@ -14,13 +14,11 @@
 
 package com.liferay.portal.model.impl;
 
-import aQute.bnd.annotation.ProviderType;
-
+import com.liferay.petra.lang.HashUtil;
+import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.model.CacheModel;
 import com.liferay.portal.kernel.model.MVCCModel;
 import com.liferay.portal.kernel.model.Team;
-import com.liferay.portal.kernel.util.HashUtil;
-import com.liferay.portal.kernel.util.StringBundler;
 
 import java.io.Externalizable;
 import java.io.IOException;
@@ -33,12 +31,11 @@ import java.util.Date;
  * The cache model class for representing Team in entity cache.
  *
  * @author Brian Wing Shun Chan
- * @see Team
  * @generated
  */
-@ProviderType
-public class TeamCacheModel implements CacheModel<Team>, Externalizable,
-	MVCCModel {
+public class TeamCacheModel
+	implements CacheModel<Team>, Externalizable, MVCCModel {
+
 	@Override
 	public boolean equals(Object obj) {
 		if (this == obj) {
@@ -52,7 +49,8 @@ public class TeamCacheModel implements CacheModel<Team>, Externalizable,
 		TeamCacheModel teamCacheModel = (TeamCacheModel)obj;
 
 		if ((teamId == teamCacheModel.teamId) &&
-				(mvccVersion == teamCacheModel.mvccVersion)) {
+			(mvccVersion == teamCacheModel.mvccVersion)) {
+
 			return true;
 		}
 
@@ -196,8 +194,7 @@ public class TeamCacheModel implements CacheModel<Team>, Externalizable,
 	}
 
 	@Override
-	public void writeExternal(ObjectOutput objectOutput)
-		throws IOException {
+	public void writeExternal(ObjectOutput objectOutput) throws IOException {
 		objectOutput.writeLong(mvccVersion);
 
 		if (uuid == null) {
@@ -254,4 +251,5 @@ public class TeamCacheModel implements CacheModel<Team>, Externalizable,
 	public String name;
 	public String description;
 	public long lastPublishDate;
+
 }

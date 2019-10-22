@@ -35,8 +35,13 @@
 	<td></td>
 </tr>
 <tr>
-	<td>NAVIGATION_BACK</td>
-	<td>//button[contains(@class,'close') and not(contains(@hidden,'hidden'))]//span[contains(@class,'glyphicon')]</td>
+	<td>SITES_NAVIGATION</td>
+	<td>//a[contains(.,'sites')]</td>
+	<td></td>
+</tr>
+<tr>
+	<td>SITE_SELECTOR</td>
+	<td>//div[contains(@class,'card-horizontal')]//a[contains(@title,'${key_siteName}')]</td>
 	<td></td>
 </tr>
 <tr>
@@ -47,7 +52,7 @@
 <!--SELECT_FILE-->
 <tr>
 	<td>SELECT_FILE_IMAGE_PREVIEW</td>
-	<td>//div[contains(@class,'card')]//div[contains(@style,'${key_imageFileName}')]</td>
+	<td>//div[contains(@class,'card')]//span[contains(@title,'${key_imageFileName}')]</td>
 	<td></td>
 </tr>
 <tr>
@@ -63,28 +68,17 @@
 <!--VIEWER-->
 <tr>
 	<td>CAPTION</td>
+	<td>//li[@data-qa-id='row']/div[contains(@class,'image-card') and contains(.,'${key_uploadFileName}')]</td>
+	<td></td>
+</tr>
+<tr>
+	<td>FILE_UPLOAD_CAPTION</td>
 	<td>//div[@class='image-viewer-footer-content']/p[@class='image-viewer-caption' and contains(.,'${key_uploadFileName}')]</td>
 	<td></td>
 </tr>
 <tr>
 	<td>FILE_INFO_ICON</td>
 	<td>//div[contains(@class,'image-viewer-focused')]//span[contains(@class,'item-viewer-icon-info')]</td>
-	<td></td>
-</tr>
-<tr>
-	<td></td>
-	<td></td>
-	<td></td>
-</tr>
-<!--SIDEBAR-->
-<tr>
-	<td>SIDEBAR_HEADER</td>
-	<td>//div[@class='sidebar-header']//a[contains(.,'File Info')]</td>
-	<td></td>
-</tr>
-<tr>
-	<td>SIDEBAR_CONTENT</td>
-	<td>//div[@class='tab-content']//p[contains(.,'${key_fileDetail}')]</td>
 	<td></td>
 </tr>
 <tr>
@@ -137,7 +131,7 @@
 <!--SELECT_IMAGE_PREVIEW-->
 <tr>
 	<td>SELECT_IMAGE_PREVIEW</td>
-	<td>//div[@class='image-viewer-base-image-list']//img</td>
+	<td>//div[@class='image-viewer-base-image-list-inner']//img</td>
 	<td></td>
 </tr>
 <tr>

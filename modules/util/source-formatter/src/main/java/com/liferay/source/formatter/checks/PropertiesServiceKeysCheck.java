@@ -22,14 +22,13 @@ import com.liferay.petra.string.StringPool;
 public class PropertiesServiceKeysCheck extends BaseFileCheck {
 
 	@Override
-	public boolean isPortalCheck() {
+	public boolean isLiferaySourceCheck() {
 		return true;
 	}
 
 	@Override
 	protected String doProcess(
-			String fileName, String absolutePath, String content)
-		throws Exception {
+		String fileName, String absolutePath, String content) {
 
 		if (!fileName.endsWith("/service.properties")) {
 			return content;

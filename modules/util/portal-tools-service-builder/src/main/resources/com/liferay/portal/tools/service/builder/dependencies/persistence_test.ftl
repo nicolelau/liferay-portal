@@ -35,6 +35,7 @@ import com.liferay.portal.kernel.dao.orm.DynamicQueryFactoryUtil;
 import com.liferay.portal.kernel.dao.orm.ProjectionFactoryUtil;
 import com.liferay.portal.kernel.dao.orm.QueryUtil;
 import com.liferay.portal.kernel.dao.orm.RestrictionsFactoryUtil;
+import com.liferay.portal.kernel.security.auth.CompanyThreadLocal;
 import com.liferay.portal.kernel.test.AssertUtils;
 import com.liferay.portal.kernel.test.ReflectionTestUtil;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
@@ -87,7 +88,7 @@ import org.junit.runner.RunWith;
 	@Deprecated
 </#if>
 
-<#if osgiModule>
+<#if osgiModule || serviceBuilder.isVersionGTE_7_2_0()>
 	@RunWith(Arquillian.class)
 </#if>
 public class ${entity.name}PersistenceTest {
@@ -130,7 +131,11 @@ public class ${entity.name}PersistenceTest {
 				<#if stringUtil.equals(entityColumn.type, "int")>
 					RandomTestUtil.nextInt()
 				<#elseif stringUtil.equals(entityColumn.type, "long")>
-					RandomTestUtil.nextLong()
+					<#if stringUtil.equals(entityColumn.name, "companyId")>
+						CompanyThreadLocal.getCompanyId()
+					<#else>
+						RandomTestUtil.nextLong()
+					</#if>
 				<#elseif stringUtil.equals(entityColumn.type, "String")>
 					<#assign maxLength = serviceBuilder.getMaxLength(entity.getName(), entityColumn.getName()) />
 
@@ -293,6 +298,8 @@ public class ${entity.name}PersistenceTest {
 				Blob existing${entityColumn.methodName} = existing${entity.name}.get${entityColumn.methodName}();
 
 				Assert.assertTrue(Arrays.equals(existing${entityColumn.methodName}.getBytes(1, (int)existing${entityColumn.methodName}.length()), new${entityColumn.methodName}Bytes));
+			<#elseif stringUtil.equals(entityColumn.type, "boolean")>
+				Assert.assertEquals(existing${entity.name}.is${entityColumn.methodName}(), new${entity.name}.is${entityColumn.methodName}());
 			<#elseif stringUtil.equals(entityColumn.type, "Date")>
 				Assert.assertEquals(Time.getShortTimestamp(existing${entity.name}.get${entityColumn.methodName}()), Time.getShortTimestamp(new${entity.name}.get${entityColumn.methodName}()));
 			<#elseif stringUtil.equals(entityColumn.type, "double")>
@@ -999,12 +1006,14 @@ public class ${entity.name}PersistenceTest {
 				<#assign entityColumns = uniqueEntityFinder.entityColumns />
 
 				<#list entityColumns as entityColumn>
-					<#if stringUtil.equals(entityColumn.type, "double")>
-						AssertUtils.assertEquals(existing${entity.name}.get${entityColumn.methodName}(), ReflectionTestUtil.<Double>invoke(existing${entity.name}, "getOriginal${entityColumn.methodName}", new Class<?>[0]));
-					<#elseif entityColumn.isPrimitiveType()>
-						Assert.assertEquals(${serviceBuilder.getPrimitiveObj(entityColumn.type)}.valueOf(existing${entity.name}.get${entityColumn.methodName}()), ReflectionTestUtil.<${serviceBuilder.getPrimitiveObj(entityColumn.type)}>invoke(existing${entity.name}, "getOriginal${entityColumn.methodName}", new Class<?>[0]));
-					<#else>
-						Assert.assertTrue(Objects.equals(existing${entity.name}.get${entityColumn.methodName}(), ReflectionTestUtil.invoke(existing${entity.name}, "getOriginal${entityColumn.methodName}", new Class<?>[0])));
+					<#if entityColumn.isInterfaceColumn()>
+						<#if stringUtil.equals(entityColumn.type, "double")>
+							AssertUtils.assertEquals(existing${entity.name}.get${entityColumn.methodName}(), ReflectionTestUtil.<Double>invoke(existing${entity.name}, "getOriginal${entityColumn.methodName}", new Class<?>[0]));
+						<#elseif entityColumn.isPrimitiveType()>
+							Assert.assertEquals(${serviceBuilder.getPrimitiveObj(entityColumn.type)}.valueOf(existing${entity.name}.get${entityColumn.methodName}()), ReflectionTestUtil.<${serviceBuilder.getPrimitiveObj(entityColumn.type)}>invoke(existing${entity.name}, "getOriginal${entityColumn.methodName}", new Class<?>[0]));
+						<#else>
+							Assert.assertTrue(Objects.equals(existing${entity.name}.get${entityColumn.methodName}(), ReflectionTestUtil.invoke(existing${entity.name}, "getOriginal${entityColumn.methodName}", new Class<?>[0])));
+						</#if>
 					</#if>
 				</#list>
 			</#list>

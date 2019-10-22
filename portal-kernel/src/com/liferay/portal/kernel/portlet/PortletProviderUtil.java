@@ -47,28 +47,28 @@ public class PortletProviderUtil {
 	}
 
 	public static PortletURL getPortletURL(
-			HttpServletRequest request, Group group, String className,
-			PortletProvider.Action action)
+			HttpServletRequest httpServletRequest, Group group,
+			String className, PortletProvider.Action action)
 		throws PortalException {
 
 		PortletProvider portletProvider = getPortletProvider(className, action);
 
 		if (portletProvider != null) {
-			return portletProvider.getPortletURL(request, group);
+			return portletProvider.getPortletURL(httpServletRequest, group);
 		}
 
 		return null;
 	}
 
 	public static PortletURL getPortletURL(
-			HttpServletRequest request, String className,
+			HttpServletRequest httpServletRequest, String className,
 			PortletProvider.Action action)
 		throws PortalException {
 
 		PortletProvider portletProvider = getPortletProvider(className, action);
 
 		if (portletProvider != null) {
-			return portletProvider.getPortletURL(request);
+			return portletProvider.getPortletURL(httpServletRequest);
 		}
 
 		return null;
@@ -97,8 +97,6 @@ public class PortletProviderUtil {
 	protected static PortletProvider getPortletProvider(
 		String className, PortletProvider.Action action) {
 
-		PortletProvider portletProvider = null;
-
 		if (action.equals(PortletProvider.Action.ADD)) {
 			return getPortletProvider(className, _addServiceTrackerMap);
 		}
@@ -118,13 +116,13 @@ public class PortletProviderUtil {
 			return getPortletProvider(className, _viewServiceTrackerMap);
 		}
 
-		return portletProvider;
+		return null;
 	}
 
 	protected static PortletProvider getPortletProvider(
 		String className,
-		ServiceTrackerMap
-			<String, ? extends PortletProvider> serviceTrackerMap) {
+		ServiceTrackerMap<String, ? extends PortletProvider>
+			serviceTrackerMap) {
 
 		PortletProvider portletProvider = serviceTrackerMap.getService(
 			className);

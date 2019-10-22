@@ -14,10 +14,9 @@
 
 package com.liferay.portal.kernel.test.rule;
 
-import com.liferay.portal.kernel.test.rule.BaseTestRule.StatementWrapper;
+import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.test.util.TestPropsValues;
 import com.liferay.portal.kernel.util.OSDetector;
-import com.liferay.portal.kernel.util.StringBundler;
 import com.liferay.portal.kernel.util.ThreadUtil;
 
 import java.util.concurrent.Callable;

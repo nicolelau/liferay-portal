@@ -1,951 +1,856 @@
-<definition>
-	<command name="addFieldSet">
-		<if>
-			<condition function="IsElementPresent" locator1="Icon#HEADER_VERTICAL_ELLIPSIS" />
-			<then>
-				<execute macro="KaleoFormsNavigator#gotoManageFieldSets" />
-
-				<execute macro="LexiconEntry#gotoAdd" />
-
-				<execute macro="PortletEntry#inputName">
-					<var name="name" value="${kfFieldSetName}" />
-				</execute>
-			</then>
-			<else>
-				<execute macro="KaleoFormsAdmin#viewNewProcessProgressBar">
-					<var name="kfProgressName" value="Fields" />
-					<var name="kfProgressStep" value="2" />
-				</execute>
-
-				<execute function="AssertClick" locator1="KaleoFormsAdminEditProcess#ADD_FIELD_SET_BUTTON" value1="Add Field Set" />
-
-				<var name="key_iframeTitle" value="Field Set" />
-
-				<execute function="AssertTextEquals" locator1="IFrame#IFRAME_TITLE" value1="New Field Set" />
-
-				<execute function="SelectFrame" locator1="IFrame#DIALOG" />
-
-				<execute macro="PortletEntry#inputName">
-					<var name="name" value="${kfFieldSetName}" />
-				</execute>
-			</else>
-		</if>
-	</command>
-
-	<command name="addForm">
-		<execute function="SelectFrame" locator1="DDMEditStructure#IFRAME" />
-
-		<execute macro="LexiconEntry#gotoAdd" />
-
-		<execute function="Click" locator1="DDMEditStructure#NAME_FIELD" />
+definition {
 
-		<execute macro="PortletEntry#inputName">
-			<var name="name" value="${kfFormName}" />
-		</execute>
+	macro addFieldSet {
+		if (IsElementPresent(locator1 = "Icon#HEADER_VERTICAL_ELLIPSIS")) {
+			KaleoFormsNavigator.gotoManageFieldSets();
 
-		<for list="Fieldset,Paragraph,Separator" param="field">
-			<execute macro="DynamicDataMapping#viewCanAddField">
-				<var name="field" value="${field}" />
-			</execute>
-		</for>
-	</command>
-
-	<command name="addProcess">
-		<execute function="AssertTextEquals" locator1="Portlet#HEADER" value1="Kaleo Forms Admin" />
-
-		<execute macro="LexiconEntry#gotoAdd" />
-	</command>
-
-	<command name="addProcessDetails">
-		<execute macro="KaleoFormsAdmin#viewNewProcessProgressBar">
-			<var name="kfProgressName" value="Details" />
-			<var name="kfProgressStep" value="1" />
-		</execute>
-
-		<execute function="AssertTextEquals" locator1="KaleoFormsAdminEditProcess#NEXT_BUTTON_INACTIVE" value1="Next" />
-
-		<var name="key_fieldName" value="name" />
-
-		<execute function="Type" locator1="FormFields#TEXT_FIELD" value1="${kfProcessName}" />
-
-		<execute macro="FormFields#editTextMultiline">
-			<var name="fieldName" value="description" />
-			<var name="fieldValue" value="${kfProcessDescription}" />
-		</execute>
-	</command>
+			LexiconEntry.gotoAdd();
 
-	<command name="addWorkflow">
-		<execute macro="KaleoFormsAdmin#viewNewProcessProgressBar">
-			<var name="kfProgressName" value="Workflow" />
-			<var name="kfProgressStep" value="3" />
-		</execute>
-
-		<execute function="AssertClick" locator1="KaleoFormsAdminEditProcess#ADD_WORKFLOW_BUTTON" value1="Add Workflow" />
+			PortletEntry.inputName(name = "${kfFieldSetName}");
+		}
+		else {
+			KaleoFormsAdmin.viewNewProcessProgressBar(
+				kfProgressName = "Fields",
+				kfProgressStep = "2");
 
-		<execute function="SelectFrame" locator1="IFrame#DIALOG" />
-
-		<execute macro="PortletEntry#inputTitle">
-			<var name="title" value="${workflowDefinitionTitle}" />
-		</execute>
-	</command>
-
-	<command name="assignForm">
-		<execute macro="KaleoFormsAdmin#viewNewProcessProgressBar">
-			<var name="kfProgressName" value="Forms" />
-			<var name="kfProgressStep" value="4" />
-		</execute>
-
-		<if>
-			<equals arg1="${kfPendingForm}" arg2="true" />
-			<then>
-				<execute function="AssertTextEquals" locator1="Message#INFO" value1="Updating the field set or workflow will cause loss of data." />
-			</then>
-		</if>
-
-		<execute macro="LexiconEntry#gotoEntryMenuItem">
-			<var name="menuItem" value="Assign Form" />
-			<var name="rowEntry" value="${workflowTask}" />
-		</execute>
-	</command>
-
-	<command name="assignNewForm">
-		<execute macro="KaleoFormsAdmin#editProcess">
-			<var name="kfProcessName" value="${kfProcessName}" />
-		</execute>
-
-		<execute macro="KaleoFormsAdmin#gotoProgressStep">
-			<var name="kfProgressName" value="Forms" />
-		</execute>
-
-		<execute macro="KaleoFormsAdmin#unassignForm">
-			<var name="workflowTask" value="${workflowTask}" />
-		</execute>
-
-		<execute macro="KaleoFormsAdmin#assignForm">
-			<var name="workflowTask" value="${workflowTask}" />
-		</execute>
-
-		<execute macro="KaleoFormsAdmin#addForm">
-			<var name="kfFormName" value="${kfFormNameNew}" />
-		</execute>
-
-		<execute macro="KaleoFormsAdmin#saveForm" />
-
-		<execute macro="KaleoFormsAdmin#chooseForm">
-			<var name="kfFormName" value="${kfFormNameNew}" />
-		</execute>
-
-		<execute macro="KaleoFormsAdmin#saveProcess" />
-	</command>
-
-	<command name="cancelProcessRecordDetailsView">
-		<execute function="AssertClick" locator1="Button#CANCEL" value1="Cancel" />
-	</command>
-
-	<command name="chooseFieldSet">
-		<execute macro="KaleoFormsAdmin#viewNewProcessProgressBar">
-			<var name="kfProgressName" value="Fields" />
-			<var name="kfProgressStep" value="2" />
-		</execute>
-
-		<var name="key_kfFieldSetName" value="${kfFieldSetName}" />
-
-		<if>
-			<equals arg1="${kfPendingForm}" arg2="true" />
-			<then>
-				<execute function="AssertTextEquals" locator1="Message#INFO" value1="Updating the field set or workflow will cause loss of data." />
-			</then>
-		</if>
-
-		<execute macro="LexiconEntry#gotoEntryMenuItem">
-			<var name="menuItem" value="Choose" />
-			<var name="rowEntry" value="${kfFieldSetName}" />
-		</execute>
-
-		<execute function="AssertTextEquals" locator1="KaleoFormsAdminEditProcess#SELECTED_FIELD_SET" value1="${kfFieldSetName}" />
-	</command>
-
-	<command name="chooseForm">
-		<execute macro="DynamicDataMapping#selectDynamicDataMappingFrame" />
-
-		<var name="key_kfFormName" value="${kfFormName}" />
-
-		<execute function="AssertClick" locator1="KaleoFormsAdminEditProcessForm#FORM_TABLE_NAME_LINK" value1="${kfFormName}" />
-
-		<execute function="SelectFrame" value1="relative=top" />
-	</command>
-
-	<command name="chooseWorkflow">
-		<execute macro="KaleoFormsAdmin#viewNewProcessProgressBar">
-			<var name="kfProgressName" value="Workflow" />
-			<var name="kfProgressStep" value="3" />
-		</execute>
-
-		<if>
-			<equals arg1="${kfPendingForm}" arg2="true" />
-			<then>
-				<execute function="AssertTextEquals" locator1="Message#INFO" value1="Updating the field set or workflow will cause loss of data." />
-			</then>
-		</if>
-
-		<if>
-			<isset var="workflowDefinitionTitleEdit" />
-			<then>
-				<var name="key_workflowDefinitionTitle" value="${workflowDefinitionTitleEdit}" />
-
-				<execute function="AssertTextEquals" locator1="KaleoFormsAdminEditProcess#WORKFLOW_TABLE_TITLE" value1="${workflowDefinitionTitleEdit}" />
-			</then>
-			<else>
-				<var name="key_workflowDefinitionTitle" value="${workflowDefinitionTitle}" />
-
-				<execute function="AssertTextEquals" locator1="KaleoFormsAdminEditProcess#WORKFLOW_TABLE_TITLE" value1="${workflowDefinitionTitle}" />
-			</else>
-		</if>
-
-		<execute macro="LexiconEntry#gotoEntryMenuItem">
-			<var name="menuItem" value="Choose" />
-			<var name="rowEntry" value="${workflowDefinitionTitle}" />
-		</execute>
-
-		<execute macro="KaleoFormsAdmin#viewSelectedWorkflow">
-			<var name="edit" value="${edit}" />
-			<var name="workflowDefinitionTitle" value="${workflowDefinitionTitle}" />
-		</execute>
-	</command>
-
-	<command name="deactivateWorkflow">
-		<execute macro="LexiconEntry#gotoEntryMenuItemNoError">
-			<var name="menuItem" value="Deactivate" />
-			<var name="rowEntry" value="${workflowDefinitionTitle}" />
-		</execute>
-
-		<execute function="Confirm" value1="Are you sure you want to deactivate this?" />
-		<execute macro="Alert#viewSuccessMessage" />
-	</command>
-
-	<command name="deleteFieldSet">
-		<execute macro="KaleoFormsNavigator#gotoManageFieldSets" />
-
-		<if>
-			<condition function="IsElementPresent" locator1="DDMSelectStructure#DDM_STRUCTURE_ELLIPSIS_1" />
-			<then>
-				<execute function="Check#checkAll" locator1="Checkbox#SELECT_ALL" />
-				<execute function="ClickNoError" locator1="Icon#DELETE" />
-				<execute function="Confirm" value1="Are you sure you want to delete this? It will be deleted immediately." />
-
-				<if>
-					<equals arg1="${kfProcessExists}" arg2="true" />
-					<then>
-						<execute macro="Alert#viewRequestFailedToComplete" />
-
-						<execute function="AssertTextEquals#assertPartialText" locator1="Message#ERROR_2" value1="The structure cannot be deleted because it is required by one or more structure links." />
-					</then>
-					<else>
-						<execute macro="Alert#viewSuccessMessage" />
-					</else>
-				</if>
-			</then>
-		</if>
-	</command>
-
-	<command name="deleteForm">
-		<execute macro="KaleoFormsNavigator#gotoManageForms">
-			<var name="kfFieldSetName" value="${kfFieldSetName}" />
-		</execute>
-
-		<execute macro="Search#searchCP">
-			<var name="searchTerm" value="${kfFormName}" />
-		</execute>
-
-		<execute macro="LexiconEntry#gotoEntryMenuItemNoError">
-			<var name="menuItem" value="Delete" />
-			<var name="rowEntry" value="${kfFormName}" />
-		</execute>
-
-		<execute function="Confirm" value1="Are you sure you want to delete this? It will be deleted immediately." />
-
-		<execute macro="Alert#viewSuccessMessage" />
-	</command>
-
-	<command name="deleteProcess">
-		<if>
-			<isset var="kfProcessName" />
-			<then>
-				<var name="key_rowEntry" value="${kfProcessName}" />
-
-				<execute function="Click" locator1="Icon#ROW_VERTICAL_ELLIPSIS" />
-			</then>
-			<else>
-				<execute function="Click" locator1="Icon#BODY_VERTICAL_ELLIPSIS" />
-			</else>
-		</if>
-
-		<execute function="AssertClickNoError" locator1="MenuItem#ANY_MENU_ITEM" value1="Delete">
-			<var name="key_menuItem" value="Delete" />
-		</execute>
-
-		<execute function="Confirm" value1="Are you sure you want to delete this? It will be deleted immediately." />
-
-		<if>
-			<condition function="IsElementNotPresent" locator1="Icon#BODY_VERTICAL_ELLIPSIS" />
-			<then>
-				<execute function="AssertTextEquals" locator1="Message#EMPTY_INFO" value1="No processes were found." />
-			</then>
-			<else>
-				<execute function="AssertTextNotPresent" locator1="KaleoFormsAdmin#PROCESS_TABLE_NAME" value1="${kfProcessName}" />
-			</else>
-		</if>
-	</command>
-
-	<command name="deleteProcessRecord">
-		<var name="key_rowEntry" value="${kfProcessFieldData}" />
-
-		<execute function="Click" locator1="Icon#BODY_VERTICAL_ELLIPSIS" />
-		<execute function="AssertClickNoError" locator1="MenuItem#ANY_MENU_ITEM" value1="Delete">
-			<var name="key_menuItem" value="Delete" />
-		</execute>
-
-		<execute function="Confirm" value1="Are you sure you want to delete this? It will be deleted immediately." />
-		<execute macro="Alert#viewSuccessMessage" />
-
-		<execute macro="KaleoFormsAdmin#viewProcessRecordTableRecordNotPresent">
-			<var name="kfProcessFieldData" value="${kfProcessFieldData}" />
-		</execute>
-	</command>
-
-	<command name="deleteWorkflowDraft">
-		<execute macro="LexiconEntry#gotoEntryMenuItemNoError">
-			<var name="menuItem" value="Delete" />
-			<var name="rowEntry" value="${workflowDefinitionTitle}" />
-		</execute>
-
-		<execute function="Confirm" value1="Are you sure you want to delete this? It will be deleted immediately." />
-		<execute macro="Alert#viewSuccessMessage" />
-	</command>
-
-	<command name="editFieldSet">
-		<execute macro="KaleoFormsAdmin#viewNewProcessProgressBar">
-			<var name="kfFieldSetName" value="${kfFieldSetName}" />
-			<var name="kfProgressName" value="Fields" />
-			<var name="kfProgressStep" value="2" />
-		</execute>
-
-		<execute macro="LexiconEntry#gotoEntryMenuItem">
-			<var name="menuItem" value="Edit" />
-			<var name="rowEntry" value="${kfFieldSetName}" />
-		</execute>
-
-		<var name="key_iframeTitle" value="Field Set" />
-
-		<execute function="AssertTextEquals" locator1="IFrame#IFRAME_TITLE" value1="Edit Field Set" />
-
-		<execute function="SelectFrame" locator1="IFrame#DIALOG" />
-
-		<execute macro="PortletEntry#inputName">
-			<var name="name" value="${kfFieldSetNameEdit}" />
-		</execute>
-	</command>
-
-	<command name="editFieldSetPagination">
-		<execute function="AssertClick" locator1="KaleoFormsAdminEditProcess#FIELD_SET_PAGINATION_SELECTOR_BUTTON" value1="20 Entries" />
-
-		<var name="key_paginationNumber" value="${paginationNumber}" />
-
-		<execute function="AssertClick" locator1="MenuItem#ANY_MENU_ITEM" value1="${paginationNumber}">
-			<var name="key_menuItem" value="${paginationNumber}" />
-		</execute>
-
-		<execute function="AssertTextEquals" locator1="KaleoFormsAdminEditProcess#FIELD_SET_PAGINATION_SELECTOR_BUTTON" value1="${paginationNumber} Entries" />
-	</command>
-
-	<command name="editForm">
-		<var name="key_kfFormName" value="${kfFormName}" />
-
-		<execute function="AssertClick" locator1="KaleoFormsAdminEditProcessForm#FORM_TABLE_NAME" value1="${kfFormName}" />
-
-		<execute macro="LexiconEntry#gotoEntryMenuItem">
-			<var name="menuItem" value="Edit Form" />
-			<var name="rowEntry" value="${kfFormName}" />
-		</execute>
-
-		<execute function="SelectFrame" locator1="IFrame#DIALOG" />
-
-		<execute macro="PortletEntry#inputName">
-			<var name="name" value="${kfFormNameEdit}" />
-		</execute>
-
-		<for list="Fieldset,Paragraph,Separator" param="field">
-			<execute macro="DynamicDataMapping#viewCanAddField">
-				<var name="field" value="${field}" />
-			</execute>
-		</for>
-	</command>
-
-	<command name="editProcess">
-		<execute macro="LexiconEntry#gotoEntryMenuItem">
-			<var name="menuItem" value="Edit" />
-			<var name="rowEntry" value="${kfProcessName}" />
-		</execute>
-	</command>
-
-	<command name="editProcessDetails">
-		<execute macro="KaleoFormsAdmin#viewNewProcessProgressBar">
-			<var name="kfProgressName" value="Details" />
-			<var name="kfProgressStep" value="1" />
-		</execute>
-
-		<if>
-			<isset var="kfProcessNameEdit" />
-			<then>
-				<var name="key_fieldName" value="name" />
-
-				<execute function="Type" locator1="FormFields#TEXT_FIELD" value1="${kfProcessNameEdit}" />
-			</then>
-		</if>
-
-		<if>
-			<isset var="kfProcessDescriptionEdit" />
-			<then>
-				<execute macro="FormFields#editTextMultiline">
-					<var name="fieldName" value="description" />
-					<var name="fieldValue" value="${kfProcessDescriptionEdit}" />
-				</execute>
-			</then>
-		</if>
-
-		<if>
-			<equals arg1="${kfPendingForm}" arg2="true" />
-			<then>
-				<execute function="AssertTextEquals" locator1="Message#INFO" value1="Updating the field set or workflow will cause loss of data." />
-			</then>
-		</if>
-	</command>
-
-	<command name="editWorkflow">
-		<execute macro="KaleoFormsAdmin#viewNewProcessProgressBar">
-			<var name="kfProgressName" value="Workflow" />
-			<var name="kfProgressStep" value="3" />
-		</execute>
-
-		<execute macro="LexiconEntry#gotoEntryMenuItem">
-			<var name="menuItem" value="Edit" />
-			<var name="rowEntry" value="${workflowDefinitionTitle}" />
-		</execute>
-
-		<execute function="SelectFrame" locator1="IFrame#DIALOG" />
-
-		<execute macro="PortletEntry#inputTitle">
-			<var name="title" value="${workflowDefinitionTitleEdit}" />
-		</execute>
-	</command>
-
-	<command name="editWorkflowDraft">
-		<var name="key_workflowDefinitionTitle" value="${workflowDefinitionTitle}" />
-
-		<execute function="AssertTextEquals" locator1="KaleoFormsAdminEditProcess#WORKFLOW_TABLE_TITLE" value1="${workflowDefinitionTitle}" />
-
-		<execute macro="LexiconEntry#gotoEntryMenuItem">
-			<var name="menuItem" value="Edit" />
-			<var name="rowEntry" value="${workflowDefinitionTitle}" />
-		</execute>
-	</command>
-
-	<command name="exportRecords">
-		<execute macro="LexiconEntry#gotoEntryMenuItem">
-			<var name="menuItem" value="Export" />
-			<var name="rowEntry" value="${kfProcessName}" />
-		</execute>
-
-		<execute function="Select" locator1="KaleoFormsAdminViewProcessRecords#EXPORT_DIALOG_BOX_FILE_EXTENSION_SELECT" value1="${fileExtension}" />
-
-		<if>
-			<equals arg1="${approvedOnly}" arg2="true" />
-			<then>
-				<execute function="Check" locator1="KaleoFormsAdminViewProcessRecords#EXPORT_DIALOG_BOX_APPROVED_SUBMISSIONS_CHECKBOX" />
-			</then>
-		</if>
-
-		<execute function="AssertClick" locator1="KaleoFormsAdminViewProcessRecords#EXPORT_DIALOG_BOX_OK_BUTTON" value1="OK" />
-
-		<execute function="DownloadTempFile" />
-	</command>
-
-	<command name="gotoProgressStep">
-		<var name="key_kfProgressName" value="${kfProgressName}" />
-
-		<var method="StringUtil#lowerCase('${kfProgressName}')" name="key_kfProgressName" />
-
-		<execute function="Click" locator1="KaleoFormsAdminEditProcess#FORM_NAVIGATOR_PROGRESS_BAR_NAME" />
-	</command>
-
-	<command name="next">
-		<execute function="AssertElementNotPresent" locator1="KaleoFormsAdminEditProcess#NEXT_BUTTON_INACTIVE" />
-		<execute function="AssertClick" locator1="KaleoFormsAdminEditProcess#NEXT_BUTTON" value1="Next" />
-	</command>
-
-	<command name="populateFieldBoolean">
-		<var name="key_fieldName" value="${fieldName}" />
-
-		<if>
-			<equals arg1="${kfProcessFieldData}" arg2="true" />
-			<then>
-				<execute function="Check" locator1="DDLEditRecord#BOOLEAN_CHECKBOX" />
-			</then>
-			<elseif>
-				<equals arg1="${kfProcessFieldData}" arg2="false" />
-				<then>
-					<execute function="Uncheck" locator1="DDLEditRecord#BOOLEAN_CHECKBOX" />
-				</then>
-			</elseif>
-		</if>
-	</command>
-
-	<command name="populateFieldDate">
-		<var name="key_fieldName" value="${fieldName}" />
-
-		<execute function="Type" locator1="DDLEditRecord#DATE_FIELD" value1="${kfProcessFieldData}" />
-		<execute function="Click" locator1="DDLEditRecord#DATE_FIELD" />
-	</command>
-
-	<command name="populateFieldDocumentsAndMedia">
-		<var name="key_fieldName" value="${fieldName}" />
-
-		<execute function="AssertClick" locator1="DDLEditRecord#DOCUMENTS_AND_MEDIA_CHOOSE_FROM_DOCUMENT_LIBRARY_BUTTON" value1="Select" />
-
-		<execute function="SelectFrame" locator1="DocumentsAndMediaSelectDocument#SELECT_DOCUMENT_IFRAME" />
-
-		<execute function="UploadCommonFile#uploadCommonFileHidden" locator1="DocumentsAndMediaSelectDocument#SELECT_FILE_BUTTON" value1="${document}" />
-
-		<execute function="Pause" locator1="1000" />
+			AssertClick(
+				locator1 = "KaleoFormsAdminEditProcess#ADD_FIELD_SET_BUTTON",
+				value1 = "Add Field Set");
 
-		<execute function="SelectFrameTop" value1="relative=top" />
+			var key_iframeTitle = "Field Set";
 
-		<execute function="AssertClick" locator1="Button#ADD" value1="Add" />
-	</command>
+			AssertTextEquals(
+				locator1 = "IFrame#IFRAME_TITLE",
+				value1 = "New Field Set");
 
-	<command name="populateFieldHTML">
-		<var name="key_fieldName" value="${fieldName}" />
+			SelectFrame(locator1 = "IFrame#DIALOG");
 
-		<execute function="Type" locator1="DDLEditRecord#HTML_FIELD" value1="${kfProcessFieldData}" />
-	</command>
+			PortletEntry.inputName(name = "${kfFieldSetName}");
+		}
+	}
 
-	<command name="populateFieldLinkToPage">
-		<var name="key_ddlRecordFieldData" value="${ddlRecordFieldData}" />
-		<var name="key_fieldName" value="${fieldName}" />
+	macro addForm {
+		SelectFrame(locator1 = "DDMEditStructure#IFRAME");
 
-		<execute function="AssertClick" locator1="DDLEditRecord#LINK_TO_PAGE_SELECT_PAGE_BUTTON" value1="Select" />
+		LexiconEntry.gotoAdd();
 
-		<var name="key_navItem" value="${pagePrivacy} Pages" />
+		Click(locator1 = "DDMEditStructure#NAME_FIELD");
 
-		<execute function="AssertClick" locator1="DDLEditRecord#LINK_TO_PAGE_NAV_ITEM" value1="${pagePrivacy} Pages" />
+		PortletEntry.inputName(name = "${kfFormName}");
 
-		<var name="key_pageName" value="${ddlRecordFieldData}" />
+		for (var field : list "Fieldset,Paragraph,Separator") {
+			DynamicDataMapping.viewCanAddField(field = "${field}");
+		}
+	}
 
-		<execute function="Click" locator1="DDLEditRecord#LINK_TO_PAGE_PAGE_RADIO" />
+	macro addProcess {
+		AssertTextEquals(
+			locator1 = "Portlet#HEADER",
+			value1 = "Kaleo Forms Admin");
 
-		<execute function="AssertClick" locator1="Button#SELECT" value1="Select" />
+		LexiconEntry.gotoAdd();
+	}
 
-		<execute function="AssertTextEquals" locator1="DDLEditRecord#LINK_TO_PAGE_PAGE_SELECT" value1="${ddlRecordFieldData}" />
-	</command>
+	macro addProcessDetails {
+		KaleoFormsAdmin.viewNewProcessProgressBar(
+			kfProgressName = "Details",
+			kfProgressStep = "1");
 
-	<command name="populateFieldRadio">
-		<var name="key_fieldName" value="${fieldName}" />
-		<var name="key_kfProcessFieldData" value="${kfProcessFieldData}" />
+		AssertTextEquals(
+			locator1 = "KaleoFormsAdminEditProcess#NEXT_BUTTON_INACTIVE",
+			value1 = "Next");
 
-		<execute function="Click" locator1="DDLEditRecord#RADIO_OPTION_RADIO" />
-	</command>
+		var key_fieldName = "name";
 
-	<command name="populateFieldSelect">
-		<var name="key_fieldName" value="${fieldName}" />
+		Type(
+			locator1 = "FormFields#TEXT_FIELD",
+			value1 = "${kfProcessName}");
 
-		<execute function="Select" locator1="DDLEditRecord#SELECT_SELECT" value1="${kfProcessFieldData}" />
-	</command>
+		FormFields.editTextMultiline(
+			fieldName = "description",
+			fieldValue = "${kfProcessDescription}");
+	}
 
-	<command name="populateFieldText">
-		<var name="key_fieldName" value="${fieldName}" />
+	macro addWorkflow {
+		KaleoFormsAdmin.viewNewProcessProgressBar(
+			kfProgressName = "Workflow",
+			kfProgressStep = "3");
 
-		<execute function="Type" locator1="DDLEditRecord#TEXT_FIELD" value1="${kfProcessFieldData}" />
-	</command>
+		AssertClick(
+			locator1 = "KaleoFormsAdminEditProcess#ADD_WORKFLOW_BUTTON",
+			value1 = "Add Workflow");
 
-	<command name="populateFieldTextBox">
-		<var method="StringUtil#replace('${fieldName}', ' ', '_')" name="fieldName" />
-		<var name="key_fieldName" value="${fieldName}" />
+		SelectFrame(locator1 = "IFrame#DIALOG");
 
-		<execute function="Type" locator1="DDLEditRecord#TEXT_BOX_FIELD" value1="${kfProcessFieldData}" />
-	</command>
+		PortletEntry.inputTitle(title = "${workflowDefinitionTitle}");
+	}
 
-	<command name="publishWorkflow">
-		<execute macro="PortletEntry#publish" />
+	macro assignForm {
+		KaleoFormsAdmin.viewNewProcessProgressBar(
+			kfProgressName = "Forms",
+			kfProgressStep = "4");
 
-		<execute function="SelectFrame" value1="relative=top" />
+		if ("${kfPendingForm}" == "true") {
+			AssertTextEquals(
+				locator1 = "Message#INFO",
+				value1 = "Updating the field set or workflow will cause loss of data.");
+		}
 
-		<execute function="Click" locator1="Icon#CLOSE" />
-	</command>
+		LexiconEntry.gotoEntryMenuItem(
+			menuItem = "Assign Form",
+			rowEntry = "${workflowTask}");
+	}
 
-	<command name="saveAndContinueForm">
-		<execute macro="DynamicDataMapping#selectDynamicDataMappingFrame" />
+	macro assignNewForm {
+		KaleoFormsAdmin.editProcess(kfProcessName = "${kfProcessName}");
 
-		<execute function="AssertClick" locator1="Button#SAVE_AND_CONTINUE" value1="Save and Continue" />
+		KaleoFormsAdmin.gotoProgressStep(kfProgressName = "Forms");
 
-		<execute macro="Alert#viewSuccessMessage" />
-	</command>
+		KaleoFormsAdmin.unassignForm(workflowTask = "${workflowTask}");
 
-	<command name="saveFieldSet">
-		<execute macro="DDLDataDefinition#save" />
+		KaleoFormsAdmin.assignForm(workflowTask = "${workflowTask}");
 
-		<execute macro="Alert#waitForSuccessMessageHide" />
+		KaleoFormsAdmin.addForm(kfFormName = "${kfFormNameNew}");
 
-		<execute function="SelectFrame" value1="relative=top" />
+		KaleoFormsAdmin.saveForm();
 
-		<if>
-			<condition function="IsElementPresent" locator1="IFrame#DIALOG" />
-			<then>
-				<execute function="Click" locator1="Icon#CLOSE" />
-			</then>
-		</if>
-	</command>
+		KaleoFormsAdmin.chooseForm(kfFormName = "${kfFormNameNew}");
 
-	<command name="saveForm">
-		<execute macro="DynamicDataMapping#selectDynamicDataMappingFrame" />
+		KaleoFormsAdmin.saveProcess();
+	}
 
-		<execute macro="Workflow#saveDefinition" />
-	</command>
+	macro cancelProcessRecordDetailsView {
+		AssertClick(
+			locator1 = "Button#CANCEL",
+			value1 = "Cancel");
+	}
 
-	<command name="saveFormEdit">
-		<execute macro="DynamicDataMapping#selectDynamicDataMappingFrame" />
+	macro chooseFieldSet {
+		KaleoFormsAdmin.viewNewProcessProgressBar(
+			kfProgressName = "Fields",
+			kfProgressStep = "2");
 
-		<execute macro="PortletEntry#save" />
+		var key_kfFieldSetName = "${kfFieldSetName}";
 
-		<execute function="SelectFrame" value1="relative=top" />
+		if ("${kfPendingForm}" == "true") {
+			AssertTextEquals(
+				locator1 = "Message#INFO",
+				value1 = "Updating the field set or workflow will cause loss of data.");
+		}
 
-		<execute function="Click" locator1="Icon#CLOSE" />
+		LexiconEntry.gotoEntryMenuItem(
+			menuItem = "Choose",
+			rowEntry = "${kfFieldSetName}");
 
-		<var name="key_kfFormName" value="${kfFormName}" />
+		AssertTextEquals(
+			locator1 = "KaleoFormsAdminEditProcess#SELECTED_FIELD_SET",
+			value1 = "${kfFieldSetName}");
+	}
 
-		<execute function="AssertTextEquals" locator1="KaleoFormsAdminEditProcessForm#FORM_TABLE_NAME" value1="${kfFormName}" />
-	</command>
+	macro chooseForm {
+		DynamicDataMapping.selectDynamicDataMappingFrame();
 
-	<command name="saveProcess">
-		<execute macro="KaleoFormsAdmin#viewNewProcessProgressBar">
-			<var name="kfProgressName" value="Forms" />
-			<var name="kfProgressStep" value="4" />
-		</execute>
+		var key_kfFormName = "${kfFormName}";
 
-		<execute function="AssertElementNotPresent" locator1="Button#SAVE_INACTIVE" />
-		<execute macro="Button#clickSave" />
-	</command>
+		AssertClick(
+			locator1 = "KaleoFormsAdminEditProcessForm#FORM_TABLE_NAME_LINK",
+			value1 = "${kfFormName}");
 
-	<command name="saveProcessRecord">
-		<execute macro="PortletEntry#save" />
-	</command>
+		SelectFrame(value1 = "relative=top");
+	}
 
-	<command name="saveWorkflowDefinition">
-		<execute macro="DynamicDataMapping#selectDynamicDataMappingFrame" />
+	macro chooseWorkflow {
+		KaleoFormsAdmin.viewNewProcessProgressBar(
+			kfProgressName = "Workflow",
+			kfProgressStep = "3");
 
-		<execute macro="Workflow#saveDefinition" />
-	</command>
+		if ("${kfPendingForm}" == "true") {
+			AssertTextEquals(
+				locator1 = "Message#INFO",
+				value1 = "Updating the field set or workflow will cause loss of data.");
+		}
 
-	<command name="submitNewProcess">
-		<execute macro="KaleoFormsAdmin#viewProcessRecord">
-			<var name="kfProcessName" value="${kfProcessName}" />
-		</execute>
+		if (isSet(workflowDefinitionTitleEdit)) {
+			var key_workflowDefinitionTitle = "${workflowDefinitionTitleEdit}";
 
-		<execute macro="LexiconEntry#gotoAdd" />
-	</command>
+			AssertTextEquals(
+				locator1 = "KaleoFormsAdminEditProcess#WORKFLOW_TABLE_TITLE",
+				value1 = "${workflowDefinitionTitleEdit}");
+		}
+		else {
+			var key_workflowDefinitionTitle = "${workflowDefinitionTitle}";
 
-	<command name="tearDownProcess">
-		<execute macro="Navigator#openURL" />
+			AssertTextEquals(
+				locator1 = "KaleoFormsAdminEditProcess#WORKFLOW_TABLE_TITLE",
+				value1 = "${workflowDefinitionTitle}");
+		}
 
-		<execute macro="ProductMenu#gotoPortlet">
-			<var name="category" value="Content" />
-			<var name="panel" value="Site Administration" />
-			<var name="portlet" value="Kaleo Forms Admin" />
-		</execute>
+		LexiconEntry.gotoEntryMenuItem(
+			menuItem = "Choose",
+			rowEntry = "${workflowDefinitionTitle}");
 
-		<while>
-			<condition function="IsElementPresent" locator1="Icon#BODY_VERTICAL_ELLIPSIS" />
-			<then>
-				<execute macro="KaleoFormsAdmin#deleteProcess" />
-			</then>
-		</while>
+		KaleoFormsAdmin.viewSelectedWorkflow(
+			edit = "${edit}",
+			workflowDefinitionTitle = "${workflowDefinitionTitle}");
+	}
 
-		<execute function="AssertTextEquals" locator1="Message#EMPTY_INFO" value1="No processes were found." />
-	</command>
+	macro deactivateWorkflow {
+		LexiconEntry.gotoEntryMenuItemNoError(
+			menuItem = "Unpublish",
+			rowEntry = "${workflowDefinitionTitle}");
 
-	<command name="unassignForm">
-		<execute macro="KaleoFormsAdmin#gotoProgressStep">
-			<var name="kfProgressName" value="Forms" />
-		</execute>
+		Alert.viewSuccessMessage();
+	}
 
-		<execute macro="LexiconEntry#gotoEntryMenuItem">
-			<var name="menuItem" value="Unassign Form" />
-			<var name="rowEntry" value="${workflowTask}" />
-		</execute>
-	</command>
+	macro deleteFieldSet {
+		KaleoFormsNavigator.gotoManageFieldSets();
 
-	<command name="updateWorkflow">
-		<execute macro="PortletEntry#update" />
+		if (IsElementPresent(locator1 = "DDMSelectStructure#DDM_STRUCTURE_ELLIPSIS_1")) {
+			PortletEntry.selectAll();
 
-		<execute function="SelectFrame" value1="relative=top" />
+			ClickNoError(locator1 = "Icon#TIMES");
 
-		<execute function="Click" locator1="Icon#CLOSE" />
-	</command>
+			AssertConfirm(value1 = "Are you sure you want to delete this? It will be deleted immediately.");
 
-	<command name="viewDeletedFormNotPresent">
-		<var name="key_kfFormName" value="${kfFormName}" />
+			if ("${kfProcessExists}" == "true") {
+				Alert.viewRequestFailedToComplete();
 
-		<execute function="AssertElementNotPresent" locator1="KaleoFormsAdminEditProcessForm#FORM_TABLE_NAME_LINK" />
-	</command>
+				AssertTextEquals.assertPartialText(
+					locator1 = "Message#ERROR_2",
+					value1 = "The structure cannot be deleted because it is required by one or more structure links.");
+			}
+			else {
+				Alert.viewSuccessMessage();
+			}
+		}
+	}
 
-	<command name="viewFormEdit">
-		<execute macro="LexiconEntry#gotoEntryMenuItem">
-			<var name="menuItem" value="Edit Form" />
-			<var name="rowEntry" value="${kfFormNameEdit}" />
-		</execute>
+	macro deleteForm {
+		KaleoFormsNavigator.gotoManageForms(kfFieldSetName = "${kfFieldSetName}");
 
-		<execute function="SelectFrame" locator1="IFrame#DIALOG" />
+		Search.searchCP(searchTerm = "${kfFormName}");
 
-		<execute function="AssertTextEquals" locator1="DDMEditStructure#NAME_FIELD" value1="${kfFormNameEdit}" />
-	</command>
+		LexiconEntry.gotoEntryMenuItemNoError(
+			menuItem = "Delete",
+			rowEntry = "${kfFormName}");
 
-	<command name="viewFormsNotPresent">
-		<execute macro="DynamicDataMapping#selectDynamicDataMappingFrame" />
+		AssertConfirm(value1 = "Are you sure you want to delete this? It will be deleted immediately.");
 
-		<var name="key_workflowTask" value="${workflowTask}" />
+		Alert.viewSuccessMessage();
+	}
 
-		<execute function="AssertElementNotPresent" locator1="KaleoFormsAdminEditProcess#FORMS_TABLE_TASK" />
-		<execute macro="PortletEntry#viewEmptyMessage">
-			<var name="entity" value="Results" />
-		</execute>
+	macro deleteProcess {
+		if (isSet(kfProcessName)) {
+			var key_rowEntry = "${kfProcessName}";
 
-		<execute function="SelectFrame" value1="relative=top" />
-	</command>
+			Click(locator1 = "Icon#ROW_VERTICAL_ELLIPSIS");
+		}
+		else {
+			Click(locator1 = "Icon#BODY_VERTICAL_ELLIPSIS");
+		}
 
-	<command name="viewHeaderTitle">
-		<if>
-			<isset var="kfFieldsDefinitionName" />
-			<then>
-				<execute function="AssertTextEquals" locator1="DDMEditStructure#HEADER_TITLE" value1="${kfFieldsDefinitionName}" />
-			</then>
-			<else>
-				<var name="key_iframeTitle" value="New Field Set" />
+		MenuItem.clickNoError(menuItem = "Delete");
 
-				<execute function="AssertTextEquals" locator1="DDMEditStructure#HEADER_TITLE" value1="New Field Set" />
-			</else>
-		</if>
-	</command>
+		AssertConfirm(value1 = "Are you sure you want to delete this? It will be deleted immediately.");
 
-	<command name="viewInvalidDefinitionMessage">
-		<execute macro="Alert#viewRequestFailedToComplete" />
+		if (IsElementNotPresent(locator1 = "Icon#BODY_VERTICAL_ELLIPSIS")) {
+			AssertTextEquals(
+				locator1 = "Message#EMPTY_INFO",
+				value1 = "No processes were found.");
+		}
+		else {
+			AssertTextNotPresent(
+				locator1 = "KaleoFormsAdmin#PROCESS_TABLE_NAME",
+				value1 = "${kfProcessName}");
+		}
+	}
 
-		<execute function="AssertTextEquals#assertPartialText" locator1="Message#ERROR_2" value1="Please add at least one field." />
-	</command>
+	macro deleteProcessRecord {
+		var key_rowEntry = "${kfProcessFieldData}";
 
-	<command name="viewNewProcessProgressBar">
-		<var name="key_kfProgressName" value="${kfProgressName}" />
+		Click(locator1 = "Icon#BODY_VERTICAL_ELLIPSIS");
 
-		<var method="StringUtil#lowerCase('${kfProgressName}')" name="key_kfProgressName" />
+		MenuItem.clickNoError(menuItem = "Delete");
 
-		<execute function="AssertTextEquals" locator1="KaleoFormsAdminEditProcess#FORM_NAVIGATOR_PROGRESS_BAR_STEP" value1="${kfProgressStep}" />
-		<execute function="AssertTextEquals" locator1="KaleoFormsAdminEditProcess#FORM_NAVIGATOR_PROGRESS_BAR_NAME" value1="${kfProgressName}" />
-	</command>
+		AssertConfirm(value1 = "Are you sure you want to delete this? It will be deleted immediately.");
 
-	<command name="viewNextFieldSetPage">
-		<execute function="Click" locator1="Pagination#NEXT_LINK" />
-	</command>
+		Alert.viewSuccessMessage();
 
-	<command name="viewNoDuplicateForms">
-		<var name="key_kfFormName" value="${kfFormName}" />
+		KaleoFormsAdmin.viewProcessRecordTableRecordNotPresent(kfProcessFieldData = "${kfProcessFieldData}");
+	}
 
-		<execute function="AssertTextEquals" locator1="KaleoFormsAdminEditProcessForm#FORM_TABLE_NAME" value1="${kfFormName}" />
-		<execute function="AssertElementNotPresent" locator1="KaleoFormsAdminEditProcessForm#FORM_TABLE_NAME_2" />
-	</command>
+	macro deleteWorkflowDraft {
+		LexiconEntry.gotoEntryMenuItemNoError(
+			menuItem = "Delete",
+			rowEntry = "${workflowDefinitionTitle}");
 
-	<command name="viewNoPublishedWorkflowDefinitions">
-		<execute macro="PortletEntry#viewEmptyMessage">
-			<var name="entity" value="Published Definitions" />
-		</execute>
-	</command>
+		AssertConfirm(value1 = "Are you sure you want to delete this? It will be deleted immediately.");
 
-	<command name="viewNoUnpublishedWorkflowDefinitions">
-		<execute macro="KaleoFormsAdmin#viewUnpublishedWorkflowDefinitions" />
+		Alert.viewSuccessMessage();
+	}
 
-		<execute macro="PortletEntry#viewEmptyMessage">
-			<var name="entity" value="Unpublished Definitions" />
-		</execute>
-	</command>
+	macro editFieldSet {
+		KaleoFormsAdmin.viewNewProcessProgressBar(
+			kfFieldSetName = "${kfFieldSetName}",
+			kfProgressName = "Fields",
+			kfProgressStep = "2");
 
-	<command name="viewPreviousFieldSetPage">
-		<execute function="Click" locator1="Pagination#FIRST_LINK" />
-	</command>
+		LexiconEntry.gotoEntryMenuItem(
+			menuItem = "Edit",
+			rowEntry = "${kfFieldSetName}");
 
-	<command name="viewProcess">
-		<var name="key_kfProcessName" value="${kfProcessName}" />
+		var key_iframeTitle = "Field Set";
 
-		<execute function="AssertTextEquals" locator1="KaleoFormsAdmin#PROCESS_TABLE_NAME" value1="${kfProcessName}" />
+		AssertTextEquals(
+			locator1 = "IFrame#IFRAME_TITLE",
+			value1 = "Edit Field Set");
 
-		<var name="key_rowEntry" value="${kfProcessName}" />
+		SelectFrame(locator1 = "IFrame#DIALOG");
 
-		<execute function="AssertElementPresent" locator1="Icon#ROW_VERTICAL_ELLIPSIS" />
-	</command>
+		PortletEntry.inputName(name = "${kfFieldSetNameEdit}");
+	}
 
-	<command name="viewProcessDetails">
-		<execute macro="KaleoFormsAdmin#editProcess">
-			<var name="kfProcessName" value="${kfProcessName}" />
-		</execute>
+	macro editFieldSetPagination {
+		Click(locator1 = "KaleoFormsAdminEditProcess#FIELD_SET_PAGINATION_SELECTOR_BUTTON");
 
-		<execute macro="KaleoFormsAdmin#viewNewProcessProgressBar">
-			<var name="kfProgressName" value="Details" />
-			<var name="kfProgressStep" value="1" />
-		</execute>
+		var key_paginationNumber = "${paginationNumber}";
 
-		<var name="key_fieldName" value="name" />
+		MenuItem.click(menuItem = "${paginationNumber}");
 
-		<execute function="AssertTextEquals" locator1="FormFields#TEXT_FIELD" value1="${kfProcessName}" />
+		AssertTextEquals.assertPartialText(
+			locator1 = "KaleoFormsAdminEditProcess#FIELD_SET_PAGINATION_SELECTOR_BUTTON",
+			value1 = "${paginationNumber} Entries");
+	}
 
-		<var name="key_fieldName" value="description" />
+	macro editForm {
+		var key_kfFormName = "${kfFormName}";
 
-		<execute function="AssertTextEquals" locator1="FormFields#TEXT_MULTILINE_FIELD" value1="${kfProcessDescription}" />
+		AssertClick(
+			locator1 = "KaleoFormsAdminEditProcessForm#FORM_TABLE_NAME",
+			value1 = "${kfFormName}");
 
-		<execute macro="KaleoFormsAdmin#next" />
-	</command>
+		LexiconEntry.gotoEntryMenuItem(
+			menuItem = "Edit Form",
+			rowEntry = "${kfFormName}");
 
-	<command name="viewProcessFieldSet">
-		<execute macro="KaleoFormsAdmin#viewNewProcessProgressBar">
-			<var name="kfProgressName" value="Fields" />
-			<var name="kfProgressStep" value="2" />
-		</execute>
+		SelectFrame(locator1 = "IFrame#DIALOG");
 
-		<var name="key_kfFieldSetName" value="${kfFieldSetName}" />
+		PortletEntry.inputName(name = "${kfFormNameEdit}");
 
-		<execute function="AssertTextEquals" locator1="KaleoFormsAdminEditProcess#SELECTED_FIELD_SET" value1="${kfFieldSetName}" />
+		for (var field : list "Fieldset,Paragraph,Separator") {
+			DynamicDataMapping.viewCanAddField(field = "${field}");
+		}
+	}
 
-		<execute macro="KaleoFormsAdmin#next" />
-	</command>
+	macro editProcess {
+		LexiconEntry.gotoEntryMenuItem(
+			menuItem = "Edit",
+			rowEntry = "${kfProcessName}");
+	}
 
-	<command name="viewProcessForms">
-		<execute macro="KaleoFormsAdmin#viewNewProcessProgressBar">
-			<var name="kfProgressName" value="Forms" />
-			<var name="kfProgressStep" value="4" />
-		</execute>
+	macro editProcessDetails {
+		KaleoFormsAdmin.viewNewProcessProgressBar(
+			kfProgressName = "Details",
+			kfProgressStep = "1");
 
-		<var name="key_kfFormName" value="${kfFormName}" />
+		if (isSet(kfProcessNameEdit)) {
+			var key_fieldName = "name";
 
-		<execute function="AssertTextEquals" locator1="KaleoFormsAdminEditProcessForm#FORM_TABLE_NAME" value1="${kfFormName}" />
-		<execute function="AssertElementNotPresent" locator1="Button#SAVE_INACTIVE" />
-		<execute function="AssertElementPresent" locator1="Button#SAVE" />
-	</command>
+			Type(
+				locator1 = "FormFields#TEXT_FIELD",
+				value1 = "${kfProcessNameEdit}");
+		}
 
-	<command name="viewProcessFormsDeleted">
-		<execute macro="KaleoFormsAdmin#viewNewProcessProgressBar">
-			<var name="kfProgressName" value="Forms" />
-			<var name="kfProgressStep" value="4" />
-		</execute>
+		if (isSet(kfProcessDescriptionEdit)) {
+			FormFields.editTextMultiline(
+				fieldName = "description",
+				fieldValue = "${kfProcessDescriptionEdit}");
+		}
 
-		<execute macro="KaleoFormsAdmin#assignForm">
-			<var name="kfPendingForm" value="${kfPendingForm}" />
-			<var name="kfProcessName" value="${kfProcessName}" />
-			<var name="workflowTask" value="${workflowTask}" />
-		</execute>
+		if ("${kfPendingForm}" == "true") {
+			AssertTextEquals(
+				locator1 = "Message#INFO",
+				value1 = "Updating the field set or workflow will cause loss of data.");
+		}
+	}
 
-		<execute function="AssertElementNotPresent" locator1="KaleoFormsAdminEditProcessForm#FORM_TABLE_NAME_LINK">
-			<var name="key_kfFormName" value="${kfFormName}" />
-		</execute>
-	</command>
+	macro editWorkflow {
+		KaleoFormsAdmin.viewNewProcessProgressBar(
+			kfProgressName = "Workflow",
+			kfProgressStep = "3");
 
-	<command name="viewProcessNoRecords">
-		<execute function="AssertTextEquals" locator1="Message#EMPTY_INFO" value1="No ${kfProcessName} records were found" />
-	</command>
+		LexiconEntry.gotoEntryMenuItem(
+			menuItem = "Edit",
+			rowEntry = "${workflowDefinitionTitle}");
 
-	<command name="viewProcessRecord">
-		<execute macro="LexiconEntry#gotoEntryMenuItem">
-			<var name="menuItem" value="View" />
-			<var name="rowEntry" value="${kfProcessName}" />
-		</execute>
-	</command>
+		SelectFrame(locator1 = "IFrame#DIALOG");
 
-	<command name="viewProcessRecordDetails">
-		<execute macro="LexiconEntry#gotoEntryMenuItem">
-			<var name="menuItem" value="View" />
-			<var name="rowEntry" value="${kfProcessFieldData}" />
-		</execute>
+		PortletEntry.inputTitle(title = "${workflowDefinitionTitleEdit}");
+	}
 
-		<execute function="AssertTextEquals" locator1="KaleoFormsAdminViewProcessRecordsDetails#CURRENT_RECORD_STATUS" value1="${kfStatus}" />
-	</command>
+	macro editWorkflowDraft {
+		var key_workflowDefinitionTitle = "${workflowDefinitionTitle}";
 
-	<command name="viewProcessRecordDetailsField">
-		<var name="key_fieldName" value="${fieldName}" />
-		<var name="key_kfProcessFieldData" value="${kfProcessFieldData}" />
+		AssertTextEquals(
+			locator1 = "KaleoFormsAdminEditProcess#WORKFLOW_TABLE_TITLE",
+			value1 = "${workflowDefinitionTitle}");
 
-		<execute function="AssertTextEquals#assertPartialText" locator1="KaleoFormsAdminViewProcessRecordsDetails#CURRENT_RECORD_FIELD" value1="${kfProcessFieldData}" />
-	</command>
+		LexiconEntry.gotoEntryMenuItem(
+			menuItem = "Edit",
+			rowEntry = "${workflowDefinitionTitle}");
+	}
 
-	<command name="viewProcessRecordTable">
-		<var name="key_kfAuthor" value="${kfAuthor}" />
+	macro exportRecords {
+		LexiconEntry.gotoEntryMenuItem(
+			menuItem = "Export",
+			rowEntry = "${kfProcessName}");
 
-		<execute function="AssertTextEquals" locator1="KaleoFormsAdminViewProcessRecords#RECORD_TABLE_AUTHOR" value1="${kfAuthor}" />
+		Select(
+			locator1 = "KaleoFormsAdminViewProcessRecords#EXPORT_DIALOG_BOX_FILE_EXTENSION_SELECT",
+			value1 = "${fileExtension}");
 
-		<var name="key_kfProcessFieldData" value="${kfProcessFieldData}" />
+		if ("${approvedOnly}" == "true") {
+			Check(locator1 = "KaleoFormsAdminViewProcessRecords#EXPORT_DIALOG_BOX_APPROVED_SUBMISSIONS_CHECKBOX");
+		}
 
-		<execute function="AssertTextEquals" locator1="KaleoFormsAdminViewProcessRecords#RECORD_TABLE_RECORD" value1="${kfProcessFieldData}" />
+		AssertClick(
+			locator1 = "KaleoFormsAdminViewProcessRecords#EXPORT_DIALOG_BOX_OK_BUTTON",
+			value1 = "OK");
 
-		<var name="key_kfStatus" value="${kfStatus}" />
+		DownloadTempFile();
+	}
 
-		<execute function="AssertTextEquals" locator1="KaleoFormsAdminViewProcessRecords#RECORD_TABLE_STATUS" value1="${kfStatus}" />
-	</command>
+	macro gotoProgressStep {
+		var key_kfProgressName = "${kfProgressName}";
+		var key_kfProgressName = StringUtil.lowerCase("${kfProgressName}");
 
-	<command name="viewProcessRecordTableRecordNotPresent">
-		<var name="key_kfProcessFieldData" value="${kfProcessFieldData}" />
+		Click(locator1 = "KaleoFormsAdminEditProcess#FORM_NAVIGATOR_PROGRESS_BAR_NAME");
+	}
 
-		<execute function="AssertElementNotPresent" locator1="KaleoFormsAdminViewProcessRecords#RECORD_TABLE_RECORD" />
-	</command>
+	macro next {
+		AssertElementNotPresent(locator1 = "KaleoFormsAdminEditProcess#NEXT_BUTTON_INACTIVE");
 
-	<command name="viewProcessWorkflow">
-		<execute macro="KaleoFormsAdmin#viewNewProcessProgressBar">
-			<var name="kfProgressName" value="Workflow" />
-			<var name="kfProgressStep" value="3" />
-		</execute>
+		AssertClick(
+			locator1 = "Button#NEXT",
+			value1 = "Next");
+	}
 
-		<execute function="AssertTextEquals" locator1="KaleoFormsAdminEditProcess#SELECTED_WORKFLOW" value1="${workflowDefinitionTitle}" />
+	macro populateFieldDate {
+		var key_fieldName = "${fieldName}";
 
-		<execute macro="KaleoFormsAdmin#next" />
-	</command>
+		Type(
+			locator1 = "TextInput#DDM",
+			value1 = "${kfProcessFieldData}");
 
-	<command name="viewPublishedWorkflowDefinitions">
-		<execute function="AssertClick" locator1="KaleoFormsAdminEditProcess#WORKFLOW_NAVIGATION_PUBLISHED_TAB" value1="Published" />
-	</command>
+		Click(locator1 = "TextInput#DDM");
+	}
 
-	<command name="viewSelectedFieldSet">
-		<var name="key_kfFieldSetName" value="${kfFieldSetName}" />
+	macro populateFieldSelect {
+		var key_fieldName = "${fieldName}";
 
-		<execute function="AssertTextEquals" locator1="KaleoFormsAdminEditProcess#SELECTED_FIELD_SET" value1="${kfFieldSetName}" />
-	</command>
+		Select(
+			locator1 = "DDMField#SELECT",
+			value1 = "${kfProcessFieldData}");
+	}
 
-	<command name="viewSelectedWorkflow">
-		<if>
-			<equals arg1="${edit}" arg2="true" />
-			<then>
-				<execute function="AssertTextEquals" locator1="KaleoFormsAdminEditProcess#SELECTED_WORKFLOW" value1="${workflowDefinitionTitle}" />
-			</then>
-			<else>
-				<execute function="AssertTextEquals" locator1="KaleoFormsAdminEditProcess#SELECTED_WORKFLOW" value1="${workflowDefinitionTitle}" />
-			</else>
-		</if>
-	</command>
+	macro populateFieldText {
+		var key_fieldName = "${fieldName}";
 
-	<command name="viewTaskNotPresent">
-		<var name="key_workflowTask" value="${workflowTask}" />
+		Type(
+			locator1 = "TextInput#DDM",
+			value1 = "${kfProcessFieldData}");
+	}
 
-		<execute function="AssertElementNotPresent" locator1="KaleoFormsAdminEditProcess#FORMS_TABLE_TASK" />
-	</command>
+	macro populateFieldTextBox {
+		var fieldName = StringUtil.replace("${fieldName}", " ", "_");
+		var key_fieldName = "${fieldName}";
 
-	<command name="viewTaskPresent">
-		<var name="key_workflowTask" value="${workflowTask}" />
+		Type(
+			locator1 = "DDLEditRecord#TEXT_BOX_FIELD",
+			value1 = "${kfProcessFieldData}");
+	}
 
-		<execute function="AssertElementPresent" locator1="KaleoFormsAdminEditProcess#FORMS_TABLE_TASK" />
-	</command>
+	macro publishWorkflow {
+		Click.mouseDownMouseUp(
+			key_text = "Publish",
+			locator1 = "Button#ANY");
 
-	<command name="viewUnpublishedWorkflowDefinitions">
-		<execute function="AssertClick" locator1="KaleoFormsAdminEditProcess#WORKFLOW_NAVIGATION_UNPUBLISHED_TAB" value1="Unpublished" />
-	</command>
-</definition>
+		Alert.viewSuccessMessage();
+
+		SelectFrame(value1 = "relative=top");
+
+		Click(locator1 = "Icon#CLOSE");
+	}
+
+	macro reactivateInactiveWorkflowDefinition {
+		LexiconEntry.gotoEntryMenuItemNoError(
+			menuItem = "Edit",
+			rowEntry = "${workflowDefinitionTitle}");
+
+		SelectFrame(locator1 = "IFrame#DIALOG");
+
+		KaleoFormsAdmin.publishWorkflow();
+	}
+
+	macro saveAndContinueForm {
+		DynamicDataMapping.selectDynamicDataMappingFrame();
+
+		AssertClick(
+			locator1 = "Button#SAVE_AND_CONTINUE",
+			value1 = "Save and Continue");
+
+		Alert.viewSuccessMessage();
+	}
+
+	macro saveFieldSet {
+		DDLDataDefinition.save();
+
+		SelectFrame(value1 = "relative=top");
+
+		if (IsElementPresent(locator1 = "IFrame#DIALOG")) {
+			Click(locator1 = "Icon#CLOSE");
+		}
+	}
+
+	macro saveForm {
+		DynamicDataMapping.selectDynamicDataMappingFrame();
+
+		Workflow.saveDefinition();
+	}
+
+	macro saveFormEdit {
+		DynamicDataMapping.selectDynamicDataMappingFrame();
+
+		PortletEntry.save();
+
+		SelectFrame(value1 = "relative=top");
+
+		Click(locator1 = "Icon#CLOSE");
+
+		var key_kfFormName = "${kfFormName}";
+
+		AssertTextEquals(
+			locator1 = "KaleoFormsAdminEditProcessForm#FORM_TABLE_NAME",
+			value1 = "${kfFormName}");
+	}
+
+	macro saveProcess {
+		KaleoFormsAdmin.viewNewProcessProgressBar(
+			kfProgressName = "Forms",
+			kfProgressStep = "4");
+
+		AssertElementNotPresent(locator1 = "Button#SAVE_INACTIVE");
+
+		Button.clickSave();
+	}
+
+	macro saveProcessRecord {
+		PortletEntry.save();
+	}
+
+	macro submitNewProcess {
+		KaleoFormsAdmin.viewProcessRecord(kfProcessName = "${kfProcessName}");
+
+		LexiconEntry.gotoAdd();
+	}
+
+	macro tearDownProcess {
+		Navigator.openURL();
+
+		ProductMenu.gotoPortlet(
+			category = "Content &amp; Data",
+			panel = "Site Administration",
+			portlet = "Kaleo Forms Admin");
+
+		while (IsElementPresent(locator1 = "Icon#BODY_VERTICAL_ELLIPSIS")) {
+			KaleoFormsAdmin.deleteProcess();
+		}
+
+		AssertTextEquals(
+			locator1 = "Message#EMPTY_INFO",
+			value1 = "No processes were found.");
+	}
+
+	macro unassignForm {
+		KaleoFormsAdmin.gotoProgressStep(kfProgressName = "Forms");
+
+		LexiconEntry.gotoEntryMenuItem(
+			menuItem = "Unassign Form",
+			rowEntry = "${workflowTask}");
+	}
+
+	macro updateWorkflow {
+		PortletEntry.update();
+
+		SelectFrame(value1 = "relative=top");
+
+		Click(locator1 = "Icon#CLOSE");
+	}
+
+	macro viewFormEdit {
+		LexiconEntry.gotoEntryMenuItem(
+			menuItem = "Edit Form",
+			rowEntry = "${kfFormNameEdit}");
+
+		SelectFrame(locator1 = "IFrame#DIALOG");
+
+		AssertTextEquals(
+			locator1 = "DDMEditStructure#NAME_FIELD",
+			value1 = "${kfFormNameEdit}");
+	}
+
+	macro viewFormsNotPresent {
+		DynamicDataMapping.selectDynamicDataMappingFrame();
+
+		var key_workflowTask = "${workflowTask}";
+
+		AssertElementNotPresent(locator1 = "KaleoFormsAdminEditProcess#FORMS_TABLE_TASK");
+
+		PortletEntry.viewEmptyMessage(entity = "Templates");
+
+		SelectFrame(value1 = "relative=top");
+	}
+
+	macro viewInvalidDefinitionMessage {
+		Alert.viewRequestFailedToComplete();
+
+		AssertTextEquals.assertPartialText(
+			locator1 = "Message#ERROR_1",
+			value1 = "Please add at least one field.");
+	}
+
+	macro viewNewProcessProgressBar {
+		var key_kfProgressName = "${kfProgressName}";
+		var key_kfProgressName = StringUtil.lowerCase("${kfProgressName}");
+
+		AssertTextEquals(
+			locator1 = "KaleoFormsAdminEditProcess#FORM_NAVIGATOR_PROGRESS_BAR_STEP",
+			value1 = "${kfProgressStep}");
+
+		AssertTextEquals(
+			locator1 = "KaleoFormsAdminEditProcess#FORM_NAVIGATOR_PROGRESS_BAR_NAME",
+			value1 = "${kfProgressName}");
+	}
+
+	macro viewNextFieldSetPage {
+		Click(locator1 = "Pagination#NEXT_LINK");
+	}
+
+	macro viewNoDuplicateForms {
+		var key_kfFormName = "${kfFormName}";
+
+		AssertTextEquals(
+			locator1 = "KaleoFormsAdminEditProcessForm#FORM_TABLE_NAME",
+			value1 = "${kfFormName}");
+
+		AssertElementNotPresent(locator1 = "KaleoFormsAdminEditProcessForm#FORM_TABLE_NAME_2");
+	}
+
+	macro viewNoPublishedWorkflowDefinitions {
+		AssertVisible(locator1 = "KaleoFormsAdmin#KALEO_WORKFLOW_PUBLISHED_EMPTY_MESSAGE");
+	}
+
+	macro viewNoUnpublishedWorkflowDefinitions {
+		KaleoFormsAdmin.viewUnpublishedWorkflowDefinitions();
+
+		AssertVisible(locator1 = "KaleoFormsAdmin#KALEO_WORKFLOW_UNPUBLISHED_EMPTY_MESSAGE");
+	}
+
+	macro viewPreviousFieldSetPage {
+		Click(locator1 = "Pagination#FIRST_LINK");
+	}
+
+	macro viewProcess {
+		var key_kfProcessName = "${kfProcessName}";
+
+		AssertTextEquals(
+			locator1 = "KaleoFormsAdmin#PROCESS_TABLE_NAME",
+			value1 = "${kfProcessName}");
+
+		var key_rowEntry = "${kfProcessName}";
+
+		AssertElementPresent(locator1 = "Icon#ROW_VERTICAL_ELLIPSIS");
+	}
+
+	macro viewProcessDetails {
+		KaleoFormsAdmin.editProcess(kfProcessName = "${kfProcessName}");
+
+		KaleoFormsAdmin.viewNewProcessProgressBar(
+			kfProgressName = "Details",
+			kfProgressStep = "1");
+
+		var key_fieldName = "name";
+
+		AssertTextEquals(
+			locator1 = "FormFields#TEXT_FIELD",
+			value1 = "${kfProcessName}");
+
+		var key_fieldName = "description";
+
+		AssertTextEquals(
+			locator1 = "FormFields#TEXT_MULTILINE_FIELD",
+			value1 = "${kfProcessDescription}");
+
+		KaleoFormsAdmin.next();
+	}
+
+	macro viewProcessFieldSet {
+		KaleoFormsAdmin.viewNewProcessProgressBar(
+			kfProgressName = "Fields",
+			kfProgressStep = "2");
+
+		var key_kfFieldSetName = "${kfFieldSetName}";
+
+		AssertTextEquals(
+			locator1 = "KaleoFormsAdminEditProcess#SELECTED_FIELD_SET",
+			value1 = "${kfFieldSetName}");
+
+		KaleoFormsAdmin.next();
+	}
+
+	macro viewProcessForms {
+		KaleoFormsAdmin.viewNewProcessProgressBar(
+			kfProgressName = "Forms",
+			kfProgressStep = "4");
+
+		var key_kfFormName = "${kfFormName}";
+
+		AssertTextEquals(
+			locator1 = "KaleoFormsAdminEditProcessForm#FORM_TABLE_NAME",
+			value1 = "${kfFormName}");
+
+		AssertElementNotPresent(locator1 = "Button#SAVE_INACTIVE");
+
+		AssertElementPresent(locator1 = "Button#SAVE");
+	}
+
+	macro viewProcessFormsDeleted {
+		KaleoFormsAdmin.viewNewProcessProgressBar(
+			kfProgressName = "Forms",
+			kfProgressStep = "4");
+
+		KaleoFormsAdmin.assignForm(
+			kfPendingForm = "${kfPendingForm}",
+			kfProcessName = "${kfProcessName}",
+			workflowTask = "${workflowTask}");
+
+		AssertElementNotPresent(
+			key_kfFormName = "${kfFormName}",
+			locator1 = "KaleoFormsAdminEditProcessForm#FORM_TABLE_NAME_LINK");
+	}
+
+	macro viewProcessNoRecords {
+		AssertTextEquals(
+			locator1 = "Message#EMPTY_INFO",
+			value1 = "No ${kfProcessName} records were found");
+	}
+
+	macro viewProcessRecord {
+		LexiconEntry.gotoEntryMenuItem(
+			menuItem = "View",
+			rowEntry = "${kfProcessName}");
+	}
+
+	macro viewProcessRecordDetails {
+		LexiconEntry.gotoEntryMenuItem(
+			menuItem = "View",
+			rowEntry = "${kfProcessFieldData}");
+
+		AssertTextEquals(
+			locator1 = "AssetWorkflow#WORKFLOW_STATUS",
+			value1 = "${kfStatus}");
+	}
+
+	macro viewProcessRecordDetailsField {
+		var key_fieldName = "${fieldName}";
+		var key_kfProcessFieldData = "${kfProcessFieldData}";
+
+		AssertTextEquals.assertPartialText(
+			locator1 = "KaleoFormsAdminViewProcessRecordsDetails#CURRENT_RECORD_FIELD",
+			value1 = "${kfProcessFieldData}");
+	}
+
+	macro viewProcessRecordTable {
+		var key_kfAuthor = "${kfAuthor}";
+
+		AssertTextEquals(
+			locator1 = "KaleoFormsAdminViewProcessRecords#RECORD_TABLE_AUTHOR",
+			value1 = "${kfAuthor}");
+
+		var key_kfProcessFieldData = "${kfProcessFieldData}";
+
+		AssertTextEquals(
+			locator1 = "KaleoFormsAdminViewProcessRecords#RECORD_TABLE_RECORD",
+			value1 = "${kfProcessFieldData}");
+
+		var key_kfStatus = "${kfStatus}";
+
+		AssertTextEquals(
+			locator1 = "KaleoFormsAdminViewProcessRecords#RECORD_TABLE_STATUS",
+			value1 = "${kfStatus}");
+	}
+
+	macro viewProcessRecordTableRecordNotPresent {
+		var key_kfProcessFieldData = "${kfProcessFieldData}";
+
+		AssertElementNotPresent(locator1 = "KaleoFormsAdminViewProcessRecords#RECORD_TABLE_RECORD");
+	}
+
+	macro viewProcessWorkflow {
+		KaleoFormsAdmin.viewNewProcessProgressBar(
+			kfProgressName = "Workflow",
+			kfProgressStep = "3");
+
+		AssertTextEquals(
+			locator1 = "KaleoFormsAdminEditProcess#SELECTED_WORKFLOW",
+			value1 = "${workflowDefinitionTitle}");
+
+		KaleoFormsAdmin.next();
+	}
+
+	macro viewPublishedWorkflowDefinitions {
+		AssertClick(
+			locator1 = "KaleoFormsAdminEditProcess#WORKFLOW_NAVIGATION_PUBLISHED_TAB",
+			value1 = "Published");
+	}
+
+	macro viewSelectedFieldSet {
+		var key_kfFieldSetName = "${kfFieldSetName}";
+
+		AssertTextEquals(
+			locator1 = "KaleoFormsAdminEditProcess#SELECTED_FIELD_SET",
+			value1 = "${kfFieldSetName}");
+	}
+
+	macro viewSelectedWorkflow {
+		if ("${edit}" == "true") {
+			AssertTextEquals(
+				locator1 = "KaleoFormsAdminEditProcess#SELECTED_WORKFLOW",
+				value1 = "${workflowDefinitionTitle}");
+		}
+		else {
+			AssertTextEquals(
+				locator1 = "KaleoFormsAdminEditProcess#SELECTED_WORKFLOW",
+				value1 = "${workflowDefinitionTitle}");
+		}
+	}
+
+	macro viewTaskNotPresent {
+		var key_workflowTask = "${workflowTask}";
+
+		AssertElementNotPresent(locator1 = "KaleoFormsAdminEditProcess#FORMS_TABLE_TASK");
+	}
+
+	macro viewTaskPresent {
+		var key_workflowTask = "${workflowTask}";
+
+		AssertElementPresent(locator1 = "KaleoFormsAdminEditProcess#FORMS_TABLE_TASK");
+	}
+
+	macro viewUnpublishedWorkflowDefinitions {
+		AssertClick(
+			locator1 = "KaleoFormsAdminEditProcess#WORKFLOW_NAVIGATION_UNPUBLISHED_TAB",
+			value1 = "Unpublished");
+	}
+
+}

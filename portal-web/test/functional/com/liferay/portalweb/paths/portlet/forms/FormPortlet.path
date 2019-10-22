@@ -14,11 +14,6 @@
 	<td></td>
 </tr>
 <tr>
-	<td>FORM_CONTENT</td>
-	<td>//div[contains(@class,'form-container')]/div[contains(@class,'form-content')]</td>
-	<td></td>
-</tr>
-<tr>
 	<td>LOCALIZATION_BUTTON</td>
 	<td>//button[contains(@id,'DDMFormPortlet')]</td>
 	<td></td>
@@ -35,17 +30,17 @@
 </tr>
 <tr>
 	<td>FORM_PAGE</td>
-	<td>//ul[contains(@class,'nav-tabs')]/li/a[contains(.,'${key_formPageName}')]</td>
+	<td>//*[contains(@class,'nav-link') and contains(.,'${key_formPageName}')]</td>
 	<td></td>
 </tr>
 <tr>
 	<td>FORM_PAGE_ACTIVE</td>
-	<td>//ol[contains(@class,'multi-step-nav')]//li[contains(@class,'active')]/div[contains(.,'${key_formPageName}')] | //ol[contains(@class,'multi-step-nav')]//li[contains(@class,'complete')]/div[contains(.,'${key_formPageName}')] | //ul[contains(@class,'multi-step-progress-bar')]/li[contains(@class,'active')]//div[contains(.,'${key_formPageName}') and contains(@class,'multi-step-indicator-label')]</td>
+	<td>//ol[contains(@class,'multi-step-nav')]//li[contains(@class,'active')]/div[contains(.,'${key_formPageName}')] | //ol[contains(@class,'multi-step-nav')]//li[contains(@class,'complete')]/div[contains(.,'${key_formPageName}')] | //ul[contains(@class,'multi-step-nav')]/li[contains(@class,'active')]//div[contains(.,'${key_formPageName}') and contains(@class,'multi-step-indicator-label')]</td>
 	<td></td>
 </tr>
 <tr>
 	<td>FORM_PAGE_INACTIVE</td>
-	<td>//ol[contains(@class,'multi-step-nav')]//li[not(contains(@class,'active'))]/div[contains(.,'${key_formPageName}')] | //ol[contains(@class,'multi-step-nav')]//li[not(contains(@class,'complete'))]/div[contains(.,'${key_formPageName}')] | //ul[contains(@class,'multi-step-progress-bar')]/li[not(contains(@class,'active'))]//div[contains(.,'${key_formPageName}') and contains(@class,'multi-step-indicator-label')]</td>
+	<td>//ol[contains(@class,'multi-step-nav')]//li[not(contains(@class,'active'))]/div[contains(.,'${key_formPageName}')] | //ol[contains(@class,'multi-step-nav')]//li[not(contains(@class,'complete'))]/div[contains(.,'${key_formPageName}')] | //ul[contains(@class,'multi-step-nav')]/li[not(contains(@class,'active'))]//div[contains(.,'${key_formPageName}') and contains(@class,'multi-step-indicator-label')]</td>
 	<td></td>
 </tr>
 <tr>

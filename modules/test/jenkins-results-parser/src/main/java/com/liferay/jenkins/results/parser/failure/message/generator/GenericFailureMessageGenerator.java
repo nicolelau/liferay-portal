@@ -14,8 +14,6 @@
 
 package com.liferay.jenkins.results.parser.failure.message.generator;
 
-import com.liferay.jenkins.results.parser.Build;
-
 import org.dom4j.Element;
 
 /**
@@ -25,10 +23,6 @@ public class GenericFailureMessageGenerator
 	extends BaseFailureMessageGenerator {
 
 	@Override
-	public Element getMessageElement(Build build) {
-		return getMessageElement(build.getConsoleText());
-	}
-
 	public Element getMessageElement(String consoleText) {
 		Element message = getExceptionSnippetElement(consoleText);
 
@@ -48,7 +42,12 @@ public class GenericFailureMessageGenerator
 			return message;
 		}
 
-		return getConsoleTextSnippetElement(consoleText, true, -1);
+		return getConsoleTextSnippetElementByEnd(consoleText, true, -1);
+	}
+
+	@Override
+	public boolean isGenericCIFailure() {
+		return true;
 	}
 
 	protected String getBuildFailedSnippet(String consoleText) {
@@ -72,7 +71,7 @@ public class GenericFailureMessageGenerator
 
 		end = consoleText.indexOf("Total time:", end);
 
-		return getConsoleTextSnippetElement(consoleText, true, end);
+		return getConsoleTextSnippetElementByEnd(consoleText, true, end);
 	}
 
 	protected String getExceptionSnippet(String consoleText) {
@@ -96,7 +95,7 @@ public class GenericFailureMessageGenerator
 
 		end = consoleText.indexOf("\n", end + 500);
 
-		return getConsoleTextSnippetElement(consoleText, true, end);
+		return getConsoleTextSnippetElementByEnd(consoleText, true, end);
 	}
 
 	protected String getMergeTestResultsSnippet(String consoleText) {
@@ -116,7 +115,7 @@ public class GenericFailureMessageGenerator
 			return null;
 		}
 
-		return getConsoleTextSnippetElement(consoleText, true, end);
+		return getConsoleTextSnippetElementByEnd(consoleText, true, end);
 	}
 
 }

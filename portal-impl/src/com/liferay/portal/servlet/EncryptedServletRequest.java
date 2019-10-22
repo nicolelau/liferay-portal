@@ -34,16 +34,19 @@ import javax.servlet.http.HttpServletRequestWrapper;
  */
 public class EncryptedServletRequest extends HttpServletRequestWrapper {
 
-	public EncryptedServletRequest(HttpServletRequest request, Key key) {
-		super(request);
+	public EncryptedServletRequest(
+		HttpServletRequest httpServletRequest, Key key) {
+
+		super(httpServletRequest);
 
 		_params = new HashMap<>();
 		_key = key;
 
-		Map<String, String[]> parameters = request.getParameterMap();
+		Map<String, String[]> parameters = httpServletRequest.getParameterMap();
 
 		for (Map.Entry<String, String[]> entry : parameters.entrySet()) {
 			String name = entry.getKey();
+
 			String[] values = entry.getValue();
 
 			for (int i = 0; i < values.length; i++) {
@@ -68,9 +71,8 @@ public class EncryptedServletRequest extends HttpServletRequestWrapper {
 		if (ArrayUtil.isNotEmpty(values)) {
 			return values[0];
 		}
-		else {
-			return null;
-		}
+
+		return null;
 	}
 
 	@Override

@@ -39,7 +39,7 @@ public class PluginGitIDFailureMessageGenerator
 		int end = consoleText.indexOf("merge-test-results:");
 		TopLevelBuild topLevelBuild = build.getTopLevelBuild();
 
-		Element messageElement = Dom4JUtil.getNewElement(
+		return Dom4JUtil.getNewElement(
 			"p", null, "Please update ",
 			Dom4JUtil.getNewElement(
 				"strong", null,
@@ -47,37 +47,35 @@ public class PluginGitIDFailureMessageGenerator
 			" to an existing Git ID from ",
 			Dom4JUtil.getNewElement(
 				"strong", null, getPluginsBranchAnchorElement(topLevelBuild)),
-			".", getConsoleTextSnippetElement(consoleText, true, end));
-
-		return messageElement;
+			".", getConsoleTextSnippetElementByEnd(consoleText, true, end));
 	}
 
 	protected Element getPluginsBranchAnchorElement(
 		TopLevelBuild topLevelBuild) {
 
-		String repositoryName = topLevelBuild.getBaseRepositoryName();
+		String gitRepositoryName = topLevelBuild.getBaseGitRepositoryName();
 
-		String pluginsRepositoryName = "liferay-plugins";
+		String pluginsGitRepositoryName = "liferay-plugins";
 
-		if (repositoryName.endsWith("-ee")) {
-			pluginsRepositoryName += "-ee";
+		if (gitRepositoryName.endsWith("-ee")) {
+			pluginsGitRepositoryName += "-ee";
 		}
 
-		Map<String, String> pluginsRepositoryGitDetailsTempMap =
+		Map<String, String> pluginsGitRepositoryGitDetailsTempMap =
 			topLevelBuild.getBaseGitRepositoryDetailsTempMap();
 
 		StringBuilder sb = new StringBuilder();
 
 		sb.append("https://github.com/liferay/");
-		sb.append(pluginsRepositoryName);
+		sb.append(pluginsGitRepositoryName);
 		sb.append("/commits/");
 		sb.append(
-			pluginsRepositoryGitDetailsTempMap.get(
+			pluginsGitRepositoryGitDetailsTempMap.get(
 				"github.upstream.branch.name"));
 
 		return Dom4JUtil.getNewAnchorElement(
-			sb.toString(), pluginsRepositoryName, "/",
-			pluginsRepositoryGitDetailsTempMap.get(
+			sb.toString(), pluginsGitRepositoryName, "/",
+			pluginsGitRepositoryGitDetailsTempMap.get(
 				"github.upstream.branch.name"));
 	}
 

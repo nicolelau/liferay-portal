@@ -16,10 +16,11 @@ package com.liferay.portlet.exportimport.service.impl;
 
 import com.liferay.document.library.kernel.util.DLValidatorUtil;
 import com.liferay.exportimport.kernel.background.task.BackgroundTaskExecutorNames;
-import com.liferay.exportimport.kernel.configuration.ExportImportConfigurationFactory;
 import com.liferay.exportimport.kernel.controller.ExportController;
 import com.liferay.exportimport.kernel.controller.ExportImportControllerRegistryUtil;
 import com.liferay.exportimport.kernel.controller.ImportController;
+import com.liferay.exportimport.kernel.exception.ExportImportIOException;
+import com.liferay.exportimport.kernel.exception.ExportImportRuntimeException;
 import com.liferay.exportimport.kernel.exception.LARFileNameException;
 import com.liferay.exportimport.kernel.lar.MissingReferences;
 import com.liferay.exportimport.kernel.lar.PortletDataException;
@@ -31,7 +32,6 @@ import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.exception.SystemException;
 import com.liferay.portal.kernel.model.Layout;
 import com.liferay.portal.kernel.model.Portlet;
-import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.util.FileUtil;
 import com.liferay.portal.kernel.util.MapUtil;
@@ -67,27 +67,13 @@ public class ExportImportLocalServiceImpl
 			throw pe;
 		}
 		catch (Exception e) {
-			throw new SystemException(e);
+			ExportImportRuntimeException eire =
+				new ExportImportRuntimeException(e.getLocalizedMessage(), e);
+
+			eire.setClassName(ExportImportLocalServiceImpl.class.getName());
+
+			throw eire;
 		}
-	}
-
-	/**
-	 * @deprecated As of 7.0.0
-	 */
-	@Deprecated
-	public File exportLayoutsAsFile(
-			long userId, long groupId, boolean privateLayout,
-			Map<String, String[]> parameterMap)
-		throws PortalException {
-
-		User user = userLocalService.getUser(userId);
-
-		ExportImportConfiguration exportImportConfiguration =
-			ExportImportConfigurationFactory.
-				buildDefaultLocalPublishingExportImportConfiguration(
-					user, groupId, 0, privateLayout, parameterMap);
-
-		return exportLayoutsAsFile(exportImportConfiguration);
 	}
 
 	@Override
@@ -121,12 +107,10 @@ public class ExportImportLocalServiceImpl
 			long userId, long exportImportConfigurationId)
 		throws PortalException {
 
-		ExportImportConfiguration exportImportConfiguration =
-			exportImportConfigurationLocalService.getExportImportConfiguration(
-				exportImportConfigurationId);
-
 		return exportLayoutsAsFileInBackground(
-			userId, exportImportConfiguration);
+			userId,
+			exportImportConfigurationLocalService.getExportImportConfiguration(
+				exportImportConfigurationId));
 	}
 
 	@Override
@@ -145,7 +129,12 @@ public class ExportImportLocalServiceImpl
 			throw pe;
 		}
 		catch (Exception e) {
-			throw new SystemException(e);
+			ExportImportRuntimeException eire =
+				new ExportImportRuntimeException(e.getLocalizedMessage(), e);
+
+			eire.setClassName(ExportImportLocalServiceImpl.class.getName());
+
+			throw eire;
 		}
 	}
 
@@ -154,10 +143,8 @@ public class ExportImportLocalServiceImpl
 			long userId, ExportImportConfiguration exportImportConfiguration)
 		throws PortalException {
 
-		Map<String, Serializable> settingsMap =
-			exportImportConfiguration.getSettingsMap();
-
-		String fileName = MapUtil.getString(settingsMap, "fileName");
+		String fileName = MapUtil.getString(
+			exportImportConfiguration.getSettingsMap(), "fileName");
 
 		if (!DLValidatorUtil.isValidName(fileName)) {
 			throw new LARFileNameException(fileName);
@@ -185,12 +172,10 @@ public class ExportImportLocalServiceImpl
 			long userId, long exportImportConfigurationId)
 		throws PortalException {
 
-		ExportImportConfiguration exportImportConfiguration =
-			exportImportConfigurationLocalService.getExportImportConfiguration(
-				exportImportConfigurationId);
-
 		return exportPortletInfoAsFileInBackground(
-			userId, exportImportConfiguration);
+			userId,
+			exportImportConfigurationLocalService.getExportImportConfiguration(
+				exportImportConfigurationId));
 	}
 
 	@Override
@@ -218,7 +203,12 @@ public class ExportImportLocalServiceImpl
 			throw se;
 		}
 		catch (Exception e) {
-			throw new SystemException(e);
+			ExportImportRuntimeException eire =
+				new ExportImportRuntimeException(e.getLocalizedMessage(), e);
+
+			eire.setClassName(ExportImportLocalServiceImpl.class.getName());
+
+			throw eire;
 		}
 	}
 
@@ -238,33 +228,22 @@ public class ExportImportLocalServiceImpl
 			importLayouts(exportImportConfiguration, file);
 		}
 		catch (IOException ioe) {
-			throw new SystemException(
-				"Unable to process LAR file for layout import due to a file " +
-					"system error",
-				ioe);
+			ExportImportIOException eiioe = new ExportImportIOException(
+				ExportImportLocalServiceImpl.class.getName(), ioe);
+
+			if (file != null) {
+				eiioe.setFileName(file.getName());
+				eiioe.setType(ExportImportIOException.LAYOUT_IMPORT_FILE);
+			}
+			else {
+				eiioe.setType(ExportImportIOException.LAYOUT_IMPORT);
+			}
+
+			throw eiioe;
 		}
 		finally {
 			FileUtil.delete(file);
 		}
-	}
-
-	/**
-	 * @deprecated As of 7.0.0
-	 */
-	@Deprecated
-	public void importLayouts(
-			long userId, long groupId, boolean privateLayout,
-			Map<String, String[]> parameterMap, File file)
-		throws PortalException {
-
-		User user = userLocalService.getUser(userId);
-
-		ExportImportConfiguration exportImportConfiguration =
-			ExportImportConfigurationFactory.
-				buildDefaultLocalPublishingExportImportConfiguration(
-					user, 0, groupId, privateLayout, parameterMap);
-
-		importLayouts(exportImportConfiguration, file);
 	}
 
 	@Override
@@ -293,7 +272,12 @@ public class ExportImportLocalServiceImpl
 			throw se;
 		}
 		catch (Exception e) {
-			throw new SystemException(e);
+			ExportImportRuntimeException eire =
+				new ExportImportRuntimeException(e.getLocalizedMessage(), e);
+
+			eire.setClassName(ExportImportLocalServiceImpl.class.getName());
+
+			throw eire;
 		}
 	}
 
@@ -339,10 +323,18 @@ public class ExportImportLocalServiceImpl
 				userId, exportImportConfiguration, file);
 		}
 		catch (IOException ioe) {
-			throw new SystemException(
-				"Unable to process LAR file for layout import due to a file " +
-					"system error",
-				ioe);
+			ExportImportIOException eiioe = new ExportImportIOException(
+				ExportImportLocalServiceImpl.class.getName(), ioe);
+
+			if (file != null) {
+				eiioe.setFileName(file.getName());
+				eiioe.setType(ExportImportIOException.LAYOUT_IMPORT_FILE);
+			}
+			else {
+				eiioe.setType(ExportImportIOException.LAYOUT_IMPORT);
+			}
+
+			throw eiioe;
 		}
 		finally {
 			FileUtil.delete(file);
@@ -354,12 +346,11 @@ public class ExportImportLocalServiceImpl
 			long userId, long exportImportConfigurationId, File file)
 		throws PortalException {
 
-		ExportImportConfiguration exportImportConfiguration =
-			exportImportConfigurationLocalService.getExportImportConfiguration(
-				exportImportConfigurationId);
-
 		return importPortletInfoInBackground(
-			userId, exportImportConfiguration, file);
+			userId,
+			exportImportConfigurationLocalService.getExportImportConfiguration(
+				exportImportConfigurationId),
+			file);
 	}
 
 	@Override
@@ -368,12 +359,11 @@ public class ExportImportLocalServiceImpl
 			InputStream inputStream)
 		throws PortalException {
 
-		ExportImportConfiguration exportImportConfiguration =
-			exportImportConfigurationLocalService.getExportImportConfiguration(
-				exportImportConfigurationId);
-
 		return importLayoutsInBackground(
-			userId, exportImportConfiguration, inputStream);
+			userId,
+			exportImportConfigurationLocalService.getExportImportConfiguration(
+				exportImportConfigurationId),
+			inputStream);
 	}
 
 	@Override
@@ -402,7 +392,12 @@ public class ExportImportLocalServiceImpl
 			throw se;
 		}
 		catch (Exception e) {
-			throw new SystemException(e);
+			ExportImportRuntimeException eire =
+				new ExportImportRuntimeException(e.getLocalizedMessage(), e);
+
+			eire.setClassName(ExportImportLocalServiceImpl.class.getName());
+
+			throw eire;
 		}
 	}
 
@@ -444,7 +439,12 @@ public class ExportImportLocalServiceImpl
 			throw se;
 		}
 		catch (Exception e) {
-			throw new SystemException(e);
+			ExportImportRuntimeException eire =
+				new ExportImportRuntimeException(e.getLocalizedMessage(), e);
+
+			eire.setClassName(ExportImportLocalServiceImpl.class.getName());
+
+			throw eire;
 		}
 	}
 
@@ -464,10 +464,18 @@ public class ExportImportLocalServiceImpl
 			importPortletInfo(exportImportConfiguration, file);
 		}
 		catch (IOException ioe) {
-			throw new SystemException(
-				"Unable to process LAR file for layout import due to a file " +
-					"system error",
-				ioe);
+			ExportImportIOException eiioe = new ExportImportIOException(
+				ExportImportLocalServiceImpl.class.getName(), ioe);
+
+			if (file != null) {
+				eiioe.setFileName(file.getName());
+				eiioe.setType(ExportImportIOException.PORTLET_IMPORT_FILE);
+			}
+			else {
+				eiioe.setType(ExportImportIOException.PORTLET_IMPORT);
+			}
+
+			throw eiioe;
 		}
 		finally {
 			FileUtil.delete(file);
@@ -516,10 +524,18 @@ public class ExportImportLocalServiceImpl
 				userId, exportImportConfiguration, file);
 		}
 		catch (IOException ioe) {
-			throw new SystemException(
-				"Unable to process LAR file for portlet import due to a file " +
-					"system error",
-				ioe);
+			ExportImportIOException eiioe = new ExportImportIOException(
+				ExportImportLocalServiceImpl.class.getName(), ioe);
+
+			if (file != null) {
+				eiioe.setFileName(file.getName());
+				eiioe.setType(ExportImportIOException.PORTLET_IMPORT_FILE);
+			}
+			else {
+				eiioe.setType(ExportImportIOException.PORTLET_IMPORT);
+			}
+
+			throw eiioe;
 		}
 		finally {
 			FileUtil.delete(file);
@@ -531,12 +547,11 @@ public class ExportImportLocalServiceImpl
 			long userId, long exportImportConfigurationId, File file)
 		throws PortalException {
 
-		ExportImportConfiguration exportImportConfiguration =
-			exportImportConfigurationLocalService.getExportImportConfiguration(
-				exportImportConfigurationId);
-
 		return importPortletInfoInBackground(
-			userId, exportImportConfiguration, file);
+			userId,
+			exportImportConfigurationLocalService.getExportImportConfiguration(
+				exportImportConfigurationId),
+			file);
 	}
 
 	@Override
@@ -545,12 +560,11 @@ public class ExportImportLocalServiceImpl
 			InputStream inputStream)
 		throws PortalException {
 
-		ExportImportConfiguration exportImportConfiguration =
-			exportImportConfigurationLocalService.getExportImportConfiguration(
-				exportImportConfigurationId);
-
 		return importPortletInfoInBackground(
-			userId, exportImportConfiguration, inputStream);
+			userId,
+			exportImportConfigurationLocalService.getExportImportConfiguration(
+				exportImportConfigurationId),
+			inputStream);
 	}
 
 	@Override
@@ -579,7 +593,12 @@ public class ExportImportLocalServiceImpl
 			throw se;
 		}
 		catch (Exception e) {
-			throw new SystemException(e);
+			ExportImportRuntimeException eire =
+				new ExportImportRuntimeException(e.getLocalizedMessage(), e);
+
+			eire.setClassName(ExportImportLocalServiceImpl.class.getName());
+
+			throw eire;
 		}
 	}
 
@@ -599,10 +618,18 @@ public class ExportImportLocalServiceImpl
 			return validateImportLayoutsFile(exportImportConfiguration, file);
 		}
 		catch (IOException ioe) {
-			throw new SystemException(
-				"Unable to process LAR file for layout import validation due " +
-					"to a file system error",
-				ioe);
+			ExportImportIOException eiioe = new ExportImportIOException(
+				ExportImportLocalServiceImpl.class.getName(), ioe);
+
+			if (file != null) {
+				eiioe.setFileName(file.getName());
+				eiioe.setType(ExportImportIOException.LAYOUT_VALIDATE_FILE);
+			}
+			else {
+				eiioe.setType(ExportImportIOException.LAYOUT_VALIDATE);
+			}
+
+			throw eiioe;
 		}
 		finally {
 			FileUtil.delete(file);
@@ -635,7 +662,12 @@ public class ExportImportLocalServiceImpl
 			throw se;
 		}
 		catch (Exception e) {
-			throw new SystemException(e);
+			ExportImportRuntimeException eire =
+				new ExportImportRuntimeException(e.getLocalizedMessage(), e);
+
+			eire.setClassName(ExportImportLocalServiceImpl.class.getName());
+
+			throw eire;
 		}
 	}
 
@@ -655,10 +687,18 @@ public class ExportImportLocalServiceImpl
 			return validateImportPortletInfo(exportImportConfiguration, file);
 		}
 		catch (IOException ioe) {
-			throw new SystemException(
-				"Unable to process LAR file for portlet import validation " +
-					"due to a file system error",
-				ioe);
+			ExportImportIOException eiioe = new ExportImportIOException(
+				ExportImportLocalServiceImpl.class.getName(), ioe);
+
+			if (file != null) {
+				eiioe.setFileName(file.getName());
+				eiioe.setType(ExportImportIOException.PORTLET_VALIDATE_FILE);
+			}
+			else {
+				eiioe.setType(ExportImportIOException.PORTLET_VALIDATE);
+			}
+
+			throw eiioe;
 		}
 		finally {
 			FileUtil.delete(file);

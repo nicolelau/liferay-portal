@@ -1,119 +1,77 @@
-<definition component-name="portal-plugins-deployment">
-	<property name="testray.main.component.name" value="Plugin Installer" />
+@component-name = "portal-plugins-deployment"
+definition {
 
-	<var name="appName" value="Social Networking" />
+	property testray.main.component.name = "Plugin Installer";
+	var appName = "Social Networking";
 
-	<set-up>
-		<execute macro="User#firstLoginPG" />
+	setUp {
+		User.firstLoginPG();
 
-		<execute macro="ProductMenu#gotoPortlet">
-			<var name="category" value="Navigation" />
-			<var name="panel" value="Site Administration" />
-			<var name="portlet" value="Site Pages" />
-		</execute>
+		ProductMenu.gotoPortlet(
+			category = "Site Builder",
+			panel = "Site Administration",
+			portlet = "Pages");
 
-		<execute macro="SitePages#addPublicPage">
-			<var name="pageName" value="Test Page" />
-		</execute>
-	</set-up>
+		SitePages.addPublicPage(pageName = "Test Page");
+	}
 
-	<tear-down>
-		<execute macro="Page#tearDownCP" />
-	</tear-down>
+	tearDown {
+		Page.tearDownCP();
+	}
 
-	<command name="SocialNetworkingPortletSmoke" priority="4">
-		<property name="portlet.plugins.includes" value="social-networking-portlet" />
+	@priority = "4"
+	test SocialNetworkingPortletSmoke {
+		property portlet.plugins.includes = "social-networking-portlet";
 
-		<execute macro="Navigator#gotoPage">
-			<var name="pageName" value="Test Page" />
-		</execute>
+		Navigator.gotoPage(pageName = "Test Page");
 
-		<execute macro="Portlet#addPG">
-			<var name="portletName" value="Friends" />
-		</execute>
+		Portlet.addPG(portletName = "Friends");
 
-		<execute macro="Navigator#gotoPage">
-			<var name="pageName" value="Test Page" />
-		</execute>
+		Navigator.gotoPage(pageName = "Test Page");
 
-		<execute macro="Portlet#addPG">
-			<var name="portletName" value="Friends' Activities" />
-		</execute>
+		Portlet.addPG(portletName = "Friends&apos; Activities");
 
-		<execute macro="Navigator#gotoPage">
-			<var name="pageName" value="Test Page" />
-		</execute>
+		Navigator.gotoPage(pageName = "Test Page");
 
-		<execute macro="Portlet#addPG">
-			<var name="portletName" value="Map" />
-		</execute>
+		Portlet.addPG(portletName = "Map");
 
-		<execute macro="Navigator#gotoPage">
-			<var name="pageName" value="Test Page" />
-		</execute>
+		Navigator.gotoPage(pageName = "Test Page");
 
-		<execute macro="Portlet#addPG">
-			<var name="portletName" value="Meetups" />
-		</execute>
+		Portlet.addPG(portletName = "Meetups");
 
-		<execute macro="Navigator#gotoPage">
-			<var name="pageName" value="Test Page" />
-		</execute>
+		Navigator.gotoPage(pageName = "Test Page");
 
-		<execute macro="Portlet#addPG">
-			<var name="portletName" value="Members" />
-		</execute>
+		Portlet.addPG(portletName = "Members");
 
-		<execute macro="Navigator#gotoPage">
-			<var name="pageName" value="Test Page" />
-		</execute>
+		Navigator.gotoPage(pageName = "Test Page");
 
-		<execute macro="Portlet#addPG">
-			<var name="portletName" value="Members' Activities" />
-		</execute>
+		Portlet.addPG(portletName = "Members&apos; Activities");
 
-		<execute macro="Navigator#gotoPage">
-			<var name="pageName" value="Test Page" />
-		</execute>
+		Navigator.gotoPage(pageName = "Test Page");
 
-		<execute macro="Portlet#addPG">
-			<var name="portletName" value="Requests" />
-		</execute>
+		Portlet.addPG(portletName = "Requests");
 
-		<execute macro="Navigator#gotoPage">
-			<var name="pageName" value="Test Page" />
-		</execute>
+		Navigator.gotoPage(pageName = "Test Page");
 
-		<execute macro="Portlet#addPG">
-			<var name="portletName" value="Summary" />
-		</execute>
+		Portlet.addPG(portletName = "Summary");
 
-		<execute macro="Navigator#gotoPage">
-			<var name="pageName" value="Test Page" />
-		</execute>
+		Navigator.gotoPage(pageName = "Test Page");
 
-		<execute macro="Portlet#addPG">
-			<var name="portletName" value="Wall" />
-		</execute>
+		Portlet.addPG(portletName = "Wall");
 
-		<execute macro="ProductMenu#gotoPortlet">
-			<var name="category" value="Apps" />
-			<var name="panel" value="Control Panel" />
-			<var name="portlet" value="App Manager" />
-		</execute>
+		ProductMenu.gotoPortlet(
+			category = "Apps",
+			panel = "Control Panel",
+			portlet = "App Manager");
 
-		<execute macro="AppManager#uninstallAppCP">
-			<var name="appName" value="Social Networking" />
-		</execute>
+		AppManager.uninstallAppCP(appName = "Social Networking");
 
-		<execute macro="ProductMenu#gotoPortlet">
-			<var name="category" value="Apps" />
-			<var name="panel" value="Control Panel" />
-			<var name="portlet" value="App Manager" />
-		</execute>
+		ProductMenu.gotoPortlet(
+			category = "Apps",
+			panel = "Control Panel",
+			portlet = "App Manager");
 
-		<execute macro="AppManager#viewUninstallAppCP">
-			<var name="appName" value="Social Networking" />
-		</execute>
-	</command>
-</definition>
+		AppManager.viewUninstallAppCP(appName = "Social Networking");
+	}
+
+}

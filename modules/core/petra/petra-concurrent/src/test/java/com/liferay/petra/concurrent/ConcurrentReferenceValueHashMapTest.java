@@ -15,11 +15,7 @@
 package com.liferay.petra.concurrent;
 
 import com.liferay.petra.memory.FinalizeManager;
-import com.liferay.petra.string.StringPool;
-import com.liferay.portal.kernel.test.rule.AggregateTestRule;
 import com.liferay.portal.kernel.test.rule.CodeCoverageAssertor;
-import com.liferay.portal.kernel.test.rule.NewEnv;
-import com.liferay.portal.kernel.test.rule.NewEnvTestRule;
 
 import java.lang.ref.Reference;
 
@@ -40,17 +36,11 @@ public class ConcurrentReferenceValueHashMapTest
 
 	@ClassRule
 	@Rule
-	public static final AggregateTestRule aggregateTestRule =
-		new AggregateTestRule(
-			CodeCoverageAssertor.INSTANCE, NewEnvTestRule.INSTANCE);
+	public static final CodeCoverageAssertor codeCoverageAssertor =
+		CodeCoverageAssertor.INSTANCE;
 
-	@NewEnv(type = NewEnv.Type.CLASSLOADER)
 	@Test
 	public void testAutoRemove() throws InterruptedException {
-		System.setProperty(
-			FinalizeManager.class.getName() + ".thread.enabled",
-			StringPool.FALSE);
-
 		testAutoRemove(
 			new ConcurrentReferenceValueHashMap<String, Object>(
 				FinalizeManager.SOFT_REFERENCE_FACTORY),
@@ -75,17 +65,24 @@ public class ConcurrentReferenceValueHashMapTest
 			innerConcurrentMap,
 			concurrentReferenceValueHashMap.innerConcurrentMap);
 
-		Map<String, Object> dataMap = createDataMap();
-
-		concurrentReferenceValueHashMap = new ConcurrentReferenceValueHashMap<>(
-			dataMap, FinalizeManager.WEAK_REFERENCE_FACTORY);
-
-		Assert.assertEquals(dataMap, concurrentReferenceValueHashMap);
-
 		new ConcurrentReferenceValueHashMap<String, Object>(
 			10, FinalizeManager.WEAK_REFERENCE_FACTORY);
 		new ConcurrentReferenceValueHashMap<String, Object>(
 			10, 0.75F, 4, FinalizeManager.WEAK_REFERENCE_FACTORY);
+	}
+
+	@Test
+	public void testPutAll() {
+		ConcurrentReferenceValueHashMap<String, Object>
+			concurrentReferenceValueHashMap =
+				new ConcurrentReferenceValueHashMap<>(
+					FinalizeManager.WEAK_REFERENCE_FACTORY);
+
+		Map<String, Object> dataMap = createDataMap();
+
+		concurrentReferenceValueHashMap.putAll(dataMap);
+
+		Assert.assertEquals(dataMap, concurrentReferenceValueHashMap);
 	}
 
 }

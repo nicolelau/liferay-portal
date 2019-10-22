@@ -51,13 +51,14 @@ import org.gradle.util.GUtil;
 /**
  * @author Andrea Di Giorgi
  */
-public class PublishNodeModuleTask extends ExecuteNpmTask {
+public class PublishNodeModuleTask extends ExecutePackageManagerTask {
 
 	@Override
 	public void executeNode() throws Exception {
 		Project project = getProject();
 
 		File npmrcFile = _getNpmrcFile();
+
 		File packageJsonFile = new File(getWorkingDir(), "package.json");
 
 		Path packageJsonPath = packageJsonFile.toPath();
@@ -290,7 +291,13 @@ public class PublishNodeModuleTask extends ExecuteNpmTask {
 	}
 
 	private File _getNpmrcFile() {
-		return new File(getTemporaryDir(), "npmrc");
+		if (isUseNpm()) {
+			return new File(getTemporaryDir(), "npmrc");
+		}
+
+		File scriptFile = getScriptFile();
+
+		return new File(scriptFile.getParentFile(), ".npmrc");
 	}
 
 	private void _updatePackageJsonFile(Path packageJsonPath)

@@ -16,7 +16,6 @@ package com.liferay.push.notifications.sender.android.internal;
 
 import com.google.android.gcm.server.Constants;
 import com.google.android.gcm.server.Message;
-import com.google.android.gcm.server.Message.Builder;
 import com.google.android.gcm.server.MulticastResult;
 import com.google.android.gcm.server.Result;
 import com.google.android.gcm.server.Sender;
@@ -25,13 +24,12 @@ import com.liferay.portal.configuration.metatype.bnd.util.ConfigurableUtil;
 import com.liferay.portal.kernel.json.JSONObject;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
-import com.liferay.portal.kernel.messaging.MessageBusUtil;
+import com.liferay.portal.kernel.messaging.MessageBus;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.push.notifications.constants.PushNotificationsConstants;
 import com.liferay.push.notifications.constants.PushNotificationsDestinationNames;
 import com.liferay.push.notifications.exception.PushNotificationsException;
 import com.liferay.push.notifications.sender.PushNotificationsSender;
-import com.liferay.push.notifications.sender.Response;
 import com.liferay.push.notifications.sender.android.internal.configuration.AndroidPushNotificationsSenderConfiguration;
 import com.liferay.push.notifications.service.PushNotificationsDeviceLocalService;
 
@@ -51,7 +49,8 @@ import org.osgi.service.component.annotations.Reference;
 @Component(
 	configurationPid = "com.liferay.push.notifications.sender.android.internal.configuration.AndroidPushNotificationsSenderConfiguration",
 	immediate = true,
-	property = "platform=" + AndroidPushNotificationsSender.PLATFORM
+	property = "platform=" + AndroidPushNotificationsSender.PLATFORM,
+	service = PushNotificationsSender.class
 )
 public class AndroidPushNotificationsSender implements PushNotificationsSender {
 
@@ -94,7 +93,7 @@ public class AndroidPushNotificationsSender implements PushNotificationsSender {
 	}
 
 	protected Message buildMessage(JSONObject payloadJSONObject) {
-		Builder builder = new Builder();
+		Message.Builder builder = new Message.Builder();
 
 		builder.addData(
 			PushNotificationsConstants.KEY_PAYLOAD,
@@ -127,12 +126,15 @@ public class AndroidPushNotificationsSender implements PushNotificationsSender {
 			Result result = results.get(i);
 			String token = tokens.get(i);
 
-			Response response = new AndroidResponse(
-				result, token, payloadJSONObject);
+			com.liferay.portal.kernel.messaging.Message message =
+				new com.liferay.portal.kernel.messaging.Message();
 
-			MessageBusUtil.sendMessage(
+			message.setPayload(
+				new AndroidResponse(result, token, payloadJSONObject));
+
+			_messageBus.sendMessage(
 				PushNotificationsDestinationNames.PUSH_NOTIFICATION_RESPONSE,
-				response);
+				message);
 
 			if ((multicastResult.getCanonicalIds() == 0) &&
 				(multicastResult.getFailure() == 0)) {
@@ -142,10 +144,9 @@ public class AndroidPushNotificationsSender implements PushNotificationsSender {
 
 			String canonicalRegistrationId =
 				result.getCanonicalRegistrationId();
-			String messageId = result.getMessageId();
 
 			if (Validator.isNotNull(canonicalRegistrationId) &&
-				Validator.isNotNull(messageId)) {
+				Validator.isNotNull(result.getMessageId())) {
 
 				try {
 					_pushNotificationsDeviceLocalService.updateToken(
@@ -160,21 +161,18 @@ public class AndroidPushNotificationsSender implements PushNotificationsSender {
 
 			String errorCodeName = result.getErrorCodeName();
 
-			if (Validator.isNotNull(errorCodeName)) {
-				if (errorCodeName.equals(
-						Constants.ERROR_INVALID_REGISTRATION) ||
-					errorCodeName.equals(Constants.ERROR_MISMATCH_SENDER_ID) ||
-					errorCodeName.equals(Constants.ERROR_NOT_REGISTERED)) {
+			if (Validator.isNotNull(errorCodeName) &&
+				(errorCodeName.equals(Constants.ERROR_INVALID_REGISTRATION) ||
+				 errorCodeName.equals(Constants.ERROR_MISMATCH_SENDER_ID) ||
+				 errorCodeName.equals(Constants.ERROR_NOT_REGISTERED))) {
 
-					try {
-						_pushNotificationsDeviceLocalService.
-							deletePushNotificationsDevice(token);
-					}
-					catch (Exception e) {
-						if (_log.isWarnEnabled()) {
-							_log.warn(
-								"Unable to delete invalid token " + token);
-						}
+				try {
+					_pushNotificationsDeviceLocalService.
+						deletePushNotificationsDevice(token);
+				}
+				catch (Exception e) {
+					if (_log.isWarnEnabled()) {
+						_log.warn("Unable to delete invalid token " + token);
 					}
 				}
 			}
@@ -186,6 +184,10 @@ public class AndroidPushNotificationsSender implements PushNotificationsSender {
 
 	private volatile AndroidPushNotificationsSenderConfiguration
 		_androidPushNotificationsSenderConfiguration;
+
+	@Reference
+	private MessageBus _messageBus;
+
 	private PushNotificationsDeviceLocalService
 		_pushNotificationsDeviceLocalService;
 	private volatile Sender _sender;

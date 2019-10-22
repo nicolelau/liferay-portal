@@ -20,6 +20,7 @@ import com.liferay.source.formatter.checkstyle.util.DetailASTUtil;
 
 import com.puppycrawl.tools.checkstyle.api.DetailAST;
 import com.puppycrawl.tools.checkstyle.api.TokenTypes;
+import com.puppycrawl.tools.checkstyle.utils.AnnotationUtil;
 
 /**
  * @author Hugo Huijser
@@ -36,7 +37,13 @@ public class JSONNamingCheck extends BaseCheck {
 
 	@Override
 	protected void doVisitToken(DetailAST detailAST) {
-		String typeName = DetailASTUtil.getTypeName(detailAST);
+		if ((detailAST.getType() == TokenTypes.METHOD_DEF) &&
+			AnnotationUtil.containsAnnotation(detailAST, "Override")) {
+
+			return;
+		}
+
+		String typeName = DetailASTUtil.getTypeName(detailAST, false);
 
 		if (typeName.equals("boolean") || typeName.equals("void")) {
 			return;
@@ -117,9 +124,9 @@ public class JSONNamingCheck extends BaseCheck {
 	}
 
 	private String _getName(DetailAST detailAST) {
-		DetailAST nameAST = detailAST.findFirstToken(TokenTypes.IDENT);
+		DetailAST nameDetailAST = detailAST.findFirstToken(TokenTypes.IDENT);
 
-		return nameAST.getText();
+		return nameDetailAST.getText();
 	}
 
 	private String _getTokenTypeName(DetailAST detailAST) {

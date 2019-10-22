@@ -14,6 +14,8 @@
 
 package com.liferay.gradle.plugins.defaults;
 
+import aQute.bnd.version.Version;
+
 import com.liferay.gradle.plugins.BaseDefaultsPlugin;
 import com.liferay.gradle.plugins.defaults.internal.util.FileUtil;
 import com.liferay.gradle.plugins.defaults.internal.util.GradleUtil;
@@ -30,6 +32,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.gradle.api.Action;
+import org.gradle.api.GradleException;
 import org.gradle.api.Project;
 import org.gradle.api.Task;
 import org.gradle.api.artifacts.Configuration;
@@ -77,6 +80,7 @@ public class LiferayOSGiPortalCompatDefaultsPlugin
 
 		_configureLiferay(project, portalRootDir);
 		_configureTaskClasses(transformImportedFilesTask);
+		_configureTaskImportFiles(importFilesTask);
 		_configureTaskUpdateFileVersions(project, portalRootDir);
 	}
 
@@ -113,9 +117,10 @@ public class LiferayOSGiPortalCompatDefaultsPlugin
 		GradleUtil.addDependency(
 			project, BYTECODE_TRANSFORMER_CONFIGURATION_NAME, "com.liferay",
 			"com.liferay.portal.tools.portal.compat.bytecode.transformer",
-			"1.0.1");
+			"1.0.2");
 	}
 
+	@SuppressWarnings("serial")
 	private Copy _addTaskImportFiles(final Project project) {
 		Copy copy = GradleUtil.addTask(
 			project, IMPORT_FILES_TASK_NAME, Copy.class);
@@ -221,6 +226,45 @@ public class LiferayOSGiPortalCompatDefaultsPlugin
 		classesTask.dependsOn(transformImportedFilesTask);
 	}
 
+	private void _configureTaskImportFiles(Copy importFilesTask) {
+		importFilesTask.doFirst(
+			new Action<Task>() {
+
+				@Override
+				public void execute(Task task) {
+					Project project = task.getProject();
+
+					DependencyHandler dependencyHandler =
+						project.getDependencies();
+					Properties properties = GUtil.loadProperties(
+						project.file("imported-files.properties"));
+
+					for (String key : properties.stringPropertyNames()) {
+						Dependency dependency = dependencyHandler.create(key);
+
+						String dependencyVersion = dependency.getVersion();
+
+						Version version = null;
+
+						try {
+							version = Version.parseVersion(dependencyVersion);
+						}
+						catch (IllegalArgumentException iae) {
+							throw new GradleException(iae.getMessage(), iae);
+						}
+
+						if (version.isSnapshot()) {
+							throw new GradleException(
+								"The dependency " + key + " must not be a " +
+									"snapshot");
+						}
+					}
+				}
+
+			});
+	}
+
+	@SuppressWarnings({"serial", "unchecked"})
 	private void _configureTaskUpdateFileVersions(
 		Project project, File portalRootDir) {
 

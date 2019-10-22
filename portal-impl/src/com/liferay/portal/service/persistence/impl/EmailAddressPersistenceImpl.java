@@ -14,12 +14,9 @@
 
 package com.liferay.portal.service.persistence.impl;
 
-import aQute.bnd.annotation.ProviderType;
-
-import com.liferay.portal.kernel.bean.BeanReference;
+import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.dao.orm.EntityCache;
 import com.liferay.portal.kernel.dao.orm.EntityCacheUtil;
-import com.liferay.portal.kernel.dao.orm.FinderCache;
 import com.liferay.portal.kernel.dao.orm.FinderCacheUtil;
 import com.liferay.portal.kernel.dao.orm.FinderPath;
 import com.liferay.portal.kernel.dao.orm.Query;
@@ -30,15 +27,14 @@ import com.liferay.portal.kernel.exception.NoSuchEmailAddressException;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.model.EmailAddress;
+import com.liferay.portal.kernel.security.auth.CompanyThreadLocal;
 import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.service.ServiceContextThreadLocal;
-import com.liferay.portal.kernel.service.persistence.CompanyProvider;
-import com.liferay.portal.kernel.service.persistence.CompanyProviderWrapper;
 import com.liferay.portal.kernel.service.persistence.EmailAddressPersistence;
 import com.liferay.portal.kernel.service.persistence.impl.BasePersistenceImpl;
 import com.liferay.portal.kernel.util.OrderByComparator;
+import com.liferay.portal.kernel.util.ProxyUtil;
 import com.liferay.portal.kernel.util.SetUtil;
-import com.liferay.portal.kernel.util.StringBundler;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.kernel.uuid.PortalUUIDUtil;
 import com.liferay.portal.model.impl.EmailAddressImpl;
@@ -46,13 +42,10 @@ import com.liferay.portal.model.impl.EmailAddressModelImpl;
 
 import java.io.Serializable;
 
-import java.lang.reflect.Field;
+import java.lang.reflect.InvocationHandler;
 
-import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -66,51 +59,32 @@ import java.util.Set;
  * </p>
  *
  * @author Brian Wing Shun Chan
- * @see EmailAddressPersistence
- * @see com.liferay.portal.kernel.service.persistence.EmailAddressUtil
  * @generated
  */
-@ProviderType
-public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddress>
+public class EmailAddressPersistenceImpl
+	extends BasePersistenceImpl<EmailAddress>
 	implements EmailAddressPersistence {
-	/*
+
+	/**
 	 * NOTE FOR DEVELOPERS:
 	 *
-	 * Never modify or reference this class directly. Always use {@link EmailAddressUtil} to access the email address persistence. Modify <code>service.xml</code> and rerun ServiceBuilder to regenerate this class.
+	 * Never modify or reference this class directly. Always use <code>EmailAddressUtil</code> to access the email address persistence. Modify <code>service.xml</code> and rerun ServiceBuilder to regenerate this class.
 	 */
-	public static final String FINDER_CLASS_NAME_ENTITY = EmailAddressImpl.class.getName();
-	public static final String FINDER_CLASS_NAME_LIST_WITH_PAGINATION = FINDER_CLASS_NAME_ENTITY +
-		".List1";
-	public static final String FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION = FINDER_CLASS_NAME_ENTITY +
-		".List2";
-	public static final FinderPath FINDER_PATH_WITH_PAGINATION_FIND_ALL = new FinderPath(EmailAddressModelImpl.ENTITY_CACHE_ENABLED,
-			EmailAddressModelImpl.FINDER_CACHE_ENABLED, EmailAddressImpl.class,
-			FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findAll", new String[0]);
-	public static final FinderPath FINDER_PATH_WITHOUT_PAGINATION_FIND_ALL = new FinderPath(EmailAddressModelImpl.ENTITY_CACHE_ENABLED,
-			EmailAddressModelImpl.FINDER_CACHE_ENABLED, EmailAddressImpl.class,
-			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findAll", new String[0]);
-	public static final FinderPath FINDER_PATH_COUNT_ALL = new FinderPath(EmailAddressModelImpl.ENTITY_CACHE_ENABLED,
-			EmailAddressModelImpl.FINDER_CACHE_ENABLED, Long.class,
-			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countAll", new String[0]);
-	public static final FinderPath FINDER_PATH_WITH_PAGINATION_FIND_BY_UUID = new FinderPath(EmailAddressModelImpl.ENTITY_CACHE_ENABLED,
-			EmailAddressModelImpl.FINDER_CACHE_ENABLED, EmailAddressImpl.class,
-			FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByUuid",
-			new String[] {
-				String.class.getName(),
-				
-			Integer.class.getName(), Integer.class.getName(),
-				OrderByComparator.class.getName()
-			});
-	public static final FinderPath FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_UUID = new FinderPath(EmailAddressModelImpl.ENTITY_CACHE_ENABLED,
-			EmailAddressModelImpl.FINDER_CACHE_ENABLED, EmailAddressImpl.class,
-			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findByUuid",
-			new String[] { String.class.getName() },
-			EmailAddressModelImpl.UUID_COLUMN_BITMASK |
-			EmailAddressModelImpl.CREATEDATE_COLUMN_BITMASK);
-	public static final FinderPath FINDER_PATH_COUNT_BY_UUID = new FinderPath(EmailAddressModelImpl.ENTITY_CACHE_ENABLED,
-			EmailAddressModelImpl.FINDER_CACHE_ENABLED, Long.class,
-			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByUuid",
-			new String[] { String.class.getName() });
+	public static final String FINDER_CLASS_NAME_ENTITY =
+		EmailAddressImpl.class.getName();
+
+	public static final String FINDER_CLASS_NAME_LIST_WITH_PAGINATION =
+		FINDER_CLASS_NAME_ENTITY + ".List1";
+
+	public static final String FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION =
+		FINDER_CLASS_NAME_ENTITY + ".List2";
+
+	private FinderPath _finderPathWithPaginationFindAll;
+	private FinderPath _finderPathWithoutPaginationFindAll;
+	private FinderPath _finderPathCountAll;
+	private FinderPath _finderPathWithPaginationFindByUuid;
+	private FinderPath _finderPathWithoutPaginationFindByUuid;
+	private FinderPath _finderPathCountByUuid;
 
 	/**
 	 * Returns all the email addresses where uuid = &#63;.
@@ -127,7 +101,7 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 * Returns a range of all the email addresses where uuid = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link EmailAddressModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>EmailAddressModelImpl</code>.
 	 * </p>
 	 *
 	 * @param uuid the uuid
@@ -144,7 +118,7 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 * Returns an ordered range of all the email addresses where uuid = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link EmailAddressModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>EmailAddressModelImpl</code>.
 	 * </p>
 	 *
 	 * @param uuid the uuid
@@ -154,8 +128,10 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 * @return the ordered range of matching email addresses
 	 */
 	@Override
-	public List<EmailAddress> findByUuid(String uuid, int start, int end,
+	public List<EmailAddress> findByUuid(
+		String uuid, int start, int end,
 		OrderByComparator<EmailAddress> orderByComparator) {
+
 		return findByUuid(uuid, start, end, orderByComparator, true);
 	}
 
@@ -163,44 +139,49 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 * Returns an ordered range of all the email addresses where uuid = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link EmailAddressModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>EmailAddressModelImpl</code>.
 	 * </p>
 	 *
 	 * @param uuid the uuid
 	 * @param start the lower bound of the range of email addresses
 	 * @param end the upper bound of the range of email addresses (not inclusive)
 	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
-	 * @param retrieveFromCache whether to retrieve from the finder cache
+	 * @param useFinderCache whether to use the finder cache
 	 * @return the ordered range of matching email addresses
 	 */
 	@Override
-	public List<EmailAddress> findByUuid(String uuid, int start, int end,
+	public List<EmailAddress> findByUuid(
+		String uuid, int start, int end,
 		OrderByComparator<EmailAddress> orderByComparator,
-		boolean retrieveFromCache) {
-		boolean pagination = true;
+		boolean useFinderCache) {
+
+		uuid = Objects.toString(uuid, "");
+
 		FinderPath finderPath = null;
 		Object[] finderArgs = null;
 
 		if ((start == QueryUtil.ALL_POS) && (end == QueryUtil.ALL_POS) &&
-				(orderByComparator == null)) {
-			pagination = false;
-			finderPath = FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_UUID;
-			finderArgs = new Object[] { uuid };
+			(orderByComparator == null)) {
+
+			if (useFinderCache) {
+				finderPath = _finderPathWithoutPaginationFindByUuid;
+				finderArgs = new Object[] {uuid};
+			}
 		}
-		else {
-			finderPath = FINDER_PATH_WITH_PAGINATION_FIND_BY_UUID;
-			finderArgs = new Object[] { uuid, start, end, orderByComparator };
+		else if (useFinderCache) {
+			finderPath = _finderPathWithPaginationFindByUuid;
+			finderArgs = new Object[] {uuid, start, end, orderByComparator};
 		}
 
 		List<EmailAddress> list = null;
 
-		if (retrieveFromCache) {
-			list = (List<EmailAddress>)finderCache.getResult(finderPath,
-					finderArgs, this);
+		if (useFinderCache) {
+			list = (List<EmailAddress>)FinderCacheUtil.getResult(
+				finderPath, finderArgs, this);
 
 			if ((list != null) && !list.isEmpty()) {
 				for (EmailAddress emailAddress : list) {
-					if (!Objects.equals(uuid, emailAddress.getUuid())) {
+					if (!uuid.equals(emailAddress.getUuid())) {
 						list = null;
 
 						break;
@@ -213,8 +194,8 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 			StringBundler query = null;
 
 			if (orderByComparator != null) {
-				query = new StringBundler(3 +
-						(orderByComparator.getOrderByFields().length * 2));
+				query = new StringBundler(
+					3 + (orderByComparator.getOrderByFields().length * 2));
 			}
 			else {
 				query = new StringBundler(3);
@@ -224,10 +205,7 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 
 			boolean bindUuid = false;
 
-			if (uuid == null) {
-				query.append(_FINDER_COLUMN_UUID_UUID_1);
-			}
-			else if (uuid.equals("")) {
+			if (uuid.isEmpty()) {
 				query.append(_FINDER_COLUMN_UUID_UUID_3);
 			}
 			else {
@@ -237,11 +215,10 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 			}
 
 			if (orderByComparator != null) {
-				appendOrderByComparator(query, _ORDER_BY_ENTITY_ALIAS,
-					orderByComparator);
+				appendOrderByComparator(
+					query, _ORDER_BY_ENTITY_ALIAS, orderByComparator);
 			}
-			else
-			 if (pagination) {
+			else {
 				query.append(EmailAddressModelImpl.ORDER_BY_JPQL);
 			}
 
@@ -260,25 +237,19 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 					qPos.add(uuid);
 				}
 
-				if (!pagination) {
-					list = (List<EmailAddress>)QueryUtil.list(q, getDialect(),
-							start, end, false);
-
-					Collections.sort(list);
-
-					list = Collections.unmodifiableList(list);
-				}
-				else {
-					list = (List<EmailAddress>)QueryUtil.list(q, getDialect(),
-							start, end);
-				}
+				list = (List<EmailAddress>)QueryUtil.list(
+					q, getDialect(), start, end);
 
 				cacheResult(list);
 
-				finderCache.putResult(finderPath, finderArgs, list);
+				if (useFinderCache) {
+					FinderCacheUtil.putResult(finderPath, finderArgs, list);
+				}
 			}
 			catch (Exception e) {
-				finderCache.removeResult(finderPath, finderArgs);
+				if (useFinderCache) {
+					FinderCacheUtil.removeResult(finderPath, finderArgs);
+				}
 
 				throw processException(e);
 			}
@@ -299,9 +270,10 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 * @throws NoSuchEmailAddressException if a matching email address could not be found
 	 */
 	@Override
-	public EmailAddress findByUuid_First(String uuid,
-		OrderByComparator<EmailAddress> orderByComparator)
+	public EmailAddress findByUuid_First(
+			String uuid, OrderByComparator<EmailAddress> orderByComparator)
 		throws NoSuchEmailAddressException {
+
 		EmailAddress emailAddress = fetchByUuid_First(uuid, orderByComparator);
 
 		if (emailAddress != null) {
@@ -328,8 +300,9 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 * @return the first matching email address, or <code>null</code> if a matching email address could not be found
 	 */
 	@Override
-	public EmailAddress fetchByUuid_First(String uuid,
-		OrderByComparator<EmailAddress> orderByComparator) {
+	public EmailAddress fetchByUuid_First(
+		String uuid, OrderByComparator<EmailAddress> orderByComparator) {
+
 		List<EmailAddress> list = findByUuid(uuid, 0, 1, orderByComparator);
 
 		if (!list.isEmpty()) {
@@ -348,9 +321,10 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 * @throws NoSuchEmailAddressException if a matching email address could not be found
 	 */
 	@Override
-	public EmailAddress findByUuid_Last(String uuid,
-		OrderByComparator<EmailAddress> orderByComparator)
+	public EmailAddress findByUuid_Last(
+			String uuid, OrderByComparator<EmailAddress> orderByComparator)
 		throws NoSuchEmailAddressException {
+
 		EmailAddress emailAddress = fetchByUuid_Last(uuid, orderByComparator);
 
 		if (emailAddress != null) {
@@ -377,16 +351,17 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 * @return the last matching email address, or <code>null</code> if a matching email address could not be found
 	 */
 	@Override
-	public EmailAddress fetchByUuid_Last(String uuid,
-		OrderByComparator<EmailAddress> orderByComparator) {
+	public EmailAddress fetchByUuid_Last(
+		String uuid, OrderByComparator<EmailAddress> orderByComparator) {
+
 		int count = countByUuid(uuid);
 
 		if (count == 0) {
 			return null;
 		}
 
-		List<EmailAddress> list = findByUuid(uuid, count - 1, count,
-				orderByComparator);
+		List<EmailAddress> list = findByUuid(
+			uuid, count - 1, count, orderByComparator);
 
 		if (!list.isEmpty()) {
 			return list.get(0);
@@ -405,9 +380,13 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 * @throws NoSuchEmailAddressException if a email address with the primary key could not be found
 	 */
 	@Override
-	public EmailAddress[] findByUuid_PrevAndNext(long emailAddressId,
-		String uuid, OrderByComparator<EmailAddress> orderByComparator)
+	public EmailAddress[] findByUuid_PrevAndNext(
+			long emailAddressId, String uuid,
+			OrderByComparator<EmailAddress> orderByComparator)
 		throws NoSuchEmailAddressException {
+
+		uuid = Objects.toString(uuid, "");
+
 		EmailAddress emailAddress = findByPrimaryKey(emailAddressId);
 
 		Session session = null;
@@ -417,13 +396,13 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 
 			EmailAddress[] array = new EmailAddressImpl[3];
 
-			array[0] = getByUuid_PrevAndNext(session, emailAddress, uuid,
-					orderByComparator, true);
+			array[0] = getByUuid_PrevAndNext(
+				session, emailAddress, uuid, orderByComparator, true);
 
 			array[1] = emailAddress;
 
-			array[2] = getByUuid_PrevAndNext(session, emailAddress, uuid,
-					orderByComparator, false);
+			array[2] = getByUuid_PrevAndNext(
+				session, emailAddress, uuid, orderByComparator, false);
 
 			return array;
 		}
@@ -435,14 +414,15 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 		}
 	}
 
-	protected EmailAddress getByUuid_PrevAndNext(Session session,
-		EmailAddress emailAddress, String uuid,
+	protected EmailAddress getByUuid_PrevAndNext(
+		Session session, EmailAddress emailAddress, String uuid,
 		OrderByComparator<EmailAddress> orderByComparator, boolean previous) {
+
 		StringBundler query = null;
 
 		if (orderByComparator != null) {
-			query = new StringBundler(4 +
-					(orderByComparator.getOrderByConditionFields().length * 3) +
+			query = new StringBundler(
+				4 + (orderByComparator.getOrderByConditionFields().length * 3) +
 					(orderByComparator.getOrderByFields().length * 3));
 		}
 		else {
@@ -453,10 +433,7 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 
 		boolean bindUuid = false;
 
-		if (uuid == null) {
-			query.append(_FINDER_COLUMN_UUID_UUID_1);
-		}
-		else if (uuid.equals("")) {
+		if (uuid.isEmpty()) {
 			query.append(_FINDER_COLUMN_UUID_UUID_3);
 		}
 		else {
@@ -466,7 +443,8 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 		}
 
 		if (orderByComparator != null) {
-			String[] orderByConditionFields = orderByComparator.getOrderByConditionFields();
+			String[] orderByConditionFields =
+				orderByComparator.getOrderByConditionFields();
 
 			if (orderByConditionFields.length > 0) {
 				query.append(WHERE_AND);
@@ -538,10 +516,10 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 		}
 
 		if (orderByComparator != null) {
-			Object[] values = orderByComparator.getOrderByConditionValues(emailAddress);
+			for (Object orderByConditionValue :
+					orderByComparator.getOrderByConditionValues(emailAddress)) {
 
-			for (Object value : values) {
-				qPos.add(value);
+				qPos.add(orderByConditionValue);
 			}
 		}
 
@@ -562,8 +540,9 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 */
 	@Override
 	public void removeByUuid(String uuid) {
-		for (EmailAddress emailAddress : findByUuid(uuid, QueryUtil.ALL_POS,
-				QueryUtil.ALL_POS, null)) {
+		for (EmailAddress emailAddress :
+				findByUuid(uuid, QueryUtil.ALL_POS, QueryUtil.ALL_POS, null)) {
+
 			remove(emailAddress);
 		}
 	}
@@ -576,11 +555,14 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 */
 	@Override
 	public int countByUuid(String uuid) {
-		FinderPath finderPath = FINDER_PATH_COUNT_BY_UUID;
+		uuid = Objects.toString(uuid, "");
 
-		Object[] finderArgs = new Object[] { uuid };
+		FinderPath finderPath = _finderPathCountByUuid;
 
-		Long count = (Long)finderCache.getResult(finderPath, finderArgs, this);
+		Object[] finderArgs = new Object[] {uuid};
+
+		Long count = (Long)FinderCacheUtil.getResult(
+			finderPath, finderArgs, this);
 
 		if (count == null) {
 			StringBundler query = new StringBundler(2);
@@ -589,10 +571,7 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 
 			boolean bindUuid = false;
 
-			if (uuid == null) {
-				query.append(_FINDER_COLUMN_UUID_UUID_1);
-			}
-			else if (uuid.equals("")) {
+			if (uuid.isEmpty()) {
 				query.append(_FINDER_COLUMN_UUID_UUID_3);
 			}
 			else {
@@ -618,10 +597,10 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 
 				count = (Long)q.uniqueResult();
 
-				finderCache.putResult(finderPath, finderArgs, count);
+				FinderCacheUtil.putResult(finderPath, finderArgs, count);
 			}
 			catch (Exception e) {
-				finderCache.removeResult(finderPath, finderArgs);
+				FinderCacheUtil.removeResult(finderPath, finderArgs);
 
 				throw processException(e);
 			}
@@ -633,30 +612,15 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 		return count.intValue();
 	}
 
-	private static final String _FINDER_COLUMN_UUID_UUID_1 = "emailAddress.uuid IS NULL";
-	private static final String _FINDER_COLUMN_UUID_UUID_2 = "emailAddress.uuid = ?";
-	private static final String _FINDER_COLUMN_UUID_UUID_3 = "(emailAddress.uuid IS NULL OR emailAddress.uuid = '')";
-	public static final FinderPath FINDER_PATH_WITH_PAGINATION_FIND_BY_UUID_C = new FinderPath(EmailAddressModelImpl.ENTITY_CACHE_ENABLED,
-			EmailAddressModelImpl.FINDER_CACHE_ENABLED, EmailAddressImpl.class,
-			FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByUuid_C",
-			new String[] {
-				String.class.getName(), Long.class.getName(),
-				
-			Integer.class.getName(), Integer.class.getName(),
-				OrderByComparator.class.getName()
-			});
-	public static final FinderPath FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_UUID_C =
-		new FinderPath(EmailAddressModelImpl.ENTITY_CACHE_ENABLED,
-			EmailAddressModelImpl.FINDER_CACHE_ENABLED, EmailAddressImpl.class,
-			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findByUuid_C",
-			new String[] { String.class.getName(), Long.class.getName() },
-			EmailAddressModelImpl.UUID_COLUMN_BITMASK |
-			EmailAddressModelImpl.COMPANYID_COLUMN_BITMASK |
-			EmailAddressModelImpl.CREATEDATE_COLUMN_BITMASK);
-	public static final FinderPath FINDER_PATH_COUNT_BY_UUID_C = new FinderPath(EmailAddressModelImpl.ENTITY_CACHE_ENABLED,
-			EmailAddressModelImpl.FINDER_CACHE_ENABLED, Long.class,
-			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByUuid_C",
-			new String[] { String.class.getName(), Long.class.getName() });
+	private static final String _FINDER_COLUMN_UUID_UUID_2 =
+		"emailAddress.uuid = ?";
+
+	private static final String _FINDER_COLUMN_UUID_UUID_3 =
+		"(emailAddress.uuid IS NULL OR emailAddress.uuid = '')";
+
+	private FinderPath _finderPathWithPaginationFindByUuid_C;
+	private FinderPath _finderPathWithoutPaginationFindByUuid_C;
+	private FinderPath _finderPathCountByUuid_C;
 
 	/**
 	 * Returns all the email addresses where uuid = &#63; and companyId = &#63;.
@@ -667,15 +631,15 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 */
 	@Override
 	public List<EmailAddress> findByUuid_C(String uuid, long companyId) {
-		return findByUuid_C(uuid, companyId, QueryUtil.ALL_POS,
-			QueryUtil.ALL_POS, null);
+		return findByUuid_C(
+			uuid, companyId, QueryUtil.ALL_POS, QueryUtil.ALL_POS, null);
 	}
 
 	/**
 	 * Returns a range of all the email addresses where uuid = &#63; and companyId = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link EmailAddressModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>EmailAddressModelImpl</code>.
 	 * </p>
 	 *
 	 * @param uuid the uuid
@@ -685,8 +649,9 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 * @return the range of matching email addresses
 	 */
 	@Override
-	public List<EmailAddress> findByUuid_C(String uuid, long companyId,
-		int start, int end) {
+	public List<EmailAddress> findByUuid_C(
+		String uuid, long companyId, int start, int end) {
+
 		return findByUuid_C(uuid, companyId, start, end, null);
 	}
 
@@ -694,7 +659,7 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 * Returns an ordered range of all the email addresses where uuid = &#63; and companyId = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link EmailAddressModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>EmailAddressModelImpl</code>.
 	 * </p>
 	 *
 	 * @param uuid the uuid
@@ -705,16 +670,19 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 * @return the ordered range of matching email addresses
 	 */
 	@Override
-	public List<EmailAddress> findByUuid_C(String uuid, long companyId,
-		int start, int end, OrderByComparator<EmailAddress> orderByComparator) {
-		return findByUuid_C(uuid, companyId, start, end, orderByComparator, true);
+	public List<EmailAddress> findByUuid_C(
+		String uuid, long companyId, int start, int end,
+		OrderByComparator<EmailAddress> orderByComparator) {
+
+		return findByUuid_C(
+			uuid, companyId, start, end, orderByComparator, true);
 	}
 
 	/**
 	 * Returns an ordered range of all the email addresses where uuid = &#63; and companyId = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link EmailAddressModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>EmailAddressModelImpl</code>.
 	 * </p>
 	 *
 	 * @param uuid the uuid
@@ -722,42 +690,46 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 * @param start the lower bound of the range of email addresses
 	 * @param end the upper bound of the range of email addresses (not inclusive)
 	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
-	 * @param retrieveFromCache whether to retrieve from the finder cache
+	 * @param useFinderCache whether to use the finder cache
 	 * @return the ordered range of matching email addresses
 	 */
 	@Override
-	public List<EmailAddress> findByUuid_C(String uuid, long companyId,
-		int start, int end, OrderByComparator<EmailAddress> orderByComparator,
-		boolean retrieveFromCache) {
-		boolean pagination = true;
+	public List<EmailAddress> findByUuid_C(
+		String uuid, long companyId, int start, int end,
+		OrderByComparator<EmailAddress> orderByComparator,
+		boolean useFinderCache) {
+
+		uuid = Objects.toString(uuid, "");
+
 		FinderPath finderPath = null;
 		Object[] finderArgs = null;
 
 		if ((start == QueryUtil.ALL_POS) && (end == QueryUtil.ALL_POS) &&
-				(orderByComparator == null)) {
-			pagination = false;
-			finderPath = FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_UUID_C;
-			finderArgs = new Object[] { uuid, companyId };
+			(orderByComparator == null)) {
+
+			if (useFinderCache) {
+				finderPath = _finderPathWithoutPaginationFindByUuid_C;
+				finderArgs = new Object[] {uuid, companyId};
+			}
 		}
-		else {
-			finderPath = FINDER_PATH_WITH_PAGINATION_FIND_BY_UUID_C;
+		else if (useFinderCache) {
+			finderPath = _finderPathWithPaginationFindByUuid_C;
 			finderArgs = new Object[] {
-					uuid, companyId,
-					
-					start, end, orderByComparator
-				};
+				uuid, companyId, start, end, orderByComparator
+			};
 		}
 
 		List<EmailAddress> list = null;
 
-		if (retrieveFromCache) {
-			list = (List<EmailAddress>)finderCache.getResult(finderPath,
-					finderArgs, this);
+		if (useFinderCache) {
+			list = (List<EmailAddress>)FinderCacheUtil.getResult(
+				finderPath, finderArgs, this);
 
 			if ((list != null) && !list.isEmpty()) {
 				for (EmailAddress emailAddress : list) {
-					if (!Objects.equals(uuid, emailAddress.getUuid()) ||
-							(companyId != emailAddress.getCompanyId())) {
+					if (!uuid.equals(emailAddress.getUuid()) ||
+						(companyId != emailAddress.getCompanyId())) {
+
 						list = null;
 
 						break;
@@ -770,8 +742,8 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 			StringBundler query = null;
 
 			if (orderByComparator != null) {
-				query = new StringBundler(4 +
-						(orderByComparator.getOrderByFields().length * 2));
+				query = new StringBundler(
+					4 + (orderByComparator.getOrderByFields().length * 2));
 			}
 			else {
 				query = new StringBundler(4);
@@ -781,10 +753,7 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 
 			boolean bindUuid = false;
 
-			if (uuid == null) {
-				query.append(_FINDER_COLUMN_UUID_C_UUID_1);
-			}
-			else if (uuid.equals("")) {
+			if (uuid.isEmpty()) {
 				query.append(_FINDER_COLUMN_UUID_C_UUID_3);
 			}
 			else {
@@ -796,11 +765,10 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 			query.append(_FINDER_COLUMN_UUID_C_COMPANYID_2);
 
 			if (orderByComparator != null) {
-				appendOrderByComparator(query, _ORDER_BY_ENTITY_ALIAS,
-					orderByComparator);
+				appendOrderByComparator(
+					query, _ORDER_BY_ENTITY_ALIAS, orderByComparator);
 			}
-			else
-			 if (pagination) {
+			else {
 				query.append(EmailAddressModelImpl.ORDER_BY_JPQL);
 			}
 
@@ -821,25 +789,19 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 
 				qPos.add(companyId);
 
-				if (!pagination) {
-					list = (List<EmailAddress>)QueryUtil.list(q, getDialect(),
-							start, end, false);
-
-					Collections.sort(list);
-
-					list = Collections.unmodifiableList(list);
-				}
-				else {
-					list = (List<EmailAddress>)QueryUtil.list(q, getDialect(),
-							start, end);
-				}
+				list = (List<EmailAddress>)QueryUtil.list(
+					q, getDialect(), start, end);
 
 				cacheResult(list);
 
-				finderCache.putResult(finderPath, finderArgs, list);
+				if (useFinderCache) {
+					FinderCacheUtil.putResult(finderPath, finderArgs, list);
+				}
 			}
 			catch (Exception e) {
-				finderCache.removeResult(finderPath, finderArgs);
+				if (useFinderCache) {
+					FinderCacheUtil.removeResult(finderPath, finderArgs);
+				}
 
 				throw processException(e);
 			}
@@ -861,11 +823,13 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 * @throws NoSuchEmailAddressException if a matching email address could not be found
 	 */
 	@Override
-	public EmailAddress findByUuid_C_First(String uuid, long companyId,
-		OrderByComparator<EmailAddress> orderByComparator)
+	public EmailAddress findByUuid_C_First(
+			String uuid, long companyId,
+			OrderByComparator<EmailAddress> orderByComparator)
 		throws NoSuchEmailAddressException {
-		EmailAddress emailAddress = fetchByUuid_C_First(uuid, companyId,
-				orderByComparator);
+
+		EmailAddress emailAddress = fetchByUuid_C_First(
+			uuid, companyId, orderByComparator);
 
 		if (emailAddress != null) {
 			return emailAddress;
@@ -895,10 +859,12 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 * @return the first matching email address, or <code>null</code> if a matching email address could not be found
 	 */
 	@Override
-	public EmailAddress fetchByUuid_C_First(String uuid, long companyId,
+	public EmailAddress fetchByUuid_C_First(
+		String uuid, long companyId,
 		OrderByComparator<EmailAddress> orderByComparator) {
-		List<EmailAddress> list = findByUuid_C(uuid, companyId, 0, 1,
-				orderByComparator);
+
+		List<EmailAddress> list = findByUuid_C(
+			uuid, companyId, 0, 1, orderByComparator);
 
 		if (!list.isEmpty()) {
 			return list.get(0);
@@ -917,11 +883,13 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 * @throws NoSuchEmailAddressException if a matching email address could not be found
 	 */
 	@Override
-	public EmailAddress findByUuid_C_Last(String uuid, long companyId,
-		OrderByComparator<EmailAddress> orderByComparator)
+	public EmailAddress findByUuid_C_Last(
+			String uuid, long companyId,
+			OrderByComparator<EmailAddress> orderByComparator)
 		throws NoSuchEmailAddressException {
-		EmailAddress emailAddress = fetchByUuid_C_Last(uuid, companyId,
-				orderByComparator);
+
+		EmailAddress emailAddress = fetchByUuid_C_Last(
+			uuid, companyId, orderByComparator);
 
 		if (emailAddress != null) {
 			return emailAddress;
@@ -951,16 +919,18 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 * @return the last matching email address, or <code>null</code> if a matching email address could not be found
 	 */
 	@Override
-	public EmailAddress fetchByUuid_C_Last(String uuid, long companyId,
+	public EmailAddress fetchByUuid_C_Last(
+		String uuid, long companyId,
 		OrderByComparator<EmailAddress> orderByComparator) {
+
 		int count = countByUuid_C(uuid, companyId);
 
 		if (count == 0) {
 			return null;
 		}
 
-		List<EmailAddress> list = findByUuid_C(uuid, companyId, count - 1,
-				count, orderByComparator);
+		List<EmailAddress> list = findByUuid_C(
+			uuid, companyId, count - 1, count, orderByComparator);
 
 		if (!list.isEmpty()) {
 			return list.get(0);
@@ -980,10 +950,13 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 * @throws NoSuchEmailAddressException if a email address with the primary key could not be found
 	 */
 	@Override
-	public EmailAddress[] findByUuid_C_PrevAndNext(long emailAddressId,
-		String uuid, long companyId,
-		OrderByComparator<EmailAddress> orderByComparator)
+	public EmailAddress[] findByUuid_C_PrevAndNext(
+			long emailAddressId, String uuid, long companyId,
+			OrderByComparator<EmailAddress> orderByComparator)
 		throws NoSuchEmailAddressException {
+
+		uuid = Objects.toString(uuid, "");
+
 		EmailAddress emailAddress = findByPrimaryKey(emailAddressId);
 
 		Session session = null;
@@ -993,13 +966,15 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 
 			EmailAddress[] array = new EmailAddressImpl[3];
 
-			array[0] = getByUuid_C_PrevAndNext(session, emailAddress, uuid,
-					companyId, orderByComparator, true);
+			array[0] = getByUuid_C_PrevAndNext(
+				session, emailAddress, uuid, companyId, orderByComparator,
+				true);
 
 			array[1] = emailAddress;
 
-			array[2] = getByUuid_C_PrevAndNext(session, emailAddress, uuid,
-					companyId, orderByComparator, false);
+			array[2] = getByUuid_C_PrevAndNext(
+				session, emailAddress, uuid, companyId, orderByComparator,
+				false);
 
 			return array;
 		}
@@ -1011,14 +986,15 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 		}
 	}
 
-	protected EmailAddress getByUuid_C_PrevAndNext(Session session,
-		EmailAddress emailAddress, String uuid, long companyId,
+	protected EmailAddress getByUuid_C_PrevAndNext(
+		Session session, EmailAddress emailAddress, String uuid, long companyId,
 		OrderByComparator<EmailAddress> orderByComparator, boolean previous) {
+
 		StringBundler query = null;
 
 		if (orderByComparator != null) {
-			query = new StringBundler(5 +
-					(orderByComparator.getOrderByConditionFields().length * 3) +
+			query = new StringBundler(
+				5 + (orderByComparator.getOrderByConditionFields().length * 3) +
 					(orderByComparator.getOrderByFields().length * 3));
 		}
 		else {
@@ -1029,10 +1005,7 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 
 		boolean bindUuid = false;
 
-		if (uuid == null) {
-			query.append(_FINDER_COLUMN_UUID_C_UUID_1);
-		}
-		else if (uuid.equals("")) {
+		if (uuid.isEmpty()) {
 			query.append(_FINDER_COLUMN_UUID_C_UUID_3);
 		}
 		else {
@@ -1044,7 +1017,8 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 		query.append(_FINDER_COLUMN_UUID_C_COMPANYID_2);
 
 		if (orderByComparator != null) {
-			String[] orderByConditionFields = orderByComparator.getOrderByConditionFields();
+			String[] orderByConditionFields =
+				orderByComparator.getOrderByConditionFields();
 
 			if (orderByConditionFields.length > 0) {
 				query.append(WHERE_AND);
@@ -1118,10 +1092,10 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 		qPos.add(companyId);
 
 		if (orderByComparator != null) {
-			Object[] values = orderByComparator.getOrderByConditionValues(emailAddress);
+			for (Object orderByConditionValue :
+					orderByComparator.getOrderByConditionValues(emailAddress)) {
 
-			for (Object value : values) {
-				qPos.add(value);
+				qPos.add(orderByConditionValue);
 			}
 		}
 
@@ -1143,8 +1117,11 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 */
 	@Override
 	public void removeByUuid_C(String uuid, long companyId) {
-		for (EmailAddress emailAddress : findByUuid_C(uuid, companyId,
-				QueryUtil.ALL_POS, QueryUtil.ALL_POS, null)) {
+		for (EmailAddress emailAddress :
+				findByUuid_C(
+					uuid, companyId, QueryUtil.ALL_POS, QueryUtil.ALL_POS,
+					null)) {
+
 			remove(emailAddress);
 		}
 	}
@@ -1158,11 +1135,14 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 */
 	@Override
 	public int countByUuid_C(String uuid, long companyId) {
-		FinderPath finderPath = FINDER_PATH_COUNT_BY_UUID_C;
+		uuid = Objects.toString(uuid, "");
 
-		Object[] finderArgs = new Object[] { uuid, companyId };
+		FinderPath finderPath = _finderPathCountByUuid_C;
 
-		Long count = (Long)finderCache.getResult(finderPath, finderArgs, this);
+		Object[] finderArgs = new Object[] {uuid, companyId};
+
+		Long count = (Long)FinderCacheUtil.getResult(
+			finderPath, finderArgs, this);
 
 		if (count == null) {
 			StringBundler query = new StringBundler(3);
@@ -1171,10 +1151,7 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 
 			boolean bindUuid = false;
 
-			if (uuid == null) {
-				query.append(_FINDER_COLUMN_UUID_C_UUID_1);
-			}
-			else if (uuid.equals("")) {
+			if (uuid.isEmpty()) {
 				query.append(_FINDER_COLUMN_UUID_C_UUID_3);
 			}
 			else {
@@ -1204,10 +1181,10 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 
 				count = (Long)q.uniqueResult();
 
-				finderCache.putResult(finderPath, finderArgs, count);
+				FinderCacheUtil.putResult(finderPath, finderArgs, count);
 			}
 			catch (Exception e) {
-				finderCache.removeResult(finderPath, finderArgs);
+				FinderCacheUtil.removeResult(finderPath, finderArgs);
 
 				throw processException(e);
 			}
@@ -1219,31 +1196,18 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 		return count.intValue();
 	}
 
-	private static final String _FINDER_COLUMN_UUID_C_UUID_1 = "emailAddress.uuid IS NULL AND ";
-	private static final String _FINDER_COLUMN_UUID_C_UUID_2 = "emailAddress.uuid = ? AND ";
-	private static final String _FINDER_COLUMN_UUID_C_UUID_3 = "(emailAddress.uuid IS NULL OR emailAddress.uuid = '') AND ";
-	private static final String _FINDER_COLUMN_UUID_C_COMPANYID_2 = "emailAddress.companyId = ?";
-	public static final FinderPath FINDER_PATH_WITH_PAGINATION_FIND_BY_COMPANYID =
-		new FinderPath(EmailAddressModelImpl.ENTITY_CACHE_ENABLED,
-			EmailAddressModelImpl.FINDER_CACHE_ENABLED, EmailAddressImpl.class,
-			FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByCompanyId",
-			new String[] {
-				Long.class.getName(),
-				
-			Integer.class.getName(), Integer.class.getName(),
-				OrderByComparator.class.getName()
-			});
-	public static final FinderPath FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_COMPANYID =
-		new FinderPath(EmailAddressModelImpl.ENTITY_CACHE_ENABLED,
-			EmailAddressModelImpl.FINDER_CACHE_ENABLED, EmailAddressImpl.class,
-			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findByCompanyId",
-			new String[] { Long.class.getName() },
-			EmailAddressModelImpl.COMPANYID_COLUMN_BITMASK |
-			EmailAddressModelImpl.CREATEDATE_COLUMN_BITMASK);
-	public static final FinderPath FINDER_PATH_COUNT_BY_COMPANYID = new FinderPath(EmailAddressModelImpl.ENTITY_CACHE_ENABLED,
-			EmailAddressModelImpl.FINDER_CACHE_ENABLED, Long.class,
-			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByCompanyId",
-			new String[] { Long.class.getName() });
+	private static final String _FINDER_COLUMN_UUID_C_UUID_2 =
+		"emailAddress.uuid = ? AND ";
+
+	private static final String _FINDER_COLUMN_UUID_C_UUID_3 =
+		"(emailAddress.uuid IS NULL OR emailAddress.uuid = '') AND ";
+
+	private static final String _FINDER_COLUMN_UUID_C_COMPANYID_2 =
+		"emailAddress.companyId = ?";
+
+	private FinderPath _finderPathWithPaginationFindByCompanyId;
+	private FinderPath _finderPathWithoutPaginationFindByCompanyId;
+	private FinderPath _finderPathCountByCompanyId;
 
 	/**
 	 * Returns all the email addresses where companyId = &#63;.
@@ -1253,15 +1217,15 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 */
 	@Override
 	public List<EmailAddress> findByCompanyId(long companyId) {
-		return findByCompanyId(companyId, QueryUtil.ALL_POS, QueryUtil.ALL_POS,
-			null);
+		return findByCompanyId(
+			companyId, QueryUtil.ALL_POS, QueryUtil.ALL_POS, null);
 	}
 
 	/**
 	 * Returns a range of all the email addresses where companyId = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link EmailAddressModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>EmailAddressModelImpl</code>.
 	 * </p>
 	 *
 	 * @param companyId the company ID
@@ -1270,7 +1234,9 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 * @return the range of matching email addresses
 	 */
 	@Override
-	public List<EmailAddress> findByCompanyId(long companyId, int start, int end) {
+	public List<EmailAddress> findByCompanyId(
+		long companyId, int start, int end) {
+
 		return findByCompanyId(companyId, start, end, null);
 	}
 
@@ -1278,7 +1244,7 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 * Returns an ordered range of all the email addresses where companyId = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link EmailAddressModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>EmailAddressModelImpl</code>.
 	 * </p>
 	 *
 	 * @param companyId the company ID
@@ -1288,8 +1254,10 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 * @return the ordered range of matching email addresses
 	 */
 	@Override
-	public List<EmailAddress> findByCompanyId(long companyId, int start,
-		int end, OrderByComparator<EmailAddress> orderByComparator) {
+	public List<EmailAddress> findByCompanyId(
+		long companyId, int start, int end,
+		OrderByComparator<EmailAddress> orderByComparator) {
+
 		return findByCompanyId(companyId, start, end, orderByComparator, true);
 	}
 
@@ -1297,44 +1265,49 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 * Returns an ordered range of all the email addresses where companyId = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link EmailAddressModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>EmailAddressModelImpl</code>.
 	 * </p>
 	 *
 	 * @param companyId the company ID
 	 * @param start the lower bound of the range of email addresses
 	 * @param end the upper bound of the range of email addresses (not inclusive)
 	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
-	 * @param retrieveFromCache whether to retrieve from the finder cache
+	 * @param useFinderCache whether to use the finder cache
 	 * @return the ordered range of matching email addresses
 	 */
 	@Override
-	public List<EmailAddress> findByCompanyId(long companyId, int start,
-		int end, OrderByComparator<EmailAddress> orderByComparator,
-		boolean retrieveFromCache) {
-		boolean pagination = true;
+	public List<EmailAddress> findByCompanyId(
+		long companyId, int start, int end,
+		OrderByComparator<EmailAddress> orderByComparator,
+		boolean useFinderCache) {
+
 		FinderPath finderPath = null;
 		Object[] finderArgs = null;
 
 		if ((start == QueryUtil.ALL_POS) && (end == QueryUtil.ALL_POS) &&
-				(orderByComparator == null)) {
-			pagination = false;
-			finderPath = FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_COMPANYID;
-			finderArgs = new Object[] { companyId };
+			(orderByComparator == null)) {
+
+			if (useFinderCache) {
+				finderPath = _finderPathWithoutPaginationFindByCompanyId;
+				finderArgs = new Object[] {companyId};
+			}
 		}
-		else {
-			finderPath = FINDER_PATH_WITH_PAGINATION_FIND_BY_COMPANYID;
-			finderArgs = new Object[] { companyId, start, end, orderByComparator };
+		else if (useFinderCache) {
+			finderPath = _finderPathWithPaginationFindByCompanyId;
+			finderArgs = new Object[] {
+				companyId, start, end, orderByComparator
+			};
 		}
 
 		List<EmailAddress> list = null;
 
-		if (retrieveFromCache) {
-			list = (List<EmailAddress>)finderCache.getResult(finderPath,
-					finderArgs, this);
+		if (useFinderCache) {
+			list = (List<EmailAddress>)FinderCacheUtil.getResult(
+				finderPath, finderArgs, this);
 
 			if ((list != null) && !list.isEmpty()) {
 				for (EmailAddress emailAddress : list) {
-					if ((companyId != emailAddress.getCompanyId())) {
+					if (companyId != emailAddress.getCompanyId()) {
 						list = null;
 
 						break;
@@ -1347,8 +1320,8 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 			StringBundler query = null;
 
 			if (orderByComparator != null) {
-				query = new StringBundler(3 +
-						(orderByComparator.getOrderByFields().length * 2));
+				query = new StringBundler(
+					3 + (orderByComparator.getOrderByFields().length * 2));
 			}
 			else {
 				query = new StringBundler(3);
@@ -1359,11 +1332,10 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 			query.append(_FINDER_COLUMN_COMPANYID_COMPANYID_2);
 
 			if (orderByComparator != null) {
-				appendOrderByComparator(query, _ORDER_BY_ENTITY_ALIAS,
-					orderByComparator);
+				appendOrderByComparator(
+					query, _ORDER_BY_ENTITY_ALIAS, orderByComparator);
 			}
-			else
-			 if (pagination) {
+			else {
 				query.append(EmailAddressModelImpl.ORDER_BY_JPQL);
 			}
 
@@ -1380,25 +1352,19 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 
 				qPos.add(companyId);
 
-				if (!pagination) {
-					list = (List<EmailAddress>)QueryUtil.list(q, getDialect(),
-							start, end, false);
-
-					Collections.sort(list);
-
-					list = Collections.unmodifiableList(list);
-				}
-				else {
-					list = (List<EmailAddress>)QueryUtil.list(q, getDialect(),
-							start, end);
-				}
+				list = (List<EmailAddress>)QueryUtil.list(
+					q, getDialect(), start, end);
 
 				cacheResult(list);
 
-				finderCache.putResult(finderPath, finderArgs, list);
+				if (useFinderCache) {
+					FinderCacheUtil.putResult(finderPath, finderArgs, list);
+				}
 			}
 			catch (Exception e) {
-				finderCache.removeResult(finderPath, finderArgs);
+				if (useFinderCache) {
+					FinderCacheUtil.removeResult(finderPath, finderArgs);
+				}
 
 				throw processException(e);
 			}
@@ -1419,11 +1385,12 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 * @throws NoSuchEmailAddressException if a matching email address could not be found
 	 */
 	@Override
-	public EmailAddress findByCompanyId_First(long companyId,
-		OrderByComparator<EmailAddress> orderByComparator)
+	public EmailAddress findByCompanyId_First(
+			long companyId, OrderByComparator<EmailAddress> orderByComparator)
 		throws NoSuchEmailAddressException {
-		EmailAddress emailAddress = fetchByCompanyId_First(companyId,
-				orderByComparator);
+
+		EmailAddress emailAddress = fetchByCompanyId_First(
+			companyId, orderByComparator);
 
 		if (emailAddress != null) {
 			return emailAddress;
@@ -1449,10 +1416,11 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 * @return the first matching email address, or <code>null</code> if a matching email address could not be found
 	 */
 	@Override
-	public EmailAddress fetchByCompanyId_First(long companyId,
-		OrderByComparator<EmailAddress> orderByComparator) {
-		List<EmailAddress> list = findByCompanyId(companyId, 0, 1,
-				orderByComparator);
+	public EmailAddress fetchByCompanyId_First(
+		long companyId, OrderByComparator<EmailAddress> orderByComparator) {
+
+		List<EmailAddress> list = findByCompanyId(
+			companyId, 0, 1, orderByComparator);
 
 		if (!list.isEmpty()) {
 			return list.get(0);
@@ -1470,11 +1438,12 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 * @throws NoSuchEmailAddressException if a matching email address could not be found
 	 */
 	@Override
-	public EmailAddress findByCompanyId_Last(long companyId,
-		OrderByComparator<EmailAddress> orderByComparator)
+	public EmailAddress findByCompanyId_Last(
+			long companyId, OrderByComparator<EmailAddress> orderByComparator)
 		throws NoSuchEmailAddressException {
-		EmailAddress emailAddress = fetchByCompanyId_Last(companyId,
-				orderByComparator);
+
+		EmailAddress emailAddress = fetchByCompanyId_Last(
+			companyId, orderByComparator);
 
 		if (emailAddress != null) {
 			return emailAddress;
@@ -1500,16 +1469,17 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 * @return the last matching email address, or <code>null</code> if a matching email address could not be found
 	 */
 	@Override
-	public EmailAddress fetchByCompanyId_Last(long companyId,
-		OrderByComparator<EmailAddress> orderByComparator) {
+	public EmailAddress fetchByCompanyId_Last(
+		long companyId, OrderByComparator<EmailAddress> orderByComparator) {
+
 		int count = countByCompanyId(companyId);
 
 		if (count == 0) {
 			return null;
 		}
 
-		List<EmailAddress> list = findByCompanyId(companyId, count - 1, count,
-				orderByComparator);
+		List<EmailAddress> list = findByCompanyId(
+			companyId, count - 1, count, orderByComparator);
 
 		if (!list.isEmpty()) {
 			return list.get(0);
@@ -1528,9 +1498,11 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 * @throws NoSuchEmailAddressException if a email address with the primary key could not be found
 	 */
 	@Override
-	public EmailAddress[] findByCompanyId_PrevAndNext(long emailAddressId,
-		long companyId, OrderByComparator<EmailAddress> orderByComparator)
+	public EmailAddress[] findByCompanyId_PrevAndNext(
+			long emailAddressId, long companyId,
+			OrderByComparator<EmailAddress> orderByComparator)
 		throws NoSuchEmailAddressException {
+
 		EmailAddress emailAddress = findByPrimaryKey(emailAddressId);
 
 		Session session = null;
@@ -1540,13 +1512,13 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 
 			EmailAddress[] array = new EmailAddressImpl[3];
 
-			array[0] = getByCompanyId_PrevAndNext(session, emailAddress,
-					companyId, orderByComparator, true);
+			array[0] = getByCompanyId_PrevAndNext(
+				session, emailAddress, companyId, orderByComparator, true);
 
 			array[1] = emailAddress;
 
-			array[2] = getByCompanyId_PrevAndNext(session, emailAddress,
-					companyId, orderByComparator, false);
+			array[2] = getByCompanyId_PrevAndNext(
+				session, emailAddress, companyId, orderByComparator, false);
 
 			return array;
 		}
@@ -1558,14 +1530,15 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 		}
 	}
 
-	protected EmailAddress getByCompanyId_PrevAndNext(Session session,
-		EmailAddress emailAddress, long companyId,
+	protected EmailAddress getByCompanyId_PrevAndNext(
+		Session session, EmailAddress emailAddress, long companyId,
 		OrderByComparator<EmailAddress> orderByComparator, boolean previous) {
+
 		StringBundler query = null;
 
 		if (orderByComparator != null) {
-			query = new StringBundler(4 +
-					(orderByComparator.getOrderByConditionFields().length * 3) +
+			query = new StringBundler(
+				4 + (orderByComparator.getOrderByConditionFields().length * 3) +
 					(orderByComparator.getOrderByFields().length * 3));
 		}
 		else {
@@ -1577,7 +1550,8 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 		query.append(_FINDER_COLUMN_COMPANYID_COMPANYID_2);
 
 		if (orderByComparator != null) {
-			String[] orderByConditionFields = orderByComparator.getOrderByConditionFields();
+			String[] orderByConditionFields =
+				orderByComparator.getOrderByConditionFields();
 
 			if (orderByConditionFields.length > 0) {
 				query.append(WHERE_AND);
@@ -1647,10 +1621,10 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 		qPos.add(companyId);
 
 		if (orderByComparator != null) {
-			Object[] values = orderByComparator.getOrderByConditionValues(emailAddress);
+			for (Object orderByConditionValue :
+					orderByComparator.getOrderByConditionValues(emailAddress)) {
 
-			for (Object value : values) {
-				qPos.add(value);
+				qPos.add(orderByConditionValue);
 			}
 		}
 
@@ -1671,8 +1645,10 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 */
 	@Override
 	public void removeByCompanyId(long companyId) {
-		for (EmailAddress emailAddress : findByCompanyId(companyId,
-				QueryUtil.ALL_POS, QueryUtil.ALL_POS, null)) {
+		for (EmailAddress emailAddress :
+				findByCompanyId(
+					companyId, QueryUtil.ALL_POS, QueryUtil.ALL_POS, null)) {
+
 			remove(emailAddress);
 		}
 	}
@@ -1685,11 +1661,12 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 */
 	@Override
 	public int countByCompanyId(long companyId) {
-		FinderPath finderPath = FINDER_PATH_COUNT_BY_COMPANYID;
+		FinderPath finderPath = _finderPathCountByCompanyId;
 
-		Object[] finderArgs = new Object[] { companyId };
+		Object[] finderArgs = new Object[] {companyId};
 
-		Long count = (Long)finderCache.getResult(finderPath, finderArgs, this);
+		Long count = (Long)FinderCacheUtil.getResult(
+			finderPath, finderArgs, this);
 
 		if (count == null) {
 			StringBundler query = new StringBundler(2);
@@ -1713,10 +1690,10 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 
 				count = (Long)q.uniqueResult();
 
-				finderCache.putResult(finderPath, finderArgs, count);
+				FinderCacheUtil.putResult(finderPath, finderArgs, count);
 			}
 			catch (Exception e) {
-				finderCache.removeResult(finderPath, finderArgs);
+				FinderCacheUtil.removeResult(finderPath, finderArgs);
 
 				throw processException(e);
 			}
@@ -1728,27 +1705,12 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 		return count.intValue();
 	}
 
-	private static final String _FINDER_COLUMN_COMPANYID_COMPANYID_2 = "emailAddress.companyId = ?";
-	public static final FinderPath FINDER_PATH_WITH_PAGINATION_FIND_BY_USERID = new FinderPath(EmailAddressModelImpl.ENTITY_CACHE_ENABLED,
-			EmailAddressModelImpl.FINDER_CACHE_ENABLED, EmailAddressImpl.class,
-			FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByUserId",
-			new String[] {
-				Long.class.getName(),
-				
-			Integer.class.getName(), Integer.class.getName(),
-				OrderByComparator.class.getName()
-			});
-	public static final FinderPath FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_USERID =
-		new FinderPath(EmailAddressModelImpl.ENTITY_CACHE_ENABLED,
-			EmailAddressModelImpl.FINDER_CACHE_ENABLED, EmailAddressImpl.class,
-			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findByUserId",
-			new String[] { Long.class.getName() },
-			EmailAddressModelImpl.USERID_COLUMN_BITMASK |
-			EmailAddressModelImpl.CREATEDATE_COLUMN_BITMASK);
-	public static final FinderPath FINDER_PATH_COUNT_BY_USERID = new FinderPath(EmailAddressModelImpl.ENTITY_CACHE_ENABLED,
-			EmailAddressModelImpl.FINDER_CACHE_ENABLED, Long.class,
-			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByUserId",
-			new String[] { Long.class.getName() });
+	private static final String _FINDER_COLUMN_COMPANYID_COMPANYID_2 =
+		"emailAddress.companyId = ?";
+
+	private FinderPath _finderPathWithPaginationFindByUserId;
+	private FinderPath _finderPathWithoutPaginationFindByUserId;
+	private FinderPath _finderPathCountByUserId;
 
 	/**
 	 * Returns all the email addresses where userId = &#63;.
@@ -1765,7 +1727,7 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 * Returns a range of all the email addresses where userId = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link EmailAddressModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>EmailAddressModelImpl</code>.
 	 * </p>
 	 *
 	 * @param userId the user ID
@@ -1782,7 +1744,7 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 * Returns an ordered range of all the email addresses where userId = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link EmailAddressModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>EmailAddressModelImpl</code>.
 	 * </p>
 	 *
 	 * @param userId the user ID
@@ -1792,8 +1754,10 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 * @return the ordered range of matching email addresses
 	 */
 	@Override
-	public List<EmailAddress> findByUserId(long userId, int start, int end,
+	public List<EmailAddress> findByUserId(
+		long userId, int start, int end,
 		OrderByComparator<EmailAddress> orderByComparator) {
+
 		return findByUserId(userId, start, end, orderByComparator, true);
 	}
 
@@ -1801,44 +1765,47 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 * Returns an ordered range of all the email addresses where userId = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link EmailAddressModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>EmailAddressModelImpl</code>.
 	 * </p>
 	 *
 	 * @param userId the user ID
 	 * @param start the lower bound of the range of email addresses
 	 * @param end the upper bound of the range of email addresses (not inclusive)
 	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
-	 * @param retrieveFromCache whether to retrieve from the finder cache
+	 * @param useFinderCache whether to use the finder cache
 	 * @return the ordered range of matching email addresses
 	 */
 	@Override
-	public List<EmailAddress> findByUserId(long userId, int start, int end,
+	public List<EmailAddress> findByUserId(
+		long userId, int start, int end,
 		OrderByComparator<EmailAddress> orderByComparator,
-		boolean retrieveFromCache) {
-		boolean pagination = true;
+		boolean useFinderCache) {
+
 		FinderPath finderPath = null;
 		Object[] finderArgs = null;
 
 		if ((start == QueryUtil.ALL_POS) && (end == QueryUtil.ALL_POS) &&
-				(orderByComparator == null)) {
-			pagination = false;
-			finderPath = FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_USERID;
-			finderArgs = new Object[] { userId };
+			(orderByComparator == null)) {
+
+			if (useFinderCache) {
+				finderPath = _finderPathWithoutPaginationFindByUserId;
+				finderArgs = new Object[] {userId};
+			}
 		}
-		else {
-			finderPath = FINDER_PATH_WITH_PAGINATION_FIND_BY_USERID;
-			finderArgs = new Object[] { userId, start, end, orderByComparator };
+		else if (useFinderCache) {
+			finderPath = _finderPathWithPaginationFindByUserId;
+			finderArgs = new Object[] {userId, start, end, orderByComparator};
 		}
 
 		List<EmailAddress> list = null;
 
-		if (retrieveFromCache) {
-			list = (List<EmailAddress>)finderCache.getResult(finderPath,
-					finderArgs, this);
+		if (useFinderCache) {
+			list = (List<EmailAddress>)FinderCacheUtil.getResult(
+				finderPath, finderArgs, this);
 
 			if ((list != null) && !list.isEmpty()) {
 				for (EmailAddress emailAddress : list) {
-					if ((userId != emailAddress.getUserId())) {
+					if (userId != emailAddress.getUserId()) {
 						list = null;
 
 						break;
@@ -1851,8 +1818,8 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 			StringBundler query = null;
 
 			if (orderByComparator != null) {
-				query = new StringBundler(3 +
-						(orderByComparator.getOrderByFields().length * 2));
+				query = new StringBundler(
+					3 + (orderByComparator.getOrderByFields().length * 2));
 			}
 			else {
 				query = new StringBundler(3);
@@ -1863,11 +1830,10 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 			query.append(_FINDER_COLUMN_USERID_USERID_2);
 
 			if (orderByComparator != null) {
-				appendOrderByComparator(query, _ORDER_BY_ENTITY_ALIAS,
-					orderByComparator);
+				appendOrderByComparator(
+					query, _ORDER_BY_ENTITY_ALIAS, orderByComparator);
 			}
-			else
-			 if (pagination) {
+			else {
 				query.append(EmailAddressModelImpl.ORDER_BY_JPQL);
 			}
 
@@ -1884,25 +1850,19 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 
 				qPos.add(userId);
 
-				if (!pagination) {
-					list = (List<EmailAddress>)QueryUtil.list(q, getDialect(),
-							start, end, false);
-
-					Collections.sort(list);
-
-					list = Collections.unmodifiableList(list);
-				}
-				else {
-					list = (List<EmailAddress>)QueryUtil.list(q, getDialect(),
-							start, end);
-				}
+				list = (List<EmailAddress>)QueryUtil.list(
+					q, getDialect(), start, end);
 
 				cacheResult(list);
 
-				finderCache.putResult(finderPath, finderArgs, list);
+				if (useFinderCache) {
+					FinderCacheUtil.putResult(finderPath, finderArgs, list);
+				}
 			}
 			catch (Exception e) {
-				finderCache.removeResult(finderPath, finderArgs);
+				if (useFinderCache) {
+					FinderCacheUtil.removeResult(finderPath, finderArgs);
+				}
 
 				throw processException(e);
 			}
@@ -1923,11 +1883,12 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 * @throws NoSuchEmailAddressException if a matching email address could not be found
 	 */
 	@Override
-	public EmailAddress findByUserId_First(long userId,
-		OrderByComparator<EmailAddress> orderByComparator)
+	public EmailAddress findByUserId_First(
+			long userId, OrderByComparator<EmailAddress> orderByComparator)
 		throws NoSuchEmailAddressException {
-		EmailAddress emailAddress = fetchByUserId_First(userId,
-				orderByComparator);
+
+		EmailAddress emailAddress = fetchByUserId_First(
+			userId, orderByComparator);
 
 		if (emailAddress != null) {
 			return emailAddress;
@@ -1953,8 +1914,9 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 * @return the first matching email address, or <code>null</code> if a matching email address could not be found
 	 */
 	@Override
-	public EmailAddress fetchByUserId_First(long userId,
-		OrderByComparator<EmailAddress> orderByComparator) {
+	public EmailAddress fetchByUserId_First(
+		long userId, OrderByComparator<EmailAddress> orderByComparator) {
+
 		List<EmailAddress> list = findByUserId(userId, 0, 1, orderByComparator);
 
 		if (!list.isEmpty()) {
@@ -1973,10 +1935,12 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 * @throws NoSuchEmailAddressException if a matching email address could not be found
 	 */
 	@Override
-	public EmailAddress findByUserId_Last(long userId,
-		OrderByComparator<EmailAddress> orderByComparator)
+	public EmailAddress findByUserId_Last(
+			long userId, OrderByComparator<EmailAddress> orderByComparator)
 		throws NoSuchEmailAddressException {
-		EmailAddress emailAddress = fetchByUserId_Last(userId, orderByComparator);
+
+		EmailAddress emailAddress = fetchByUserId_Last(
+			userId, orderByComparator);
 
 		if (emailAddress != null) {
 			return emailAddress;
@@ -2002,16 +1966,17 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 * @return the last matching email address, or <code>null</code> if a matching email address could not be found
 	 */
 	@Override
-	public EmailAddress fetchByUserId_Last(long userId,
-		OrderByComparator<EmailAddress> orderByComparator) {
+	public EmailAddress fetchByUserId_Last(
+		long userId, OrderByComparator<EmailAddress> orderByComparator) {
+
 		int count = countByUserId(userId);
 
 		if (count == 0) {
 			return null;
 		}
 
-		List<EmailAddress> list = findByUserId(userId, count - 1, count,
-				orderByComparator);
+		List<EmailAddress> list = findByUserId(
+			userId, count - 1, count, orderByComparator);
 
 		if (!list.isEmpty()) {
 			return list.get(0);
@@ -2030,9 +1995,11 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 * @throws NoSuchEmailAddressException if a email address with the primary key could not be found
 	 */
 	@Override
-	public EmailAddress[] findByUserId_PrevAndNext(long emailAddressId,
-		long userId, OrderByComparator<EmailAddress> orderByComparator)
+	public EmailAddress[] findByUserId_PrevAndNext(
+			long emailAddressId, long userId,
+			OrderByComparator<EmailAddress> orderByComparator)
 		throws NoSuchEmailAddressException {
+
 		EmailAddress emailAddress = findByPrimaryKey(emailAddressId);
 
 		Session session = null;
@@ -2042,13 +2009,13 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 
 			EmailAddress[] array = new EmailAddressImpl[3];
 
-			array[0] = getByUserId_PrevAndNext(session, emailAddress, userId,
-					orderByComparator, true);
+			array[0] = getByUserId_PrevAndNext(
+				session, emailAddress, userId, orderByComparator, true);
 
 			array[1] = emailAddress;
 
-			array[2] = getByUserId_PrevAndNext(session, emailAddress, userId,
-					orderByComparator, false);
+			array[2] = getByUserId_PrevAndNext(
+				session, emailAddress, userId, orderByComparator, false);
 
 			return array;
 		}
@@ -2060,14 +2027,15 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 		}
 	}
 
-	protected EmailAddress getByUserId_PrevAndNext(Session session,
-		EmailAddress emailAddress, long userId,
+	protected EmailAddress getByUserId_PrevAndNext(
+		Session session, EmailAddress emailAddress, long userId,
 		OrderByComparator<EmailAddress> orderByComparator, boolean previous) {
+
 		StringBundler query = null;
 
 		if (orderByComparator != null) {
-			query = new StringBundler(4 +
-					(orderByComparator.getOrderByConditionFields().length * 3) +
+			query = new StringBundler(
+				4 + (orderByComparator.getOrderByConditionFields().length * 3) +
 					(orderByComparator.getOrderByFields().length * 3));
 		}
 		else {
@@ -2079,7 +2047,8 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 		query.append(_FINDER_COLUMN_USERID_USERID_2);
 
 		if (orderByComparator != null) {
-			String[] orderByConditionFields = orderByComparator.getOrderByConditionFields();
+			String[] orderByConditionFields =
+				orderByComparator.getOrderByConditionFields();
 
 			if (orderByConditionFields.length > 0) {
 				query.append(WHERE_AND);
@@ -2149,10 +2118,10 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 		qPos.add(userId);
 
 		if (orderByComparator != null) {
-			Object[] values = orderByComparator.getOrderByConditionValues(emailAddress);
+			for (Object orderByConditionValue :
+					orderByComparator.getOrderByConditionValues(emailAddress)) {
 
-			for (Object value : values) {
-				qPos.add(value);
+				qPos.add(orderByConditionValue);
 			}
 		}
 
@@ -2173,8 +2142,10 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 */
 	@Override
 	public void removeByUserId(long userId) {
-		for (EmailAddress emailAddress : findByUserId(userId,
-				QueryUtil.ALL_POS, QueryUtil.ALL_POS, null)) {
+		for (EmailAddress emailAddress :
+				findByUserId(
+					userId, QueryUtil.ALL_POS, QueryUtil.ALL_POS, null)) {
+
 			remove(emailAddress);
 		}
 	}
@@ -2187,11 +2158,12 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 */
 	@Override
 	public int countByUserId(long userId) {
-		FinderPath finderPath = FINDER_PATH_COUNT_BY_USERID;
+		FinderPath finderPath = _finderPathCountByUserId;
 
-		Object[] finderArgs = new Object[] { userId };
+		Object[] finderArgs = new Object[] {userId};
 
-		Long count = (Long)finderCache.getResult(finderPath, finderArgs, this);
+		Long count = (Long)FinderCacheUtil.getResult(
+			finderPath, finderArgs, this);
 
 		if (count == null) {
 			StringBundler query = new StringBundler(2);
@@ -2215,10 +2187,10 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 
 				count = (Long)q.uniqueResult();
 
-				finderCache.putResult(finderPath, finderArgs, count);
+				FinderCacheUtil.putResult(finderPath, finderArgs, count);
 			}
 			catch (Exception e) {
-				finderCache.removeResult(finderPath, finderArgs);
+				FinderCacheUtil.removeResult(finderPath, finderArgs);
 
 				throw processException(e);
 			}
@@ -2230,27 +2202,12 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 		return count.intValue();
 	}
 
-	private static final String _FINDER_COLUMN_USERID_USERID_2 = "emailAddress.userId = ?";
-	public static final FinderPath FINDER_PATH_WITH_PAGINATION_FIND_BY_C_C = new FinderPath(EmailAddressModelImpl.ENTITY_CACHE_ENABLED,
-			EmailAddressModelImpl.FINDER_CACHE_ENABLED, EmailAddressImpl.class,
-			FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByC_C",
-			new String[] {
-				Long.class.getName(), Long.class.getName(),
-				
-			Integer.class.getName(), Integer.class.getName(),
-				OrderByComparator.class.getName()
-			});
-	public static final FinderPath FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_C_C = new FinderPath(EmailAddressModelImpl.ENTITY_CACHE_ENABLED,
-			EmailAddressModelImpl.FINDER_CACHE_ENABLED, EmailAddressImpl.class,
-			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findByC_C",
-			new String[] { Long.class.getName(), Long.class.getName() },
-			EmailAddressModelImpl.COMPANYID_COLUMN_BITMASK |
-			EmailAddressModelImpl.CLASSNAMEID_COLUMN_BITMASK |
-			EmailAddressModelImpl.CREATEDATE_COLUMN_BITMASK);
-	public static final FinderPath FINDER_PATH_COUNT_BY_C_C = new FinderPath(EmailAddressModelImpl.ENTITY_CACHE_ENABLED,
-			EmailAddressModelImpl.FINDER_CACHE_ENABLED, Long.class,
-			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByC_C",
-			new String[] { Long.class.getName(), Long.class.getName() });
+	private static final String _FINDER_COLUMN_USERID_USERID_2 =
+		"emailAddress.userId = ?";
+
+	private FinderPath _finderPathWithPaginationFindByC_C;
+	private FinderPath _finderPathWithoutPaginationFindByC_C;
+	private FinderPath _finderPathCountByC_C;
 
 	/**
 	 * Returns all the email addresses where companyId = &#63; and classNameId = &#63;.
@@ -2261,15 +2218,15 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 */
 	@Override
 	public List<EmailAddress> findByC_C(long companyId, long classNameId) {
-		return findByC_C(companyId, classNameId, QueryUtil.ALL_POS,
-			QueryUtil.ALL_POS, null);
+		return findByC_C(
+			companyId, classNameId, QueryUtil.ALL_POS, QueryUtil.ALL_POS, null);
 	}
 
 	/**
 	 * Returns a range of all the email addresses where companyId = &#63; and classNameId = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link EmailAddressModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>EmailAddressModelImpl</code>.
 	 * </p>
 	 *
 	 * @param companyId the company ID
@@ -2279,8 +2236,9 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 * @return the range of matching email addresses
 	 */
 	@Override
-	public List<EmailAddress> findByC_C(long companyId, long classNameId,
-		int start, int end) {
+	public List<EmailAddress> findByC_C(
+		long companyId, long classNameId, int start, int end) {
+
 		return findByC_C(companyId, classNameId, start, end, null);
 	}
 
@@ -2288,7 +2246,7 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 * Returns an ordered range of all the email addresses where companyId = &#63; and classNameId = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link EmailAddressModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>EmailAddressModelImpl</code>.
 	 * </p>
 	 *
 	 * @param companyId the company ID
@@ -2299,17 +2257,19 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 * @return the ordered range of matching email addresses
 	 */
 	@Override
-	public List<EmailAddress> findByC_C(long companyId, long classNameId,
-		int start, int end, OrderByComparator<EmailAddress> orderByComparator) {
-		return findByC_C(companyId, classNameId, start, end, orderByComparator,
-			true);
+	public List<EmailAddress> findByC_C(
+		long companyId, long classNameId, int start, int end,
+		OrderByComparator<EmailAddress> orderByComparator) {
+
+		return findByC_C(
+			companyId, classNameId, start, end, orderByComparator, true);
 	}
 
 	/**
 	 * Returns an ordered range of all the email addresses where companyId = &#63; and classNameId = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link EmailAddressModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>EmailAddressModelImpl</code>.
 	 * </p>
 	 *
 	 * @param companyId the company ID
@@ -2317,42 +2277,44 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 * @param start the lower bound of the range of email addresses
 	 * @param end the upper bound of the range of email addresses (not inclusive)
 	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
-	 * @param retrieveFromCache whether to retrieve from the finder cache
+	 * @param useFinderCache whether to use the finder cache
 	 * @return the ordered range of matching email addresses
 	 */
 	@Override
-	public List<EmailAddress> findByC_C(long companyId, long classNameId,
-		int start, int end, OrderByComparator<EmailAddress> orderByComparator,
-		boolean retrieveFromCache) {
-		boolean pagination = true;
+	public List<EmailAddress> findByC_C(
+		long companyId, long classNameId, int start, int end,
+		OrderByComparator<EmailAddress> orderByComparator,
+		boolean useFinderCache) {
+
 		FinderPath finderPath = null;
 		Object[] finderArgs = null;
 
 		if ((start == QueryUtil.ALL_POS) && (end == QueryUtil.ALL_POS) &&
-				(orderByComparator == null)) {
-			pagination = false;
-			finderPath = FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_C_C;
-			finderArgs = new Object[] { companyId, classNameId };
+			(orderByComparator == null)) {
+
+			if (useFinderCache) {
+				finderPath = _finderPathWithoutPaginationFindByC_C;
+				finderArgs = new Object[] {companyId, classNameId};
+			}
 		}
-		else {
-			finderPath = FINDER_PATH_WITH_PAGINATION_FIND_BY_C_C;
+		else if (useFinderCache) {
+			finderPath = _finderPathWithPaginationFindByC_C;
 			finderArgs = new Object[] {
-					companyId, classNameId,
-					
-					start, end, orderByComparator
-				};
+				companyId, classNameId, start, end, orderByComparator
+			};
 		}
 
 		List<EmailAddress> list = null;
 
-		if (retrieveFromCache) {
-			list = (List<EmailAddress>)finderCache.getResult(finderPath,
-					finderArgs, this);
+		if (useFinderCache) {
+			list = (List<EmailAddress>)FinderCacheUtil.getResult(
+				finderPath, finderArgs, this);
 
 			if ((list != null) && !list.isEmpty()) {
 				for (EmailAddress emailAddress : list) {
 					if ((companyId != emailAddress.getCompanyId()) ||
-							(classNameId != emailAddress.getClassNameId())) {
+						(classNameId != emailAddress.getClassNameId())) {
+
 						list = null;
 
 						break;
@@ -2365,8 +2327,8 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 			StringBundler query = null;
 
 			if (orderByComparator != null) {
-				query = new StringBundler(4 +
-						(orderByComparator.getOrderByFields().length * 2));
+				query = new StringBundler(
+					4 + (orderByComparator.getOrderByFields().length * 2));
 			}
 			else {
 				query = new StringBundler(4);
@@ -2379,11 +2341,10 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 			query.append(_FINDER_COLUMN_C_C_CLASSNAMEID_2);
 
 			if (orderByComparator != null) {
-				appendOrderByComparator(query, _ORDER_BY_ENTITY_ALIAS,
-					orderByComparator);
+				appendOrderByComparator(
+					query, _ORDER_BY_ENTITY_ALIAS, orderByComparator);
 			}
-			else
-			 if (pagination) {
+			else {
 				query.append(EmailAddressModelImpl.ORDER_BY_JPQL);
 			}
 
@@ -2402,25 +2363,19 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 
 				qPos.add(classNameId);
 
-				if (!pagination) {
-					list = (List<EmailAddress>)QueryUtil.list(q, getDialect(),
-							start, end, false);
-
-					Collections.sort(list);
-
-					list = Collections.unmodifiableList(list);
-				}
-				else {
-					list = (List<EmailAddress>)QueryUtil.list(q, getDialect(),
-							start, end);
-				}
+				list = (List<EmailAddress>)QueryUtil.list(
+					q, getDialect(), start, end);
 
 				cacheResult(list);
 
-				finderCache.putResult(finderPath, finderArgs, list);
+				if (useFinderCache) {
+					FinderCacheUtil.putResult(finderPath, finderArgs, list);
+				}
 			}
 			catch (Exception e) {
-				finderCache.removeResult(finderPath, finderArgs);
+				if (useFinderCache) {
+					FinderCacheUtil.removeResult(finderPath, finderArgs);
+				}
 
 				throw processException(e);
 			}
@@ -2442,11 +2397,13 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 * @throws NoSuchEmailAddressException if a matching email address could not be found
 	 */
 	@Override
-	public EmailAddress findByC_C_First(long companyId, long classNameId,
-		OrderByComparator<EmailAddress> orderByComparator)
+	public EmailAddress findByC_C_First(
+			long companyId, long classNameId,
+			OrderByComparator<EmailAddress> orderByComparator)
 		throws NoSuchEmailAddressException {
-		EmailAddress emailAddress = fetchByC_C_First(companyId, classNameId,
-				orderByComparator);
+
+		EmailAddress emailAddress = fetchByC_C_First(
+			companyId, classNameId, orderByComparator);
 
 		if (emailAddress != null) {
 			return emailAddress;
@@ -2476,10 +2433,12 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 * @return the first matching email address, or <code>null</code> if a matching email address could not be found
 	 */
 	@Override
-	public EmailAddress fetchByC_C_First(long companyId, long classNameId,
+	public EmailAddress fetchByC_C_First(
+		long companyId, long classNameId,
 		OrderByComparator<EmailAddress> orderByComparator) {
-		List<EmailAddress> list = findByC_C(companyId, classNameId, 0, 1,
-				orderByComparator);
+
+		List<EmailAddress> list = findByC_C(
+			companyId, classNameId, 0, 1, orderByComparator);
 
 		if (!list.isEmpty()) {
 			return list.get(0);
@@ -2498,11 +2457,13 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 * @throws NoSuchEmailAddressException if a matching email address could not be found
 	 */
 	@Override
-	public EmailAddress findByC_C_Last(long companyId, long classNameId,
-		OrderByComparator<EmailAddress> orderByComparator)
+	public EmailAddress findByC_C_Last(
+			long companyId, long classNameId,
+			OrderByComparator<EmailAddress> orderByComparator)
 		throws NoSuchEmailAddressException {
-		EmailAddress emailAddress = fetchByC_C_Last(companyId, classNameId,
-				orderByComparator);
+
+		EmailAddress emailAddress = fetchByC_C_Last(
+			companyId, classNameId, orderByComparator);
 
 		if (emailAddress != null) {
 			return emailAddress;
@@ -2532,16 +2493,18 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 * @return the last matching email address, or <code>null</code> if a matching email address could not be found
 	 */
 	@Override
-	public EmailAddress fetchByC_C_Last(long companyId, long classNameId,
+	public EmailAddress fetchByC_C_Last(
+		long companyId, long classNameId,
 		OrderByComparator<EmailAddress> orderByComparator) {
+
 		int count = countByC_C(companyId, classNameId);
 
 		if (count == 0) {
 			return null;
 		}
 
-		List<EmailAddress> list = findByC_C(companyId, classNameId, count - 1,
-				count, orderByComparator);
+		List<EmailAddress> list = findByC_C(
+			companyId, classNameId, count - 1, count, orderByComparator);
 
 		if (!list.isEmpty()) {
 			return list.get(0);
@@ -2561,10 +2524,11 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 * @throws NoSuchEmailAddressException if a email address with the primary key could not be found
 	 */
 	@Override
-	public EmailAddress[] findByC_C_PrevAndNext(long emailAddressId,
-		long companyId, long classNameId,
-		OrderByComparator<EmailAddress> orderByComparator)
+	public EmailAddress[] findByC_C_PrevAndNext(
+			long emailAddressId, long companyId, long classNameId,
+			OrderByComparator<EmailAddress> orderByComparator)
 		throws NoSuchEmailAddressException {
+
 		EmailAddress emailAddress = findByPrimaryKey(emailAddressId);
 
 		Session session = null;
@@ -2574,13 +2538,15 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 
 			EmailAddress[] array = new EmailAddressImpl[3];
 
-			array[0] = getByC_C_PrevAndNext(session, emailAddress, companyId,
-					classNameId, orderByComparator, true);
+			array[0] = getByC_C_PrevAndNext(
+				session, emailAddress, companyId, classNameId,
+				orderByComparator, true);
 
 			array[1] = emailAddress;
 
-			array[2] = getByC_C_PrevAndNext(session, emailAddress, companyId,
-					classNameId, orderByComparator, false);
+			array[2] = getByC_C_PrevAndNext(
+				session, emailAddress, companyId, classNameId,
+				orderByComparator, false);
 
 			return array;
 		}
@@ -2592,14 +2558,16 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 		}
 	}
 
-	protected EmailAddress getByC_C_PrevAndNext(Session session,
-		EmailAddress emailAddress, long companyId, long classNameId,
-		OrderByComparator<EmailAddress> orderByComparator, boolean previous) {
+	protected EmailAddress getByC_C_PrevAndNext(
+		Session session, EmailAddress emailAddress, long companyId,
+		long classNameId, OrderByComparator<EmailAddress> orderByComparator,
+		boolean previous) {
+
 		StringBundler query = null;
 
 		if (orderByComparator != null) {
-			query = new StringBundler(5 +
-					(orderByComparator.getOrderByConditionFields().length * 3) +
+			query = new StringBundler(
+				5 + (orderByComparator.getOrderByConditionFields().length * 3) +
 					(orderByComparator.getOrderByFields().length * 3));
 		}
 		else {
@@ -2613,7 +2581,8 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 		query.append(_FINDER_COLUMN_C_C_CLASSNAMEID_2);
 
 		if (orderByComparator != null) {
-			String[] orderByConditionFields = orderByComparator.getOrderByConditionFields();
+			String[] orderByConditionFields =
+				orderByComparator.getOrderByConditionFields();
 
 			if (orderByConditionFields.length > 0) {
 				query.append(WHERE_AND);
@@ -2685,10 +2654,10 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 		qPos.add(classNameId);
 
 		if (orderByComparator != null) {
-			Object[] values = orderByComparator.getOrderByConditionValues(emailAddress);
+			for (Object orderByConditionValue :
+					orderByComparator.getOrderByConditionValues(emailAddress)) {
 
-			for (Object value : values) {
-				qPos.add(value);
+				qPos.add(orderByConditionValue);
 			}
 		}
 
@@ -2710,8 +2679,11 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 */
 	@Override
 	public void removeByC_C(long companyId, long classNameId) {
-		for (EmailAddress emailAddress : findByC_C(companyId, classNameId,
-				QueryUtil.ALL_POS, QueryUtil.ALL_POS, null)) {
+		for (EmailAddress emailAddress :
+				findByC_C(
+					companyId, classNameId, QueryUtil.ALL_POS,
+					QueryUtil.ALL_POS, null)) {
+
 			remove(emailAddress);
 		}
 	}
@@ -2725,11 +2697,12 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 */
 	@Override
 	public int countByC_C(long companyId, long classNameId) {
-		FinderPath finderPath = FINDER_PATH_COUNT_BY_C_C;
+		FinderPath finderPath = _finderPathCountByC_C;
 
-		Object[] finderArgs = new Object[] { companyId, classNameId };
+		Object[] finderArgs = new Object[] {companyId, classNameId};
 
-		Long count = (Long)finderCache.getResult(finderPath, finderArgs, this);
+		Long count = (Long)FinderCacheUtil.getResult(
+			finderPath, finderArgs, this);
 
 		if (count == null) {
 			StringBundler query = new StringBundler(3);
@@ -2757,10 +2730,10 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 
 				count = (Long)q.uniqueResult();
 
-				finderCache.putResult(finderPath, finderArgs, count);
+				FinderCacheUtil.putResult(finderPath, finderArgs, count);
 			}
 			catch (Exception e) {
-				finderCache.removeResult(finderPath, finderArgs);
+				FinderCacheUtil.removeResult(finderPath, finderArgs);
 
 				throw processException(e);
 			}
@@ -2772,33 +2745,15 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 		return count.intValue();
 	}
 
-	private static final String _FINDER_COLUMN_C_C_COMPANYID_2 = "emailAddress.companyId = ? AND ";
-	private static final String _FINDER_COLUMN_C_C_CLASSNAMEID_2 = "emailAddress.classNameId = ?";
-	public static final FinderPath FINDER_PATH_WITH_PAGINATION_FIND_BY_C_C_C = new FinderPath(EmailAddressModelImpl.ENTITY_CACHE_ENABLED,
-			EmailAddressModelImpl.FINDER_CACHE_ENABLED, EmailAddressImpl.class,
-			FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByC_C_C",
-			new String[] {
-				Long.class.getName(), Long.class.getName(), Long.class.getName(),
-				
-			Integer.class.getName(), Integer.class.getName(),
-				OrderByComparator.class.getName()
-			});
-	public static final FinderPath FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_C_C_C = new FinderPath(EmailAddressModelImpl.ENTITY_CACHE_ENABLED,
-			EmailAddressModelImpl.FINDER_CACHE_ENABLED, EmailAddressImpl.class,
-			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findByC_C_C",
-			new String[] {
-				Long.class.getName(), Long.class.getName(), Long.class.getName()
-			},
-			EmailAddressModelImpl.COMPANYID_COLUMN_BITMASK |
-			EmailAddressModelImpl.CLASSNAMEID_COLUMN_BITMASK |
-			EmailAddressModelImpl.CLASSPK_COLUMN_BITMASK |
-			EmailAddressModelImpl.CREATEDATE_COLUMN_BITMASK);
-	public static final FinderPath FINDER_PATH_COUNT_BY_C_C_C = new FinderPath(EmailAddressModelImpl.ENTITY_CACHE_ENABLED,
-			EmailAddressModelImpl.FINDER_CACHE_ENABLED, Long.class,
-			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByC_C_C",
-			new String[] {
-				Long.class.getName(), Long.class.getName(), Long.class.getName()
-			});
+	private static final String _FINDER_COLUMN_C_C_COMPANYID_2 =
+		"emailAddress.companyId = ? AND ";
+
+	private static final String _FINDER_COLUMN_C_C_CLASSNAMEID_2 =
+		"emailAddress.classNameId = ?";
+
+	private FinderPath _finderPathWithPaginationFindByC_C_C;
+	private FinderPath _finderPathWithoutPaginationFindByC_C_C;
+	private FinderPath _finderPathCountByC_C_C;
 
 	/**
 	 * Returns all the email addresses where companyId = &#63; and classNameId = &#63; and classPK = &#63;.
@@ -2809,9 +2764,11 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 * @return the matching email addresses
 	 */
 	@Override
-	public List<EmailAddress> findByC_C_C(long companyId, long classNameId,
-		long classPK) {
-		return findByC_C_C(companyId, classNameId, classPK, QueryUtil.ALL_POS,
+	public List<EmailAddress> findByC_C_C(
+		long companyId, long classNameId, long classPK) {
+
+		return findByC_C_C(
+			companyId, classNameId, classPK, QueryUtil.ALL_POS,
 			QueryUtil.ALL_POS, null);
 	}
 
@@ -2819,7 +2776,7 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 * Returns a range of all the email addresses where companyId = &#63; and classNameId = &#63; and classPK = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link EmailAddressModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>EmailAddressModelImpl</code>.
 	 * </p>
 	 *
 	 * @param companyId the company ID
@@ -2830,8 +2787,9 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 * @return the range of matching email addresses
 	 */
 	@Override
-	public List<EmailAddress> findByC_C_C(long companyId, long classNameId,
-		long classPK, int start, int end) {
+	public List<EmailAddress> findByC_C_C(
+		long companyId, long classNameId, long classPK, int start, int end) {
+
 		return findByC_C_C(companyId, classNameId, classPK, start, end, null);
 	}
 
@@ -2839,7 +2797,7 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 * Returns an ordered range of all the email addresses where companyId = &#63; and classNameId = &#63; and classPK = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link EmailAddressModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>EmailAddressModelImpl</code>.
 	 * </p>
 	 *
 	 * @param companyId the company ID
@@ -2851,18 +2809,20 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 * @return the ordered range of matching email addresses
 	 */
 	@Override
-	public List<EmailAddress> findByC_C_C(long companyId, long classNameId,
-		long classPK, int start, int end,
+	public List<EmailAddress> findByC_C_C(
+		long companyId, long classNameId, long classPK, int start, int end,
 		OrderByComparator<EmailAddress> orderByComparator) {
-		return findByC_C_C(companyId, classNameId, classPK, start, end,
-			orderByComparator, true);
+
+		return findByC_C_C(
+			companyId, classNameId, classPK, start, end, orderByComparator,
+			true);
 	}
 
 	/**
 	 * Returns an ordered range of all the email addresses where companyId = &#63; and classNameId = &#63; and classPK = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link EmailAddressModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>EmailAddressModelImpl</code>.
 	 * </p>
 	 *
 	 * @param companyId the company ID
@@ -2871,44 +2831,45 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 * @param start the lower bound of the range of email addresses
 	 * @param end the upper bound of the range of email addresses (not inclusive)
 	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
-	 * @param retrieveFromCache whether to retrieve from the finder cache
+	 * @param useFinderCache whether to use the finder cache
 	 * @return the ordered range of matching email addresses
 	 */
 	@Override
-	public List<EmailAddress> findByC_C_C(long companyId, long classNameId,
-		long classPK, int start, int end,
+	public List<EmailAddress> findByC_C_C(
+		long companyId, long classNameId, long classPK, int start, int end,
 		OrderByComparator<EmailAddress> orderByComparator,
-		boolean retrieveFromCache) {
-		boolean pagination = true;
+		boolean useFinderCache) {
+
 		FinderPath finderPath = null;
 		Object[] finderArgs = null;
 
 		if ((start == QueryUtil.ALL_POS) && (end == QueryUtil.ALL_POS) &&
-				(orderByComparator == null)) {
-			pagination = false;
-			finderPath = FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_C_C_C;
-			finderArgs = new Object[] { companyId, classNameId, classPK };
+			(orderByComparator == null)) {
+
+			if (useFinderCache) {
+				finderPath = _finderPathWithoutPaginationFindByC_C_C;
+				finderArgs = new Object[] {companyId, classNameId, classPK};
+			}
 		}
-		else {
-			finderPath = FINDER_PATH_WITH_PAGINATION_FIND_BY_C_C_C;
+		else if (useFinderCache) {
+			finderPath = _finderPathWithPaginationFindByC_C_C;
 			finderArgs = new Object[] {
-					companyId, classNameId, classPK,
-					
-					start, end, orderByComparator
-				};
+				companyId, classNameId, classPK, start, end, orderByComparator
+			};
 		}
 
 		List<EmailAddress> list = null;
 
-		if (retrieveFromCache) {
-			list = (List<EmailAddress>)finderCache.getResult(finderPath,
-					finderArgs, this);
+		if (useFinderCache) {
+			list = (List<EmailAddress>)FinderCacheUtil.getResult(
+				finderPath, finderArgs, this);
 
 			if ((list != null) && !list.isEmpty()) {
 				for (EmailAddress emailAddress : list) {
 					if ((companyId != emailAddress.getCompanyId()) ||
-							(classNameId != emailAddress.getClassNameId()) ||
-							(classPK != emailAddress.getClassPK())) {
+						(classNameId != emailAddress.getClassNameId()) ||
+						(classPK != emailAddress.getClassPK())) {
+
 						list = null;
 
 						break;
@@ -2921,8 +2882,8 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 			StringBundler query = null;
 
 			if (orderByComparator != null) {
-				query = new StringBundler(5 +
-						(orderByComparator.getOrderByFields().length * 2));
+				query = new StringBundler(
+					5 + (orderByComparator.getOrderByFields().length * 2));
 			}
 			else {
 				query = new StringBundler(5);
@@ -2937,11 +2898,10 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 			query.append(_FINDER_COLUMN_C_C_C_CLASSPK_2);
 
 			if (orderByComparator != null) {
-				appendOrderByComparator(query, _ORDER_BY_ENTITY_ALIAS,
-					orderByComparator);
+				appendOrderByComparator(
+					query, _ORDER_BY_ENTITY_ALIAS, orderByComparator);
 			}
-			else
-			 if (pagination) {
+			else {
 				query.append(EmailAddressModelImpl.ORDER_BY_JPQL);
 			}
 
@@ -2962,25 +2922,19 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 
 				qPos.add(classPK);
 
-				if (!pagination) {
-					list = (List<EmailAddress>)QueryUtil.list(q, getDialect(),
-							start, end, false);
-
-					Collections.sort(list);
-
-					list = Collections.unmodifiableList(list);
-				}
-				else {
-					list = (List<EmailAddress>)QueryUtil.list(q, getDialect(),
-							start, end);
-				}
+				list = (List<EmailAddress>)QueryUtil.list(
+					q, getDialect(), start, end);
 
 				cacheResult(list);
 
-				finderCache.putResult(finderPath, finderArgs, list);
+				if (useFinderCache) {
+					FinderCacheUtil.putResult(finderPath, finderArgs, list);
+				}
 			}
 			catch (Exception e) {
-				finderCache.removeResult(finderPath, finderArgs);
+				if (useFinderCache) {
+					FinderCacheUtil.removeResult(finderPath, finderArgs);
+				}
 
 				throw processException(e);
 			}
@@ -3003,11 +2957,13 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 * @throws NoSuchEmailAddressException if a matching email address could not be found
 	 */
 	@Override
-	public EmailAddress findByC_C_C_First(long companyId, long classNameId,
-		long classPK, OrderByComparator<EmailAddress> orderByComparator)
+	public EmailAddress findByC_C_C_First(
+			long companyId, long classNameId, long classPK,
+			OrderByComparator<EmailAddress> orderByComparator)
 		throws NoSuchEmailAddressException {
-		EmailAddress emailAddress = fetchByC_C_C_First(companyId, classNameId,
-				classPK, orderByComparator);
+
+		EmailAddress emailAddress = fetchByC_C_C_First(
+			companyId, classNameId, classPK, orderByComparator);
 
 		if (emailAddress != null) {
 			return emailAddress;
@@ -3041,10 +2997,12 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 * @return the first matching email address, or <code>null</code> if a matching email address could not be found
 	 */
 	@Override
-	public EmailAddress fetchByC_C_C_First(long companyId, long classNameId,
-		long classPK, OrderByComparator<EmailAddress> orderByComparator) {
-		List<EmailAddress> list = findByC_C_C(companyId, classNameId, classPK,
-				0, 1, orderByComparator);
+	public EmailAddress fetchByC_C_C_First(
+		long companyId, long classNameId, long classPK,
+		OrderByComparator<EmailAddress> orderByComparator) {
+
+		List<EmailAddress> list = findByC_C_C(
+			companyId, classNameId, classPK, 0, 1, orderByComparator);
 
 		if (!list.isEmpty()) {
 			return list.get(0);
@@ -3064,11 +3022,13 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 * @throws NoSuchEmailAddressException if a matching email address could not be found
 	 */
 	@Override
-	public EmailAddress findByC_C_C_Last(long companyId, long classNameId,
-		long classPK, OrderByComparator<EmailAddress> orderByComparator)
+	public EmailAddress findByC_C_C_Last(
+			long companyId, long classNameId, long classPK,
+			OrderByComparator<EmailAddress> orderByComparator)
 		throws NoSuchEmailAddressException {
-		EmailAddress emailAddress = fetchByC_C_C_Last(companyId, classNameId,
-				classPK, orderByComparator);
+
+		EmailAddress emailAddress = fetchByC_C_C_Last(
+			companyId, classNameId, classPK, orderByComparator);
 
 		if (emailAddress != null) {
 			return emailAddress;
@@ -3102,16 +3062,19 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 * @return the last matching email address, or <code>null</code> if a matching email address could not be found
 	 */
 	@Override
-	public EmailAddress fetchByC_C_C_Last(long companyId, long classNameId,
-		long classPK, OrderByComparator<EmailAddress> orderByComparator) {
+	public EmailAddress fetchByC_C_C_Last(
+		long companyId, long classNameId, long classPK,
+		OrderByComparator<EmailAddress> orderByComparator) {
+
 		int count = countByC_C_C(companyId, classNameId, classPK);
 
 		if (count == 0) {
 			return null;
 		}
 
-		List<EmailAddress> list = findByC_C_C(companyId, classNameId, classPK,
-				count - 1, count, orderByComparator);
+		List<EmailAddress> list = findByC_C_C(
+			companyId, classNameId, classPK, count - 1, count,
+			orderByComparator);
 
 		if (!list.isEmpty()) {
 			return list.get(0);
@@ -3132,10 +3095,11 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 * @throws NoSuchEmailAddressException if a email address with the primary key could not be found
 	 */
 	@Override
-	public EmailAddress[] findByC_C_C_PrevAndNext(long emailAddressId,
-		long companyId, long classNameId, long classPK,
-		OrderByComparator<EmailAddress> orderByComparator)
+	public EmailAddress[] findByC_C_C_PrevAndNext(
+			long emailAddressId, long companyId, long classNameId, long classPK,
+			OrderByComparator<EmailAddress> orderByComparator)
 		throws NoSuchEmailAddressException {
+
 		EmailAddress emailAddress = findByPrimaryKey(emailAddressId);
 
 		Session session = null;
@@ -3145,13 +3109,15 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 
 			EmailAddress[] array = new EmailAddressImpl[3];
 
-			array[0] = getByC_C_C_PrevAndNext(session, emailAddress, companyId,
-					classNameId, classPK, orderByComparator, true);
+			array[0] = getByC_C_C_PrevAndNext(
+				session, emailAddress, companyId, classNameId, classPK,
+				orderByComparator, true);
 
 			array[1] = emailAddress;
 
-			array[2] = getByC_C_C_PrevAndNext(session, emailAddress, companyId,
-					classNameId, classPK, orderByComparator, false);
+			array[2] = getByC_C_C_PrevAndNext(
+				session, emailAddress, companyId, classNameId, classPK,
+				orderByComparator, false);
 
 			return array;
 		}
@@ -3163,15 +3129,16 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 		}
 	}
 
-	protected EmailAddress getByC_C_C_PrevAndNext(Session session,
-		EmailAddress emailAddress, long companyId, long classNameId,
-		long classPK, OrderByComparator<EmailAddress> orderByComparator,
-		boolean previous) {
+	protected EmailAddress getByC_C_C_PrevAndNext(
+		Session session, EmailAddress emailAddress, long companyId,
+		long classNameId, long classPK,
+		OrderByComparator<EmailAddress> orderByComparator, boolean previous) {
+
 		StringBundler query = null;
 
 		if (orderByComparator != null) {
-			query = new StringBundler(6 +
-					(orderByComparator.getOrderByConditionFields().length * 3) +
+			query = new StringBundler(
+				6 + (orderByComparator.getOrderByConditionFields().length * 3) +
 					(orderByComparator.getOrderByFields().length * 3));
 		}
 		else {
@@ -3187,7 +3154,8 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 		query.append(_FINDER_COLUMN_C_C_C_CLASSPK_2);
 
 		if (orderByComparator != null) {
-			String[] orderByConditionFields = orderByComparator.getOrderByConditionFields();
+			String[] orderByConditionFields =
+				orderByComparator.getOrderByConditionFields();
 
 			if (orderByConditionFields.length > 0) {
 				query.append(WHERE_AND);
@@ -3261,10 +3229,10 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 		qPos.add(classPK);
 
 		if (orderByComparator != null) {
-			Object[] values = orderByComparator.getOrderByConditionValues(emailAddress);
+			for (Object orderByConditionValue :
+					orderByComparator.getOrderByConditionValues(emailAddress)) {
 
-			for (Object value : values) {
-				qPos.add(value);
+				qPos.add(orderByConditionValue);
 			}
 		}
 
@@ -3287,8 +3255,11 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 */
 	@Override
 	public void removeByC_C_C(long companyId, long classNameId, long classPK) {
-		for (EmailAddress emailAddress : findByC_C_C(companyId, classNameId,
-				classPK, QueryUtil.ALL_POS, QueryUtil.ALL_POS, null)) {
+		for (EmailAddress emailAddress :
+				findByC_C_C(
+					companyId, classNameId, classPK, QueryUtil.ALL_POS,
+					QueryUtil.ALL_POS, null)) {
+
 			remove(emailAddress);
 		}
 	}
@@ -3303,11 +3274,12 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 */
 	@Override
 	public int countByC_C_C(long companyId, long classNameId, long classPK) {
-		FinderPath finderPath = FINDER_PATH_COUNT_BY_C_C_C;
+		FinderPath finderPath = _finderPathCountByC_C_C;
 
-		Object[] finderArgs = new Object[] { companyId, classNameId, classPK };
+		Object[] finderArgs = new Object[] {companyId, classNameId, classPK};
 
-		Long count = (Long)finderCache.getResult(finderPath, finderArgs, this);
+		Long count = (Long)FinderCacheUtil.getResult(
+			finderPath, finderArgs, this);
 
 		if (count == null) {
 			StringBundler query = new StringBundler(4);
@@ -3339,10 +3311,10 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 
 				count = (Long)q.uniqueResult();
 
-				finderCache.putResult(finderPath, finderArgs, count);
+				FinderCacheUtil.putResult(finderPath, finderArgs, count);
 			}
 			catch (Exception e) {
-				finderCache.removeResult(finderPath, finderArgs);
+				FinderCacheUtil.removeResult(finderPath, finderArgs);
 
 				throw processException(e);
 			}
@@ -3354,39 +3326,18 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 		return count.intValue();
 	}
 
-	private static final String _FINDER_COLUMN_C_C_C_COMPANYID_2 = "emailAddress.companyId = ? AND ";
-	private static final String _FINDER_COLUMN_C_C_C_CLASSNAMEID_2 = "emailAddress.classNameId = ? AND ";
-	private static final String _FINDER_COLUMN_C_C_C_CLASSPK_2 = "emailAddress.classPK = ?";
-	public static final FinderPath FINDER_PATH_WITH_PAGINATION_FIND_BY_C_C_C_P = new FinderPath(EmailAddressModelImpl.ENTITY_CACHE_ENABLED,
-			EmailAddressModelImpl.FINDER_CACHE_ENABLED, EmailAddressImpl.class,
-			FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByC_C_C_P",
-			new String[] {
-				Long.class.getName(), Long.class.getName(), Long.class.getName(),
-				Boolean.class.getName(),
-				
-			Integer.class.getName(), Integer.class.getName(),
-				OrderByComparator.class.getName()
-			});
-	public static final FinderPath FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_C_C_C_P =
-		new FinderPath(EmailAddressModelImpl.ENTITY_CACHE_ENABLED,
-			EmailAddressModelImpl.FINDER_CACHE_ENABLED, EmailAddressImpl.class,
-			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findByC_C_C_P",
-			new String[] {
-				Long.class.getName(), Long.class.getName(), Long.class.getName(),
-				Boolean.class.getName()
-			},
-			EmailAddressModelImpl.COMPANYID_COLUMN_BITMASK |
-			EmailAddressModelImpl.CLASSNAMEID_COLUMN_BITMASK |
-			EmailAddressModelImpl.CLASSPK_COLUMN_BITMASK |
-			EmailAddressModelImpl.PRIMARY_COLUMN_BITMASK |
-			EmailAddressModelImpl.CREATEDATE_COLUMN_BITMASK);
-	public static final FinderPath FINDER_PATH_COUNT_BY_C_C_C_P = new FinderPath(EmailAddressModelImpl.ENTITY_CACHE_ENABLED,
-			EmailAddressModelImpl.FINDER_CACHE_ENABLED, Long.class,
-			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByC_C_C_P",
-			new String[] {
-				Long.class.getName(), Long.class.getName(), Long.class.getName(),
-				Boolean.class.getName()
-			});
+	private static final String _FINDER_COLUMN_C_C_C_COMPANYID_2 =
+		"emailAddress.companyId = ? AND ";
+
+	private static final String _FINDER_COLUMN_C_C_C_CLASSNAMEID_2 =
+		"emailAddress.classNameId = ? AND ";
+
+	private static final String _FINDER_COLUMN_C_C_C_CLASSPK_2 =
+		"emailAddress.classPK = ?";
+
+	private FinderPath _finderPathWithPaginationFindByC_C_C_P;
+	private FinderPath _finderPathWithoutPaginationFindByC_C_C_P;
+	private FinderPath _finderPathCountByC_C_C_P;
 
 	/**
 	 * Returns all the email addresses where companyId = &#63; and classNameId = &#63; and classPK = &#63; and primary = &#63;.
@@ -3398,17 +3349,19 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 * @return the matching email addresses
 	 */
 	@Override
-	public List<EmailAddress> findByC_C_C_P(long companyId, long classNameId,
-		long classPK, boolean primary) {
-		return findByC_C_C_P(companyId, classNameId, classPK, primary,
-			QueryUtil.ALL_POS, QueryUtil.ALL_POS, null);
+	public List<EmailAddress> findByC_C_C_P(
+		long companyId, long classNameId, long classPK, boolean primary) {
+
+		return findByC_C_C_P(
+			companyId, classNameId, classPK, primary, QueryUtil.ALL_POS,
+			QueryUtil.ALL_POS, null);
 	}
 
 	/**
 	 * Returns a range of all the email addresses where companyId = &#63; and classNameId = &#63; and classPK = &#63; and primary = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link EmailAddressModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>EmailAddressModelImpl</code>.
 	 * </p>
 	 *
 	 * @param companyId the company ID
@@ -3420,17 +3373,19 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 * @return the range of matching email addresses
 	 */
 	@Override
-	public List<EmailAddress> findByC_C_C_P(long companyId, long classNameId,
-		long classPK, boolean primary, int start, int end) {
-		return findByC_C_C_P(companyId, classNameId, classPK, primary, start,
-			end, null);
+	public List<EmailAddress> findByC_C_C_P(
+		long companyId, long classNameId, long classPK, boolean primary,
+		int start, int end) {
+
+		return findByC_C_C_P(
+			companyId, classNameId, classPK, primary, start, end, null);
 	}
 
 	/**
 	 * Returns an ordered range of all the email addresses where companyId = &#63; and classNameId = &#63; and classPK = &#63; and primary = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link EmailAddressModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>EmailAddressModelImpl</code>.
 	 * </p>
 	 *
 	 * @param companyId the company ID
@@ -3443,18 +3398,20 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 * @return the ordered range of matching email addresses
 	 */
 	@Override
-	public List<EmailAddress> findByC_C_C_P(long companyId, long classNameId,
-		long classPK, boolean primary, int start, int end,
-		OrderByComparator<EmailAddress> orderByComparator) {
-		return findByC_C_C_P(companyId, classNameId, classPK, primary, start,
-			end, orderByComparator, true);
+	public List<EmailAddress> findByC_C_C_P(
+		long companyId, long classNameId, long classPK, boolean primary,
+		int start, int end, OrderByComparator<EmailAddress> orderByComparator) {
+
+		return findByC_C_C_P(
+			companyId, classNameId, classPK, primary, start, end,
+			orderByComparator, true);
 	}
 
 	/**
 	 * Returns an ordered range of all the email addresses where companyId = &#63; and classNameId = &#63; and classPK = &#63; and primary = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link EmailAddressModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>EmailAddressModelImpl</code>.
 	 * </p>
 	 *
 	 * @param companyId the company ID
@@ -3464,45 +3421,49 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 * @param start the lower bound of the range of email addresses
 	 * @param end the upper bound of the range of email addresses (not inclusive)
 	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
-	 * @param retrieveFromCache whether to retrieve from the finder cache
+	 * @param useFinderCache whether to use the finder cache
 	 * @return the ordered range of matching email addresses
 	 */
 	@Override
-	public List<EmailAddress> findByC_C_C_P(long companyId, long classNameId,
-		long classPK, boolean primary, int start, int end,
-		OrderByComparator<EmailAddress> orderByComparator,
-		boolean retrieveFromCache) {
-		boolean pagination = true;
+	public List<EmailAddress> findByC_C_C_P(
+		long companyId, long classNameId, long classPK, boolean primary,
+		int start, int end, OrderByComparator<EmailAddress> orderByComparator,
+		boolean useFinderCache) {
+
 		FinderPath finderPath = null;
 		Object[] finderArgs = null;
 
 		if ((start == QueryUtil.ALL_POS) && (end == QueryUtil.ALL_POS) &&
-				(orderByComparator == null)) {
-			pagination = false;
-			finderPath = FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_C_C_C_P;
-			finderArgs = new Object[] { companyId, classNameId, classPK, primary };
-		}
-		else {
-			finderPath = FINDER_PATH_WITH_PAGINATION_FIND_BY_C_C_C_P;
-			finderArgs = new Object[] {
-					companyId, classNameId, classPK, primary,
-					
-					start, end, orderByComparator
+			(orderByComparator == null)) {
+
+			if (useFinderCache) {
+				finderPath = _finderPathWithoutPaginationFindByC_C_C_P;
+				finderArgs = new Object[] {
+					companyId, classNameId, classPK, primary
 				};
+			}
+		}
+		else if (useFinderCache) {
+			finderPath = _finderPathWithPaginationFindByC_C_C_P;
+			finderArgs = new Object[] {
+				companyId, classNameId, classPK, primary, start, end,
+				orderByComparator
+			};
 		}
 
 		List<EmailAddress> list = null;
 
-		if (retrieveFromCache) {
-			list = (List<EmailAddress>)finderCache.getResult(finderPath,
-					finderArgs, this);
+		if (useFinderCache) {
+			list = (List<EmailAddress>)FinderCacheUtil.getResult(
+				finderPath, finderArgs, this);
 
 			if ((list != null) && !list.isEmpty()) {
 				for (EmailAddress emailAddress : list) {
 					if ((companyId != emailAddress.getCompanyId()) ||
-							(classNameId != emailAddress.getClassNameId()) ||
-							(classPK != emailAddress.getClassPK()) ||
-							(primary != emailAddress.getPrimary())) {
+						(classNameId != emailAddress.getClassNameId()) ||
+						(classPK != emailAddress.getClassPK()) ||
+						(primary != emailAddress.isPrimary())) {
+
 						list = null;
 
 						break;
@@ -3515,8 +3476,8 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 			StringBundler query = null;
 
 			if (orderByComparator != null) {
-				query = new StringBundler(6 +
-						(orderByComparator.getOrderByFields().length * 2));
+				query = new StringBundler(
+					6 + (orderByComparator.getOrderByFields().length * 2));
 			}
 			else {
 				query = new StringBundler(6);
@@ -3533,11 +3494,10 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 			query.append(_FINDER_COLUMN_C_C_C_P_PRIMARY_2);
 
 			if (orderByComparator != null) {
-				appendOrderByComparator(query, _ORDER_BY_ENTITY_ALIAS,
-					orderByComparator);
+				appendOrderByComparator(
+					query, _ORDER_BY_ENTITY_ALIAS, orderByComparator);
 			}
-			else
-			 if (pagination) {
+			else {
 				query.append(EmailAddressModelImpl.ORDER_BY_JPQL);
 			}
 
@@ -3560,25 +3520,19 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 
 				qPos.add(primary);
 
-				if (!pagination) {
-					list = (List<EmailAddress>)QueryUtil.list(q, getDialect(),
-							start, end, false);
-
-					Collections.sort(list);
-
-					list = Collections.unmodifiableList(list);
-				}
-				else {
-					list = (List<EmailAddress>)QueryUtil.list(q, getDialect(),
-							start, end);
-				}
+				list = (List<EmailAddress>)QueryUtil.list(
+					q, getDialect(), start, end);
 
 				cacheResult(list);
 
-				finderCache.putResult(finderPath, finderArgs, list);
+				if (useFinderCache) {
+					FinderCacheUtil.putResult(finderPath, finderArgs, list);
+				}
 			}
 			catch (Exception e) {
-				finderCache.removeResult(finderPath, finderArgs);
+				if (useFinderCache) {
+					FinderCacheUtil.removeResult(finderPath, finderArgs);
+				}
 
 				throw processException(e);
 			}
@@ -3602,12 +3556,13 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 * @throws NoSuchEmailAddressException if a matching email address could not be found
 	 */
 	@Override
-	public EmailAddress findByC_C_C_P_First(long companyId, long classNameId,
-		long classPK, boolean primary,
-		OrderByComparator<EmailAddress> orderByComparator)
+	public EmailAddress findByC_C_C_P_First(
+			long companyId, long classNameId, long classPK, boolean primary,
+			OrderByComparator<EmailAddress> orderByComparator)
 		throws NoSuchEmailAddressException {
-		EmailAddress emailAddress = fetchByC_C_C_P_First(companyId,
-				classNameId, classPK, primary, orderByComparator);
+
+		EmailAddress emailAddress = fetchByC_C_C_P_First(
+			companyId, classNameId, classPK, primary, orderByComparator);
 
 		if (emailAddress != null) {
 			return emailAddress;
@@ -3645,11 +3600,12 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 * @return the first matching email address, or <code>null</code> if a matching email address could not be found
 	 */
 	@Override
-	public EmailAddress fetchByC_C_C_P_First(long companyId, long classNameId,
-		long classPK, boolean primary,
+	public EmailAddress fetchByC_C_C_P_First(
+		long companyId, long classNameId, long classPK, boolean primary,
 		OrderByComparator<EmailAddress> orderByComparator) {
-		List<EmailAddress> list = findByC_C_C_P(companyId, classNameId,
-				classPK, primary, 0, 1, orderByComparator);
+
+		List<EmailAddress> list = findByC_C_C_P(
+			companyId, classNameId, classPK, primary, 0, 1, orderByComparator);
 
 		if (!list.isEmpty()) {
 			return list.get(0);
@@ -3670,12 +3626,13 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 * @throws NoSuchEmailAddressException if a matching email address could not be found
 	 */
 	@Override
-	public EmailAddress findByC_C_C_P_Last(long companyId, long classNameId,
-		long classPK, boolean primary,
-		OrderByComparator<EmailAddress> orderByComparator)
+	public EmailAddress findByC_C_C_P_Last(
+			long companyId, long classNameId, long classPK, boolean primary,
+			OrderByComparator<EmailAddress> orderByComparator)
 		throws NoSuchEmailAddressException {
-		EmailAddress emailAddress = fetchByC_C_C_P_Last(companyId, classNameId,
-				classPK, primary, orderByComparator);
+
+		EmailAddress emailAddress = fetchByC_C_C_P_Last(
+			companyId, classNameId, classPK, primary, orderByComparator);
 
 		if (emailAddress != null) {
 			return emailAddress;
@@ -3713,17 +3670,19 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 * @return the last matching email address, or <code>null</code> if a matching email address could not be found
 	 */
 	@Override
-	public EmailAddress fetchByC_C_C_P_Last(long companyId, long classNameId,
-		long classPK, boolean primary,
+	public EmailAddress fetchByC_C_C_P_Last(
+		long companyId, long classNameId, long classPK, boolean primary,
 		OrderByComparator<EmailAddress> orderByComparator) {
+
 		int count = countByC_C_C_P(companyId, classNameId, classPK, primary);
 
 		if (count == 0) {
 			return null;
 		}
 
-		List<EmailAddress> list = findByC_C_C_P(companyId, classNameId,
-				classPK, primary, count - 1, count, orderByComparator);
+		List<EmailAddress> list = findByC_C_C_P(
+			companyId, classNameId, classPK, primary, count - 1, count,
+			orderByComparator);
 
 		if (!list.isEmpty()) {
 			return list.get(0);
@@ -3745,10 +3704,11 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 * @throws NoSuchEmailAddressException if a email address with the primary key could not be found
 	 */
 	@Override
-	public EmailAddress[] findByC_C_C_P_PrevAndNext(long emailAddressId,
-		long companyId, long classNameId, long classPK, boolean primary,
-		OrderByComparator<EmailAddress> orderByComparator)
+	public EmailAddress[] findByC_C_C_P_PrevAndNext(
+			long emailAddressId, long companyId, long classNameId, long classPK,
+			boolean primary, OrderByComparator<EmailAddress> orderByComparator)
 		throws NoSuchEmailAddressException {
+
 		EmailAddress emailAddress = findByPrimaryKey(emailAddressId);
 
 		Session session = null;
@@ -3758,15 +3718,15 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 
 			EmailAddress[] array = new EmailAddressImpl[3];
 
-			array[0] = getByC_C_C_P_PrevAndNext(session, emailAddress,
-					companyId, classNameId, classPK, primary,
-					orderByComparator, true);
+			array[0] = getByC_C_C_P_PrevAndNext(
+				session, emailAddress, companyId, classNameId, classPK, primary,
+				orderByComparator, true);
 
 			array[1] = emailAddress;
 
-			array[2] = getByC_C_C_P_PrevAndNext(session, emailAddress,
-					companyId, classNameId, classPK, primary,
-					orderByComparator, false);
+			array[2] = getByC_C_C_P_PrevAndNext(
+				session, emailAddress, companyId, classNameId, classPK, primary,
+				orderByComparator, false);
 
 			return array;
 		}
@@ -3778,15 +3738,16 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 		}
 	}
 
-	protected EmailAddress getByC_C_C_P_PrevAndNext(Session session,
-		EmailAddress emailAddress, long companyId, long classNameId,
-		long classPK, boolean primary,
+	protected EmailAddress getByC_C_C_P_PrevAndNext(
+		Session session, EmailAddress emailAddress, long companyId,
+		long classNameId, long classPK, boolean primary,
 		OrderByComparator<EmailAddress> orderByComparator, boolean previous) {
+
 		StringBundler query = null;
 
 		if (orderByComparator != null) {
-			query = new StringBundler(7 +
-					(orderByComparator.getOrderByConditionFields().length * 3) +
+			query = new StringBundler(
+				7 + (orderByComparator.getOrderByConditionFields().length * 3) +
 					(orderByComparator.getOrderByFields().length * 3));
 		}
 		else {
@@ -3804,7 +3765,8 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 		query.append(_FINDER_COLUMN_C_C_C_P_PRIMARY_2);
 
 		if (orderByComparator != null) {
-			String[] orderByConditionFields = orderByComparator.getOrderByConditionFields();
+			String[] orderByConditionFields =
+				orderByComparator.getOrderByConditionFields();
 
 			if (orderByConditionFields.length > 0) {
 				query.append(WHERE_AND);
@@ -3880,10 +3842,10 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 		qPos.add(primary);
 
 		if (orderByComparator != null) {
-			Object[] values = orderByComparator.getOrderByConditionValues(emailAddress);
+			for (Object orderByConditionValue :
+					orderByComparator.getOrderByConditionValues(emailAddress)) {
 
-			for (Object value : values) {
-				qPos.add(value);
+				qPos.add(orderByConditionValue);
 			}
 		}
 
@@ -3906,10 +3868,14 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 * @param primary the primary
 	 */
 	@Override
-	public void removeByC_C_C_P(long companyId, long classNameId, long classPK,
-		boolean primary) {
-		for (EmailAddress emailAddress : findByC_C_C_P(companyId, classNameId,
-				classPK, primary, QueryUtil.ALL_POS, QueryUtil.ALL_POS, null)) {
+	public void removeByC_C_C_P(
+		long companyId, long classNameId, long classPK, boolean primary) {
+
+		for (EmailAddress emailAddress :
+				findByC_C_C_P(
+					companyId, classNameId, classPK, primary, QueryUtil.ALL_POS,
+					QueryUtil.ALL_POS, null)) {
+
 			remove(emailAddress);
 		}
 	}
@@ -3924,15 +3890,17 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 * @return the number of matching email addresses
 	 */
 	@Override
-	public int countByC_C_C_P(long companyId, long classNameId, long classPK,
-		boolean primary) {
-		FinderPath finderPath = FINDER_PATH_COUNT_BY_C_C_C_P;
+	public int countByC_C_C_P(
+		long companyId, long classNameId, long classPK, boolean primary) {
+
+		FinderPath finderPath = _finderPathCountByC_C_C_P;
 
 		Object[] finderArgs = new Object[] {
-				companyId, classNameId, classPK, primary
-			};
+			companyId, classNameId, classPK, primary
+		};
 
-		Long count = (Long)finderCache.getResult(finderPath, finderArgs, this);
+		Long count = (Long)FinderCacheUtil.getResult(
+			finderPath, finderArgs, this);
 
 		if (count == null) {
 			StringBundler query = new StringBundler(5);
@@ -3968,10 +3936,10 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 
 				count = (Long)q.uniqueResult();
 
-				finderCache.putResult(finderPath, finderArgs, count);
+				FinderCacheUtil.putResult(finderPath, finderArgs, count);
 			}
 			catch (Exception e) {
-				finderCache.removeResult(finderPath, finderArgs);
+				FinderCacheUtil.removeResult(finderPath, finderArgs);
 
 				throw processException(e);
 			}
@@ -3983,32 +3951,31 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 		return count.intValue();
 	}
 
-	private static final String _FINDER_COLUMN_C_C_C_P_COMPANYID_2 = "emailAddress.companyId = ? AND ";
-	private static final String _FINDER_COLUMN_C_C_C_P_CLASSNAMEID_2 = "emailAddress.classNameId = ? AND ";
-	private static final String _FINDER_COLUMN_C_C_C_P_CLASSPK_2 = "emailAddress.classPK = ? AND ";
-	private static final String _FINDER_COLUMN_C_C_C_P_PRIMARY_2 = "emailAddress.primary = ?";
+	private static final String _FINDER_COLUMN_C_C_C_P_COMPANYID_2 =
+		"emailAddress.companyId = ? AND ";
+
+	private static final String _FINDER_COLUMN_C_C_C_P_CLASSNAMEID_2 =
+		"emailAddress.classNameId = ? AND ";
+
+	private static final String _FINDER_COLUMN_C_C_C_P_CLASSPK_2 =
+		"emailAddress.classPK = ? AND ";
+
+	private static final String _FINDER_COLUMN_C_C_C_P_PRIMARY_2 =
+		"emailAddress.primary = ?";
 
 	public EmailAddressPersistenceImpl() {
 		setModelClass(EmailAddress.class);
 
-		try {
-			Field field = BasePersistenceImpl.class.getDeclaredField(
-					"_dbColumnNames");
+		setModelImplClass(EmailAddressImpl.class);
+		setModelPKClass(long.class);
+		setEntityCacheEnabled(EmailAddressModelImpl.ENTITY_CACHE_ENABLED);
 
-			field.setAccessible(true);
+		Map<String, String> dbColumnNames = new HashMap<String, String>();
 
-			Map<String, String> dbColumnNames = new HashMap<String, String>();
+		dbColumnNames.put("uuid", "uuid_");
+		dbColumnNames.put("primary", "primary_");
 
-			dbColumnNames.put("uuid", "uuid_");
-			dbColumnNames.put("primary", "primary_");
-
-			field.set(this, dbColumnNames);
-		}
-		catch (Exception e) {
-			if (_log.isDebugEnabled()) {
-				_log.debug(e, e);
-			}
-		}
+		setDBColumnNames(dbColumnNames);
 	}
 
 	/**
@@ -4018,8 +3985,9 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 */
 	@Override
 	public void cacheResult(EmailAddress emailAddress) {
-		entityCache.putResult(EmailAddressModelImpl.ENTITY_CACHE_ENABLED,
-			EmailAddressImpl.class, emailAddress.getPrimaryKey(), emailAddress);
+		EntityCacheUtil.putResult(
+			EmailAddressModelImpl.ENTITY_CACHE_ENABLED, EmailAddressImpl.class,
+			emailAddress.getPrimaryKey(), emailAddress);
 
 		emailAddress.resetOriginalValues();
 	}
@@ -4032,9 +4000,11 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	@Override
 	public void cacheResult(List<EmailAddress> emailAddresses) {
 		for (EmailAddress emailAddress : emailAddresses) {
-			if (entityCache.getResult(
-						EmailAddressModelImpl.ENTITY_CACHE_ENABLED,
-						EmailAddressImpl.class, emailAddress.getPrimaryKey()) == null) {
+			if (EntityCacheUtil.getResult(
+					EmailAddressModelImpl.ENTITY_CACHE_ENABLED,
+					EmailAddressImpl.class, emailAddress.getPrimaryKey()) ==
+						null) {
+
 				cacheResult(emailAddress);
 			}
 			else {
@@ -4047,41 +4017,43 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 * Clears the cache for all email addresses.
 	 *
 	 * <p>
-	 * The {@link EntityCache} and {@link FinderCache} are both cleared by this method.
+	 * The <code>EntityCache</code> and <code>com.liferay.portal.kernel.dao.orm.FinderCache</code> are both cleared by this method.
 	 * </p>
 	 */
 	@Override
 	public void clearCache() {
-		entityCache.clearCache(EmailAddressImpl.class);
+		EntityCacheUtil.clearCache(EmailAddressImpl.class);
 
-		finderCache.clearCache(FINDER_CLASS_NAME_ENTITY);
-		finderCache.clearCache(FINDER_CLASS_NAME_LIST_WITH_PAGINATION);
-		finderCache.clearCache(FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION);
+		FinderCacheUtil.clearCache(FINDER_CLASS_NAME_ENTITY);
+		FinderCacheUtil.clearCache(FINDER_CLASS_NAME_LIST_WITH_PAGINATION);
+		FinderCacheUtil.clearCache(FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION);
 	}
 
 	/**
 	 * Clears the cache for the email address.
 	 *
 	 * <p>
-	 * The {@link EntityCache} and {@link FinderCache} are both cleared by this method.
+	 * The <code>EntityCache</code> and <code>com.liferay.portal.kernel.dao.orm.FinderCache</code> are both cleared by this method.
 	 * </p>
 	 */
 	@Override
 	public void clearCache(EmailAddress emailAddress) {
-		entityCache.removeResult(EmailAddressModelImpl.ENTITY_CACHE_ENABLED,
-			EmailAddressImpl.class, emailAddress.getPrimaryKey());
+		EntityCacheUtil.removeResult(
+			EmailAddressModelImpl.ENTITY_CACHE_ENABLED, EmailAddressImpl.class,
+			emailAddress.getPrimaryKey());
 
-		finderCache.clearCache(FINDER_CLASS_NAME_LIST_WITH_PAGINATION);
-		finderCache.clearCache(FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION);
+		FinderCacheUtil.clearCache(FINDER_CLASS_NAME_LIST_WITH_PAGINATION);
+		FinderCacheUtil.clearCache(FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION);
 	}
 
 	@Override
 	public void clearCache(List<EmailAddress> emailAddresses) {
-		finderCache.clearCache(FINDER_CLASS_NAME_LIST_WITH_PAGINATION);
-		finderCache.clearCache(FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION);
+		FinderCacheUtil.clearCache(FINDER_CLASS_NAME_LIST_WITH_PAGINATION);
+		FinderCacheUtil.clearCache(FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION);
 
 		for (EmailAddress emailAddress : emailAddresses) {
-			entityCache.removeResult(EmailAddressModelImpl.ENTITY_CACHE_ENABLED,
+			EntityCacheUtil.removeResult(
+				EmailAddressModelImpl.ENTITY_CACHE_ENABLED,
 				EmailAddressImpl.class, emailAddress.getPrimaryKey());
 		}
 	}
@@ -4103,7 +4075,7 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 
 		emailAddress.setUuid(uuid);
 
-		emailAddress.setCompanyId(companyProvider.getCompanyId());
+		emailAddress.setCompanyId(CompanyThreadLocal.getCompanyId());
 
 		return emailAddress;
 	}
@@ -4118,6 +4090,7 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	@Override
 	public EmailAddress remove(long emailAddressId)
 		throws NoSuchEmailAddressException {
+
 		return remove((Serializable)emailAddressId);
 	}
 
@@ -4131,21 +4104,22 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	@Override
 	public EmailAddress remove(Serializable primaryKey)
 		throws NoSuchEmailAddressException {
+
 		Session session = null;
 
 		try {
 			session = openSession();
 
-			EmailAddress emailAddress = (EmailAddress)session.get(EmailAddressImpl.class,
-					primaryKey);
+			EmailAddress emailAddress = (EmailAddress)session.get(
+				EmailAddressImpl.class, primaryKey);
 
 			if (emailAddress == null) {
 				if (_log.isDebugEnabled()) {
 					_log.debug(_NO_SUCH_ENTITY_WITH_PRIMARY_KEY + primaryKey);
 				}
 
-				throw new NoSuchEmailAddressException(_NO_SUCH_ENTITY_WITH_PRIMARY_KEY +
-					primaryKey);
+				throw new NoSuchEmailAddressException(
+					_NO_SUCH_ENTITY_WITH_PRIMARY_KEY + primaryKey);
 			}
 
 			return remove(emailAddress);
@@ -4163,16 +4137,14 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 
 	@Override
 	protected EmailAddress removeImpl(EmailAddress emailAddress) {
-		emailAddress = toUnwrappedModel(emailAddress);
-
 		Session session = null;
 
 		try {
 			session = openSession();
 
 			if (!session.contains(emailAddress)) {
-				emailAddress = (EmailAddress)session.get(EmailAddressImpl.class,
-						emailAddress.getPrimaryKeyObj());
+				emailAddress = (EmailAddress)session.get(
+					EmailAddressImpl.class, emailAddress.getPrimaryKeyObj());
 			}
 
 			if (emailAddress != null) {
@@ -4195,11 +4167,27 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 
 	@Override
 	public EmailAddress updateImpl(EmailAddress emailAddress) {
-		emailAddress = toUnwrappedModel(emailAddress);
-
 		boolean isNew = emailAddress.isNew();
 
-		EmailAddressModelImpl emailAddressModelImpl = (EmailAddressModelImpl)emailAddress;
+		if (!(emailAddress instanceof EmailAddressModelImpl)) {
+			InvocationHandler invocationHandler = null;
+
+			if (ProxyUtil.isProxyClass(emailAddress.getClass())) {
+				invocationHandler = ProxyUtil.getInvocationHandler(
+					emailAddress);
+
+				throw new IllegalArgumentException(
+					"Implement ModelWrapper in emailAddress proxy " +
+						invocationHandler.getClass());
+			}
+
+			throw new IllegalArgumentException(
+				"Implement ModelWrapper in custom EmailAddress implementation " +
+					emailAddress.getClass());
+		}
+
+		EmailAddressModelImpl emailAddressModelImpl =
+			(EmailAddressModelImpl)emailAddress;
 
 		if (Validator.isNull(emailAddress.getUuid())) {
 			String uuid = PortalUUIDUtil.generate();
@@ -4207,7 +4195,8 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 			emailAddress.setUuid(uuid);
 		}
 
-		ServiceContext serviceContext = ServiceContextThreadLocal.getServiceContext();
+		ServiceContext serviceContext =
+			ServiceContextThreadLocal.getServiceContext();
 
 		Date now = new Date();
 
@@ -4225,7 +4214,8 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 				emailAddress.setModifiedDate(now);
 			}
 			else {
-				emailAddress.setModifiedDate(serviceContext.getModifiedDate(now));
+				emailAddress.setModifiedDate(
+					serviceContext.getModifiedDate(now));
 			}
 		}
 
@@ -4250,256 +4240,243 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 			closeSession(session);
 		}
 
-		finderCache.clearCache(FINDER_CLASS_NAME_LIST_WITH_PAGINATION);
+		FinderCacheUtil.clearCache(FINDER_CLASS_NAME_LIST_WITH_PAGINATION);
 
 		if (!EmailAddressModelImpl.COLUMN_BITMASK_ENABLED) {
-			finderCache.clearCache(FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION);
+			FinderCacheUtil.clearCache(
+				FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION);
 		}
-		else
-		 if (isNew) {
-			Object[] args = new Object[] { emailAddressModelImpl.getUuid() };
+		else if (isNew) {
+			Object[] args = new Object[] {emailAddressModelImpl.getUuid()};
 
-			finderCache.removeResult(FINDER_PATH_COUNT_BY_UUID, args);
-			finderCache.removeResult(FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_UUID,
-				args);
+			FinderCacheUtil.removeResult(_finderPathCountByUuid, args);
+			FinderCacheUtil.removeResult(
+				_finderPathWithoutPaginationFindByUuid, args);
 
 			args = new Object[] {
+				emailAddressModelImpl.getUuid(),
+				emailAddressModelImpl.getCompanyId()
+			};
+
+			FinderCacheUtil.removeResult(_finderPathCountByUuid_C, args);
+			FinderCacheUtil.removeResult(
+				_finderPathWithoutPaginationFindByUuid_C, args);
+
+			args = new Object[] {emailAddressModelImpl.getCompanyId()};
+
+			FinderCacheUtil.removeResult(_finderPathCountByCompanyId, args);
+			FinderCacheUtil.removeResult(
+				_finderPathWithoutPaginationFindByCompanyId, args);
+
+			args = new Object[] {emailAddressModelImpl.getUserId()};
+
+			FinderCacheUtil.removeResult(_finderPathCountByUserId, args);
+			FinderCacheUtil.removeResult(
+				_finderPathWithoutPaginationFindByUserId, args);
+
+			args = new Object[] {
+				emailAddressModelImpl.getCompanyId(),
+				emailAddressModelImpl.getClassNameId()
+			};
+
+			FinderCacheUtil.removeResult(_finderPathCountByC_C, args);
+			FinderCacheUtil.removeResult(
+				_finderPathWithoutPaginationFindByC_C, args);
+
+			args = new Object[] {
+				emailAddressModelImpl.getCompanyId(),
+				emailAddressModelImpl.getClassNameId(),
+				emailAddressModelImpl.getClassPK()
+			};
+
+			FinderCacheUtil.removeResult(_finderPathCountByC_C_C, args);
+			FinderCacheUtil.removeResult(
+				_finderPathWithoutPaginationFindByC_C_C, args);
+
+			args = new Object[] {
+				emailAddressModelImpl.getCompanyId(),
+				emailAddressModelImpl.getClassNameId(),
+				emailAddressModelImpl.getClassPK(),
+				emailAddressModelImpl.isPrimary()
+			};
+
+			FinderCacheUtil.removeResult(_finderPathCountByC_C_C_P, args);
+			FinderCacheUtil.removeResult(
+				_finderPathWithoutPaginationFindByC_C_C_P, args);
+
+			FinderCacheUtil.removeResult(
+				_finderPathCountAll, FINDER_ARGS_EMPTY);
+			FinderCacheUtil.removeResult(
+				_finderPathWithoutPaginationFindAll, FINDER_ARGS_EMPTY);
+		}
+		else {
+			if ((emailAddressModelImpl.getColumnBitmask() &
+				 _finderPathWithoutPaginationFindByUuid.getColumnBitmask()) !=
+					 0) {
+
+				Object[] args = new Object[] {
+					emailAddressModelImpl.getOriginalUuid()
+				};
+
+				FinderCacheUtil.removeResult(_finderPathCountByUuid, args);
+				FinderCacheUtil.removeResult(
+					_finderPathWithoutPaginationFindByUuid, args);
+
+				args = new Object[] {emailAddressModelImpl.getUuid()};
+
+				FinderCacheUtil.removeResult(_finderPathCountByUuid, args);
+				FinderCacheUtil.removeResult(
+					_finderPathWithoutPaginationFindByUuid, args);
+			}
+
+			if ((emailAddressModelImpl.getColumnBitmask() &
+				 _finderPathWithoutPaginationFindByUuid_C.getColumnBitmask()) !=
+					 0) {
+
+				Object[] args = new Object[] {
+					emailAddressModelImpl.getOriginalUuid(),
+					emailAddressModelImpl.getOriginalCompanyId()
+				};
+
+				FinderCacheUtil.removeResult(_finderPathCountByUuid_C, args);
+				FinderCacheUtil.removeResult(
+					_finderPathWithoutPaginationFindByUuid_C, args);
+
+				args = new Object[] {
 					emailAddressModelImpl.getUuid(),
 					emailAddressModelImpl.getCompanyId()
 				};
 
-			finderCache.removeResult(FINDER_PATH_COUNT_BY_UUID_C, args);
-			finderCache.removeResult(FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_UUID_C,
-				args);
+				FinderCacheUtil.removeResult(_finderPathCountByUuid_C, args);
+				FinderCacheUtil.removeResult(
+					_finderPathWithoutPaginationFindByUuid_C, args);
+			}
 
-			args = new Object[] { emailAddressModelImpl.getCompanyId() };
+			if ((emailAddressModelImpl.getColumnBitmask() &
+				 _finderPathWithoutPaginationFindByCompanyId.
+					 getColumnBitmask()) != 0) {
 
-			finderCache.removeResult(FINDER_PATH_COUNT_BY_COMPANYID, args);
-			finderCache.removeResult(FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_COMPANYID,
-				args);
+				Object[] args = new Object[] {
+					emailAddressModelImpl.getOriginalCompanyId()
+				};
 
-			args = new Object[] { emailAddressModelImpl.getUserId() };
+				FinderCacheUtil.removeResult(_finderPathCountByCompanyId, args);
+				FinderCacheUtil.removeResult(
+					_finderPathWithoutPaginationFindByCompanyId, args);
 
-			finderCache.removeResult(FINDER_PATH_COUNT_BY_USERID, args);
-			finderCache.removeResult(FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_USERID,
-				args);
+				args = new Object[] {emailAddressModelImpl.getCompanyId()};
 
-			args = new Object[] {
+				FinderCacheUtil.removeResult(_finderPathCountByCompanyId, args);
+				FinderCacheUtil.removeResult(
+					_finderPathWithoutPaginationFindByCompanyId, args);
+			}
+
+			if ((emailAddressModelImpl.getColumnBitmask() &
+				 _finderPathWithoutPaginationFindByUserId.getColumnBitmask()) !=
+					 0) {
+
+				Object[] args = new Object[] {
+					emailAddressModelImpl.getOriginalUserId()
+				};
+
+				FinderCacheUtil.removeResult(_finderPathCountByUserId, args);
+				FinderCacheUtil.removeResult(
+					_finderPathWithoutPaginationFindByUserId, args);
+
+				args = new Object[] {emailAddressModelImpl.getUserId()};
+
+				FinderCacheUtil.removeResult(_finderPathCountByUserId, args);
+				FinderCacheUtil.removeResult(
+					_finderPathWithoutPaginationFindByUserId, args);
+			}
+
+			if ((emailAddressModelImpl.getColumnBitmask() &
+				 _finderPathWithoutPaginationFindByC_C.getColumnBitmask()) !=
+					 0) {
+
+				Object[] args = new Object[] {
+					emailAddressModelImpl.getOriginalCompanyId(),
+					emailAddressModelImpl.getOriginalClassNameId()
+				};
+
+				FinderCacheUtil.removeResult(_finderPathCountByC_C, args);
+				FinderCacheUtil.removeResult(
+					_finderPathWithoutPaginationFindByC_C, args);
+
+				args = new Object[] {
 					emailAddressModelImpl.getCompanyId(),
 					emailAddressModelImpl.getClassNameId()
 				};
 
-			finderCache.removeResult(FINDER_PATH_COUNT_BY_C_C, args);
-			finderCache.removeResult(FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_C_C,
-				args);
+				FinderCacheUtil.removeResult(_finderPathCountByC_C, args);
+				FinderCacheUtil.removeResult(
+					_finderPathWithoutPaginationFindByC_C, args);
+			}
 
-			args = new Object[] {
+			if ((emailAddressModelImpl.getColumnBitmask() &
+				 _finderPathWithoutPaginationFindByC_C_C.getColumnBitmask()) !=
+					 0) {
+
+				Object[] args = new Object[] {
+					emailAddressModelImpl.getOriginalCompanyId(),
+					emailAddressModelImpl.getOriginalClassNameId(),
+					emailAddressModelImpl.getOriginalClassPK()
+				};
+
+				FinderCacheUtil.removeResult(_finderPathCountByC_C_C, args);
+				FinderCacheUtil.removeResult(
+					_finderPathWithoutPaginationFindByC_C_C, args);
+
+				args = new Object[] {
 					emailAddressModelImpl.getCompanyId(),
 					emailAddressModelImpl.getClassNameId(),
 					emailAddressModelImpl.getClassPK()
 				};
 
-			finderCache.removeResult(FINDER_PATH_COUNT_BY_C_C_C, args);
-			finderCache.removeResult(FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_C_C_C,
-				args);
+				FinderCacheUtil.removeResult(_finderPathCountByC_C_C, args);
+				FinderCacheUtil.removeResult(
+					_finderPathWithoutPaginationFindByC_C_C, args);
+			}
 
-			args = new Object[] {
+			if ((emailAddressModelImpl.getColumnBitmask() &
+				 _finderPathWithoutPaginationFindByC_C_C_P.
+					 getColumnBitmask()) != 0) {
+
+				Object[] args = new Object[] {
+					emailAddressModelImpl.getOriginalCompanyId(),
+					emailAddressModelImpl.getOriginalClassNameId(),
+					emailAddressModelImpl.getOriginalClassPK(),
+					emailAddressModelImpl.getOriginalPrimary()
+				};
+
+				FinderCacheUtil.removeResult(_finderPathCountByC_C_C_P, args);
+				FinderCacheUtil.removeResult(
+					_finderPathWithoutPaginationFindByC_C_C_P, args);
+
+				args = new Object[] {
 					emailAddressModelImpl.getCompanyId(),
 					emailAddressModelImpl.getClassNameId(),
 					emailAddressModelImpl.getClassPK(),
-					emailAddressModelImpl.getPrimary()
+					emailAddressModelImpl.isPrimary()
 				};
 
-			finderCache.removeResult(FINDER_PATH_COUNT_BY_C_C_C_P, args);
-			finderCache.removeResult(FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_C_C_C_P,
-				args);
-
-			finderCache.removeResult(FINDER_PATH_COUNT_ALL, FINDER_ARGS_EMPTY);
-			finderCache.removeResult(FINDER_PATH_WITHOUT_PAGINATION_FIND_ALL,
-				FINDER_ARGS_EMPTY);
-		}
-
-		else {
-			if ((emailAddressModelImpl.getColumnBitmask() &
-					FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_UUID.getColumnBitmask()) != 0) {
-				Object[] args = new Object[] {
-						emailAddressModelImpl.getOriginalUuid()
-					};
-
-				finderCache.removeResult(FINDER_PATH_COUNT_BY_UUID, args);
-				finderCache.removeResult(FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_UUID,
-					args);
-
-				args = new Object[] { emailAddressModelImpl.getUuid() };
-
-				finderCache.removeResult(FINDER_PATH_COUNT_BY_UUID, args);
-				finderCache.removeResult(FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_UUID,
-					args);
-			}
-
-			if ((emailAddressModelImpl.getColumnBitmask() &
-					FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_UUID_C.getColumnBitmask()) != 0) {
-				Object[] args = new Object[] {
-						emailAddressModelImpl.getOriginalUuid(),
-						emailAddressModelImpl.getOriginalCompanyId()
-					};
-
-				finderCache.removeResult(FINDER_PATH_COUNT_BY_UUID_C, args);
-				finderCache.removeResult(FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_UUID_C,
-					args);
-
-				args = new Object[] {
-						emailAddressModelImpl.getUuid(),
-						emailAddressModelImpl.getCompanyId()
-					};
-
-				finderCache.removeResult(FINDER_PATH_COUNT_BY_UUID_C, args);
-				finderCache.removeResult(FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_UUID_C,
-					args);
-			}
-
-			if ((emailAddressModelImpl.getColumnBitmask() &
-					FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_COMPANYID.getColumnBitmask()) != 0) {
-				Object[] args = new Object[] {
-						emailAddressModelImpl.getOriginalCompanyId()
-					};
-
-				finderCache.removeResult(FINDER_PATH_COUNT_BY_COMPANYID, args);
-				finderCache.removeResult(FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_COMPANYID,
-					args);
-
-				args = new Object[] { emailAddressModelImpl.getCompanyId() };
-
-				finderCache.removeResult(FINDER_PATH_COUNT_BY_COMPANYID, args);
-				finderCache.removeResult(FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_COMPANYID,
-					args);
-			}
-
-			if ((emailAddressModelImpl.getColumnBitmask() &
-					FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_USERID.getColumnBitmask()) != 0) {
-				Object[] args = new Object[] {
-						emailAddressModelImpl.getOriginalUserId()
-					};
-
-				finderCache.removeResult(FINDER_PATH_COUNT_BY_USERID, args);
-				finderCache.removeResult(FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_USERID,
-					args);
-
-				args = new Object[] { emailAddressModelImpl.getUserId() };
-
-				finderCache.removeResult(FINDER_PATH_COUNT_BY_USERID, args);
-				finderCache.removeResult(FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_USERID,
-					args);
-			}
-
-			if ((emailAddressModelImpl.getColumnBitmask() &
-					FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_C_C.getColumnBitmask()) != 0) {
-				Object[] args = new Object[] {
-						emailAddressModelImpl.getOriginalCompanyId(),
-						emailAddressModelImpl.getOriginalClassNameId()
-					};
-
-				finderCache.removeResult(FINDER_PATH_COUNT_BY_C_C, args);
-				finderCache.removeResult(FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_C_C,
-					args);
-
-				args = new Object[] {
-						emailAddressModelImpl.getCompanyId(),
-						emailAddressModelImpl.getClassNameId()
-					};
-
-				finderCache.removeResult(FINDER_PATH_COUNT_BY_C_C, args);
-				finderCache.removeResult(FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_C_C,
-					args);
-			}
-
-			if ((emailAddressModelImpl.getColumnBitmask() &
-					FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_C_C_C.getColumnBitmask()) != 0) {
-				Object[] args = new Object[] {
-						emailAddressModelImpl.getOriginalCompanyId(),
-						emailAddressModelImpl.getOriginalClassNameId(),
-						emailAddressModelImpl.getOriginalClassPK()
-					};
-
-				finderCache.removeResult(FINDER_PATH_COUNT_BY_C_C_C, args);
-				finderCache.removeResult(FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_C_C_C,
-					args);
-
-				args = new Object[] {
-						emailAddressModelImpl.getCompanyId(),
-						emailAddressModelImpl.getClassNameId(),
-						emailAddressModelImpl.getClassPK()
-					};
-
-				finderCache.removeResult(FINDER_PATH_COUNT_BY_C_C_C, args);
-				finderCache.removeResult(FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_C_C_C,
-					args);
-			}
-
-			if ((emailAddressModelImpl.getColumnBitmask() &
-					FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_C_C_C_P.getColumnBitmask()) != 0) {
-				Object[] args = new Object[] {
-						emailAddressModelImpl.getOriginalCompanyId(),
-						emailAddressModelImpl.getOriginalClassNameId(),
-						emailAddressModelImpl.getOriginalClassPK(),
-						emailAddressModelImpl.getOriginalPrimary()
-					};
-
-				finderCache.removeResult(FINDER_PATH_COUNT_BY_C_C_C_P, args);
-				finderCache.removeResult(FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_C_C_C_P,
-					args);
-
-				args = new Object[] {
-						emailAddressModelImpl.getCompanyId(),
-						emailAddressModelImpl.getClassNameId(),
-						emailAddressModelImpl.getClassPK(),
-						emailAddressModelImpl.getPrimary()
-					};
-
-				finderCache.removeResult(FINDER_PATH_COUNT_BY_C_C_C_P, args);
-				finderCache.removeResult(FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_C_C_C_P,
-					args);
+				FinderCacheUtil.removeResult(_finderPathCountByC_C_C_P, args);
+				FinderCacheUtil.removeResult(
+					_finderPathWithoutPaginationFindByC_C_C_P, args);
 			}
 		}
 
-		entityCache.putResult(EmailAddressModelImpl.ENTITY_CACHE_ENABLED,
-			EmailAddressImpl.class, emailAddress.getPrimaryKey(), emailAddress,
-			false);
+		EntityCacheUtil.putResult(
+			EmailAddressModelImpl.ENTITY_CACHE_ENABLED, EmailAddressImpl.class,
+			emailAddress.getPrimaryKey(), emailAddress, false);
 
 		emailAddress.resetOriginalValues();
 
 		return emailAddress;
 	}
 
-	protected EmailAddress toUnwrappedModel(EmailAddress emailAddress) {
-		if (emailAddress instanceof EmailAddressImpl) {
-			return emailAddress;
-		}
-
-		EmailAddressImpl emailAddressImpl = new EmailAddressImpl();
-
-		emailAddressImpl.setNew(emailAddress.isNew());
-		emailAddressImpl.setPrimaryKey(emailAddress.getPrimaryKey());
-
-		emailAddressImpl.setMvccVersion(emailAddress.getMvccVersion());
-		emailAddressImpl.setUuid(emailAddress.getUuid());
-		emailAddressImpl.setEmailAddressId(emailAddress.getEmailAddressId());
-		emailAddressImpl.setCompanyId(emailAddress.getCompanyId());
-		emailAddressImpl.setUserId(emailAddress.getUserId());
-		emailAddressImpl.setUserName(emailAddress.getUserName());
-		emailAddressImpl.setCreateDate(emailAddress.getCreateDate());
-		emailAddressImpl.setModifiedDate(emailAddress.getModifiedDate());
-		emailAddressImpl.setClassNameId(emailAddress.getClassNameId());
-		emailAddressImpl.setClassPK(emailAddress.getClassPK());
-		emailAddressImpl.setAddress(emailAddress.getAddress());
-		emailAddressImpl.setTypeId(emailAddress.getTypeId());
-		emailAddressImpl.setPrimary(emailAddress.isPrimary());
-
-		return emailAddressImpl;
-	}
-
 	/**
-	 * Returns the email address with the primary key or throws a {@link com.liferay.portal.kernel.exception.NoSuchModelException} if it could not be found.
+	 * Returns the email address with the primary key or throws a <code>com.liferay.portal.kernel.exception.NoSuchModelException</code> if it could not be found.
 	 *
 	 * @param primaryKey the primary key of the email address
 	 * @return the email address
@@ -4508,6 +4485,7 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	@Override
 	public EmailAddress findByPrimaryKey(Serializable primaryKey)
 		throws NoSuchEmailAddressException {
+
 		EmailAddress emailAddress = fetchByPrimaryKey(primaryKey);
 
 		if (emailAddress == null) {
@@ -4515,15 +4493,15 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 				_log.debug(_NO_SUCH_ENTITY_WITH_PRIMARY_KEY + primaryKey);
 			}
 
-			throw new NoSuchEmailAddressException(_NO_SUCH_ENTITY_WITH_PRIMARY_KEY +
-				primaryKey);
+			throw new NoSuchEmailAddressException(
+				_NO_SUCH_ENTITY_WITH_PRIMARY_KEY + primaryKey);
 		}
 
 		return emailAddress;
 	}
 
 	/**
-	 * Returns the email address with the primary key or throws a {@link NoSuchEmailAddressException} if it could not be found.
+	 * Returns the email address with the primary key or throws a <code>NoSuchEmailAddressException</code> if it could not be found.
 	 *
 	 * @param emailAddressId the primary key of the email address
 	 * @return the email address
@@ -4532,55 +4510,8 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	@Override
 	public EmailAddress findByPrimaryKey(long emailAddressId)
 		throws NoSuchEmailAddressException {
+
 		return findByPrimaryKey((Serializable)emailAddressId);
-	}
-
-	/**
-	 * Returns the email address with the primary key or returns <code>null</code> if it could not be found.
-	 *
-	 * @param primaryKey the primary key of the email address
-	 * @return the email address, or <code>null</code> if a email address with the primary key could not be found
-	 */
-	@Override
-	public EmailAddress fetchByPrimaryKey(Serializable primaryKey) {
-		Serializable serializable = entityCache.getResult(EmailAddressModelImpl.ENTITY_CACHE_ENABLED,
-				EmailAddressImpl.class, primaryKey);
-
-		if (serializable == nullModel) {
-			return null;
-		}
-
-		EmailAddress emailAddress = (EmailAddress)serializable;
-
-		if (emailAddress == null) {
-			Session session = null;
-
-			try {
-				session = openSession();
-
-				emailAddress = (EmailAddress)session.get(EmailAddressImpl.class,
-						primaryKey);
-
-				if (emailAddress != null) {
-					cacheResult(emailAddress);
-				}
-				else {
-					entityCache.putResult(EmailAddressModelImpl.ENTITY_CACHE_ENABLED,
-						EmailAddressImpl.class, primaryKey, nullModel);
-				}
-			}
-			catch (Exception e) {
-				entityCache.removeResult(EmailAddressModelImpl.ENTITY_CACHE_ENABLED,
-					EmailAddressImpl.class, primaryKey);
-
-				throw processException(e);
-			}
-			finally {
-				closeSession(session);
-			}
-		}
-
-		return emailAddress;
 	}
 
 	/**
@@ -4592,100 +4523,6 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	@Override
 	public EmailAddress fetchByPrimaryKey(long emailAddressId) {
 		return fetchByPrimaryKey((Serializable)emailAddressId);
-	}
-
-	@Override
-	public Map<Serializable, EmailAddress> fetchByPrimaryKeys(
-		Set<Serializable> primaryKeys) {
-		if (primaryKeys.isEmpty()) {
-			return Collections.emptyMap();
-		}
-
-		Map<Serializable, EmailAddress> map = new HashMap<Serializable, EmailAddress>();
-
-		if (primaryKeys.size() == 1) {
-			Iterator<Serializable> iterator = primaryKeys.iterator();
-
-			Serializable primaryKey = iterator.next();
-
-			EmailAddress emailAddress = fetchByPrimaryKey(primaryKey);
-
-			if (emailAddress != null) {
-				map.put(primaryKey, emailAddress);
-			}
-
-			return map;
-		}
-
-		Set<Serializable> uncachedPrimaryKeys = null;
-
-		for (Serializable primaryKey : primaryKeys) {
-			Serializable serializable = entityCache.getResult(EmailAddressModelImpl.ENTITY_CACHE_ENABLED,
-					EmailAddressImpl.class, primaryKey);
-
-			if (serializable != nullModel) {
-				if (serializable == null) {
-					if (uncachedPrimaryKeys == null) {
-						uncachedPrimaryKeys = new HashSet<Serializable>();
-					}
-
-					uncachedPrimaryKeys.add(primaryKey);
-				}
-				else {
-					map.put(primaryKey, (EmailAddress)serializable);
-				}
-			}
-		}
-
-		if (uncachedPrimaryKeys == null) {
-			return map;
-		}
-
-		StringBundler query = new StringBundler((uncachedPrimaryKeys.size() * 2) +
-				1);
-
-		query.append(_SQL_SELECT_EMAILADDRESS_WHERE_PKS_IN);
-
-		for (Serializable primaryKey : uncachedPrimaryKeys) {
-			query.append((long)primaryKey);
-
-			query.append(",");
-		}
-
-		query.setIndex(query.index() - 1);
-
-		query.append(")");
-
-		String sql = query.toString();
-
-		Session session = null;
-
-		try {
-			session = openSession();
-
-			Query q = session.createQuery(sql);
-
-			for (EmailAddress emailAddress : (List<EmailAddress>)q.list()) {
-				map.put(emailAddress.getPrimaryKeyObj(), emailAddress);
-
-				cacheResult(emailAddress);
-
-				uncachedPrimaryKeys.remove(emailAddress.getPrimaryKeyObj());
-			}
-
-			for (Serializable primaryKey : uncachedPrimaryKeys) {
-				entityCache.putResult(EmailAddressModelImpl.ENTITY_CACHE_ENABLED,
-					EmailAddressImpl.class, primaryKey, nullModel);
-			}
-		}
-		catch (Exception e) {
-			throw processException(e);
-		}
-		finally {
-			closeSession(session);
-		}
-
-		return map;
 	}
 
 	/**
@@ -4702,7 +4539,7 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 * Returns a range of all the email addresses.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link EmailAddressModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>EmailAddressModelImpl</code>.
 	 * </p>
 	 *
 	 * @param start the lower bound of the range of email addresses
@@ -4718,7 +4555,7 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 * Returns an ordered range of all the email addresses.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link EmailAddressModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>EmailAddressModelImpl</code>.
 	 * </p>
 	 *
 	 * @param start the lower bound of the range of email addresses
@@ -4727,8 +4564,9 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 * @return the ordered range of email addresses
 	 */
 	@Override
-	public List<EmailAddress> findAll(int start, int end,
-		OrderByComparator<EmailAddress> orderByComparator) {
+	public List<EmailAddress> findAll(
+		int start, int end, OrderByComparator<EmailAddress> orderByComparator) {
+
 		return findAll(start, end, orderByComparator, true);
 	}
 
@@ -4736,39 +4574,41 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 * Returns an ordered range of all the email addresses.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link EmailAddressModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>EmailAddressModelImpl</code>.
 	 * </p>
 	 *
 	 * @param start the lower bound of the range of email addresses
 	 * @param end the upper bound of the range of email addresses (not inclusive)
 	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
-	 * @param retrieveFromCache whether to retrieve from the finder cache
+	 * @param useFinderCache whether to use the finder cache
 	 * @return the ordered range of email addresses
 	 */
 	@Override
-	public List<EmailAddress> findAll(int start, int end,
-		OrderByComparator<EmailAddress> orderByComparator,
-		boolean retrieveFromCache) {
-		boolean pagination = true;
+	public List<EmailAddress> findAll(
+		int start, int end, OrderByComparator<EmailAddress> orderByComparator,
+		boolean useFinderCache) {
+
 		FinderPath finderPath = null;
 		Object[] finderArgs = null;
 
 		if ((start == QueryUtil.ALL_POS) && (end == QueryUtil.ALL_POS) &&
-				(orderByComparator == null)) {
-			pagination = false;
-			finderPath = FINDER_PATH_WITHOUT_PAGINATION_FIND_ALL;
-			finderArgs = FINDER_ARGS_EMPTY;
+			(orderByComparator == null)) {
+
+			if (useFinderCache) {
+				finderPath = _finderPathWithoutPaginationFindAll;
+				finderArgs = FINDER_ARGS_EMPTY;
+			}
 		}
-		else {
-			finderPath = FINDER_PATH_WITH_PAGINATION_FIND_ALL;
-			finderArgs = new Object[] { start, end, orderByComparator };
+		else if (useFinderCache) {
+			finderPath = _finderPathWithPaginationFindAll;
+			finderArgs = new Object[] {start, end, orderByComparator};
 		}
 
 		List<EmailAddress> list = null;
 
-		if (retrieveFromCache) {
-			list = (List<EmailAddress>)finderCache.getResult(finderPath,
-					finderArgs, this);
+		if (useFinderCache) {
+			list = (List<EmailAddress>)FinderCacheUtil.getResult(
+				finderPath, finderArgs, this);
 		}
 
 		if (list == null) {
@@ -4776,22 +4616,20 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 			String sql = null;
 
 			if (orderByComparator != null) {
-				query = new StringBundler(2 +
-						(orderByComparator.getOrderByFields().length * 2));
+				query = new StringBundler(
+					2 + (orderByComparator.getOrderByFields().length * 2));
 
 				query.append(_SQL_SELECT_EMAILADDRESS);
 
-				appendOrderByComparator(query, _ORDER_BY_ENTITY_ALIAS,
-					orderByComparator);
+				appendOrderByComparator(
+					query, _ORDER_BY_ENTITY_ALIAS, orderByComparator);
 
 				sql = query.toString();
 			}
 			else {
 				sql = _SQL_SELECT_EMAILADDRESS;
 
-				if (pagination) {
-					sql = sql.concat(EmailAddressModelImpl.ORDER_BY_JPQL);
-				}
+				sql = sql.concat(EmailAddressModelImpl.ORDER_BY_JPQL);
 			}
 
 			Session session = null;
@@ -4801,25 +4639,19 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 
 				Query q = session.createQuery(sql);
 
-				if (!pagination) {
-					list = (List<EmailAddress>)QueryUtil.list(q, getDialect(),
-							start, end, false);
-
-					Collections.sort(list);
-
-					list = Collections.unmodifiableList(list);
-				}
-				else {
-					list = (List<EmailAddress>)QueryUtil.list(q, getDialect(),
-							start, end);
-				}
+				list = (List<EmailAddress>)QueryUtil.list(
+					q, getDialect(), start, end);
 
 				cacheResult(list);
 
-				finderCache.putResult(finderPath, finderArgs, list);
+				if (useFinderCache) {
+					FinderCacheUtil.putResult(finderPath, finderArgs, list);
+				}
 			}
 			catch (Exception e) {
-				finderCache.removeResult(finderPath, finderArgs);
+				if (useFinderCache) {
+					FinderCacheUtil.removeResult(finderPath, finderArgs);
+				}
 
 				throw processException(e);
 			}
@@ -4849,8 +4681,8 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 */
 	@Override
 	public int countAll() {
-		Long count = (Long)finderCache.getResult(FINDER_PATH_COUNT_ALL,
-				FINDER_ARGS_EMPTY, this);
+		Long count = (Long)FinderCacheUtil.getResult(
+			_finderPathCountAll, FINDER_ARGS_EMPTY, this);
 
 		if (count == null) {
 			Session session = null;
@@ -4862,12 +4694,12 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 
 				count = (Long)q.uniqueResult();
 
-				finderCache.putResult(FINDER_PATH_COUNT_ALL, FINDER_ARGS_EMPTY,
-					count);
+				FinderCacheUtil.putResult(
+					_finderPathCountAll, FINDER_ARGS_EMPTY, count);
 			}
 			catch (Exception e) {
-				finderCache.removeResult(FINDER_PATH_COUNT_ALL,
-					FINDER_ARGS_EMPTY);
+				FinderCacheUtil.removeResult(
+					_finderPathCountAll, FINDER_ARGS_EMPTY);
 
 				throw processException(e);
 			}
@@ -4885,6 +4717,21 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	}
 
 	@Override
+	protected EntityCache getEntityCache() {
+		return EntityCacheUtil.getEntityCache();
+	}
+
+	@Override
+	protected String getPKDBName() {
+		return "emailAddressId";
+	}
+
+	@Override
+	protected String getSelectSQL() {
+		return _SQL_SELECT_EMAILADDRESS;
+	}
+
+	@Override
 	protected Map<String, Integer> getTableColumnsMap() {
 		return EmailAddressModelImpl.TABLE_COLUMNS_MAP;
 	}
@@ -4893,29 +4740,238 @@ public class EmailAddressPersistenceImpl extends BasePersistenceImpl<EmailAddres
 	 * Initializes the email address persistence.
 	 */
 	public void afterPropertiesSet() {
+		_finderPathWithPaginationFindAll = new FinderPath(
+			EmailAddressModelImpl.ENTITY_CACHE_ENABLED,
+			EmailAddressModelImpl.FINDER_CACHE_ENABLED, EmailAddressImpl.class,
+			FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findAll", new String[0]);
+
+		_finderPathWithoutPaginationFindAll = new FinderPath(
+			EmailAddressModelImpl.ENTITY_CACHE_ENABLED,
+			EmailAddressModelImpl.FINDER_CACHE_ENABLED, EmailAddressImpl.class,
+			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findAll",
+			new String[0]);
+
+		_finderPathCountAll = new FinderPath(
+			EmailAddressModelImpl.ENTITY_CACHE_ENABLED,
+			EmailAddressModelImpl.FINDER_CACHE_ENABLED, Long.class,
+			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countAll",
+			new String[0]);
+
+		_finderPathWithPaginationFindByUuid = new FinderPath(
+			EmailAddressModelImpl.ENTITY_CACHE_ENABLED,
+			EmailAddressModelImpl.FINDER_CACHE_ENABLED, EmailAddressImpl.class,
+			FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByUuid",
+			new String[] {
+				String.class.getName(), Integer.class.getName(),
+				Integer.class.getName(), OrderByComparator.class.getName()
+			});
+
+		_finderPathWithoutPaginationFindByUuid = new FinderPath(
+			EmailAddressModelImpl.ENTITY_CACHE_ENABLED,
+			EmailAddressModelImpl.FINDER_CACHE_ENABLED, EmailAddressImpl.class,
+			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findByUuid",
+			new String[] {String.class.getName()},
+			EmailAddressModelImpl.UUID_COLUMN_BITMASK |
+			EmailAddressModelImpl.CREATEDATE_COLUMN_BITMASK);
+
+		_finderPathCountByUuid = new FinderPath(
+			EmailAddressModelImpl.ENTITY_CACHE_ENABLED,
+			EmailAddressModelImpl.FINDER_CACHE_ENABLED, Long.class,
+			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByUuid",
+			new String[] {String.class.getName()});
+
+		_finderPathWithPaginationFindByUuid_C = new FinderPath(
+			EmailAddressModelImpl.ENTITY_CACHE_ENABLED,
+			EmailAddressModelImpl.FINDER_CACHE_ENABLED, EmailAddressImpl.class,
+			FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByUuid_C",
+			new String[] {
+				String.class.getName(), Long.class.getName(),
+				Integer.class.getName(), Integer.class.getName(),
+				OrderByComparator.class.getName()
+			});
+
+		_finderPathWithoutPaginationFindByUuid_C = new FinderPath(
+			EmailAddressModelImpl.ENTITY_CACHE_ENABLED,
+			EmailAddressModelImpl.FINDER_CACHE_ENABLED, EmailAddressImpl.class,
+			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findByUuid_C",
+			new String[] {String.class.getName(), Long.class.getName()},
+			EmailAddressModelImpl.UUID_COLUMN_BITMASK |
+			EmailAddressModelImpl.COMPANYID_COLUMN_BITMASK |
+			EmailAddressModelImpl.CREATEDATE_COLUMN_BITMASK);
+
+		_finderPathCountByUuid_C = new FinderPath(
+			EmailAddressModelImpl.ENTITY_CACHE_ENABLED,
+			EmailAddressModelImpl.FINDER_CACHE_ENABLED, Long.class,
+			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByUuid_C",
+			new String[] {String.class.getName(), Long.class.getName()});
+
+		_finderPathWithPaginationFindByCompanyId = new FinderPath(
+			EmailAddressModelImpl.ENTITY_CACHE_ENABLED,
+			EmailAddressModelImpl.FINDER_CACHE_ENABLED, EmailAddressImpl.class,
+			FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByCompanyId",
+			new String[] {
+				Long.class.getName(), Integer.class.getName(),
+				Integer.class.getName(), OrderByComparator.class.getName()
+			});
+
+		_finderPathWithoutPaginationFindByCompanyId = new FinderPath(
+			EmailAddressModelImpl.ENTITY_CACHE_ENABLED,
+			EmailAddressModelImpl.FINDER_CACHE_ENABLED, EmailAddressImpl.class,
+			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findByCompanyId",
+			new String[] {Long.class.getName()},
+			EmailAddressModelImpl.COMPANYID_COLUMN_BITMASK |
+			EmailAddressModelImpl.CREATEDATE_COLUMN_BITMASK);
+
+		_finderPathCountByCompanyId = new FinderPath(
+			EmailAddressModelImpl.ENTITY_CACHE_ENABLED,
+			EmailAddressModelImpl.FINDER_CACHE_ENABLED, Long.class,
+			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByCompanyId",
+			new String[] {Long.class.getName()});
+
+		_finderPathWithPaginationFindByUserId = new FinderPath(
+			EmailAddressModelImpl.ENTITY_CACHE_ENABLED,
+			EmailAddressModelImpl.FINDER_CACHE_ENABLED, EmailAddressImpl.class,
+			FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByUserId",
+			new String[] {
+				Long.class.getName(), Integer.class.getName(),
+				Integer.class.getName(), OrderByComparator.class.getName()
+			});
+
+		_finderPathWithoutPaginationFindByUserId = new FinderPath(
+			EmailAddressModelImpl.ENTITY_CACHE_ENABLED,
+			EmailAddressModelImpl.FINDER_CACHE_ENABLED, EmailAddressImpl.class,
+			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findByUserId",
+			new String[] {Long.class.getName()},
+			EmailAddressModelImpl.USERID_COLUMN_BITMASK |
+			EmailAddressModelImpl.CREATEDATE_COLUMN_BITMASK);
+
+		_finderPathCountByUserId = new FinderPath(
+			EmailAddressModelImpl.ENTITY_CACHE_ENABLED,
+			EmailAddressModelImpl.FINDER_CACHE_ENABLED, Long.class,
+			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByUserId",
+			new String[] {Long.class.getName()});
+
+		_finderPathWithPaginationFindByC_C = new FinderPath(
+			EmailAddressModelImpl.ENTITY_CACHE_ENABLED,
+			EmailAddressModelImpl.FINDER_CACHE_ENABLED, EmailAddressImpl.class,
+			FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByC_C",
+			new String[] {
+				Long.class.getName(), Long.class.getName(),
+				Integer.class.getName(), Integer.class.getName(),
+				OrderByComparator.class.getName()
+			});
+
+		_finderPathWithoutPaginationFindByC_C = new FinderPath(
+			EmailAddressModelImpl.ENTITY_CACHE_ENABLED,
+			EmailAddressModelImpl.FINDER_CACHE_ENABLED, EmailAddressImpl.class,
+			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findByC_C",
+			new String[] {Long.class.getName(), Long.class.getName()},
+			EmailAddressModelImpl.COMPANYID_COLUMN_BITMASK |
+			EmailAddressModelImpl.CLASSNAMEID_COLUMN_BITMASK |
+			EmailAddressModelImpl.CREATEDATE_COLUMN_BITMASK);
+
+		_finderPathCountByC_C = new FinderPath(
+			EmailAddressModelImpl.ENTITY_CACHE_ENABLED,
+			EmailAddressModelImpl.FINDER_CACHE_ENABLED, Long.class,
+			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByC_C",
+			new String[] {Long.class.getName(), Long.class.getName()});
+
+		_finderPathWithPaginationFindByC_C_C = new FinderPath(
+			EmailAddressModelImpl.ENTITY_CACHE_ENABLED,
+			EmailAddressModelImpl.FINDER_CACHE_ENABLED, EmailAddressImpl.class,
+			FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByC_C_C",
+			new String[] {
+				Long.class.getName(), Long.class.getName(),
+				Long.class.getName(), Integer.class.getName(),
+				Integer.class.getName(), OrderByComparator.class.getName()
+			});
+
+		_finderPathWithoutPaginationFindByC_C_C = new FinderPath(
+			EmailAddressModelImpl.ENTITY_CACHE_ENABLED,
+			EmailAddressModelImpl.FINDER_CACHE_ENABLED, EmailAddressImpl.class,
+			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findByC_C_C",
+			new String[] {
+				Long.class.getName(), Long.class.getName(), Long.class.getName()
+			},
+			EmailAddressModelImpl.COMPANYID_COLUMN_BITMASK |
+			EmailAddressModelImpl.CLASSNAMEID_COLUMN_BITMASK |
+			EmailAddressModelImpl.CLASSPK_COLUMN_BITMASK |
+			EmailAddressModelImpl.CREATEDATE_COLUMN_BITMASK);
+
+		_finderPathCountByC_C_C = new FinderPath(
+			EmailAddressModelImpl.ENTITY_CACHE_ENABLED,
+			EmailAddressModelImpl.FINDER_CACHE_ENABLED, Long.class,
+			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByC_C_C",
+			new String[] {
+				Long.class.getName(), Long.class.getName(), Long.class.getName()
+			});
+
+		_finderPathWithPaginationFindByC_C_C_P = new FinderPath(
+			EmailAddressModelImpl.ENTITY_CACHE_ENABLED,
+			EmailAddressModelImpl.FINDER_CACHE_ENABLED, EmailAddressImpl.class,
+			FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByC_C_C_P",
+			new String[] {
+				Long.class.getName(), Long.class.getName(),
+				Long.class.getName(), Boolean.class.getName(),
+				Integer.class.getName(), Integer.class.getName(),
+				OrderByComparator.class.getName()
+			});
+
+		_finderPathWithoutPaginationFindByC_C_C_P = new FinderPath(
+			EmailAddressModelImpl.ENTITY_CACHE_ENABLED,
+			EmailAddressModelImpl.FINDER_CACHE_ENABLED, EmailAddressImpl.class,
+			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findByC_C_C_P",
+			new String[] {
+				Long.class.getName(), Long.class.getName(),
+				Long.class.getName(), Boolean.class.getName()
+			},
+			EmailAddressModelImpl.COMPANYID_COLUMN_BITMASK |
+			EmailAddressModelImpl.CLASSNAMEID_COLUMN_BITMASK |
+			EmailAddressModelImpl.CLASSPK_COLUMN_BITMASK |
+			EmailAddressModelImpl.PRIMARY_COLUMN_BITMASK |
+			EmailAddressModelImpl.CREATEDATE_COLUMN_BITMASK);
+
+		_finderPathCountByC_C_C_P = new FinderPath(
+			EmailAddressModelImpl.ENTITY_CACHE_ENABLED,
+			EmailAddressModelImpl.FINDER_CACHE_ENABLED, Long.class,
+			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByC_C_C_P",
+			new String[] {
+				Long.class.getName(), Long.class.getName(),
+				Long.class.getName(), Boolean.class.getName()
+			});
 	}
 
 	public void destroy() {
-		entityCache.removeCache(EmailAddressImpl.class.getName());
-		finderCache.removeCache(FINDER_CLASS_NAME_ENTITY);
-		finderCache.removeCache(FINDER_CLASS_NAME_LIST_WITH_PAGINATION);
-		finderCache.removeCache(FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION);
+		EntityCacheUtil.removeCache(EmailAddressImpl.class.getName());
+		FinderCacheUtil.removeCache(FINDER_CLASS_NAME_ENTITY);
+		FinderCacheUtil.removeCache(FINDER_CLASS_NAME_LIST_WITH_PAGINATION);
+		FinderCacheUtil.removeCache(FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION);
 	}
 
-	@BeanReference(type = CompanyProviderWrapper.class)
-	protected CompanyProvider companyProvider;
-	protected EntityCache entityCache = EntityCacheUtil.getEntityCache();
-	protected FinderCache finderCache = FinderCacheUtil.getFinderCache();
-	private static final String _SQL_SELECT_EMAILADDRESS = "SELECT emailAddress FROM EmailAddress emailAddress";
-	private static final String _SQL_SELECT_EMAILADDRESS_WHERE_PKS_IN = "SELECT emailAddress FROM EmailAddress emailAddress WHERE emailAddressId IN (";
-	private static final String _SQL_SELECT_EMAILADDRESS_WHERE = "SELECT emailAddress FROM EmailAddress emailAddress WHERE ";
-	private static final String _SQL_COUNT_EMAILADDRESS = "SELECT COUNT(emailAddress) FROM EmailAddress emailAddress";
-	private static final String _SQL_COUNT_EMAILADDRESS_WHERE = "SELECT COUNT(emailAddress) FROM EmailAddress emailAddress WHERE ";
+	private static final String _SQL_SELECT_EMAILADDRESS =
+		"SELECT emailAddress FROM EmailAddress emailAddress";
+
+	private static final String _SQL_SELECT_EMAILADDRESS_WHERE =
+		"SELECT emailAddress FROM EmailAddress emailAddress WHERE ";
+
+	private static final String _SQL_COUNT_EMAILADDRESS =
+		"SELECT COUNT(emailAddress) FROM EmailAddress emailAddress";
+
+	private static final String _SQL_COUNT_EMAILADDRESS_WHERE =
+		"SELECT COUNT(emailAddress) FROM EmailAddress emailAddress WHERE ";
+
 	private static final String _ORDER_BY_ENTITY_ALIAS = "emailAddress.";
-	private static final String _NO_SUCH_ENTITY_WITH_PRIMARY_KEY = "No EmailAddress exists with the primary key ";
-	private static final String _NO_SUCH_ENTITY_WITH_KEY = "No EmailAddress exists with the key {";
-	private static final Log _log = LogFactoryUtil.getLog(EmailAddressPersistenceImpl.class);
-	private static final Set<String> _badColumnNames = SetUtil.fromArray(new String[] {
-				"uuid", "primary"
-			});
+
+	private static final String _NO_SUCH_ENTITY_WITH_PRIMARY_KEY =
+		"No EmailAddress exists with the primary key ";
+
+	private static final String _NO_SUCH_ENTITY_WITH_KEY =
+		"No EmailAddress exists with the key {";
+
+	private static final Log _log = LogFactoryUtil.getLog(
+		EmailAddressPersistenceImpl.class);
+
+	private static final Set<String> _badColumnNames = SetUtil.fromArray(
+		new String[] {"uuid", "primary"});
+
 }

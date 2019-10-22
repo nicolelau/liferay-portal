@@ -82,9 +82,8 @@ public class UnicodeProperties extends HashMap<String, String> {
 		if (value == null) {
 			return defaultValue;
 		}
-		else {
-			return value;
-		}
+
+		return value;
 	}
 
 	public boolean isSafe() {
@@ -165,14 +164,6 @@ public class UnicodeProperties extends HashMap<String, String> {
 		return put(key, value);
 	}
 
-	/**
-	 * @deprecated As of 7.0.0, replaced by {@link #toString}
-	 */
-	@Deprecated
-	public String toSortedString() {
-		return toString();
-	}
-
 	@Override
 	public String toString() {
 		StringBundler sb = new StringBundler(4 * size());
@@ -200,7 +191,7 @@ public class UnicodeProperties extends HashMap<String, String> {
 	}
 
 	/**
-	 * @deprecated As of 7.0.0, with no direct replacement
+	 * @deprecated As of Judson (7.1.x), with no direct replacement
 	 */
 	@Deprecated
 	protected int getToStringLength() {

@@ -14,14 +14,9 @@
 
 package com.liferay.portal.search.elasticsearch6.internal.facet;
 
-import com.liferay.portal.search.elasticsearch6.internal.ElasticsearchIndexingFixture;
-import com.liferay.portal.search.elasticsearch6.internal.connection.ElasticsearchFixture;
-import com.liferay.portal.search.elasticsearch6.internal.connection.LiferayIndexCreator;
+import com.liferay.portal.search.elasticsearch6.internal.LiferayElasticsearchIndexingFixtureFactory;
 import com.liferay.portal.search.test.util.facet.BaseAssetTagNamesFacetTestCase;
-import com.liferay.portal.search.test.util.indexing.BaseIndexingTestCase;
 import com.liferay.portal.search.test.util.indexing.IndexingFixture;
-
-import org.junit.Test;
 
 /**
  * @author André de Oliveira
@@ -29,27 +24,8 @@ import org.junit.Test;
 public class AssetTagNamesFacetTest extends BaseAssetTagNamesFacetTestCase {
 
 	@Override
-	@Test
-	public void testCaseInsensitiveSearchCaseSensitiveGrouping()
-		throws Exception {
-
-		super.testCaseInsensitiveSearchCaseSensitiveGrouping();
-	}
-
-	@Override
-	@Test
-	public void testKeysWithSpaces() throws Exception {
-		super.testKeysWithSpaces();
-	}
-
-	@Override
 	protected IndexingFixture createIndexingFixture() throws Exception {
-		ElasticsearchFixture elasticsearchFixture = new ElasticsearchFixture(
-			AssetTagNamesFacetTest.class.getSimpleName());
-
-		return new ElasticsearchIndexingFixture(
-			elasticsearchFixture, BaseIndexingTestCase.COMPANY_ID,
-			new LiferayIndexCreator(elasticsearchFixture));
+		return LiferayElasticsearchIndexingFixtureFactory.getInstance();
 	}
 
 }

@@ -14,35 +14,29 @@
 
 package com.liferay.exportimport.kernel.staging;
 
-import aQute.bnd.annotation.ProviderType;
-
 import com.liferay.exportimport.kernel.lar.MissingReference;
 import com.liferay.exportimport.kernel.lar.PortletDataContext;
+import com.liferay.exportimport.kernel.lar.StagedModelType;
 import com.liferay.exportimport.kernel.model.ExportImportConfiguration;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.json.JSONArray;
 import com.liferay.portal.kernel.json.JSONObject;
+import com.liferay.portal.kernel.model.BaseModel;
 import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.model.Layout;
 import com.liferay.portal.kernel.model.LayoutRevision;
 import com.liferay.portal.kernel.model.Portlet;
 import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.security.auth.HttpPrincipal;
-import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.util.ServiceProxyFactory;
-import com.liferay.portal.kernel.util.UnicodeProperties;
 import com.liferay.portal.kernel.workflow.WorkflowTask;
 import com.liferay.portal.kernel.xml.Element;
 
 import java.io.File;
-import java.io.Serializable;
 
-import java.util.Date;
-import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
-import javax.portlet.PortletPreferences;
 import javax.portlet.PortletRequest;
 
 import javax.servlet.http.HttpServletRequest;
@@ -50,59 +44,13 @@ import javax.servlet.http.HttpServletRequest;
 /**
  * @author Raymond Augé
  */
-@ProviderType
 public class StagingUtil {
 
-	public static String buildRemoteURL(
-		ExportImportConfiguration exportImportConfiguration) {
-
-		return _staging.buildRemoteURL(exportImportConfiguration);
-	}
-
-	public static String buildRemoteURL(
-		String remoteAddress, int remotePort, String remotePathContext,
-		boolean secureConnection) {
-
-		return _staging.buildRemoteURL(
-			remoteAddress, remotePort, remotePathContext, secureConnection);
-	}
-
-	/**
-	 * @deprecated As of 7.0.0, replaced by {@link #getRemoteSiteURL(Group,
-	 *             boolean)}
-	 */
-	@Deprecated
-	public static String buildRemoteURL(
-		String remoteAddress, int remotePort, String remotePathContext,
-		boolean secureConnection, long remoteGroupId, boolean privateLayout) {
-
-		return _staging.buildRemoteURL(
-			remoteAddress, remotePort, remotePathContext, secureConnection,
-			remoteGroupId, privateLayout);
-	}
-
-	public static String buildRemoteURL(
-		UnicodeProperties typeSettingsProperties) {
-
-		return _staging.buildRemoteURL(typeSettingsProperties);
-	}
-
-	/**
-	 * @deprecated As of 7.0.0, replaced by {@link
-	 *             com.liferay.exportimport.kernel.service.StagingLocalServiceUtil#
-	 *             checkDefaultLayoutSetBranches(long, Group, boolean, boolean,
-	 *             boolean, ServiceContext)}
-	 */
-	@Deprecated
-	public static void checkDefaultLayoutSetBranches(
-			long userId, Group liveGroup, boolean branchingPublic,
-			boolean branchingPrivate, boolean remote,
-			ServiceContext serviceContext)
+	public static <T extends BaseModel> void addModelToChangesetCollection(
+			T model)
 		throws PortalException {
 
-		_staging.checkDefaultLayoutSetBranches(
-			userId, liveGroup, branchingPublic, branchingPrivate, remote,
-			serviceContext);
+		_staging.addModelToChangesetCollection(model);
 	}
 
 	public static long copyFromLive(PortletRequest portletRequest)
@@ -116,22 +64,6 @@ public class StagingUtil {
 		throws PortalException {
 
 		return _staging.copyFromLive(portletRequest, portlet);
-	}
-
-	/**
-	 * @deprecated As of 7.0.0, replaced by {@link #publishPortlet(long, long,
-	 *             long, long, long, String, Map)}
-	 */
-	@Deprecated
-	public static long copyPortlet(
-			PortletRequest portletRequest, long sourceGroupId,
-			long targetGroupId, long sourcePlid, long targetPlid,
-			String portletId)
-		throws PortalException {
-
-		return _staging.copyPortlet(
-			portletRequest, sourceGroupId, targetGroupId, sourcePlid,
-			targetPlid, portletId);
 	}
 
 	public static long copyRemoteLayouts(
@@ -161,26 +93,6 @@ public class StagingUtil {
 			remoteGroupId, remotePrivateLayout);
 	}
 
-	/**
-	 * @deprecated As of 7.0.0, replaced by {@link #copyRemoteLayouts(long,
-	 *             boolean, Map, Map, String, int, String, boolean, long,
-	 *             boolean)}
-	 */
-	@Deprecated
-	public static long copyRemoteLayouts(
-			long sourceGroupId, boolean privateLayout,
-			Map<Long, Boolean> layoutIdMap, Map<String, String[]> parameterMap,
-			String remoteAddress, int remotePort, String remotePathContext,
-			boolean secureConnection, long remoteGroupId,
-			boolean remotePrivateLayout, Date startDate, Date endDate)
-		throws PortalException {
-
-		return _staging.copyRemoteLayouts(
-			sourceGroupId, privateLayout, layoutIdMap, parameterMap,
-			remoteAddress, remotePort, remotePathContext, secureConnection,
-			remoteGroupId, remotePrivateLayout, startDate, endDate);
-	}
-
 	public static long copyRemoteLayouts(
 			long sourceGroupId, boolean privateLayout,
 			Map<Long, Boolean> layoutIdMap, String name,
@@ -203,9 +115,11 @@ public class StagingUtil {
 	}
 
 	public static void deleteRecentLayoutRevisionId(
-		HttpServletRequest request, long layoutSetBranchId, long plid) {
+		HttpServletRequest httpServletRequest, long layoutSetBranchId,
+		long plid) {
 
-		_staging.deleteRecentLayoutRevisionId(request, layoutSetBranchId, plid);
+		_staging.deleteRecentLayoutRevisionId(
+			httpServletRequest, layoutSetBranchId, plid);
 	}
 
 	public static void deleteRecentLayoutRevisionId(
@@ -214,35 +128,10 @@ public class StagingUtil {
 		_staging.deleteRecentLayoutRevisionId(userId, layoutSetBranchId, plid);
 	}
 
-	/**
-	 * @deprecated As of 7.0.0, replaced by {@link
-	 *             #deleteRecentLayoutRevisionId(long, long, long)}
-	 */
-	@Deprecated
-	public static void deleteRecentLayoutRevisionId(
-		User user, long layoutSetBranchId, long plid) {
-
-		_staging.deleteRecentLayoutRevisionId(user, layoutSetBranchId, plid);
-	}
-
 	public static JSONArray getErrorMessagesJSONArray(
 		Locale locale, Map<String, MissingReference> missingReferences) {
 
 		return _staging.getErrorMessagesJSONArray(locale, missingReferences);
-	}
-
-	/**
-	 * @deprecated As of 7.0.0, replaced by {@link
-	 *             #getErrorMessagesJSONArray(Locale, Map<String,
-	 *             MissingReference>)}
-	 */
-	@Deprecated
-	public static JSONArray getErrorMessagesJSONArray(
-		Locale locale, Map<String, MissingReference> missingReferences,
-		Map<String, Serializable> contextMap) {
-
-		return _staging.getErrorMessagesJSONArray(
-			locale, missingReferences, contextMap);
 	}
 
 	public static JSONObject getExceptionMessagesJSONObject(
@@ -251,18 +140,6 @@ public class StagingUtil {
 
 		return _staging.getExceptionMessagesJSONObject(
 			locale, e, exportImportConfiguration);
-	}
-
-	/**
-	 * @deprecated As of 7.0.0, replaced by {@link
-	 *             #getExceptionMessagesJSONObject(Locale, Exception,
-	 *             ExportImportConfiguration)}
-	 */
-	@Deprecated
-	public static JSONObject getExceptionMessagesJSONObject(
-		Locale locale, Exception e, Map<String, Serializable> contextMap) {
-
-		return _staging.getExceptionMessagesJSONObject(locale, e, contextMap);
 	}
 
 	public static Group getLiveGroup(Group group) {
@@ -277,29 +154,17 @@ public class StagingUtil {
 		return _staging.getLiveGroupId(groupId);
 	}
 
-	/**
-	 * @deprecated As of 7.0.0, moved to {@link
-	 *             com.liferay.exportimport.kernel.lar.ExportImportHelperUtil#getMissingParentLayouts(
-	 *             Layout, long)}
-	 */
-	@Deprecated
-	public static List<Layout> getMissingParentLayouts(
-			Layout layout, long liveGroupId)
-		throws Exception {
-
-		return _staging.getMissingParentLayouts(layout, liveGroupId);
-	}
-
 	public static Group getPermissionStagingGroup(Group group) {
 		return _staging.getPermissionStagingGroup(group);
 	}
 
 	public static long getRecentLayoutRevisionId(
-			HttpServletRequest request, long layoutSetBranchId, long plid)
+			HttpServletRequest httpServletRequest, long layoutSetBranchId,
+			long plid)
 		throws PortalException {
 
 		return _staging.getRecentLayoutRevisionId(
-			request, layoutSetBranchId, plid);
+			httpServletRequest, layoutSetBranchId, plid);
 	}
 
 	public static long getRecentLayoutRevisionId(
@@ -311,13 +176,21 @@ public class StagingUtil {
 	}
 
 	public static long getRecentLayoutSetBranchId(
-		HttpServletRequest request, long layoutSetId) {
+		HttpServletRequest httpServletRequest, long layoutSetId) {
 
-		return _staging.getRecentLayoutSetBranchId(request, layoutSetId);
+		return _staging.getRecentLayoutSetBranchId(
+			httpServletRequest, layoutSetId);
 	}
 
 	public static long getRecentLayoutSetBranchId(User user, long layoutSetId) {
 		return _staging.getRecentLayoutSetBranchId(user, layoutSetId);
+	}
+
+	public static long getRemoteLayoutPlid(
+			long userId, long stagingGroupId, long plid)
+		throws PortalException {
+
+		return _staging.getRemoteLayoutPlid(userId, stagingGroupId, plid);
 	}
 
 	public static String getRemoteSiteURL(
@@ -347,46 +220,10 @@ public class StagingUtil {
 		return _staging.getStagingGroup(groupId);
 	}
 
-	/**
-	 * @deprecated As of 7.0.0, replaced by {@link
-	 *             com.liferay.exportimport.kernel.configuration.ExportImportConfigurationParameterMapFactory#buildParameterMap(
-	 *             )}
-	 */
-	@Deprecated
-	public static Map<String, String[]> getStagingParameters() {
-		return _staging.getStagingParameters();
-	}
-
-	/**
-	 * @deprecated As of 7.0.0, replaced by {@link
-	 *             com.liferay.exportimport.kernel.configuration.ExportImportConfigurationParameterMapFactory#buildParameterMap(
-	 *             PortletRequest)}
-	 */
-	@Deprecated
-	public static Map<String, String[]> getStagingParameters(
-		PortletRequest portletRequest) {
-
-		return _staging.getStagingParameters(portletRequest);
-	}
-
 	public static JSONArray getWarningMessagesJSONArray(
 		Locale locale, Map<String, MissingReference> missingReferences) {
 
 		return _staging.getWarningMessagesJSONArray(locale, missingReferences);
-	}
-
-	/**
-	 * @deprecated As of 7.0.0, replaced by {@link
-	 *             #getWarningMessagesJSONArray(Locale, Map<String,
-	 *             MissingReference>)}
-	 */
-	@Deprecated
-	public static JSONArray getWarningMessagesJSONArray(
-		Locale locale, Map<String, MissingReference> missingReferences,
-		Map<String, Serializable> contextMap) {
-
-		return _staging.getWarningMessagesJSONArray(
-			locale, missingReferences, contextMap);
 	}
 
 	public static WorkflowTask getWorkflowTask(
@@ -401,6 +238,10 @@ public class StagingUtil {
 		throws PortalException {
 
 		return _staging.hasWorkflowTask(userId, layoutRevision);
+	}
+
+	public static boolean isChangeTrackingEnabled(long companyId) {
+		return _staging.isChangeTrackingEnabled(companyId);
 	}
 
 	public static boolean isGroupAccessible(Group group, Group fromGroup) {
@@ -421,16 +262,27 @@ public class StagingUtil {
 		return _staging.isIncomplete(layout, layoutSetBranchId);
 	}
 
-	/**
-	 * @deprecated As of 7.0.0, see {@link
-	 *             com.liferay.portal.kernel.backgroundtask.BackgroundTaskExecutor#getIsolationLevel(
-	 *             )}
-	 */
-	@Deprecated
-	public static void lockGroup(long userId, long groupId)
+	public static boolean isRemoteLayoutHasPortletId(
+		long userId, long stagingGroupId, long plid, String portletId) {
+
+		return _staging.isRemoteLayoutHasPortletId(
+			userId, stagingGroupId, plid, portletId);
+	}
+
+	public static void populateLastPublishDateCounts(
+			PortletDataContext portletDataContext,
+			StagedModelType[] stagedModelTypes)
 		throws PortalException {
 
-		_staging.lockGroup(userId, groupId);
+		_staging.populateLastPublishDateCounts(
+			portletDataContext, stagedModelTypes);
+	}
+
+	public static void populateLastPublishDateCounts(
+			PortletDataContext portletDataContext, String[] classNames)
+		throws PortalException {
+
+		_staging.populateLastPublishDateCounts(portletDataContext, classNames);
 	}
 
 	public static long publishLayout(
@@ -466,22 +318,6 @@ public class StagingUtil {
 			parameterMap);
 	}
 
-	/**
-	 * @deprecated As of 7.0.0, replaced by {@link #publishLayouts(long, long,
-	 *             long, boolean, long[], Map)}
-	 */
-	@Deprecated
-	public static long publishLayouts(
-			long userId, long sourceGroupId, long targetGroupId,
-			boolean privateLayout, long[] layoutIds,
-			Map<String, String[]> parameterMap, Date startDate, Date endDate)
-		throws PortalException {
-
-		return _staging.publishLayouts(
-			userId, sourceGroupId, targetGroupId, privateLayout, layoutIds,
-			parameterMap, startDate, endDate);
-	}
-
 	public static long publishLayouts(
 			long userId, long sourceGroupId, long targetGroupId,
 			boolean privateLayout, long[] layoutIds, String name,
@@ -493,22 +329,6 @@ public class StagingUtil {
 			name, parameterMap);
 	}
 
-	/**
-	 * @deprecated As of 7.0.0, replaced by {@link #publishLayouts(long, long,
-	 *             long, boolean, long[], Map)}
-	 */
-	@Deprecated
-	public static long publishLayouts(
-			long userId, long sourceGroupId, long targetGroupId,
-			boolean privateLayout, Map<Long, Boolean> layoutIdMap,
-			Map<String, String[]> parameterMap, Date startDate, Date endDate)
-		throws PortalException {
-
-		return _staging.publishLayouts(
-			userId, sourceGroupId, targetGroupId, privateLayout, layoutIdMap,
-			parameterMap, startDate, endDate);
-	}
-
 	public static long publishLayouts(
 			long userId, long sourceGroupId, long targetGroupId,
 			boolean privateLayout, Map<String, String[]> parameterMap)
@@ -516,22 +336,6 @@ public class StagingUtil {
 
 		return _staging.publishLayouts(
 			userId, sourceGroupId, targetGroupId, privateLayout, parameterMap);
-	}
-
-	/**
-	 * @deprecated As of 7.0.0, replaced by {@link #publishLayouts(long, long,
-	 *             long, boolean, Map)}
-	 */
-	@Deprecated
-	public static long publishLayouts(
-			long userId, long sourceGroupId, long targetGroupId,
-			boolean privateLayout, Map<String, String[]> parameterMap,
-			Date startDate, Date endDate)
-		throws PortalException {
-
-		return _staging.publishLayouts(
-			userId, sourceGroupId, targetGroupId, privateLayout, parameterMap,
-			startDate, endDate);
 	}
 
 	public static long publishPortlet(
@@ -578,6 +382,13 @@ public class StagingUtil {
 		return _staging.publishToRemote(portletRequest);
 	}
 
+	public static <T extends BaseModel> void removeModelFromChangesetCollection(
+			T model)
+		throws PortalException {
+
+		_staging.removeModelFromChangesetCollection(model);
+	}
+
 	public static void scheduleCopyFromLive(PortletRequest portletRequest)
 		throws PortalException {
 
@@ -597,12 +408,12 @@ public class StagingUtil {
 	}
 
 	public static void setRecentLayoutBranchId(
-			HttpServletRequest request, long layoutSetBranchId, long plid,
-			long layoutBranchId)
+			HttpServletRequest httpServletRequest, long layoutSetBranchId,
+			long plid, long layoutBranchId)
 		throws PortalException {
 
 		_staging.setRecentLayoutBranchId(
-			request, layoutSetBranchId, plid, layoutBranchId);
+			httpServletRequest, layoutSetBranchId, plid, layoutBranchId);
 	}
 
 	public static void setRecentLayoutBranchId(
@@ -614,12 +425,12 @@ public class StagingUtil {
 	}
 
 	public static void setRecentLayoutRevisionId(
-			HttpServletRequest request, long layoutSetBranchId, long plid,
-			long layoutRevisionId)
+			HttpServletRequest httpServletRequest, long layoutSetBranchId,
+			long plid, long layoutRevisionId)
 		throws PortalException {
 
 		_staging.setRecentLayoutRevisionId(
-			request, layoutSetBranchId, plid, layoutRevisionId);
+			httpServletRequest, layoutSetBranchId, plid, layoutRevisionId);
 	}
 
 	public static void setRecentLayoutRevisionId(
@@ -631,12 +442,12 @@ public class StagingUtil {
 	}
 
 	public static void setRecentLayoutSetBranchId(
-			HttpServletRequest request, long layoutSetId,
+			HttpServletRequest httpServletRequest, long layoutSetId,
 			long layoutSetBranchId)
 		throws PortalException {
 
 		_staging.setRecentLayoutSetBranchId(
-			request, layoutSetId, layoutSetBranchId);
+			httpServletRequest, layoutSetId, layoutSetBranchId);
 	}
 
 	public static void setRecentLayoutSetBranchId(
@@ -657,16 +468,6 @@ public class StagingUtil {
 
 		_staging.transferFileToRemoteLive(
 			file, stagingRequestId, httpPrincipal);
-	}
-
-	/**
-	 * @deprecated As of 7.0.0, see {@link
-	 *             com.liferay.portal.kernel.backgroundtask.BackgroundTaskExecutor#getIsolationLevel(
-	 *             )}
-	 */
-	@Deprecated
-	public static void unlockGroup(long groupId) {
-		_staging.unlockGroup(groupId);
 	}
 
 	public static void unscheduleCopyFromLive(PortletRequest portletRequest)
@@ -696,74 +497,14 @@ public class StagingUtil {
 			layoutElement, layout, portletDataContext);
 	}
 
-	/**
-	 * @deprecated As of 7.0.0, replaced by {@link
-	 *             com.liferay.exportimport.kernel.lar.ExportImportDateUtil#updateLastPublishDate(
-	 *             long, boolean, com.liferay.portal.kernel.util.DateRange,
-	 *             Date)}
-	 */
-	@Deprecated
-	public static void updateLastPublishDate(
-			long sourceGroupId, boolean privateLayout, Date lastPublishDate)
+	public static void validateRemoteGroupIsSame(
+			long groupId, long remoteGroupId, String remoteAddress,
+			int remotePort, String remotePathContext, boolean secureConnection)
 		throws PortalException {
 
-		_staging.updateLastPublishDate(
-			sourceGroupId, privateLayout, lastPublishDate);
-	}
-
-	/**
-	 * @deprecated As of 7.0.0, replaced by {@link
-	 *             com.liferay.exportimport.kernel.lar.ExportImportDateUtil#updateLastPublishDate(
-	 *             String, PortletPreferences,
-	 *             com.liferay.portal.kernel.util.DateRange, Date)}
-	 */
-	@Deprecated
-	public static void updateLastPublishDate(
-			String portletId, PortletPreferences portletPreferences,
-			Date lastPublishDate)
-		throws PortalException {
-
-		_staging.updateLastPublishDate(
-			portletId, portletPreferences, lastPublishDate);
-	}
-
-	/**
-	 * @deprecated As of 4.0.0, replaced by {@link
-	 *             com.liferay.staging.configuration.web.internal.portlet.StagingConfigurationPortlet#editStagingConfiguration(
-	 *             javax.portlet.ActionRequest, javax.portlet.ActionResponse)}
-	 */
-	@Deprecated
-	public static void updateStaging(
-			PortletRequest portletRequest, Group liveGroup)
-		throws PortalException {
-
-		_staging.updateStaging(portletRequest, liveGroup);
-	}
-
-	public static void validateRemote(
-			long groupId, String remoteAddress, int remotePort,
-			String remotePathContext, boolean secureConnection,
-			long remoteGroupId)
-		throws PortalException {
-
-		_staging.validateRemote(
-			groupId, remoteAddress, remotePort, remotePathContext,
-			secureConnection, remoteGroupId);
-	}
-
-	/**
-	 * @deprecated As of 7.0.0, replaced by {@link #validateRemote(long, String,
-	 *             int, String, boolean, long)}
-	 */
-	@Deprecated
-	public static void validateRemote(
-			String remoteAddress, int remotePort, String remotePathContext,
-			boolean secureConnection, long remoteGroupId)
-		throws PortalException {
-
-		_staging.validateRemote(
-			remoteAddress, remotePort, remotePathContext, secureConnection,
-			remoteGroupId);
+		_staging.validateRemoteGroupIsSame(
+			groupId, remoteGroupId, remoteAddress, remotePort,
+			remotePathContext, secureConnection);
 	}
 
 	private static volatile Staging _staging =

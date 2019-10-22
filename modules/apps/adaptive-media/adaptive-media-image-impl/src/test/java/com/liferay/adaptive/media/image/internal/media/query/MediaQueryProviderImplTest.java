@@ -33,6 +33,7 @@ import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.repository.model.FileEntry;
 import com.liferay.portal.kernel.repository.model.FileVersion;
+import com.liferay.portal.kernel.test.ReflectionTestUtil;
 
 import java.net.URI;
 
@@ -80,10 +81,13 @@ public class MediaQueryProviderImplTest {
 			_fileVersion
 		);
 
-		_mediaQueryProvider.setAMImageConfigurationHelper(
+		ReflectionTestUtil.setFieldValue(
+			_mediaQueryProviderImpl, "_amImageConfigurationHelper",
 			_amImageConfigurationHelper);
-		_mediaQueryProvider.setAMImageFinder(_amImageFinder);
-		_mediaQueryProvider.setAMImageURLFactory(_amImageURLFactory);
+		ReflectionTestUtil.setFieldValue(
+			_mediaQueryProviderImpl, "_amImageFinder", _amImageFinder);
+		ReflectionTestUtil.setFieldValue(
+			_mediaQueryProviderImpl, "_amImageURLFactory", _amImageURLFactory);
 	}
 
 	@Test
@@ -91,7 +95,7 @@ public class MediaQueryProviderImplTest {
 		_addConfigs(
 			_createAMImageConfigurationEntry("uuid", 800, 1989, "adaptiveURL"));
 
-		List<MediaQuery> mediaQueries = _mediaQueryProvider.getMediaQueries(
+		List<MediaQuery> mediaQueries = _mediaQueryProviderImpl.getMediaQueries(
 			_fileEntry);
 
 		Assert.assertEquals(mediaQueries.toString(), 1, mediaQueries.size());
@@ -115,7 +119,7 @@ public class MediaQueryProviderImplTest {
 			_createAMImageConfigurationEntry(
 				"uuid2", 800, 1989, "adaptiveURL2"));
 
-		List<MediaQuery> mediaQueries = _mediaQueryProvider.getMediaQueries(
+		List<MediaQuery> mediaQueries = _mediaQueryProviderImpl.getMediaQueries(
 			_fileEntry);
 
 		Assert.assertEquals(mediaQueries.toString(), 2, mediaQueries.size());
@@ -150,7 +154,7 @@ public class MediaQueryProviderImplTest {
 			_createAMImageConfigurationEntry(
 				"uuid1", 800, 1986, "adaptiveURL1"));
 
-		List<MediaQuery> mediaQueries = _mediaQueryProvider.getMediaQueries(
+		List<MediaQuery> mediaQueries = _mediaQueryProviderImpl.getMediaQueries(
 			_fileEntry);
 
 		Assert.assertEquals(mediaQueries.toString(), 2, mediaQueries.size());
@@ -190,7 +194,7 @@ public class MediaQueryProviderImplTest {
 		_addAdaptiveMedias(
 			_fileEntry, _createAdaptiveMedia("normal", 1334, 750, "normalURL"));
 
-		List<MediaQuery> mediaQueries = _mediaQueryProvider.getMediaQueries(
+		List<MediaQuery> mediaQueries = _mediaQueryProviderImpl.getMediaQueries(
 			_fileEntry);
 
 		Assert.assertEquals(mediaQueries.toString(), 1, mediaQueries.size());
@@ -208,7 +212,7 @@ public class MediaQueryProviderImplTest {
 			_createAMImageConfigurationEntry(
 				"uuid3", 1900, 2500, "http://big.adaptive.com"));
 
-		List<MediaQuery> mediaQueries = _mediaQueryProvider.getMediaQueries(
+		List<MediaQuery> mediaQueries = _mediaQueryProviderImpl.getMediaQueries(
 			_fileEntry);
 
 		Assert.assertEquals(mediaQueries.toString(), 3, mediaQueries.size());
@@ -259,7 +263,7 @@ public class MediaQueryProviderImplTest {
 			_createAMImageConfigurationEntry(
 				"uuid2", 899, 1600, "http://small.hd.adaptive.com"));
 
-		List<MediaQuery> mediaQueries = _mediaQueryProvider.getMediaQueries(
+		List<MediaQuery> mediaQueries = _mediaQueryProviderImpl.getMediaQueries(
 			_fileEntry);
 
 		Assert.assertEquals(mediaQueries.toString(), 2, mediaQueries.size());
@@ -299,7 +303,7 @@ public class MediaQueryProviderImplTest {
 			_createAMImageConfigurationEntry(
 				"uuid2", 901, 1600, "http://small.hd.adaptive.com"));
 
-		List<MediaQuery> mediaQueries = _mediaQueryProvider.getMediaQueries(
+		List<MediaQuery> mediaQueries = _mediaQueryProviderImpl.getMediaQueries(
 			_fileEntry);
 
 		Assert.assertEquals(mediaQueries.toString(), 2, mediaQueries.size());
@@ -339,7 +343,7 @@ public class MediaQueryProviderImplTest {
 			_createAMImageConfigurationEntry(
 				"uuid2", 900, 1599, "http://small.hd.adaptive.com"));
 
-		List<MediaQuery> mediaQueries = _mediaQueryProvider.getMediaQueries(
+		List<MediaQuery> mediaQueries = _mediaQueryProviderImpl.getMediaQueries(
 			_fileEntry);
 
 		Assert.assertEquals(mediaQueries.toString(), 2, mediaQueries.size());
@@ -384,7 +388,7 @@ public class MediaQueryProviderImplTest {
 			_createAMImageConfigurationEntry(
 				"uuid", 900, 1601, "http://small.hd.adaptive.com"));
 
-		List<MediaQuery> mediaQueries = _mediaQueryProvider.getMediaQueries(
+		List<MediaQuery> mediaQueries = _mediaQueryProviderImpl.getMediaQueries(
 			_fileEntry);
 
 		Assert.assertEquals(mediaQueries.toString(), 2, mediaQueries.size());
@@ -424,7 +428,7 @@ public class MediaQueryProviderImplTest {
 			_createAMImageConfigurationEntry(
 				"uuid", 898, 1600, "http://small.hd.adaptive.com"));
 
-		List<MediaQuery> mediaQueries = _mediaQueryProvider.getMediaQueries(
+		List<MediaQuery> mediaQueries = _mediaQueryProviderImpl.getMediaQueries(
 			_fileEntry);
 
 		Assert.assertEquals(mediaQueries.toString(), 2, mediaQueries.size());
@@ -462,7 +466,7 @@ public class MediaQueryProviderImplTest {
 			_createAMImageConfigurationEntry(
 				"uuid", 902, 1600, "http://small.hd.adaptive.com"));
 
-		List<MediaQuery> mediaQueries = _mediaQueryProvider.getMediaQueries(
+		List<MediaQuery> mediaQueries = _mediaQueryProviderImpl.getMediaQueries(
 			_fileEntry);
 
 		Assert.assertEquals(mediaQueries.toString(), 2, mediaQueries.size());
@@ -500,7 +504,7 @@ public class MediaQueryProviderImplTest {
 			_createAMImageConfigurationEntry(
 				"uuid", 900, 1598, "http://small.hd.adaptive.com"));
 
-		List<MediaQuery> mediaQueries = _mediaQueryProvider.getMediaQueries(
+		List<MediaQuery> mediaQueries = _mediaQueryProviderImpl.getMediaQueries(
 			_fileEntry);
 
 		Assert.assertEquals(mediaQueries.toString(), 2, mediaQueries.size());
@@ -538,7 +542,7 @@ public class MediaQueryProviderImplTest {
 			_createAMImageConfigurationEntry(
 				"uuid", 900, 1602, "http://small.hd.adaptive.com"));
 
-		List<MediaQuery> mediaQueries = _mediaQueryProvider.getMediaQueries(
+		List<MediaQuery> mediaQueries = _mediaQueryProviderImpl.getMediaQueries(
 			_fileEntry);
 
 		Assert.assertEquals(mediaQueries.toString(), 2, mediaQueries.size());
@@ -572,7 +576,7 @@ public class MediaQueryProviderImplTest {
 
 		_addConfigs();
 
-		List<MediaQuery> mediaQueries = _mediaQueryProvider.getMediaQueries(
+		List<MediaQuery> mediaQueries = _mediaQueryProviderImpl.getMediaQueries(
 			_fileEntry);
 
 		Assert.assertEquals(mediaQueries.toString(), 0, mediaQueries.size());
@@ -590,7 +594,7 @@ public class MediaQueryProviderImplTest {
 			_createAMImageConfigurationEntry("normal", 2048, 1024, "normalURL"),
 			_createAMImageConfigurationEntry("wauto", 900, auto, "wautoURL"));
 
-		List<MediaQuery> mediaQueries = _mediaQueryProvider.getMediaQueries(
+		List<MediaQuery> mediaQueries = _mediaQueryProviderImpl.getMediaQueries(
 			_fileEntry);
 
 		Assert.assertEquals(mediaQueries.toString(), 3, mediaQueries.size());
@@ -621,7 +625,7 @@ public class MediaQueryProviderImplTest {
 			_createAdaptiveMedia("hauto", 1067, 600, "hautoURL"),
 			_createAdaptiveMedia("normal", 1334, 750, "normalURL"));
 
-		List<MediaQuery> mediaQueries = _mediaQueryProvider.getMediaQueries(
+		List<MediaQuery> mediaQueries = _mediaQueryProviderImpl.getMediaQueries(
 			_fileEntry);
 
 		Assert.assertEquals(mediaQueries.toString(), 4, mediaQueries.size());
@@ -655,8 +659,8 @@ public class MediaQueryProviderImplTest {
 					return Stream.empty();
 				}
 
-				for (AdaptiveMedia<AMImageProcessor>
-						adaptiveMedia : adaptiveMedias) {
+				for (AdaptiveMedia<AMImageProcessor> adaptiveMedia :
+						adaptiveMedias) {
 
 					Optional<String> optional = adaptiveMedia.getValueOptional(
 						AMAttribute.getConfigurationUuidAMAttribute());
@@ -812,7 +816,7 @@ public class MediaQueryProviderImplTest {
 	@Mock
 	private FileVersion _fileVersion;
 
-	private final MediaQueryProviderImpl _mediaQueryProvider =
+	private final MediaQueryProviderImpl _mediaQueryProviderImpl =
 		new MediaQueryProviderImpl();
 
 }

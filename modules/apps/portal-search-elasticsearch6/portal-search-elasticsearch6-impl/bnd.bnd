@@ -1,6 +1,6 @@
 Bundle-Name: Liferay Portal Search Elasticsearch 6 Implementation
 Bundle-SymbolicName: com.liferay.portal.search.elasticsearch6.impl
-Bundle-Version: 2.0.0
+Bundle-Version: 4.0.0
 Import-Package:\
 	!com.barchart.udt.*,\
 	\
@@ -11,7 +11,7 @@ Import-Package:\
 	!com.conversantmedia.util.concurrent.*,\
 	\
 	!com.fasterxml.aalto.*,\
-	!com.fasterxml.jackson.*,\
+	!com.fasterxml.jackson.dataformat.*,\
 	\
 	!com.github.mustachejava.*,\
 	\
@@ -28,8 +28,6 @@ Import-Package:\
 	\
 	!com.sun.jna.*,\
 	!com.sun.nio.sctp.*,\
-	\
-	!com.tdunning.math.stats.*,\
 	\
 	!com.thoughtworks.qdox.*,\
 	!com.thoughtworks.xstream.*,\
@@ -95,6 +93,8 @@ Import-Package:\
 	\
 	!org.junit.*,\
 	\
+	!org.locationtech.jts.geom.*,\
+	\
 	!org.noggit.*,\
 	\
 	!org.owasp.html.*,\
@@ -106,6 +106,5 @@ Import-Package:\
 	com.liferay.portal.search.analysis,\
 	\
 	*
-Liferay-Releng-Module-Group-Description:
-Liferay-Releng-Module-Group-Title: Elasticsearch
 -dsannotations-options: inherit
+-fixupmessages: Classes found in the wrong directory: ...;is:=ignore

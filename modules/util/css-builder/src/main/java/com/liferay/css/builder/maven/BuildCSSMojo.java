@@ -20,8 +20,10 @@ import com.liferay.css.builder.CSSBuilderArgs;
 import java.io.File;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
+import org.apache.maven.model.Dependency;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.descriptor.PluginDescriptor;
@@ -53,17 +55,44 @@ public class BuildCSSMojo extends AbstractMojo {
 	@Override
 	public void execute() throws MojoExecutionException {
 		try {
-			for (ComponentDependency componentDependency :
-					_pluginDescriptor.getDependencies()) {
+			boolean artifactPresent = false;
 
-				String artifactId = componentDependency.getArtifactId();
+			if (_cssBuilderArgs.getImportPaths() == null) {
+				for (Dependency dependency : _project.getDependencies()) {
+					String artifactId = dependency.getArtifactId();
 
-				if (artifactId.equals("com.liferay.frontend.css.common") &&
-					(_cssBuilderArgs.getImportDir() == null)) {
+					if (artifactId.equals("com.liferay.frontend.css.common")) {
+						Artifact artifact = _resolveArtifact(dependency);
 
-					Artifact artifact = _resolveArtifact(componentDependency);
+						if (artifact != null) {
+							_cssBuilderArgs.setImportPaths(
+								Arrays.asList(artifact.getFile()));
+						}
 
-					_cssBuilderArgs.setImportDir(artifact.getFile());
+						artifactPresent = true;
+
+						break;
+					}
+				}
+			}
+
+			if (!artifactPresent &&
+				(_cssBuilderArgs.getImportPaths() == null)) {
+
+				for (ComponentDependency componentDependency :
+						_pluginDescriptor.getDependencies()) {
+
+					String artifactId = componentDependency.getArtifactId();
+
+					if (artifactId.equals("com.liferay.frontend.css.common")) {
+						Artifact artifact = _resolveArtifact(
+							componentDependency);
+
+						_cssBuilderArgs.setImportPaths(
+							Arrays.asList(artifact.getFile()));
+
+						break;
+					}
 				}
 			}
 
@@ -115,18 +144,10 @@ public class BuildCSSMojo extends AbstractMojo {
 	}
 
 	/**
-	 * @deprecated As of 2.1.0, replaced by {@link #setBaseDir(File)}
 	 * @parameter
 	 */
-	@Deprecated
-	public void setDocrootDirName(String docrootDirName) {
-		File baseDir = new File(docrootDirName);
-
-		if (!baseDir.isAbsolute()) {
-			baseDir = new File(_projectBaseDir, docrootDirName);
-		}
-
-		setBaseDir(baseDir);
+	public void setExcludes(String excludes) {
+		_cssBuilderArgs.setExcludes(excludes);
 	}
 
 	/**
@@ -140,7 +161,7 @@ public class BuildCSSMojo extends AbstractMojo {
 	 * @parameter
 	 */
 	public void setImportDir(File importDir) {
-		_cssBuilderArgs.setImportDir(importDir);
+		_cssBuilderArgs.setImportPaths(Arrays.asList(importDir));
 	}
 
 	/**
@@ -148,15 +169,6 @@ public class BuildCSSMojo extends AbstractMojo {
 	 */
 	public void setOutputDirName(String outputDirName) {
 		_cssBuilderArgs.setOutputDirName(outputDirName);
-	}
-
-	/**
-	 * @deprecated As of 2.1.0, replaced by {@link #setImportDir(File)}
-	 * @parameter
-	 */
-	@Deprecated
-	public void setPortalCommonPath(File portalCommonPath) {
-		setImportDir(portalCommonPath);
 	}
 
 	/**
@@ -186,13 +198,8 @@ public class BuildCSSMojo extends AbstractMojo {
 		}
 	}
 
-	private Artifact _resolveArtifact(ComponentDependency componentDependency)
+	private Artifact _resolveArtifact(Artifact artifact)
 		throws ArtifactResolutionException {
-
-		Artifact artifact = new DefaultArtifact(
-			componentDependency.getGroupId(),
-			componentDependency.getArtifactId(), componentDependency.getType(),
-			componentDependency.getVersion());
 
 		ArtifactRequest artifactRequest = new ArtifactRequest();
 
@@ -209,6 +216,27 @@ public class BuildCSSMojo extends AbstractMojo {
 			_repositorySystemSession, artifactRequest);
 
 		return artifactResult.getArtifact();
+	}
+
+	private Artifact _resolveArtifact(ComponentDependency componentDependency)
+		throws ArtifactResolutionException {
+
+		Artifact artifact = new DefaultArtifact(
+			componentDependency.getGroupId(),
+			componentDependency.getArtifactId(), componentDependency.getType(),
+			componentDependency.getVersion());
+
+		return _resolveArtifact(artifact);
+	}
+
+	private Artifact _resolveArtifact(Dependency dependency)
+		throws ArtifactResolutionException {
+
+		Artifact artifact = new DefaultArtifact(
+			dependency.getGroupId(), dependency.getArtifactId(),
+			dependency.getType(), dependency.getVersion());
+
+		return _resolveArtifact(artifact);
 	}
 
 	/**

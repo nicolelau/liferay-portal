@@ -9,13 +9,18 @@
 </thead>
 <tbody>
 <tr>
-	<td>ENABLED_CHECKBOX</td>
-	<td>//input[contains(@id,'SystemSettingsPortlet') and contains(@name,'enabled')]</td>
+	<td>CONFIGURATION_ENTRY</td>
+	<td>//tr[@data-qa-id="row"]//strong[contains(.,'${key_configurationEntry}')]</td>
 	<td></td>
 </tr>
 <tr>
-	<td>IMPORT_ENABLED_CHECKBOX</td>
-	<td>//input[contains(@id,'SystemSettingsPortlet') and contains(@name,'importEnabled')]</td>
+	<td>DROPDOWN_MENU</td>
+	<td>//label[contains(.,'${key_fieldLabel}')]/parent::div//div[contains(@class,'option-selected')]</td>
+	<td></td>
+</tr>
+<tr>
+	<td>DROPDOWN_MENU_OPTION</td>
+	<td>//button[contains(@class,'dropdown-item') and @aria-label='${key_selectOption}']</td>
 	<td></td>
 </tr>
 <tr>
@@ -25,7 +30,7 @@
 </tr>
 <tr>
 	<td>SECURITY_CREDENTIAL_FIELD</td>
-	<td>//div[contains(@data-fieldname,'securityCredential')]//input[@type='password' and @value='secret']</td>
+	<td>//div[contains(@data-field-name,'securityCredential')]//input[@type='password']</td>
 	<td></td>
 </tr>
 <tr>
@@ -33,20 +38,20 @@
 	<td>portal/screenshots/foundation/ldap_server_security_credential.png</td>
 	<td></td>
 </tr>
-<!--WEB_CONTENT-->
 <tr>
-	<td>SERVER_ENABLED</td>
-	<td>//input[contains(@id,'serverEnabled')]</td>
+	<td>SETTING_FIELD_NAME_CHECKBOX</td>
+	<td>//span[contains(@class,'custom-control-label-text') and contains(.,'${key_settingFieldName}')]/../..//input[@type='checkbox']</td>
 	<td></td>
 </tr>
 <tr>
-	<td>SHOW_INACTIVE_REQUEST_MESSAGE</td>
-	<td>//input[contains(@id,'show.inactive.request.message')]</td>
+	<td></td>
+	<td></td>
 	<td></td>
 </tr>
+<!--ASSETS-->
 <tr>
-	<td>WEB_CONTENT_ARTICLE_VIEW_PERMISSIONS_CHECK_ENABLED</td>
-	<td>//label[contains(@for,'articleViewPermissionsCheckEnabled')]/input</td>
+	<td>ASSETS_DYNAMIC_EXPORT_LIMIT</td>
+	<td>//div[contains(@data-field-name,'dynamicExportLimit')]//input[@type='text']</td>
 	<td></td>
 </tr>
 </tbody>

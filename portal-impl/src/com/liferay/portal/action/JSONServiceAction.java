@@ -14,6 +14,8 @@
 
 package com.liferay.portal.action;
 
+import com.liferay.petra.string.CharPool;
+import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.json.JSONArray;
 import com.liferay.portal.kernel.json.JSONException;
@@ -27,14 +29,12 @@ import com.liferay.portal.kernel.security.access.control.AccessControlThreadLoca
 import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.service.ServiceContextUtil;
 import com.liferay.portal.kernel.util.ArrayUtil;
-import com.liferay.portal.kernel.util.ClassLoaderUtil;
 import com.liferay.portal.kernel.util.ClassUtil;
 import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.LocalizationUtil;
 import com.liferay.portal.kernel.util.ParamUtil;
 import com.liferay.portal.kernel.util.SetUtil;
-import com.liferay.portal.kernel.util.StringBundler;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.struts.JSONAction;
@@ -54,9 +54,6 @@ import java.util.regex.Pattern;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-
-import org.apache.struts.action.ActionForm;
-import org.apache.struts.action.ActionMapping;
 
 /**
  * @author Brian Wing Shun Chan
@@ -86,24 +83,27 @@ public class JSONServiceAction extends JSONAction {
 
 	@Override
 	public String getJSON(
-			ActionMapping actionMapping, ActionForm actionForm,
-			HttpServletRequest request, HttpServletResponse response)
+			HttpServletRequest httpServletRequest,
+			HttpServletResponse httpServletResponse)
 		throws Exception {
 
-		String className = ParamUtil.getString(request, "serviceClassName");
-		String methodName = ParamUtil.getString(request, "serviceMethodName");
+		String className = ParamUtil.getString(
+			httpServletRequest, "serviceClassName");
+		String methodName = ParamUtil.getString(
+			httpServletRequest, "serviceMethodName");
 
 		String[] serviceParameters = getStringArrayFromJSON(
-			request, "serviceParameters");
+			httpServletRequest, "serviceParameters");
 		String[] serviceParameterTypes = getStringArrayFromJSON(
-			request, "serviceParameterTypes");
+			httpServletRequest, "serviceParameterTypes");
 
-		if (!isValidRequest(request)) {
+		if (!isValidRequest(httpServletRequest)) {
 			return null;
 		}
 
-		ClassLoader contextClassLoader =
-			ClassLoaderUtil.getContextClassLoader();
+		Thread currentThread = Thread.currentThread();
+
+		ClassLoader contextClassLoader = currentThread.getContextClassLoader();
 
 		Class<?> clazz = contextClassLoader.loadClass(className);
 
@@ -115,12 +115,13 @@ public class JSONServiceAction extends JSONAction {
 		}
 
 		Method method = (Method)methodAndParameterTypes[0];
+
 		Type[] parameterTypes = (Type[])methodAndParameterTypes[1];
 		Object[] args = new Object[serviceParameters.length];
 
 		for (int i = 0; i < serviceParameters.length; i++) {
 			args[i] = getArgValue(
-				request, clazz, methodName, serviceParameters[i],
+				httpServletRequest, clazz, methodName, serviceParameters[i],
 				parameterTypes[i]);
 		}
 
@@ -128,9 +129,8 @@ public class JSONServiceAction extends JSONAction {
 			if (_log.isDebugEnabled()) {
 				_log.debug(
 					StringBundler.concat(
-						"Invoking ", String.valueOf(clazz), " on method ",
-						method.getName(), " with args ",
-						Arrays.toString(args)));
+						"Invoking ", clazz, " on method ", method.getName(),
+						" with args ", Arrays.toString(args)));
 			}
 
 			Object returnObj = null;
@@ -149,16 +149,15 @@ public class JSONServiceAction extends JSONAction {
 			if (returnObj != null) {
 				return getReturnValue(returnObj);
 			}
-			else {
-				return JSONFactoryUtil.getNullJSON();
-			}
+
+			return JSONFactoryUtil.getNullJSON();
 		}
 		catch (Exception e) {
 			if (_log.isDebugEnabled()) {
 				_log.debug(
 					StringBundler.concat(
-						"Invoked ", String.valueOf(clazz), " on method ",
-						method.getName(), " with args ", Arrays.toString(args)),
+						"Invoked ", clazz, " on method ", method.getName(),
+						" with args ", Arrays.toString(args)),
 					e);
 			}
 
@@ -167,14 +166,14 @@ public class JSONServiceAction extends JSONAction {
 	}
 
 	protected Object getArgValue(
-			HttpServletRequest request, Class<?> clazz, String methodName,
-			String parameter, Type parameterType)
+			HttpServletRequest httpServletRequest, Class<?> clazz,
+			String methodName, String parameter, Type parameterType)
 		throws Exception {
 
 		String typeNameOrClassDescriptor = getTypeNameOrClassDescriptor(
 			parameterType);
 
-		String value = ParamUtil.getString(request, parameter);
+		String value = ParamUtil.getString(httpServletRequest, parameter);
 
 		if (Validator.isNull(value) &&
 			!typeNameOrClassDescriptor.equals("[Ljava.lang.String;")) {
@@ -184,37 +183,43 @@ public class JSONServiceAction extends JSONAction {
 		else if (typeNameOrClassDescriptor.equals("boolean") ||
 				 typeNameOrClassDescriptor.equals(Boolean.class.getName())) {
 
-			return Boolean.valueOf(ParamUtil.getBoolean(request, parameter));
+			return Boolean.valueOf(
+				ParamUtil.getBoolean(httpServletRequest, parameter));
 		}
 		else if (typeNameOrClassDescriptor.equals("double") ||
 				 typeNameOrClassDescriptor.equals(Double.class.getName())) {
 
-			return Double.valueOf(ParamUtil.getDouble(request, parameter));
+			return Double.valueOf(
+				ParamUtil.getDouble(httpServletRequest, parameter));
 		}
 		else if (typeNameOrClassDescriptor.equals("int") ||
 				 typeNameOrClassDescriptor.equals(Integer.class.getName())) {
 
-			return Integer.valueOf(ParamUtil.getInteger(request, parameter));
+			return Integer.valueOf(
+				ParamUtil.getInteger(httpServletRequest, parameter));
 		}
 		else if (typeNameOrClassDescriptor.equals("long") ||
 				 typeNameOrClassDescriptor.equals(Long.class.getName())) {
 
-			return Long.valueOf(ParamUtil.getLong(request, parameter));
+			return Long.valueOf(
+				ParamUtil.getLong(httpServletRequest, parameter));
 		}
 		else if (typeNameOrClassDescriptor.equals("short") ||
 				 typeNameOrClassDescriptor.equals(Short.class.getName())) {
 
-			return Short.valueOf(ParamUtil.getShort(request, parameter));
+			return Short.valueOf(
+				ParamUtil.getShort(httpServletRequest, parameter));
 		}
 		else if (typeNameOrClassDescriptor.equals(Calendar.class.getName())) {
 			Calendar cal = Calendar.getInstance(LocaleUtil.getDefault());
 
-			cal.setTimeInMillis(ParamUtil.getLong(request, parameter));
+			cal.setTimeInMillis(
+				ParamUtil.getLong(httpServletRequest, parameter));
 
 			return cal;
 		}
 		else if (typeNameOrClassDescriptor.equals(Date.class.getName())) {
-			return new Date(ParamUtil.getLong(request, parameter));
+			return new Date(ParamUtil.getLong(httpServletRequest, parameter));
 		}
 		else if (typeNameOrClassDescriptor.equals(
 					ServiceContext.class.getName())) {
@@ -229,28 +234,28 @@ public class JSONServiceAction extends JSONAction {
 			return value;
 		}
 		else if (typeNameOrClassDescriptor.equals("[Z")) {
-			return ParamUtil.getBooleanValues(request, parameter);
+			return ParamUtil.getBooleanValues(httpServletRequest, parameter);
 		}
 		else if (typeNameOrClassDescriptor.equals("[D")) {
-			return ParamUtil.getDoubleValues(request, parameter);
+			return ParamUtil.getDoubleValues(httpServletRequest, parameter);
 		}
 		else if (typeNameOrClassDescriptor.equals("[F")) {
-			return ParamUtil.getFloatValues(request, parameter);
+			return ParamUtil.getFloatValues(httpServletRequest, parameter);
 		}
 		else if (typeNameOrClassDescriptor.equals("[I")) {
-			return ParamUtil.getIntegerValues(request, parameter);
+			return ParamUtil.getIntegerValues(httpServletRequest, parameter);
 		}
 		else if (typeNameOrClassDescriptor.equals("[J")) {
-			return ParamUtil.getLongValues(request, parameter);
+			return ParamUtil.getLongValues(httpServletRequest, parameter);
 		}
 		else if (typeNameOrClassDescriptor.equals("[S")) {
-			return ParamUtil.getShortValues(request, parameter);
+			return ParamUtil.getShortValues(httpServletRequest, parameter);
 		}
 		else if (typeNameOrClassDescriptor.equals("[Ljava.lang.String;")) {
-			return ParamUtil.getParameterValues(request, parameter);
+			return ParamUtil.getParameterValues(httpServletRequest, parameter);
 		}
 		else if (typeNameOrClassDescriptor.equals("[[Z")) {
-			String[] values = request.getParameterValues(parameter);
+			String[] values = httpServletRequest.getParameterValues(parameter);
 
 			if (ArrayUtil.isNotEmpty(values)) {
 				String[] values0 = StringUtil.split(values[0]);
@@ -268,12 +273,11 @@ public class JSONServiceAction extends JSONAction {
 
 				return doubleArray;
 			}
-			else {
-				return new boolean[0][0];
-			}
+
+			return new boolean[0][0];
 		}
 		else if (typeNameOrClassDescriptor.equals("[[D")) {
-			String[] values = request.getParameterValues(parameter);
+			String[] values = httpServletRequest.getParameterValues(parameter);
 
 			if (ArrayUtil.isNotEmpty(values)) {
 				String[] values0 = StringUtil.split(values[0]);
@@ -291,12 +295,11 @@ public class JSONServiceAction extends JSONAction {
 
 				return doubleArray;
 			}
-			else {
-				return new double[0][0];
-			}
+
+			return new double[0][0];
 		}
 		else if (typeNameOrClassDescriptor.equals("[[F")) {
-			String[] values = request.getParameterValues(parameter);
+			String[] values = httpServletRequest.getParameterValues(parameter);
 
 			if (ArrayUtil.isNotEmpty(values)) {
 				String[] values0 = StringUtil.split(values[0]);
@@ -314,12 +317,11 @@ public class JSONServiceAction extends JSONAction {
 
 				return doubleArray;
 			}
-			else {
-				return new float[0][0];
-			}
+
+			return new float[0][0];
 		}
 		else if (typeNameOrClassDescriptor.equals("[[I")) {
-			String[] values = request.getParameterValues(parameter);
+			String[] values = httpServletRequest.getParameterValues(parameter);
 
 			if (ArrayUtil.isNotEmpty(values)) {
 				String[] values0 = StringUtil.split(values[0]);
@@ -336,12 +338,11 @@ public class JSONServiceAction extends JSONAction {
 
 				return doubleArray;
 			}
-			else {
-				return new int[0][0];
-			}
+
+			return new int[0][0];
 		}
 		else if (typeNameOrClassDescriptor.equals("[[J")) {
-			String[] values = request.getParameterValues(parameter);
+			String[] values = httpServletRequest.getParameterValues(parameter);
 
 			if (ArrayUtil.isNotEmpty(values)) {
 				String[] values0 = StringUtil.split(values[0]);
@@ -358,12 +359,11 @@ public class JSONServiceAction extends JSONAction {
 
 				return doubleArray;
 			}
-			else {
-				return new long[0][0];
-			}
+
+			return new long[0][0];
 		}
 		else if (typeNameOrClassDescriptor.equals("[[S")) {
-			String[] values = request.getParameterValues(parameter);
+			String[] values = httpServletRequest.getParameterValues(parameter);
 
 			if (ArrayUtil.isNotEmpty(values)) {
 				String[] values0 = StringUtil.split(values[0]);
@@ -381,12 +381,11 @@ public class JSONServiceAction extends JSONAction {
 
 				return doubleArray;
 			}
-			else {
-				return new short[0][0];
-			}
+
+			return new short[0][0];
 		}
 		else if (typeNameOrClassDescriptor.equals("[[Ljava.lang.String")) {
-			String[] values = request.getParameterValues(parameter);
+			String[] values = httpServletRequest.getParameterValues(parameter);
 
 			if (ArrayUtil.isNotEmpty(values)) {
 				String[] values0 = StringUtil.split(values[0]);
@@ -400,9 +399,8 @@ public class JSONServiceAction extends JSONAction {
 
 				return doubleArray;
 			}
-			else {
-				return new String[0][0];
-			}
+
+			return new String[0][0];
 		}
 		else if (typeNameOrClassDescriptor.equals(
 					"java.util.Map<java.util.Locale, java.lang.String>")) {
@@ -418,10 +416,9 @@ public class JSONServiceAction extends JSONAction {
 			catch (Exception e) {
 				_log.error(
 					StringBundler.concat(
-						"Unsupported parameter type for class ",
-						String.valueOf(clazz), ", method ", methodName,
-						", parameter ", parameter, ", and type ",
-						typeNameOrClassDescriptor));
+						"Unsupported parameter type for class ", clazz,
+						", method ", methodName, ", parameter ", parameter,
+						", and type ", typeNameOrClassDescriptor));
 
 				return null;
 			}
@@ -433,7 +430,7 @@ public class JSONServiceAction extends JSONAction {
 	 *      HttpServletRequest)
 	 */
 	@Override
-	protected String getCSRFOrigin(HttpServletRequest request) {
+	protected String getCSRFOrigin(HttpServletRequest httpServletRequest) {
 		StringBundler sb = new StringBundler(6);
 
 		sb.append(ClassUtil.getClassName(this));
@@ -441,14 +438,14 @@ public class JSONServiceAction extends JSONAction {
 		sb.append(StringPool.SLASH);
 
 		String serviceClassName = ParamUtil.getString(
-			request, "serviceClassName");
+			httpServletRequest, "serviceClassName");
 
 		sb.append(serviceClassName);
 
 		sb.append(StringPool.POUND);
 
 		String serviceMethodName = ParamUtil.getString(
-			request, "serviceMethodName");
+			httpServletRequest, "serviceMethodName");
 
 		sb.append(serviceMethodName);
 
@@ -523,9 +520,9 @@ public class JSONServiceAction extends JSONAction {
 
 						_log.error(
 							StringBundler.concat(
-								"Obscure method name for class ",
-								String.valueOf(clazz), ", method ", methodName,
-								", and parameters ", parametersString));
+								"Obscure method name for class ", clazz,
+								", method ", methodName, ", and parameters ",
+								parametersString));
 
 						return null;
 					}
@@ -538,8 +535,9 @@ public class JSONServiceAction extends JSONAction {
 		}
 
 		if (method != null) {
-			methodAndParameterTypes =
-				new Object[] {method, methodParameterTypes};
+			methodAndParameterTypes = new Object[] {
+				method, methodParameterTypes
+			};
 
 			_methodCache.put(key, methodAndParameterTypes);
 
@@ -550,9 +548,8 @@ public class JSONServiceAction extends JSONAction {
 
 		_log.error(
 			StringBundler.concat(
-				"No method found for class ", String.valueOf(clazz),
-				", method ", methodName, ", and parameters ",
-				parametersString));
+				"No method found for class ", clazz, ", method ", methodName,
+				", and parameters ", parametersString));
 
 		return null;
 	}
@@ -577,10 +574,10 @@ public class JSONServiceAction extends JSONAction {
 	}
 
 	protected String[] getStringArrayFromJSON(
-			HttpServletRequest request, String param)
+			HttpServletRequest httpServletRequest, String param)
 		throws JSONException {
 
-		String json = ParamUtil.getString(request, param, "[]");
+		String json = ParamUtil.getString(httpServletRequest, param, "[]");
 
 		JSONArray jsonArray = JSONFactoryUtil.createJSONArray(json);
 
@@ -604,8 +601,8 @@ public class JSONServiceAction extends JSONAction {
 				return fieldDescriptor;
 			}
 
-			dimensions = dimensions.replace(
-				StringPool.CLOSE_BRACKET, StringPool.BLANK);
+			dimensions = StringUtil.replace(
+				dimensions, CharPool.CLOSE_BRACKET, StringPool.BLANK);
 
 			if (fieldDescriptor.equals("boolean")) {
 				fieldDescriptor = "Z";
@@ -632,8 +629,11 @@ public class JSONServiceAction extends JSONAction {
 				fieldDescriptor = "S";
 			}
 			else {
-				fieldDescriptor = "L".concat(fieldDescriptor).concat(
-					StringPool.SEMICOLON);
+				fieldDescriptor = "L".concat(
+					fieldDescriptor
+				).concat(
+					StringPool.SEMICOLON
+				);
 			}
 
 			return dimensions.concat(fieldDescriptor);
@@ -642,9 +642,11 @@ public class JSONServiceAction extends JSONAction {
 		throw new IllegalArgumentException(type.toString() + " is invalid");
 	}
 
-	protected boolean isValidRequest(HttpServletRequest request) {
-		String className = ParamUtil.getString(request, "serviceClassName");
-		String methodName = ParamUtil.getString(request, "serviceMethodName");
+	protected boolean isValidRequest(HttpServletRequest httpServletRequest) {
+		String className = ParamUtil.getString(
+			httpServletRequest, "serviceClassName");
+		String methodName = ParamUtil.getString(
+			httpServletRequest, "serviceMethodName");
 
 		if (className.contains(".service.") &&
 			className.endsWith("ServiceUtil") &&
@@ -654,9 +656,8 @@ public class JSONServiceAction extends JSONAction {
 
 			return true;
 		}
-		else {
-			return false;
-		}
+
+		return false;
 	}
 
 	private static final String _REROUTE_PATH = "/api/json";

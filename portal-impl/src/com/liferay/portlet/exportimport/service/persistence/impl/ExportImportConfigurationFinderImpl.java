@@ -14,8 +14,6 @@
 
 package com.liferay.portlet.exportimport.service.persistence.impl;
 
-import aQute.bnd.annotation.ProviderType;
-
 import com.liferay.exportimport.kernel.model.ExportImportConfiguration;
 import com.liferay.exportimport.kernel.service.persistence.ExportImportConfigurationFinder;
 import com.liferay.petra.string.StringPool;
@@ -39,7 +37,6 @@ import java.util.List;
 /**
  * @author Daniel Kocsis
  */
-@ProviderType
 public class ExportImportConfigurationFinderImpl
 	extends ExportImportConfigurationFinderBaseImpl
 	implements ExportImportConfigurationFinder {
@@ -263,7 +260,7 @@ public class ExportImportConfigurationFinderImpl
 			}
 
 			sql = CustomSQLUtil.replaceKeywords(
-				sql, "lower(name)", StringPool.LIKE, false, names);
+				sql, "LOWER(name)", StringPool.LIKE, false, names);
 			sql = CustomSQLUtil.replaceKeywords(
 				sql, "description", StringPool.LIKE, true, descriptions);
 
@@ -334,7 +331,7 @@ public class ExportImportConfigurationFinderImpl
 			}
 
 			sql = CustomSQLUtil.replaceKeywords(
-				sql, "lower(name)", StringPool.LIKE, false, names);
+				sql, "LOWER(name)", StringPool.LIKE, false, names);
 			sql = CustomSQLUtil.replaceKeywords(
 				sql, "description", StringPool.LIKE, true, descriptions);
 

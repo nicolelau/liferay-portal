@@ -24,7 +24,6 @@ import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.model.GroupConstants;
 import com.liferay.portal.kernel.model.Portlet;
 import com.liferay.portal.kernel.model.User;
-import com.liferay.portal.kernel.security.pacl.permission.PortalRuntimePermission;
 import com.liferay.portal.kernel.service.GroupLocalServiceUtil;
 import com.liferay.portal.kernel.service.UserLocalServiceUtil;
 import com.liferay.portal.kernel.util.FileUtil;
@@ -97,8 +96,9 @@ public class WebDAVUtil {
 		getInstance()._deleteStorage(storage);
 	}
 
-	public static long getDepth(HttpServletRequest request) {
-		String value = GetterUtil.getString(request.getHeader("Depth"));
+	public static long getDepth(HttpServletRequest httpServletRequest) {
+		String value = GetterUtil.getString(
+			httpServletRequest.getHeader("Depth"));
 
 		if (_log.isDebugEnabled()) {
 			_log.debug("\"Depth\" header is " + value);
@@ -107,15 +107,14 @@ public class WebDAVUtil {
 		if (value.equals("0")) {
 			return 0;
 		}
-		else {
-			return -1;
-		}
+
+		return -1;
 	}
 
 	public static String getDestination(
-		HttpServletRequest request, String rootPath) {
+		HttpServletRequest httpServletRequest, String rootPath) {
 
-		String headerDestination = request.getHeader("Destination");
+		String headerDestination = httpServletRequest.getHeader("Destination");
 
 		String[] pathSegments = StringUtil.split(headerDestination, rootPath);
 
@@ -133,9 +132,7 @@ public class WebDAVUtil {
 	public static long getGroupId(long companyId, String path)
 		throws WebDAVException {
 
-		String[] pathArray = getPathArray(path);
-
-		return getGroupId(companyId, pathArray);
+		return getGroupId(companyId, getPathArray(path));
 	}
 
 	public static long getGroupId(long companyId, String[] pathArray)
@@ -172,9 +169,7 @@ public class WebDAVUtil {
 	}
 
 	public static List<Group> getGroups(long userId) throws Exception {
-		User user = UserLocalServiceUtil.getUser(userId);
-
-		return getGroups(user);
+		return getGroups(UserLocalServiceUtil.getUser(userId));
 	}
 
 	public static List<Group> getGroups(User user) throws Exception {
@@ -228,17 +223,15 @@ public class WebDAVUtil {
 	}
 
 	public static WebDAVUtil getInstance() {
-		PortalRuntimePermission.checkGetBeanProperty(WebDAVUtil.class);
-
-		return _instance;
+		return _webDAVUtil;
 	}
 
-	public static String getLockUuid(HttpServletRequest request)
+	public static String getLockUuid(HttpServletRequest httpServletRequest)
 		throws WebDAVException {
 
 		String token = StringPool.BLANK;
 
-		String value = GetterUtil.getString(request.getHeader("If"));
+		String value = GetterUtil.getString(httpServletRequest.getHeader("If"));
 
 		if (_log.isDebugEnabled()) {
 			_log.debug("\"If\" header is " + value);
@@ -281,9 +274,8 @@ public class WebDAVUtil {
 		if (pathArray.length <= 2) {
 			return StringPool.BLANK;
 		}
-		else {
-			return pathArray[pathArray.length - 1];
-		}
+
+		return pathArray[pathArray.length - 1];
 	}
 
 	public static WebDAVStorage getStorage(String token) {
@@ -305,10 +297,11 @@ public class WebDAVUtil {
 		return getInstance()._getStorageTokens();
 	}
 
-	public static long getTimeout(HttpServletRequest request) {
+	public static long getTimeout(HttpServletRequest httpServletRequest) {
 		long timeout = 0;
 
-		String value = GetterUtil.getString(request.getHeader("Timeout"));
+		String value = GetterUtil.getString(
+			httpServletRequest.getHeader("Timeout"));
 
 		if (_log.isDebugEnabled()) {
 			_log.debug("\"Timeout\" header is " + value);
@@ -327,8 +320,8 @@ public class WebDAVUtil {
 		return timeout * Time.SECOND;
 	}
 
-	public static boolean isOverwrite(HttpServletRequest request) {
-		return getInstance()._isOverwrite(request);
+	public static boolean isOverwrite(HttpServletRequest httpServletRequest) {
+		return getInstance()._isOverwrite(httpServletRequest);
 	}
 
 	public static String stripManualCheckInRequiredPath(String url) {
@@ -432,24 +425,24 @@ public class WebDAVUtil {
 		return _storages.keySet();
 	}
 
-	private boolean _isOverwrite(HttpServletRequest request) {
-		String value = GetterUtil.getString(request.getHeader("Overwrite"));
+	private boolean _isOverwrite(HttpServletRequest httpServletRequest) {
+		String value = GetterUtil.getString(
+			httpServletRequest.getHeader("Overwrite"));
 
 		if (StringUtil.equalsIgnoreCase(value, "F") ||
 			!GetterUtil.getBoolean(value)) {
 
 			return false;
 		}
-		else {
-			return true;
-		}
+
+		return true;
 	}
 
 	private static final String _TIME_PREFIX = "Second-";
 
 	private static final Log _log = LogFactoryUtil.getLog(WebDAVUtil.class);
 
-	private static final WebDAVUtil _instance = new WebDAVUtil();
+	private static final WebDAVUtil _webDAVUtil = new WebDAVUtil();
 
 	private final ServiceRegistrationMap<WebDAVStorage> _serviceRegistrations =
 		new ServiceRegistrationMapImpl<>();

@@ -1,314 +1,247 @@
-<definition>
-	<var name="siteName" value="Liferay" />
+definition {
 
-	<command name="_selectCalendarSettingsIframe">
-		<execute function="SelectFrame" locator1="CalendarEditCalendar#EDIT_CALENDAR_IFRAME" />
-	</command>
+	var siteName = "Liferay";
 
-	<command name="_selectPermissionsIframe">
-		<execute function="AssertTextEquals" locator1="CalendarPermissions#PERMISSIONS_TITLE" value1="Permissions" />
+	macro _selectCalendarSettingsIframe {
+		SelectFrame(locator1 = "IFrame#DIALOG");
+	}
 
-		<execute function="SelectFrame" locator1="CalendarPermissions#CALENDAR_PERMISSIONS_IFRAME" />
-	</command>
+	macro _selectPermissionsIframe {
+		AssertTextEquals(
+			locator1 = "CalendarPermissions#PERMISSIONS_TITLE",
+			value1 = "Permissions");
 
-	<command name="closeModal">
-		<execute function="SelectFrameTop" />
+		SelectFrame(locator1 = "IFrame#DIALOG");
+	}
 
-		<var name="key_modalTitle" value="${modalTitle}" />
+	macro closeModal {
+		SelectFrameTop();
 
-		<execute function="Click" locator1="Button#CLOSE_MODAL" />
-	</command>
+		var key_modalTitle = "${modalTitle}";
 
-	<command name="gotoAddCurrentSiteCalendars">
-		<execute macro="TestCase#getSiteName">
-			<return from="siteName" name="siteName" />
-			<var name="siteName" value="${siteName}" />
-		</execute>
+		Click(locator1 = "Button#CLOSE_MODAL");
+	}
 
-		<execute function="Click" locator1="Calendar#CURRENT_SITE_CALENDARS_MENULIST_ARROW">
-			<var name="key_siteName" value="${siteName}" />
-		</execute>
+	macro gotoAddCurrentSiteCalendars {
+		var siteName = TestCase.getSiteName(siteName = "${siteName}");
 
-		<execute function="AssertClick" locator1="Calendar#CURRENT_SITE_CALENDARS_MENULIST_ADD_CALENDAR" value1="Add Calendar" />
+		Click(
+			key_siteName = "${siteName}",
+			locator1 = "Calendar#CURRENT_SITE_CALENDARS_MENULIST_ARROW");
 
-		<execute macro="CalendarNavigator#_selectCalendarSettingsIframe" />
-	</command>
+		AssertClick(
+			locator1 = "Calendar#MY_CALENDARS_MENULIST_ADD_CALENDAR",
+			value1 = "Add Calendar");
 
-	<command name="gotoAddEvent">
-		<execute macro="CalendarNavigator#gotoView">
-			<var name="viewType" value="Week" />
-		</execute>
+		CalendarNavigator._selectCalendarSettingsIframe();
+	}
 
-		<execute function="AssertClick" locator1="Calendar#ADD_EVENT_BUTTON" value1="Add Event" />
+	macro gotoAddEvent {
+		CalendarNavigator.gotoView(viewType = "Week");
 
-		<execute macro="CalendarEvent#selectEventIframe" />
+		AssertClick(
+			locator1 = "Calendar#ADD_EVENT_BUTTON",
+			value1 = "Add Event");
 
-		<execute macro="CalendarEvent#_viewNewEventIframe" />
-	</command>
+		CalendarEvent.selectEventIframe();
 
-	<command name="gotoAddEventOnSpecifcDayOfWeekViaWeekView">
-		<execute macro="CalendarNavigator#gotoView">
-			<var name="viewType" value="Week" />
-		</execute>
+		CalendarEvent._viewNewEventIframe();
+	}
 
-		<execute function="Click" locator1="Calendar#SCHEDULER_SPECIFIC_DAY">
-			<var name="key_dayOfWeek" value="${dayOfWeek}" />
-		</execute>
+	macro gotoAddEventToday {
+		var viewTypeUppercase = StringUtil.upperCase("${viewType}");
 
-		<execute function="AssertTextEquals" locator1="Calendar#SCHEDULER_EVENT_DIALOG_BOX_EVENT_TITLE" value1="e.g., Dinner at Brian's" />
-		<execute function="AssertElementNotPresent" locator1="Calendar#SCHEDULER_EVENT_DIALOG_BOX_EVENT_TITLE_GUEST" />
-		<execute function="AssertElementNotPresent" locator1="Calendar#SCHEDULER_EVENT_DIALOG_BOX_ATTEND_ACTIVE" />
-		<execute function="AssertElementNotPresent" locator1="Calendar#SCHEDULER_EVENT_DIALOG_BOX_ATTEND_INACTIVE" />
-		<execute function="AssertElementPresent" locator1="Calendar#SCHEDULER_EVENT_DIALOG_BOX_CALENDAR" />
-		<execute function="AssertElementPresent" locator1="Calendar#SCHEDULER_EVENT_DIALOG_BOX_SAVE_BUTTON" />
-		<execute function="AssertElementNotPresent" locator1="Calendar#SCHEDULER_EVENT_DIALOG_BOX_VIEW_DETAILS_BUTTON" />
-		<execute function="AssertElementNotPresent" locator1="Calendar#SCHEDULER_EVENT_DIALOG_BOX_DELETE_BUTTON" />
+		Click(locator1 = "Calendar#SCHEDULER_VIEW_${viewTypeUppercase}_CURRENT_DAY");
+	}
 
-		<execute function="AssertClick#assertTextClickAt" locator1="Calendar#SCHEDULER_EVENT_DIALOG_BOX_EDIT_BUTTON" value1="Edit" />
+	macro gotoAddEventViaMyCalendars {
+		Click(
+			key_user = "${user}",
+			locator1 = "Calendar#MY_CALENDARS_CALENDAR_PRIMARY_MENULIST_ARROW");
 
-		<execute macro="CalendarEvent#selectEventIframe" />
-	</command>
+		AssertClick(
+			locator1 = "Calendar#OTHER_CALENDARS_CALENDAR_MENULIST_ADD_EVENT",
+			value1 = "Add Event");
 
-	<command name="gotoAddEventToday">
-		<var method="StringUtil#upperCase('${viewType}')" name="viewTypeUppercase" />
+		CalendarEvent.selectEventIframe();
 
-		<execute function="Click" locator1="Calendar#SCHEDULER_VIEW_${viewTypeUppercase}_CURRENT_DAY" />
-	</command>
+		CalendarEvent._viewNewEventIframe();
+	}
 
-	<command name="gotoAddEventViaMyCalendars">
-		<execute function="Click" locator1="Calendar#MY_CALENDARS_CALENDAR_PRIMARY_MENULIST_ARROW">
-			<var name="key_user" value="${user}" />
-		</execute>
+	macro gotoAddMyCalendars {
+		Click(locator1 = "Calendar#MY_CALENDARS_MENULIST_ARROW");
 
-		<execute function="AssertClick" locator1="Calendar#OTHER_CALENDARS_CALENDAR_MENULIST_ADD_EVENT" value1="Add Event" />
+		AssertClick(
+			locator1 = "Calendar#MY_CALENDARS_MENULIST_ADD_CALENDAR",
+			value1 = "Add Calendar");
 
-		<execute macro="CalendarEvent#selectEventIframe" />
+		CalendarNavigator._selectCalendarSettingsIframe();
+	}
 
-		<execute macro="CalendarEvent#_viewNewEventIframe" />
-	</command>
+	macro gotoAddResource {
+		CalendarNavigator.gotoResources();
 
-	<command name="gotoAddMyCalendars">
-		<execute function="Click" locator1="Calendar#MY_CALENDARS_MENULIST_ARROW" />
+		LexiconEntry.gotoAdd();
 
-		<execute function="AssertClick" locator1="Calendar#MY_CALENDARS_MENULIST_ADD_CALENDAR" value1="Add Calendar" />
+		AssertTextEquals(
+			locator1 = "Portlet#H3_HEADER",
+			value1 = "New Resource");
+	}
 
-		<execute macro="CalendarNavigator#_selectCalendarSettingsIframe" />
-	</command>
+	macro gotoConfiguration {
+		Portlet.gotoPortletOptions(
+			portletName = "Calendar",
+			portletOption = "Configuration");
 
-	<command name="gotoAddResource">
-		<execute macro="CalendarNavigator#gotoResources" />
+		SelectFrame(locator1 = "CalendarConfiguration#CALENDAR_CONFIGURATION_IFRAME");
+	}
 
-		<execute function="AssertClick" locator1="CalendarResources#ADD_RESOURCE_BUTTON" value1="Add Resource" />
+	macro gotoCurrentSiteCalendarsManage {
+		var siteName = TestCase.getSiteName(siteName = "${siteName}");
 
-		<execute function="AssertTextEquals" locator1="CalendarEditResource#HEADER_TITLE" value1="New Resource" />
-	</command>
+		Click(
+			key_siteName = "${siteName}",
+			locator1 = "Calendar#CURRENT_SITE_CALENDARS_MENULIST_ARROW");
 
-	<command name="gotoBusyDayViaSmallCalendar">
-		<execute function="AssertElementPresent" locator1="Calendar#SMALL_CALENDAR_BUSY_DAY" />
+		AssertClick(
+			locator1 = "Calendar#MY_CALENDARS_MENULIST_MANAGE_CALENDAR",
+			value1 = "Manage Calendars");
+	}
 
-		<execute function="Click" locator1="Calendar#SMALL_CALENDAR_BUSY_DAY" />
+	macro gotoEditEvent {
+		CalendarNavigator.gotoView(viewType = "Week");
 
-		<execute function="Pause" locator1="5000" />
-	</command>
+		CalendarScheduler.selectSpecificEvent(eventTitle = "${eventTitle}");
 
-	<command name="gotoConfiguration">
-		<execute macro="Portlet#gotoPortletOptions">
-			<var name="portletName" value="Calendar" />
-			<var name="portletName" value="${portletName}" />
-			<var name="portletOption" value="Configuration" />
-		</execute>
+		CalendarScheduler.viewEventTitleViaDialogBox(eventTitle = "${eventTitle}");
 
-		<execute function="SelectFrame" locator1="CalendarConfiguration#CALENDAR_CONFIGURATION_IFRAME" />
-	</command>
+		CalendarScheduler.gotoEditViaDialogBox();
+	}
 
-	<command name="gotoCurrentSiteCalendarsManage">
-		<execute macro="TestCase#getSiteName">
-			<return from="siteName" name="siteName" />
-			<var name="siteName" value="${siteName}" />
-		</execute>
+	macro gotoEditResourceCalendar {
+		var key_calendarResourceName = "${calendarResourceName}";
 
-		<execute function="Click" locator1="Calendar#CURRENT_SITE_CALENDARS_MENULIST_ARROW">
-			<var name="key_siteName" value="${siteName}" />
-		</execute>
+		AssertTextEquals(
+			locator1 = "CalendarResources#RESOURCE_TABLE_NAME",
+			value1 = "${calendarResourceName}");
 
-		<execute function="AssertClick" locator1="Calendar#CURRENT_SITE_CALENDARS_MENULIST_MANAGE_CALENDAR" value1="Manage Calendars" />
-	</command>
+		LexiconEntry.gotoEntryMenuItem(
+			menuItem = "Edit",
+			rowEntry = "${calendarResourceName}");
 
-	<command name="gotoEditEvent">
-		<execute macro="CalendarNavigator#gotoView">
-			<var name="viewType" value="Week" />
-		</execute>
+		AssertTextEquals(
+			locator1 = "Portlet#H3_HEADER",
+			value1 = "${calendarResourceName}");
+	}
 
-		<execute macro="CalendarScheduler#selectSpecificEvent">
-			<var name="eventTitle" value="${eventTitle}" />
-		</execute>
+	macro gotoEventDetails {
+		CalendarNavigator.gotoView(viewType = "Week");
 
-		<execute macro="CalendarScheduler#viewEventTitleViaDialogBox">
-			<var name="eventTitle" value="${eventTitle}" />
-		</execute>
+		CalendarScheduler.selectSpecificEvent(eventTitle = "${eventTitle}");
 
-		<execute macro="CalendarScheduler#gotoEditViaDialogBox" />
-	</command>
+		CalendarScheduler.gotoDetailsViaDialogBox();
+	}
 
-	<command name="gotoEditResourceCalendar">
-		<var name="key_calendarResourceName" value="${calendarResourceName}" />
+	macro gotoMonthViaSmallCalendar {
 
-		<execute function="AssertTextEquals" locator1="CalendarResources#RESOURCE_TABLE_NAME" value1="${calendarResourceName}" />
-
-		<execute macro="LexiconEntry#gotoEntryMenuItem">
-			<var name="menuItem" value="Edit" />
-			<var name="rowEntry" value="${calendarResourceName}" />
-		</execute>
-
-		<execute function="AssertTextEquals" locator1="CalendarEditResource#HEADER_TITLE" value1="${calendarResourceName}" />
-	</command>
-
-	<command name="gotoEventDetails">
-		<execute macro="CalendarNavigator#gotoView">
-			<var name="viewType" value="Week" />
-		</execute>
-
-		<execute macro="CalendarScheduler#selectSpecificEvent">
-			<var name="eventTitle" value="${eventTitle}" />
-		</execute>
-
-		<execute macro="CalendarScheduler#gotoDetailsViaDialogBox" />
-	</command>
-
-	<command name="gotoMonthViaSmallCalendar">
-
-		<!--
+		/*
 		To ensure the desired month will always be reached, click "Previous"
 		until it reaches our baseline of February 2016. Then click "Next" until
 		it reaches ${dateMonth}.
-		-->
+		*/
 
-		<while max-iterations="100">
-			<condition function="IsTextNotEqual" locator1="Calendar#SMALL_CALENDAR_DATE" value1="February 2016" />
-			<then>
-				<execute function="Click" locator1="Calendar#SMALL_CALENDAR_PREVIOUS" />
-			</then>
-		</while>
+		while (IsTextNotEqual(locator1 = "Calendar#SMALL_CALENDAR_DATE", value1 = "February 2016") && (maxIterations = "100")) {
+			Click(locator1 = "Calendar#SMALL_CALENDAR_PREVIOUS");
+		}
 
-		<while max-iterations="100">
-			<condition function="IsTextNotEqual" locator1="Calendar#SMALL_CALENDAR_DATE" value1="${dateMonth}" />
-			<then>
-				<execute function="Click" locator1="Calendar#SMALL_CALENDAR_NEXT" />
-			</then>
-		</while>
-	</command>
+		while (IsTextNotEqual(locator1 = "Calendar#SMALL_CALENDAR_DATE", value1 = "${dateMonth}") && (maxIterations = "100")) {
+			Click(locator1 = "Calendar#SMALL_CALENDAR_NEXT");
+		}
+	}
 
-	<command name="gotoMyCalendarsManage">
-		<execute function="Click" locator1="Calendar#MY_CALENDARS_MENULIST_ARROW" />
+	macro gotoMyCalendarsManage {
+		Click(locator1 = "Calendar#MY_CALENDARS_MENULIST_ARROW");
 
-		<execute function="AssertClick" locator1="Calendar#MY_CALENDARS_MENULIST_MANAGE_CALENDAR" value1="Manage Calendars" />
-	</command>
+		AssertClick(
+			locator1 = "Calendar#MY_CALENDARS_MENULIST_MANAGE_CALENDAR",
+			value1 = "Manage Calendars");
+	}
 
-	<command name="gotoNextDay">
-		<execute macro="CalendarNavigator#gotoView">
-			<var name="viewType" value="Day" />
-		</execute>
+	macro gotoNextDay {
+		CalendarNavigator.gotoView(viewType = "Day");
 
-		<execute function="Click" locator1="Calendar#VIEW_NEXT_BUTTON" />
-	</command>
+		Click(locator1 = "Calendar#VIEW_NEXT_BUTTON");
+	}
 
-	<command name="gotoPreviousDay">
-		<execute macro="CalendarNavigator#gotoView">
-			<var name="viewType" value="Day" />
-		</execute>
+	macro gotoPreviousDay {
+		CalendarNavigator.gotoView(viewType = "Day");
 
-		<execute function="Click" locator1="Calendar#VIEW_PREVIOUS_BUTTON" />
-	</command>
+		Click(locator1 = "Calendar#VIEW_PREVIOUS_BUTTON");
+	}
 
-	<command name="gotoResourceCalendars">
-		<execute macro="CalendarNavigator#gotoResources" />
+	macro gotoResourceCalendars {
+		CalendarNavigator.gotoResources();
 
-		<execute macro="LexiconEntry#gotoEntryMenuItem">
-			<var name="menuItem" value="View Calendars" />
-			<var name="rowEntry" value="${calendarResourceName}" />
-		</execute>
-	</command>
+		LexiconEntry.gotoEntryMenuItem(
+			menuItem = "View Calendars",
+			rowEntry = "${calendarResourceName}");
+	}
 
-	<command name="gotoResources">
-		<execute function="AssertClick" locator1="Calendar#NAVIGATION_RESOURCES" value1="Resources" />
-	</command>
+	macro gotoResources {
+		Navigator.gotoNavItem(navItem = "Resources");
+	}
 
-	<command name="gotoSpecificBusyDayViaSmallCalendar">
-		<var name="key_dateNumber" value="${dateNumber}" />
+	macro gotoSpecificBusyDayViaSmallCalendar {
+		var key_dateNumber = "${dateNumber}";
 
-		<execute function="AssertElementPresent" locator1="Calendar#SMALL_CALENDAR_SPECIFIC_BUSY_DAY" />
+		AssertElementPresent(locator1 = "Calendar#SMALL_CALENDAR_SPECIFIC_BUSY_DAY");
 
-		<execute function="Click" locator1="Calendar#SMALL_CALENDAR_SPECIFIC_BUSY_DAY" />
-	</command>
+		Click(locator1 = "Calendar#SMALL_CALENDAR_SPECIFIC_BUSY_DAY");
+	}
 
-	<command name="gotoSpecificDayViaSmallCalendar">
-		<execute function="Click" locator1="Calendar#SMALL_CALENDAR_SPECIFIC_DAY">
-			<var name="key_dateNumber" value="${dateNumber}" />
-		</execute>
+	macro gotoToday {
+		AssertClick(
+			locator1 = "Calendar#VIEW_TODAY_BUTTON",
+			value1 = "Today");
+	}
 
-		<execute macro="CalendarNavigator#gotoView">
-			<var name="viewType" value="Day" />
-		</execute>
-	</command>
+	macro gotoView {
+		if ("${viewType}" == "Day") {
+			if (IsElementNotPresent(locator1 = "Calendar#VIEW_DAY_BUTTON_ACTIVE")) {
+				AssertClick(
+					locator1 = "Calendar#VIEW_DAY_BUTTON",
+					value1 = "${viewType}");
+			}
 
-	<command name="gotoToday">
-		<execute function="AssertClick" locator1="Calendar#VIEW_TODAY_BUTTON" value1="Today" />
-	</command>
+			AssertElementPresent(locator1 = "CalendarDayView#SCHEDULER_VIEW_DAY");
+		}
+		else if ("${viewType}" == "Week") {
+			if (IsElementNotPresent(locator1 = "Calendar#VIEW_WEEK_BUTTON_ACTIVE")) {
+				AssertClick(
+					locator1 = "Calendar#VIEW_WEEK_BUTTON",
+					value1 = "${viewType}");
+			}
 
-	<command name="gotoView">
-		<if>
-			<equals arg1="${viewType}" arg2="Day" />
-			<then>
-				<if>
-					<condition function="IsElementNotPresent" locator1="Calendar#VIEW_DAY_BUTTON_ACTIVE" />
-					<then>
-						<execute function="AssertClick" locator1="Calendar#VIEW_DAY_BUTTON" value1="${viewType}" />
-					</then>
-				</if>
+			AssertElementPresent(locator1 = "Calendar#SCHEDULER_VIEW_WEEK");
+		}
+		else if ("${viewType}" == "Month") {
+			if (IsElementNotPresent(locator1 = "Calendar#VIEW_MONTH_BUTTON_ACTIVE")) {
+				AssertClick(
+					locator1 = "Calendar#VIEW_MONTH_BUTTON",
+					value1 = "${viewType}");
+			}
 
-				<execute function="AssertElementPresent" locator1="CalendarDayView#SCHEDULER_VIEW_DAY" />
-			</then>
-			<elseif>
-				<equals arg1="${viewType}" arg2="Week" />
-				<then>
-					<if>
-						<condition function="IsElementNotPresent" locator1="Calendar#VIEW_WEEK_BUTTON_ACTIVE" />
-						<then>
-							<execute function="AssertClick" locator1="Calendar#VIEW_WEEK_BUTTON" value1="${viewType}" />
-						</then>
-					</if>
+			AssertElementPresent(locator1 = "CalendarMonthView#SCHEDULER_VIEW_MONTH");
+		}
+		else if ("${viewType}" == "Agenda") {
+			if (IsElementNotPresent(locator1 = "Calendar#VIEW_AGENDA_BUTTON_ACTIVE")) {
+				AssertClick(
+					locator1 = "Calendar#VIEW_AGENDA_BUTTON",
+					value1 = "${viewType}");
+			}
 
-					<execute function="AssertElementPresent" locator1="Calendar#SCHEDULER_VIEW_WEEK" />
-				</then>
-			</elseif>
-			<elseif>
-				<equals arg1="${viewType}" arg2="Month" />
-				<then>
-					<if>
-						<condition function="IsElementNotPresent" locator1="Calendar#VIEW_MONTH_BUTTON_ACTIVE" />
-						<then>
-							<execute function="AssertClick" locator1="Calendar#VIEW_MONTH_BUTTON" value1="${viewType}" />
-						</then>
-					</if>
+			AssertElementPresent(locator1 = "CalendarAgendaView#SCHEDULER_VIEW_AGENDA");
+		}
+	}
 
-					<execute function="AssertElementPresent" locator1="CalendarMonthView#SCHEDULER_VIEW_MONTH" />
-				</then>
-			</elseif>
-			<elseif>
-				<equals arg1="${viewType}" arg2="Agenda" />
-				<then>
-					<if>
-						<condition function="IsElementNotPresent" locator1="Calendar#VIEW_AGENDA_BUTTON_ACTIVE" />
-						<then>
-							<execute function="AssertClick" locator1="Calendar#VIEW_AGENDA_BUTTON" value1="${viewType}" />
-						</then>
-					</if>
-
-					<execute function="AssertElementPresent" locator1="CalendarAgendaView#SCHEDULER_VIEW_AGENDA" />
-				</then>
-			</elseif>
-		</if>
-
-		<execute function="Pause" locator1="3000" />
-	</command>
-</definition>
+}

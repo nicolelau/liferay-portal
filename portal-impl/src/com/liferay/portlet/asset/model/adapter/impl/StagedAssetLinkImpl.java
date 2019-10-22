@@ -32,7 +32,7 @@ import java.util.Date;
 import java.util.Map;
 
 /**
- * @author Mate Thurzo
+ * @author Máté Thurzó
  */
 public class StagedAssetLinkImpl implements StagedAssetLink {
 
@@ -150,6 +150,11 @@ public class StagedAssetLinkImpl implements StagedAssetLink {
 	@Override
 	public Date getModifiedDate() {
 		return _assetLink.getCreateDate();
+	}
+
+	@Override
+	public long getMvccVersion() {
+		return _assetLink.getMvccVersion();
 	}
 
 	@Override
@@ -294,6 +299,11 @@ public class StagedAssetLinkImpl implements StagedAssetLink {
 
 	@Override
 	public void setModifiedDate(Date date) {
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
+	public void setMvccVersion(long mvccVersion) {
 		throw new UnsupportedOperationException();
 	}
 

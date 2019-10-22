@@ -42,6 +42,35 @@
 - [LPS-76018]: Update the [Liferay Javadoc Formatter] dependency to version
 1.0.26.
 
+## 1.0.21 - 2018-07-04
+
+### Changed
+- [LPS-82828]: Update the [Liferay Javadoc Formatter] dependency to version
+1.0.28.
+
+## 1.0.22 - 2018-07-05
+
+### Changed
+- [LPS-83220]: Update the [Liferay Javadoc Formatter] dependency to version
+1.0.29.
+
+## 1.0.23 - 2018-11-16
+
+### Changed
+- [LPS-87466]: Update the [Liferay Gradle Util] dependency to version 1.0.32.
+
+## 1.0.24 - 2018-11-19
+
+### Changed
+- [LPS-87466]: Update the [Liferay Gradle Util] dependency to version 1.0.33.
+
+## 1.0.25 - 2018-11-29
+
+### Changed
+- [LPS-87936]: Update the [Liferay Javadoc Formatter] dependency to version
+1.0.30.
+
+[Liferay Gradle Util]: https://github.com/liferay/liferay-portal/tree/master/modules/sdk/gradle-util
 [Liferay Javadoc Formatter]: https://github.com/liferay/liferay-portal/tree/master/modules/util/javadoc-formatter
 [LPS-69271]: https://issues.liferay.com/browse/LPS-69271
 [LPS-73855]: https://issues.liferay.com/browse/LPS-73855
@@ -49,3 +78,7 @@
 [LPS-75247]: https://issues.liferay.com/browse/LPS-75247
 [LPS-76018]: https://issues.liferay.com/browse/LPS-76018
 [LPS-76568]: https://issues.liferay.com/browse/LPS-76568
+[LPS-82828]: https://issues.liferay.com/browse/LPS-82828
+[LPS-83220]: https://issues.liferay.com/browse/LPS-83220
+[LPS-87466]: https://issues.liferay.com/browse/LPS-87466
+[LPS-87936]: https://issues.liferay.com/browse/LPS-87936

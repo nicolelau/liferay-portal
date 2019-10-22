@@ -43,7 +43,7 @@ import org.osgi.service.component.annotations.Reference;
 /**
  * @author Preston Crary
  */
-@Component(immediate = true)
+@Component(immediate = true, service = {})
 public class KBArticleModelResourcePermissionRegistrar {
 
 	@Activate
@@ -72,7 +72,7 @@ public class KBArticleModelResourcePermissionRegistrar {
 				(modelResourcePermission, consumer) -> {
 					if (PropsValues.PERMISSIONS_VIEW_DYNAMIC_INHERITANCE) {
 						consumer.accept(
-							new KBArticleDynamicInheritancePermissionLogic(
+							new KBArticleDynamicInheritanceModelResourcePermissionLogic(
 								modelResourcePermission));
 					}
 				}),
@@ -99,7 +99,7 @@ public class KBArticleModelResourcePermissionRegistrar {
 
 	private ServiceRegistration<ModelResourcePermission> _serviceRegistration;
 
-	private class KBArticleDynamicInheritancePermissionLogic
+	private class KBArticleDynamicInheritanceModelResourcePermissionLogic
 		implements ModelResourcePermissionLogic<KBArticle> {
 
 		@Override
@@ -112,18 +112,19 @@ public class KBArticleModelResourcePermissionRegistrar {
 				return null;
 			}
 
-			long parentResourceClassNameId =
-				kbArticle.getParentResourceClassNameId();
 			long parentResourcePrimKey = kbArticle.getParentResourcePrimKey();
-
-			long kbFolderClassNameId = PortalUtil.getClassNameId(
-				KBFolderConstants.getClassName());
 
 			if (parentResourcePrimKey ==
 					KBFolderConstants.DEFAULT_PARENT_FOLDER_ID) {
 
 				return null;
 			}
+
+			long parentResourceClassNameId =
+				kbArticle.getParentResourceClassNameId();
+
+			long kbFolderClassNameId = PortalUtil.getClassNameId(
+				KBFolderConstants.getClassName());
 
 			if (parentResourceClassNameId == kbFolderClassNameId) {
 				if (!_kbFolderModelResourcePermission.contains(
@@ -147,7 +148,7 @@ public class KBArticleModelResourcePermissionRegistrar {
 			return null;
 		}
 
-		private KBArticleDynamicInheritancePermissionLogic(
+		private KBArticleDynamicInheritanceModelResourcePermissionLogic(
 			ModelResourcePermission<KBArticle> modelResourcePermission) {
 
 			_kbArticleModelResourcePermission = modelResourcePermission;

@@ -137,6 +137,18 @@ public class AssetEntryServiceImpl extends AssetEntryServiceBaseImpl {
 	}
 
 	@Override
+	public AssetEntry getEntry(String className, long classPK)
+		throws PortalException {
+
+		AssetEntry entry = assetEntryLocalService.getEntry(className, classPK);
+
+		AssetEntryPermission.check(
+			getPermissionChecker(), entry, ActionKeys.VIEW);
+
+		return entry;
+	}
+
+	@Override
 	public void incrementViewCounter(AssetEntry assetEntry)
 		throws PortalException {
 
@@ -180,62 +192,6 @@ public class AssetEntryServiceImpl extends AssetEntryServiceBaseImpl {
 			description, summary, url, layoutUuid, height, width, priority);
 	}
 
-	/**
-	 * @deprecated As of 7.0.0, replaced by {@link #updateEntry(long, Date,
-	 *             Date, String, long, String, long, long[], String[], boolean,
-	 *             boolean, Date, Date, Date, Date, String, String, String,
-	 *             String, String, String, int, int, Double)}
-	 */
-	@Deprecated
-	@Override
-	public AssetEntry updateEntry(
-			long groupId, Date createDate, Date modifiedDate, String className,
-			long classPK, String classUuid, long classTypeId,
-			long[] categoryIds, String[] tagNames, boolean listable,
-			boolean visible, Date startDate, Date endDate, Date expirationDate,
-			String mimeType, String title, String description, String summary,
-			String url, String layoutUuid, int height, int width,
-			Double priority)
-		throws PortalException {
-
-		AssetEntryPermission.check(
-			getPermissionChecker(), className, classPK, ActionKeys.UPDATE);
-
-		return assetEntryLocalService.updateEntry(
-			getUserId(), groupId, createDate, modifiedDate, className, classPK,
-			classUuid, classTypeId, categoryIds, tagNames, listable, visible,
-			startDate, endDate, expirationDate, mimeType, title, description,
-			summary, url, layoutUuid, height, width, priority);
-	}
-
-	/**
-	 * @deprecated As of 7.0.0, replaced by {@link #updateEntry(long, Date,
-	 *             Date, String, long, String, long, long[], String[], boolean,
-	 *             boolean, Date, Date, Date, Date, String, String, String,
-	 *             String, String, String, int, int, Double)}
-	 */
-	@Deprecated
-	@Override
-	public AssetEntry updateEntry(
-			long groupId, Date createDate, Date modifiedDate, String className,
-			long classPK, String classUuid, long classTypeId,
-			long[] categoryIds, String[] tagNames, boolean visible,
-			Date startDate, Date endDate, Date expirationDate, String mimeType,
-			String title, String description, String summary, String url,
-			String layoutUuid, int height, int width, Integer priority,
-			boolean sync)
-		throws PortalException {
-
-		AssetEntryPermission.check(
-			getPermissionChecker(), className, classPK, ActionKeys.UPDATE);
-
-		return assetEntryLocalService.updateEntry(
-			getUserId(), groupId, createDate, modifiedDate, className, classPK,
-			classUuid, classTypeId, categoryIds, tagNames, visible, startDate,
-			endDate, expirationDate, mimeType, title, description, summary, url,
-			layoutUuid, height, width, priority, sync);
-	}
-
 	protected AssetEntryQuery buildFilteredEntryQuery(
 			AssetEntryQuery entryQuery)
 		throws PortalException {
@@ -267,8 +223,11 @@ public class AssetEntryServiceImpl extends AssetEntryServiceBaseImpl {
 
 		String key = entryQuery.toString();
 
-		key = key.concat(StringPool.POUND).concat(
-			Boolean.toString(returnEntriesCountOnly));
+		key = key.concat(
+			StringPool.POUND
+		).concat(
+			Boolean.toString(returnEntriesCountOnly)
+		);
 
 		Object[] results = threadLocalCache.get(key);
 
@@ -276,43 +235,42 @@ public class AssetEntryServiceImpl extends AssetEntryServiceBaseImpl {
 			return results;
 		}
 
-		if (returnEntriesCountOnly && !entryQuery.isEnablePermissions()) {
-			int entriesCount = assetEntryLocalService.getEntriesCount(
-				entryQuery);
+		List<AssetEntry> entries = null;
 
-			results = new Object[] {null, entriesCount};
+		int count = 0;
 
-			threadLocalCache.put(key, results);
+		if (!entryQuery.isEnablePermissions()) {
+			if (returnEntriesCountOnly) {
+				count = assetEntryLocalService.getEntriesCount(entryQuery);
 
-			return results;
+				results = new Object[] {null, count};
+			}
+			else {
+				entries = assetEntryLocalService.getEntries(entryQuery);
+
+				results = new Object[] {entries, entries.size()};
+			}
 		}
+		else {
+			int end = entryQuery.getEnd();
+			int start = entryQuery.getStart();
 
-		int end = entryQuery.getEnd();
-		int start = entryQuery.getStart();
-
-		if (entryQuery.isEnablePermissions()) {
 			entryQuery.setEnd(end + PropsValues.ASSET_FILTER_SEARCH_LIMIT);
 			entryQuery.setStart(0);
-		}
 
-		List<AssetEntry> entries = assetEntryLocalService.getEntries(
-			entryQuery);
+			entries = assetEntryLocalService.getEntries(entryQuery);
 
-		List<AssetEntry> filteredEntries = null;
-		int filteredEntriesCount = 0;
+			List<AssetEntry> filteredEntries = new ArrayList<>();
 
-		if (entryQuery.isEnablePermissions()) {
 			PermissionChecker permissionChecker = getPermissionChecker();
 
-			filteredEntries = new ArrayList<>();
-
 			for (AssetEntry entry : entries) {
-				String className = entry.getClassName();
 				long classPK = entry.getClassPK();
 
 				AssetRendererFactory<?> assetRendererFactory =
 					AssetRendererFactoryRegistryUtil.
-						getAssetRendererFactoryByClassName(className);
+						getAssetRendererFactoryByClassName(
+							entry.getClassName());
 
 				try {
 					if (assetRendererFactory.hasPermission(
@@ -323,23 +281,17 @@ public class AssetEntryServiceImpl extends AssetEntryServiceBaseImpl {
 				}
 				catch (Exception e) {
 				}
-
-				if ((end != QueryUtil.ALL_POS) &&
-					(filteredEntries.size() > end)) {
-
-					break;
-				}
 			}
 
-			filteredEntriesCount = filteredEntries.size();
+			count = filteredEntries.size();
 
 			if ((end != QueryUtil.ALL_POS) && (start != QueryUtil.ALL_POS)) {
-				if (end > filteredEntriesCount) {
-					end = filteredEntriesCount;
+				if (end > count) {
+					end = count;
 				}
 
-				if (start > filteredEntriesCount) {
-					start = filteredEntriesCount;
+				if (start > count) {
+					start = count;
 				}
 
 				filteredEntries = filteredEntries.subList(start, end);
@@ -347,14 +299,9 @@ public class AssetEntryServiceImpl extends AssetEntryServiceBaseImpl {
 
 			entryQuery.setEnd(end);
 			entryQuery.setStart(start);
-		}
-		else {
-			filteredEntries = entries;
 
-			filteredEntriesCount = filteredEntries.size();
+			results = new Object[] {filteredEntries, count};
 		}
-
-		results = new Object[] {filteredEntries, filteredEntriesCount};
 
 		threadLocalCache.put(key, results);
 

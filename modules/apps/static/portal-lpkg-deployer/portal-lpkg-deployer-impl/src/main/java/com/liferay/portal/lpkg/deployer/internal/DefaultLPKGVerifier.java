@@ -14,9 +14,7 @@
 
 package com.liferay.portal.lpkg.deployer.internal;
 
-import com.liferay.portal.kernel.log.Log;
-import com.liferay.portal.kernel.log.LogFactoryUtil;
-import com.liferay.portal.kernel.util.StringBundler;
+import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.lpkg.deployer.LPKGVerifier;
 import com.liferay.portal.lpkg.deployer.LPKGVerifyException;
@@ -25,7 +23,6 @@ import java.io.File;
 import java.io.InputStream;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
 import java.util.zip.ZipEntry;
@@ -36,12 +33,11 @@ import org.osgi.framework.BundleContext;
 import org.osgi.framework.Version;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
-import org.osgi.service.component.annotations.Reference;
 
 /**
  * @author Shuyang Zhou
  */
-@Component(immediate = true)
+@Component(immediate = true, service = LPKGVerifier.class)
 public class DefaultLPKGVerifier implements LPKGVerifier {
 
 	@Activate
@@ -66,7 +62,9 @@ public class DefaultLPKGVerifier implements LPKGVerifier {
 				properties.load(inputStream);
 			}
 
-			String symbolicName = properties.getProperty("title");
+			String symbolicName = lpkgFile.getName();
+
+			symbolicName = symbolicName.substring(0, symbolicName.length() - 5);
 
 			if (Validator.isNull(symbolicName)) {
 				throw new LPKGVerifyException(
@@ -87,11 +85,6 @@ public class DefaultLPKGVerifier implements LPKGVerifier {
 					iae);
 			}
 
-			if (LPKGIndexValidatorThreadLocal.isEnabled()) {
-				_lpkgIndexValidator.validate(
-					Collections.singletonList(lpkgFile));
-			}
-
 			List<Bundle> oldBundles = new ArrayList<>();
 
 			for (Bundle bundle : _bundleContext.getBundles()) {
@@ -105,17 +98,18 @@ public class DefaultLPKGVerifier implements LPKGVerifier {
 					oldBundles.add(bundle);
 				}
 				else {
-					String path = lpkgFile.getCanonicalPath();
+					String location = LPKGLocationUtil.getLPKGLocation(
+						lpkgFile);
 
-					if (path.equals(bundle.getLocation())) {
+					if (location.equals(bundle.getLocation())) {
 						continue;
 					}
 
 					throw new LPKGVerifyException(
 						StringBundler.concat(
-							"Existing LPKG bundle ", String.valueOf(bundle),
+							"Existing LPKG bundle ", bundle,
 							" has the same symbolic name and version as LPKG ",
-							"file ", String.valueOf(lpkgFile)));
+							"file ", location));
 				}
 			}
 
@@ -126,12 +120,6 @@ public class DefaultLPKGVerifier implements LPKGVerifier {
 		}
 	}
 
-	private static final Log _log = LogFactoryUtil.getLog(
-		DefaultLPKGVerifier.class);
-
 	private BundleContext _bundleContext;
-
-	@Reference
-	private LPKGIndexValidator _lpkgIndexValidator;
 
 }

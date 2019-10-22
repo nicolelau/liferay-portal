@@ -14,8 +14,6 @@
 
 package com.liferay.asset.kernel.model;
 
-import aQute.bnd.annotation.ProviderType;
-
 import java.io.Serializable;
 
 import java.util.ArrayList;
@@ -26,15 +24,16 @@ import java.util.List;
  * This class is used by SOAP remote services, specifically {@link com.liferay.portlet.asset.service.http.AssetVocabularyServiceSoap}.
  *
  * @author Brian Wing Shun Chan
- * @see com.liferay.portlet.asset.service.http.AssetVocabularyServiceSoap
  * @generated
  */
-@ProviderType
 public class AssetVocabularySoap implements Serializable {
+
 	public static AssetVocabularySoap toSoapModel(AssetVocabulary model) {
 		AssetVocabularySoap soapModel = new AssetVocabularySoap();
 
+		soapModel.setMvccVersion(model.getMvccVersion());
 		soapModel.setUuid(model.getUuid());
+		soapModel.setExternalReferenceCode(model.getExternalReferenceCode());
 		soapModel.setVocabularyId(model.getVocabularyId());
 		soapModel.setGroupId(model.getGroupId());
 		soapModel.setCompanyId(model.getCompanyId());
@@ -52,7 +51,8 @@ public class AssetVocabularySoap implements Serializable {
 	}
 
 	public static AssetVocabularySoap[] toSoapModels(AssetVocabulary[] models) {
-		AssetVocabularySoap[] soapModels = new AssetVocabularySoap[models.length];
+		AssetVocabularySoap[] soapModels =
+			new AssetVocabularySoap[models.length];
 
 		for (int i = 0; i < models.length; i++) {
 			soapModels[i] = toSoapModel(models[i]);
@@ -63,10 +63,12 @@ public class AssetVocabularySoap implements Serializable {
 
 	public static AssetVocabularySoap[][] toSoapModels(
 		AssetVocabulary[][] models) {
+
 		AssetVocabularySoap[][] soapModels = null;
 
 		if (models.length > 0) {
-			soapModels = new AssetVocabularySoap[models.length][models[0].length];
+			soapModels =
+				new AssetVocabularySoap[models.length][models[0].length];
 		}
 		else {
 			soapModels = new AssetVocabularySoap[0][0];
@@ -81,7 +83,9 @@ public class AssetVocabularySoap implements Serializable {
 
 	public static AssetVocabularySoap[] toSoapModels(
 		List<AssetVocabulary> models) {
-		List<AssetVocabularySoap> soapModels = new ArrayList<AssetVocabularySoap>(models.size());
+
+		List<AssetVocabularySoap> soapModels =
+			new ArrayList<AssetVocabularySoap>(models.size());
 
 		for (AssetVocabulary model : models) {
 			soapModels.add(toSoapModel(model));
@@ -101,12 +105,28 @@ public class AssetVocabularySoap implements Serializable {
 		setVocabularyId(pk);
 	}
 
+	public long getMvccVersion() {
+		return _mvccVersion;
+	}
+
+	public void setMvccVersion(long mvccVersion) {
+		_mvccVersion = mvccVersion;
+	}
+
 	public String getUuid() {
 		return _uuid;
 	}
 
 	public void setUuid(String uuid) {
 		_uuid = uuid;
+	}
+
+	public String getExternalReferenceCode() {
+		return _externalReferenceCode;
+	}
+
+	public void setExternalReferenceCode(String externalReferenceCode) {
+		_externalReferenceCode = externalReferenceCode;
 	}
 
 	public long getVocabularyId() {
@@ -205,7 +225,9 @@ public class AssetVocabularySoap implements Serializable {
 		_lastPublishDate = lastPublishDate;
 	}
 
+	private long _mvccVersion;
 	private String _uuid;
+	private String _externalReferenceCode;
 	private long _vocabularyId;
 	private long _groupId;
 	private long _companyId;
@@ -218,4 +240,5 @@ public class AssetVocabularySoap implements Serializable {
 	private String _description;
 	private String _settings;
 	private Date _lastPublishDate;
+
 }

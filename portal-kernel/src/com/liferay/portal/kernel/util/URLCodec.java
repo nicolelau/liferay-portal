@@ -106,9 +106,8 @@ public class URLCodec {
 		if (sb == null) {
 			return encodedURLString;
 		}
-		else {
-			return sb.toString();
-		}
+
+		return sb.toString();
 	}
 
 	public static String encodeURL(String rawURLString) {
@@ -248,7 +247,7 @@ public class URLCodec {
 
 		ByteBuffer byteBuffer = ByteBuffer.allocate(count);
 
-		for (int i = start; i < start + count * 3; i += 3) {
+		for (int i = start; i < (start + count * 3); i += 3) {
 			int high = _charToHex(encodedString.charAt(i + 1));
 			int low = _charToHex(encodedString.charAt(i + 2));
 
@@ -273,13 +272,12 @@ public class URLCodec {
 
 				count++;
 
-				if (Character.isHighSurrogate(rawChar)) {
-					if (((i + 1) < rawString.length()) &&
-						Character.isLowSurrogate(rawString.charAt(i + 1))) {
+				if (Character.isHighSurrogate(rawChar) &&
+					((i + 1) < rawString.length()) &&
+					Character.isLowSurrogate(rawString.charAt(i + 1))) {
 
-						i++;
-						count++;
-					}
+					i++;
+					count++;
 				}
 			}
 			else {

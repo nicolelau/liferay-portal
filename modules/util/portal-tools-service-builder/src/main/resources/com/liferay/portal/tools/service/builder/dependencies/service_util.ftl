@@ -1,10 +1,7 @@
 package ${apiPackagePath}.service;
 
-import aQute.bnd.annotation.ProviderType;
-
 import com.liferay.portal.kernel.bean.PortalBeanLocatorUtil;
 import com.liferay.portal.kernel.bean.PortletBeanLocatorUtil;
-import com.liferay.portal.kernel.util.ReferenceRegistry;
 
 import org.osgi.framework.Bundle;
 import org.osgi.framework.FrameworkUtil;
@@ -13,16 +10,14 @@ import org.osgi.util.tracker.ServiceTracker;
 <#if stringUtil.equals(sessionTypeName, "Local")>
 /**
  * Provides the local service utility for ${entity.name}. This utility wraps
- * {@link ${packagePath}.service.impl.${entity.name}LocalServiceImpl} and is the
- * primary access point for service operations in application layer code running
+ * <code>${packagePath}.service.impl.${entity.name}LocalServiceImpl</code> and
+ * is an access point for service operations in application layer code running
  * on the local server. Methods of this service will not have security checks
  * based on the propagated JAAS credentials because this service can only be
  * accessed from within the same VM.
  *
  * @author ${author}
  * @see ${entity.name}LocalService
- * @see ${packagePath}.service.base.${entity.name}LocalServiceBaseImpl
- * @see ${packagePath}.service.impl.${entity.name}LocalServiceImpl
 <#if classDeprecated>
  * @deprecated ${classDeprecatedComment}
 </#if>
@@ -31,16 +26,14 @@ import org.osgi.util.tracker.ServiceTracker;
 <#else>
 /**
  * Provides the remote service utility for ${entity.name}. This utility wraps
- * {@link ${packagePath}.service.impl.${entity.name}ServiceImpl} and is the
- * primary access point for service operations in application layer code running
- * on a remote server. Methods of this service are expected to have security
- * checks based on the propagated JAAS credentials because this service can be
+ * <code>${packagePath}.service.impl.${entity.name}ServiceImpl</code> and is an
+ * access point for service operations in application layer code running on a
+ * remote server. Methods of this service are expected to have security checks
+ * based on the propagated JAAS credentials because this service can be
  * accessed remotely.
  *
  * @author ${author}
  * @see ${entity.name}Service
- * @see ${packagePath}.service.base.${entity.name}ServiceBaseImpl
- * @see ${packagePath}.service.impl.${entity.name}ServiceImpl
 <#if classDeprecated>
  * @deprecated ${classDeprecatedComment}
 </#if>
@@ -51,14 +44,12 @@ import org.osgi.util.tracker.ServiceTracker;
 <#if classDeprecated>
 	@Deprecated
 </#if>
-
-@ProviderType
 public class ${entity.name}${sessionTypeName}ServiceUtil {
 
-	/*
+	/**
 	 * NOTE FOR DEVELOPERS:
 	 *
-	 * Never modify this class directly. Add custom service methods to {@link ${packagePath}.service.impl.${entity.name}${sessionTypeName}ServiceImpl} and rerun ServiceBuilder to regenerate this class.
+	 * Never modify this class directly. Add custom service methods to <code>${packagePath}.service.impl.${entity.name}${sessionTypeName}ServiceImpl</code> and rerun ServiceBuilder to regenerate this class.
 	 */
 
 	<#list methods as method>
@@ -134,8 +125,6 @@ public class ${entity.name}${sessionTypeName}ServiceUtil {
 				<#else>
 					_service = (${entity.name}${sessionTypeName}Service)PortalBeanLocatorUtil.locate(${entity.name}${sessionTypeName}Service.class.getName());
 				</#if>
-
-				ReferenceRegistry.registerReference(${entity.name}${sessionTypeName}ServiceUtil.class, "_service");
 			}
 
 			return _service;

@@ -14,7 +14,7 @@
 
 package com.liferay.portal.bundle.blacklist.internal;
 
-import com.liferay.portal.kernel.util.StringBundler;
+import com.liferay.petra.string.StringBundler;
 
 /**
  * @author Matthew Tambara
@@ -23,7 +23,6 @@ public class UninstalledBundleData {
 
 	public UninstalledBundleData(String location, int startLevel) {
 		_location = location;
-
 		_startLevel = startLevel;
 	}
 

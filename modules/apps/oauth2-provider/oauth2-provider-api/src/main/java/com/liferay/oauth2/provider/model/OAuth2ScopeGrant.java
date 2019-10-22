@@ -14,44 +14,54 @@
 
 package com.liferay.oauth2.provider.model;
 
-import aQute.bnd.annotation.ProviderType;
-
 import com.liferay.portal.kernel.annotation.ImplementationClassName;
 import com.liferay.portal.kernel.model.PersistedModel;
 import com.liferay.portal.kernel.util.Accessor;
+
+import org.osgi.annotation.versioning.ProviderType;
 
 /**
  * The extended model interface for the OAuth2ScopeGrant service. Represents a row in the &quot;OAuth2ScopeGrant&quot; database table, with each column mapped to a property of this class.
  *
  * @author Brian Wing Shun Chan
  * @see OAuth2ScopeGrantModel
- * @see com.liferay.oauth2.provider.model.impl.OAuth2ScopeGrantImpl
- * @see com.liferay.oauth2.provider.model.impl.OAuth2ScopeGrantModelImpl
  * @generated
  */
-@ImplementationClassName("com.liferay.oauth2.provider.model.impl.OAuth2ScopeGrantImpl")
+@ImplementationClassName(
+	"com.liferay.oauth2.provider.model.impl.OAuth2ScopeGrantImpl"
+)
 @ProviderType
-public interface OAuth2ScopeGrant extends OAuth2ScopeGrantModel, PersistedModel {
-	/*
+public interface OAuth2ScopeGrant
+	extends OAuth2ScopeGrantModel, PersistedModel {
+
+	/**
 	 * NOTE FOR DEVELOPERS:
 	 *
-	 * Never modify this interface directly. Add methods to {@link com.liferay.oauth2.provider.model.impl.OAuth2ScopeGrantImpl} and rerun ServiceBuilder to automatically copy the method declarations to this interface.
+	 * Never modify this interface directly. Add methods to <code>com.liferay.oauth2.provider.model.impl.OAuth2ScopeGrantImpl</code> and rerun ServiceBuilder to automatically copy the method declarations to this interface.
 	 */
-	public static final Accessor<OAuth2ScopeGrant, Long> O_AUTH2_SCOPE_GRANT_ID_ACCESSOR =
-		new Accessor<OAuth2ScopeGrant, Long>() {
-			@Override
-			public Long get(OAuth2ScopeGrant oAuth2ScopeGrant) {
-				return oAuth2ScopeGrant.getOAuth2ScopeGrantId();
-			}
+	public static final Accessor<OAuth2ScopeGrant, Long>
+		O_AUTH2_SCOPE_GRANT_ID_ACCESSOR =
+			new Accessor<OAuth2ScopeGrant, Long>() {
 
-			@Override
-			public Class<Long> getAttributeClass() {
-				return Long.class;
-			}
+				@Override
+				public Long get(OAuth2ScopeGrant oAuth2ScopeGrant) {
+					return oAuth2ScopeGrant.getOAuth2ScopeGrantId();
+				}
 
-			@Override
-			public Class<OAuth2ScopeGrant> getTypeClass() {
-				return OAuth2ScopeGrant.class;
-			}
-		};
+				@Override
+				public Class<Long> getAttributeClass() {
+					return Long.class;
+				}
+
+				@Override
+				public Class<OAuth2ScopeGrant> getTypeClass() {
+					return OAuth2ScopeGrant.class;
+				}
+
+			};
+
+	public java.util.List<String> getScopeAliasesList();
+
+	public void setScopeAliasesList(java.util.List<String> scopeAliasesList);
+
 }

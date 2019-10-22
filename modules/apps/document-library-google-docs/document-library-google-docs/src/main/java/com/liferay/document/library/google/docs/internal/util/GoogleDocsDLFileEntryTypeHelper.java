@@ -14,10 +14,11 @@
 
 package com.liferay.document.library.google.docs.internal.util;
 
-import com.liferay.document.library.kernel.model.DLFileEntryMetadata;
 import com.liferay.document.library.kernel.model.DLFileEntryType;
 import com.liferay.document.library.kernel.service.DLFileEntryTypeLocalService;
-import com.liferay.dynamic.data.mapping.io.DDMFormXSDDeserializer;
+import com.liferay.dynamic.data.mapping.io.DDMFormDeserializer;
+import com.liferay.dynamic.data.mapping.io.DDMFormDeserializerDeserializeRequest;
+import com.liferay.dynamic.data.mapping.io.DDMFormDeserializerDeserializeResponse;
 import com.liferay.dynamic.data.mapping.model.DDMForm;
 import com.liferay.dynamic.data.mapping.model.DDMFormLayout;
 import com.liferay.dynamic.data.mapping.model.DDMStructure;
@@ -28,7 +29,6 @@ import com.liferay.dynamic.data.mapping.util.DDM;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.language.LanguageUtil;
 import com.liferay.portal.kernel.model.Company;
-import com.liferay.portal.kernel.service.ClassNameLocalService;
 import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.service.UserLocalService;
 import com.liferay.portal.kernel.util.LocaleUtil;
@@ -47,25 +47,40 @@ import java.util.Map;
 public class GoogleDocsDLFileEntryTypeHelper {
 
 	public GoogleDocsDLFileEntryTypeHelper(
-		Company company, ClassNameLocalService classNameLocalService, DDM ddm,
-		DDMFormXSDDeserializer ddmFormXSDDeserializer,
+		Company company, long dlFileEntryMetadataClassNameId, DDM ddm,
+		DDMFormDeserializer xsdDDMFormDeserializer,
 		DDMStructureLocalService ddmStructureLocalService,
 		DLFileEntryTypeLocalService dlFileEntryTypeLocalService,
 		UserLocalService userLocalService) {
 
 		_company = company;
-		_classNameLocalService = classNameLocalService;
+		_dlFileEntryMetadataClassNameId = dlFileEntryMetadataClassNameId;
 		_ddm = ddm;
-		_ddmFormXSDDeserializer = ddmFormXSDDeserializer;
+		_xsdDDMFormDeserializer = xsdDDMFormDeserializer;
 		_ddmStructureLocalService = ddmStructureLocalService;
 		_dlFileEntryTypeLocalService = dlFileEntryTypeLocalService;
 		_userLocalService = userLocalService;
-
-		_dlFileEntryMetadataClassNameId = _classNameLocalService.getClassNameId(
-			DLFileEntryMetadata.class);
 	}
 
-	public DDMStructure addGoogleDocsDDMStructure() throws PortalException {
+	public void addGoogleDocsDLFileEntryType() throws PortalException {
+		DDMStructure ddmStructure = _ddmStructureLocalService.fetchStructure(
+			_company.getGroupId(), _dlFileEntryMetadataClassNameId,
+			GoogleDocsConstants.DDM_STRUCTURE_KEY_GOOGLE_DOCS);
+
+		if (ddmStructure == null) {
+			ddmStructure = _addGoogleDocsDDMStructure();
+		}
+
+		List<DLFileEntryType> dlFileEntryTypes =
+			_dlFileEntryTypeLocalService.getFileEntryTypes(
+				ddmStructure.getStructureId());
+
+		if (dlFileEntryTypes.isEmpty()) {
+			_addGoogleDocsDLFileEntryType(ddmStructure.getStructureId());
+		}
+	}
+
+	private DDMStructure _addGoogleDocsDDMStructure() throws PortalException {
 		long defaultUserId = _userLocalService.getDefaultUserId(
 			_company.getCompanyId());
 
@@ -90,7 +105,20 @@ public class GoogleDocsDLFileEntryTypeHelper {
 			throw new PortalException(ioe);
 		}
 
-		DDMForm ddmForm = _ddmFormXSDDeserializer.deserialize(definition);
+		Locale locale = _company.getLocale();
+
+		definition = StringUtil.replace(
+			definition, "[$LOCALE_DEFAULT$]", locale.toString());
+
+		DDMFormDeserializerDeserializeRequest.Builder builder =
+			DDMFormDeserializerDeserializeRequest.Builder.newBuilder(
+				definition);
+
+		DDMFormDeserializerDeserializeResponse
+			ddmFormDeserializerDeserializeResponse =
+				_xsdDDMFormDeserializer.deserialize(builder.build());
+
+		DDMForm ddmForm = ddmFormDeserializerDeserializeResponse.getDDMForm();
 
 		DDMFormLayout ddmFormLayout = _ddm.getDefaultDDMFormLayout(ddmForm);
 
@@ -110,29 +138,7 @@ public class GoogleDocsDLFileEntryTypeHelper {
 			DDMStructureConstants.TYPE_DEFAULT, serviceContext);
 	}
 
-	public DLFileEntryType addGoogleDocsDLFileEntryType()
-		throws PortalException {
-
-		DDMStructure ddmStructure = _ddmStructureLocalService.fetchStructure(
-			_company.getGroupId(), _dlFileEntryMetadataClassNameId,
-			GoogleDocsConstants.DDM_STRUCTURE_KEY_GOOGLE_DOCS);
-
-		if (ddmStructure == null) {
-			ddmStructure = addGoogleDocsDDMStructure();
-		}
-
-		List<DLFileEntryType> dlFileEntryTypes =
-			_dlFileEntryTypeLocalService.getFileEntryTypes(
-				ddmStructure.getStructureId());
-
-		if (!dlFileEntryTypes.isEmpty()) {
-			return dlFileEntryTypes.get(0);
-		}
-
-		return addGoogleDocsDLFileEntryType(ddmStructure.getStructureId());
-	}
-
-	protected DLFileEntryType addGoogleDocsDLFileEntryType(long ddmStructureId)
+	private void _addGoogleDocsDLFileEntryType(long ddmStructureId)
 		throws PortalException {
 
 		long defaultUserId = _userLocalService.getDefaultUserId(
@@ -140,11 +146,11 @@ public class GoogleDocsDLFileEntryTypeHelper {
 
 		Map<Locale, String> nameMap = new HashMap<>();
 
-		nameMap.put(LocaleUtil.getDefault(), "Google Docs");
+		nameMap.put(
+			LocaleUtil.getDefault(),
+			GoogleDocsConstants.DL_FILE_ENTRY_TYPE_NAME);
 
 		Map<Locale, String> descriptionMap = new HashMap<>();
-
-		descriptionMap.put(LocaleUtil.getDefault(), "Google Docs");
 
 		ServiceContext serviceContext = new ServiceContext();
 
@@ -153,19 +159,18 @@ public class GoogleDocsDLFileEntryTypeHelper {
 		serviceContext.setScopeGroupId(_company.getGroupId());
 		serviceContext.setUserId(defaultUserId);
 
-		return _dlFileEntryTypeLocalService.addFileEntryType(
+		_dlFileEntryTypeLocalService.addFileEntryType(
 			defaultUserId, _company.getGroupId(),
 			GoogleDocsConstants.DL_FILE_ENTRY_TYPE_KEY, nameMap, descriptionMap,
 			new long[] {ddmStructureId}, serviceContext);
 	}
 
-	private final ClassNameLocalService _classNameLocalService;
 	private final Company _company;
 	private final DDM _ddm;
-	private final DDMFormXSDDeserializer _ddmFormXSDDeserializer;
 	private final DDMStructureLocalService _ddmStructureLocalService;
 	private final long _dlFileEntryMetadataClassNameId;
 	private final DLFileEntryTypeLocalService _dlFileEntryTypeLocalService;
 	private final UserLocalService _userLocalService;
+	private final DDMFormDeserializer _xsdDDMFormDeserializer;
 
 }

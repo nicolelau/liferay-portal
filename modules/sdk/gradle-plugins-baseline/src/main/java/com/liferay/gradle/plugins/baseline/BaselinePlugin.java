@@ -14,6 +14,8 @@
 
 package com.liferay.gradle.plugins.baseline;
 
+import aQute.bnd.version.Version;
+
 import com.liferay.gradle.plugins.baseline.internal.util.GradleUtil;
 import com.liferay.gradle.util.Validator;
 
@@ -38,10 +40,9 @@ import org.gradle.api.artifacts.DependencySet;
 import org.gradle.api.artifacts.ResolutionStrategy;
 import org.gradle.api.artifacts.component.ModuleComponentIdentifier;
 import org.gradle.api.artifacts.dsl.DependencyHandler;
-import org.gradle.api.file.FileCollection;
+import org.gradle.api.logging.Logger;
 import org.gradle.api.plugins.JavaBasePlugin;
 import org.gradle.api.plugins.JavaPlugin;
-import org.gradle.api.plugins.PluginContainer;
 import org.gradle.api.plugins.ReportingBasePlugin;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.TaskContainer;
@@ -127,7 +128,6 @@ public class BaselinePlugin implements Plugin<Project> {
 		return configuration;
 	}
 
-	@SuppressWarnings("rawtypes")
 	private BaselineTask _addTaskBaseline(
 		final AbstractArchiveTask newJarTask) {
 
@@ -138,21 +138,6 @@ public class BaselinePlugin implements Plugin<Project> {
 			"Compares the public API of this project with the public API of " +
 				"the previous released version, if found.");
 		baselineTask.setGroup(JavaBasePlugin.VERIFICATION_GROUP);
-
-		Project project = baselineTask.getProject();
-
-		PluginContainer pluginContainer = project.getPlugins();
-
-		pluginContainer.withId(
-			"biz.aQute.bnd.builder",
-			new Action<Plugin>() {
-
-				@Override
-				public void execute(Plugin plugin) {
-					_configureTaskBaselineForBndBuilderPlugin(baselineTask);
-				}
-
-			});
 
 		return baselineTask;
 	}
@@ -178,20 +163,12 @@ public class BaselinePlugin implements Plugin<Project> {
 		Dependency dependency = _createDependencyBaseline(
 			newJarTask, majorVersion);
 
-		final Configuration configuration =
+		final Configuration baselineConfiguration =
 			configurationContainer.detachedConfiguration(dependency);
 
-		_configureConfigurationBaseline(configuration);
+		_configureConfigurationBaseline(baselineConfiguration);
 
-		baselineTask.setOldJarFile(
-			new Callable<File>() {
-
-				@Override
-				public File call() throws Exception {
-					return configuration.getSingleFile();
-				}
-
-			});
+		baselineTask.setBaselineConfiguration(baselineConfiguration);
 
 		return baselineTask;
 	}
@@ -238,12 +215,14 @@ public class BaselinePlugin implements Plugin<Project> {
 		return baselineTask;
 	}
 
-	private void _configureConfigurationBaseline(Configuration configuration) {
-		configuration.setTransitive(false);
-		configuration.setVisible(false);
+	private void _configureConfigurationBaseline(
+		Configuration baselineConfiguration) {
+
+		baselineConfiguration.setTransitive(false);
+		baselineConfiguration.setVisible(false);
 
 		ResolutionStrategy resolutionStrategy =
-			configuration.getResolutionStrategy();
+			baselineConfiguration.getResolutionStrategy();
 
 		ComponentSelectionRules componentSelectionRules =
 			resolutionStrategy.getComponentSelection();
@@ -271,7 +250,7 @@ public class BaselinePlugin implements Plugin<Project> {
 
 	private void _configureTaskBaseline(
 		BaselineTask baselineTask, final AbstractArchiveTask newJarTask,
-		final FileCollection oldJarFileCollection,
+		final Configuration baselineConfiguration,
 		BaselineConfigurationExtension baselineConfigurationExtension) {
 
 		VersionNumber lowestBaselineVersionNumber = VersionNumber.parse(
@@ -299,11 +278,20 @@ public class BaselinePlugin implements Plugin<Project> {
 				maxMajorVersion--;
 			}
 
+			if (maxMajorVersion >= (lowestMajorVersion + 1)) {
+				baselineTask.setIgnoreExcessiveVersionIncreases(true);
+			}
+
 			for (int majorVersion = lowestMajorVersion + 1;
-				majorVersion <= maxMajorVersion; majorVersion++) {
+				 majorVersion <= maxMajorVersion; majorVersion++) {
 
 				BaselineTask majorVersionBaselineTask = _addTaskBaseline(
 					newJarTask, majorVersion);
+
+				if (majorVersion < maxMajorVersion) {
+					majorVersionBaselineTask.setIgnoreExcessiveVersionIncreases(
+						true);
+				}
 
 				previousVersionBaselineTask.dependsOn(majorVersionBaselineTask);
 
@@ -320,15 +308,7 @@ public class BaselinePlugin implements Plugin<Project> {
 
 		baselineTask.dependsOn(newJarTask);
 
-		baselineTask.setOldJarFile(
-			new Callable<File>() {
-
-				@Override
-				public File call() throws Exception {
-					return oldJarFileCollection.getSingleFile();
-				}
-
-			});
+		baselineTask.setBaselineConfiguration(baselineConfiguration);
 	}
 
 	private void _configureTaskBaseline(
@@ -390,12 +370,6 @@ public class BaselinePlugin implements Plugin<Project> {
 		baselineTask.setReportOnlyDirtyPackages(reportOnlyDirtyPackages);
 	}
 
-	private void _configureTaskBaselineForBndBuilderPlugin(
-		BaselineTask baselineTask) {
-
-		GradleUtil.setProperty(baselineTask, "bundleTask", null);
-	}
-
 	private void _configureTasksBaseline(
 		Project project,
 		final BaselineConfigurationExtension baselineConfigurationExtension) {
@@ -442,6 +416,49 @@ public class BaselinePlugin implements Plugin<Project> {
 		}
 		else {
 			version = "(," + newJarTask.getVersion() + ")";
+
+			if (newJarTask.getVersion() != null) {
+				Version newVersion = null;
+
+				try {
+					newVersion = new Version(newJarTask.getVersion());
+				}
+				catch (IllegalArgumentException iae) {
+					Logger logger = project.getLogger();
+
+					if (logger.isWarnEnabled()) {
+						logger.warn(
+							"Unable to parse version {}",
+							newJarTask.getVersion());
+					}
+				}
+
+				if ((newVersion != null) &&
+					(newVersion.getQualifier() == null)) {
+
+					if (newVersion.getMicro() > 0) {
+						StringBuilder sb = new StringBuilder();
+
+						sb.append(newVersion.getMajor());
+						sb.append('.');
+						sb.append(newVersion.getMinor());
+						sb.append('.');
+						sb.append(newVersion.getMicro() - 1);
+
+						version = sb.toString();
+					}
+					else if (newVersion.getMinor() > 0) {
+						StringBuilder sb = new StringBuilder();
+
+						sb.append(newVersion.getMajor());
+						sb.append('.');
+						sb.append(newVersion.getMinor() - 1);
+						sb.append(".0");
+
+						version = sb.toString();
+					}
+				}
+			}
 		}
 
 		args.put("version", version);

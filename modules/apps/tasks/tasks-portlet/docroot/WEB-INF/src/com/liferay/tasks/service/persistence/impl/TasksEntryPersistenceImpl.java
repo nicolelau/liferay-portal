@@ -14,12 +14,9 @@
 
 package com.liferay.tasks.service.persistence.impl;
 
-import aQute.bnd.annotation.ProviderType;
-
-import com.liferay.portal.kernel.bean.BeanReference;
+import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.dao.orm.EntityCache;
 import com.liferay.portal.kernel.dao.orm.EntityCacheUtil;
-import com.liferay.portal.kernel.dao.orm.FinderCache;
 import com.liferay.portal.kernel.dao.orm.FinderCacheUtil;
 import com.liferay.portal.kernel.dao.orm.FinderPath;
 import com.liferay.portal.kernel.dao.orm.Query;
@@ -29,17 +26,15 @@ import com.liferay.portal.kernel.dao.orm.SQLQuery;
 import com.liferay.portal.kernel.dao.orm.Session;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
+import com.liferay.portal.kernel.security.auth.CompanyThreadLocal;
 import com.liferay.portal.kernel.security.permission.InlineSQLHelperUtil;
 import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.service.ServiceContextThreadLocal;
-import com.liferay.portal.kernel.service.persistence.CompanyProvider;
-import com.liferay.portal.kernel.service.persistence.CompanyProviderWrapper;
 import com.liferay.portal.kernel.service.persistence.impl.BasePersistenceImpl;
 import com.liferay.portal.kernel.util.ArrayUtil;
 import com.liferay.portal.kernel.util.OrderByComparator;
-import com.liferay.portal.kernel.util.StringBundler;
+import com.liferay.portal.kernel.util.ProxyUtil;
 import com.liferay.portal.kernel.util.StringUtil;
-
 import com.liferay.tasks.exception.NoSuchTasksEntryException;
 import com.liferay.tasks.model.TasksEntry;
 import com.liferay.tasks.model.impl.TasksEntryImpl;
@@ -48,15 +43,11 @@ import com.liferay.tasks.service.persistence.TasksEntryPersistence;
 
 import java.io.Serializable;
 
-import java.util.Arrays;
-import java.util.Collections;
+import java.lang.reflect.InvocationHandler;
+
 import java.util.Date;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * The persistence implementation for the tasks entry service.
@@ -66,54 +57,31 @@ import java.util.Set;
  * </p>
  *
  * @author Ryan Park
- * @see TasksEntryPersistence
- * @see com.liferay.tasks.service.persistence.TasksEntryUtil
  * @generated
  */
-@ProviderType
-public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
-	implements TasksEntryPersistence {
-	/*
+public class TasksEntryPersistenceImpl
+	extends BasePersistenceImpl<TasksEntry> implements TasksEntryPersistence {
+
+	/**
 	 * NOTE FOR DEVELOPERS:
 	 *
-	 * Never modify or reference this class directly. Always use {@link TasksEntryUtil} to access the tasks entry persistence. Modify <code>service.xml</code> and rerun ServiceBuilder to regenerate this class.
+	 * Never modify or reference this class directly. Always use <code>TasksEntryUtil</code> to access the tasks entry persistence. Modify <code>service.xml</code> and rerun ServiceBuilder to regenerate this class.
 	 */
-	public static final String FINDER_CLASS_NAME_ENTITY = TasksEntryImpl.class.getName();
-	public static final String FINDER_CLASS_NAME_LIST_WITH_PAGINATION = FINDER_CLASS_NAME_ENTITY +
-		".List1";
-	public static final String FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION = FINDER_CLASS_NAME_ENTITY +
-		".List2";
-	public static final FinderPath FINDER_PATH_WITH_PAGINATION_FIND_ALL = new FinderPath(TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
-			TasksEntryModelImpl.FINDER_CACHE_ENABLED, TasksEntryImpl.class,
-			FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findAll", new String[0]);
-	public static final FinderPath FINDER_PATH_WITHOUT_PAGINATION_FIND_ALL = new FinderPath(TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
-			TasksEntryModelImpl.FINDER_CACHE_ENABLED, TasksEntryImpl.class,
-			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findAll", new String[0]);
-	public static final FinderPath FINDER_PATH_COUNT_ALL = new FinderPath(TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
-			TasksEntryModelImpl.FINDER_CACHE_ENABLED, Long.class,
-			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countAll", new String[0]);
-	public static final FinderPath FINDER_PATH_WITH_PAGINATION_FIND_BY_GROUPID = new FinderPath(TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
-			TasksEntryModelImpl.FINDER_CACHE_ENABLED, TasksEntryImpl.class,
-			FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByGroupId",
-			new String[] {
-				Long.class.getName(),
-				
-			Integer.class.getName(), Integer.class.getName(),
-				OrderByComparator.class.getName()
-			});
-	public static final FinderPath FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_GROUPID =
-		new FinderPath(TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
-			TasksEntryModelImpl.FINDER_CACHE_ENABLED, TasksEntryImpl.class,
-			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findByGroupId",
-			new String[] { Long.class.getName() },
-			TasksEntryModelImpl.GROUPID_COLUMN_BITMASK |
-			TasksEntryModelImpl.PRIORITY_COLUMN_BITMASK |
-			TasksEntryModelImpl.DUEDATE_COLUMN_BITMASK |
-			TasksEntryModelImpl.CREATEDATE_COLUMN_BITMASK);
-	public static final FinderPath FINDER_PATH_COUNT_BY_GROUPID = new FinderPath(TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
-			TasksEntryModelImpl.FINDER_CACHE_ENABLED, Long.class,
-			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByGroupId",
-			new String[] { Long.class.getName() });
+	public static final String FINDER_CLASS_NAME_ENTITY =
+		TasksEntryImpl.class.getName();
+
+	public static final String FINDER_CLASS_NAME_LIST_WITH_PAGINATION =
+		FINDER_CLASS_NAME_ENTITY + ".List1";
+
+	public static final String FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION =
+		FINDER_CLASS_NAME_ENTITY + ".List2";
+
+	private FinderPath _finderPathWithPaginationFindAll;
+	private FinderPath _finderPathWithoutPaginationFindAll;
+	private FinderPath _finderPathCountAll;
+	private FinderPath _finderPathWithPaginationFindByGroupId;
+	private FinderPath _finderPathWithoutPaginationFindByGroupId;
+	private FinderPath _finderPathCountByGroupId;
 
 	/**
 	 * Returns all the tasks entries where groupId = &#63;.
@@ -123,14 +91,15 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 */
 	@Override
 	public List<TasksEntry> findByGroupId(long groupId) {
-		return findByGroupId(groupId, QueryUtil.ALL_POS, QueryUtil.ALL_POS, null);
+		return findByGroupId(
+			groupId, QueryUtil.ALL_POS, QueryUtil.ALL_POS, null);
 	}
 
 	/**
 	 * Returns a range of all the tasks entries where groupId = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link TasksEntryModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>TasksEntryModelImpl</code>.
 	 * </p>
 	 *
 	 * @param groupId the group ID
@@ -147,7 +116,7 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * Returns an ordered range of all the tasks entries where groupId = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link TasksEntryModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>TasksEntryModelImpl</code>.
 	 * </p>
 	 *
 	 * @param groupId the group ID
@@ -157,8 +126,10 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @return the ordered range of matching tasks entries
 	 */
 	@Override
-	public List<TasksEntry> findByGroupId(long groupId, int start, int end,
+	public List<TasksEntry> findByGroupId(
+		long groupId, int start, int end,
 		OrderByComparator<TasksEntry> orderByComparator) {
+
 		return findByGroupId(groupId, start, end, orderByComparator, true);
 	}
 
@@ -166,44 +137,47 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * Returns an ordered range of all the tasks entries where groupId = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link TasksEntryModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>TasksEntryModelImpl</code>.
 	 * </p>
 	 *
 	 * @param groupId the group ID
 	 * @param start the lower bound of the range of tasks entries
 	 * @param end the upper bound of the range of tasks entries (not inclusive)
 	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
-	 * @param retrieveFromCache whether to retrieve from the finder cache
+	 * @param useFinderCache whether to use the finder cache
 	 * @return the ordered range of matching tasks entries
 	 */
 	@Override
-	public List<TasksEntry> findByGroupId(long groupId, int start, int end,
+	public List<TasksEntry> findByGroupId(
+		long groupId, int start, int end,
 		OrderByComparator<TasksEntry> orderByComparator,
-		boolean retrieveFromCache) {
-		boolean pagination = true;
+		boolean useFinderCache) {
+
 		FinderPath finderPath = null;
 		Object[] finderArgs = null;
 
 		if ((start == QueryUtil.ALL_POS) && (end == QueryUtil.ALL_POS) &&
-				(orderByComparator == null)) {
-			pagination = false;
-			finderPath = FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_GROUPID;
-			finderArgs = new Object[] { groupId };
+			(orderByComparator == null)) {
+
+			if (useFinderCache) {
+				finderPath = _finderPathWithoutPaginationFindByGroupId;
+				finderArgs = new Object[] {groupId};
+			}
 		}
-		else {
-			finderPath = FINDER_PATH_WITH_PAGINATION_FIND_BY_GROUPID;
-			finderArgs = new Object[] { groupId, start, end, orderByComparator };
+		else if (useFinderCache) {
+			finderPath = _finderPathWithPaginationFindByGroupId;
+			finderArgs = new Object[] {groupId, start, end, orderByComparator};
 		}
 
 		List<TasksEntry> list = null;
 
-		if (retrieveFromCache) {
-			list = (List<TasksEntry>)finderCache.getResult(finderPath,
-					finderArgs, this);
+		if (useFinderCache) {
+			list = (List<TasksEntry>)FinderCacheUtil.getResult(
+				finderPath, finderArgs, this);
 
 			if ((list != null) && !list.isEmpty()) {
 				for (TasksEntry tasksEntry : list) {
-					if ((groupId != tasksEntry.getGroupId())) {
+					if (groupId != tasksEntry.getGroupId()) {
 						list = null;
 
 						break;
@@ -216,8 +190,8 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 			StringBundler query = null;
 
 			if (orderByComparator != null) {
-				query = new StringBundler(3 +
-						(orderByComparator.getOrderByFields().length * 2));
+				query = new StringBundler(
+					3 + (orderByComparator.getOrderByFields().length * 2));
 			}
 			else {
 				query = new StringBundler(3);
@@ -228,11 +202,10 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 			query.append(_FINDER_COLUMN_GROUPID_GROUPID_2);
 
 			if (orderByComparator != null) {
-				appendOrderByComparator(query, _ORDER_BY_ENTITY_ALIAS,
-					orderByComparator);
+				appendOrderByComparator(
+					query, _ORDER_BY_ENTITY_ALIAS, orderByComparator);
 			}
-			else
-			 if (pagination) {
+			else {
 				query.append(TasksEntryModelImpl.ORDER_BY_JPQL);
 			}
 
@@ -249,25 +222,19 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 				qPos.add(groupId);
 
-				if (!pagination) {
-					list = (List<TasksEntry>)QueryUtil.list(q, getDialect(),
-							start, end, false);
-
-					Collections.sort(list);
-
-					list = Collections.unmodifiableList(list);
-				}
-				else {
-					list = (List<TasksEntry>)QueryUtil.list(q, getDialect(),
-							start, end);
-				}
+				list = (List<TasksEntry>)QueryUtil.list(
+					q, getDialect(), start, end);
 
 				cacheResult(list);
 
-				finderCache.putResult(finderPath, finderArgs, list);
+				if (useFinderCache) {
+					FinderCacheUtil.putResult(finderPath, finderArgs, list);
+				}
 			}
 			catch (Exception e) {
-				finderCache.removeResult(finderPath, finderArgs);
+				if (useFinderCache) {
+					FinderCacheUtil.removeResult(finderPath, finderArgs);
+				}
 
 				throw processException(e);
 			}
@@ -288,10 +255,12 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @throws NoSuchTasksEntryException if a matching tasks entry could not be found
 	 */
 	@Override
-	public TasksEntry findByGroupId_First(long groupId,
-		OrderByComparator<TasksEntry> orderByComparator)
+	public TasksEntry findByGroupId_First(
+			long groupId, OrderByComparator<TasksEntry> orderByComparator)
 		throws NoSuchTasksEntryException {
-		TasksEntry tasksEntry = fetchByGroupId_First(groupId, orderByComparator);
+
+		TasksEntry tasksEntry = fetchByGroupId_First(
+			groupId, orderByComparator);
 
 		if (tasksEntry != null) {
 			return tasksEntry;
@@ -317,8 +286,9 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @return the first matching tasks entry, or <code>null</code> if a matching tasks entry could not be found
 	 */
 	@Override
-	public TasksEntry fetchByGroupId_First(long groupId,
-		OrderByComparator<TasksEntry> orderByComparator) {
+	public TasksEntry fetchByGroupId_First(
+		long groupId, OrderByComparator<TasksEntry> orderByComparator) {
+
 		List<TasksEntry> list = findByGroupId(groupId, 0, 1, orderByComparator);
 
 		if (!list.isEmpty()) {
@@ -337,9 +307,10 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @throws NoSuchTasksEntryException if a matching tasks entry could not be found
 	 */
 	@Override
-	public TasksEntry findByGroupId_Last(long groupId,
-		OrderByComparator<TasksEntry> orderByComparator)
+	public TasksEntry findByGroupId_Last(
+			long groupId, OrderByComparator<TasksEntry> orderByComparator)
 		throws NoSuchTasksEntryException {
+
 		TasksEntry tasksEntry = fetchByGroupId_Last(groupId, orderByComparator);
 
 		if (tasksEntry != null) {
@@ -366,16 +337,17 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @return the last matching tasks entry, or <code>null</code> if a matching tasks entry could not be found
 	 */
 	@Override
-	public TasksEntry fetchByGroupId_Last(long groupId,
-		OrderByComparator<TasksEntry> orderByComparator) {
+	public TasksEntry fetchByGroupId_Last(
+		long groupId, OrderByComparator<TasksEntry> orderByComparator) {
+
 		int count = countByGroupId(groupId);
 
 		if (count == 0) {
 			return null;
 		}
 
-		List<TasksEntry> list = findByGroupId(groupId, count - 1, count,
-				orderByComparator);
+		List<TasksEntry> list = findByGroupId(
+			groupId, count - 1, count, orderByComparator);
 
 		if (!list.isEmpty()) {
 			return list.get(0);
@@ -394,9 +366,11 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @throws NoSuchTasksEntryException if a tasks entry with the primary key could not be found
 	 */
 	@Override
-	public TasksEntry[] findByGroupId_PrevAndNext(long tasksEntryId,
-		long groupId, OrderByComparator<TasksEntry> orderByComparator)
+	public TasksEntry[] findByGroupId_PrevAndNext(
+			long tasksEntryId, long groupId,
+			OrderByComparator<TasksEntry> orderByComparator)
 		throws NoSuchTasksEntryException {
+
 		TasksEntry tasksEntry = findByPrimaryKey(tasksEntryId);
 
 		Session session = null;
@@ -406,13 +380,13 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 			TasksEntry[] array = new TasksEntryImpl[3];
 
-			array[0] = getByGroupId_PrevAndNext(session, tasksEntry, groupId,
-					orderByComparator, true);
+			array[0] = getByGroupId_PrevAndNext(
+				session, tasksEntry, groupId, orderByComparator, true);
 
 			array[1] = tasksEntry;
 
-			array[2] = getByGroupId_PrevAndNext(session, tasksEntry, groupId,
-					orderByComparator, false);
+			array[2] = getByGroupId_PrevAndNext(
+				session, tasksEntry, groupId, orderByComparator, false);
 
 			return array;
 		}
@@ -424,14 +398,15 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 		}
 	}
 
-	protected TasksEntry getByGroupId_PrevAndNext(Session session,
-		TasksEntry tasksEntry, long groupId,
+	protected TasksEntry getByGroupId_PrevAndNext(
+		Session session, TasksEntry tasksEntry, long groupId,
 		OrderByComparator<TasksEntry> orderByComparator, boolean previous) {
+
 		StringBundler query = null;
 
 		if (orderByComparator != null) {
-			query = new StringBundler(4 +
-					(orderByComparator.getOrderByConditionFields().length * 3) +
+			query = new StringBundler(
+				4 + (orderByComparator.getOrderByConditionFields().length * 3) +
 					(orderByComparator.getOrderByFields().length * 3));
 		}
 		else {
@@ -443,7 +418,8 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 		query.append(_FINDER_COLUMN_GROUPID_GROUPID_2);
 
 		if (orderByComparator != null) {
-			String[] orderByConditionFields = orderByComparator.getOrderByConditionFields();
+			String[] orderByConditionFields =
+				orderByComparator.getOrderByConditionFields();
 
 			if (orderByConditionFields.length > 0) {
 				query.append(WHERE_AND);
@@ -513,10 +489,10 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 		qPos.add(groupId);
 
 		if (orderByComparator != null) {
-			Object[] values = orderByComparator.getOrderByConditionValues(tasksEntry);
+			for (Object orderByConditionValue :
+					orderByComparator.getOrderByConditionValues(tasksEntry)) {
 
-			for (Object value : values) {
-				qPos.add(value);
+				qPos.add(orderByConditionValue);
 			}
 		}
 
@@ -538,15 +514,15 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 */
 	@Override
 	public List<TasksEntry> filterFindByGroupId(long groupId) {
-		return filterFindByGroupId(groupId, QueryUtil.ALL_POS,
-			QueryUtil.ALL_POS, null);
+		return filterFindByGroupId(
+			groupId, QueryUtil.ALL_POS, QueryUtil.ALL_POS, null);
 	}
 
 	/**
 	 * Returns a range of all the tasks entries that the user has permission to view where groupId = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link TasksEntryModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>TasksEntryModelImpl</code>.
 	 * </p>
 	 *
 	 * @param groupId the group ID
@@ -555,7 +531,9 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @return the range of matching tasks entries that the user has permission to view
 	 */
 	@Override
-	public List<TasksEntry> filterFindByGroupId(long groupId, int start, int end) {
+	public List<TasksEntry> filterFindByGroupId(
+		long groupId, int start, int end) {
+
 		return filterFindByGroupId(groupId, start, end, null);
 	}
 
@@ -563,7 +541,7 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * Returns an ordered range of all the tasks entries that the user has permissions to view where groupId = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link TasksEntryModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>TasksEntryModelImpl</code>.
 	 * </p>
 	 *
 	 * @param groupId the group ID
@@ -573,8 +551,10 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @return the ordered range of matching tasks entries that the user has permission to view
 	 */
 	@Override
-	public List<TasksEntry> filterFindByGroupId(long groupId, int start,
-		int end, OrderByComparator<TasksEntry> orderByComparator) {
+	public List<TasksEntry> filterFindByGroupId(
+		long groupId, int start, int end,
+		OrderByComparator<TasksEntry> orderByComparator) {
+
 		if (!InlineSQLHelperUtil.isEnabled(groupId)) {
 			return findByGroupId(groupId, start, end, orderByComparator);
 		}
@@ -582,8 +562,8 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 		StringBundler query = null;
 
 		if (orderByComparator != null) {
-			query = new StringBundler(3 +
-					(orderByComparator.getOrderByFields().length * 2));
+			query = new StringBundler(
+				3 + (orderByComparator.getOrderByFields().length * 2));
 		}
 		else {
 			query = new StringBundler(4);
@@ -593,23 +573,25 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 			query.append(_FILTER_SQL_SELECT_TASKSENTRY_WHERE);
 		}
 		else {
-			query.append(_FILTER_SQL_SELECT_TASKSENTRY_NO_INLINE_DISTINCT_WHERE_1);
+			query.append(
+				_FILTER_SQL_SELECT_TASKSENTRY_NO_INLINE_DISTINCT_WHERE_1);
 		}
 
 		query.append(_FINDER_COLUMN_GROUPID_GROUPID_2);
 
 		if (!getDB().isSupportsInlineDistinct()) {
-			query.append(_FILTER_SQL_SELECT_TASKSENTRY_NO_INLINE_DISTINCT_WHERE_2);
+			query.append(
+				_FILTER_SQL_SELECT_TASKSENTRY_NO_INLINE_DISTINCT_WHERE_2);
 		}
 
 		if (orderByComparator != null) {
 			if (getDB().isSupportsInlineDistinct()) {
-				appendOrderByComparator(query, _ORDER_BY_ENTITY_ALIAS,
-					orderByComparator, true);
+				appendOrderByComparator(
+					query, _ORDER_BY_ENTITY_ALIAS, orderByComparator, true);
 			}
 			else {
-				appendOrderByComparator(query, _ORDER_BY_ENTITY_TABLE,
-					orderByComparator, true);
+				appendOrderByComparator(
+					query, _ORDER_BY_ENTITY_TABLE, orderByComparator, true);
 			}
 		}
 		else {
@@ -621,9 +603,9 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 			}
 		}
 
-		String sql = InlineSQLHelperUtil.replacePermissionCheck(query.toString(),
-				TasksEntry.class.getName(),
-				_FILTER_ENTITY_TABLE_FILTER_PK_COLUMN, groupId);
+		String sql = InlineSQLHelperUtil.replacePermissionCheck(
+			query.toString(), TasksEntry.class.getName(),
+			_FILTER_ENTITY_TABLE_FILTER_PK_COLUMN, groupId);
 
 		Session session = null;
 
@@ -643,7 +625,8 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 			qPos.add(groupId);
 
-			return (List<TasksEntry>)QueryUtil.list(q, getDialect(), start, end);
+			return (List<TasksEntry>)QueryUtil.list(
+				q, getDialect(), start, end);
 		}
 		catch (Exception e) {
 			throw processException(e);
@@ -663,12 +646,14 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @throws NoSuchTasksEntryException if a tasks entry with the primary key could not be found
 	 */
 	@Override
-	public TasksEntry[] filterFindByGroupId_PrevAndNext(long tasksEntryId,
-		long groupId, OrderByComparator<TasksEntry> orderByComparator)
+	public TasksEntry[] filterFindByGroupId_PrevAndNext(
+			long tasksEntryId, long groupId,
+			OrderByComparator<TasksEntry> orderByComparator)
 		throws NoSuchTasksEntryException {
+
 		if (!InlineSQLHelperUtil.isEnabled(groupId)) {
-			return findByGroupId_PrevAndNext(tasksEntryId, groupId,
-				orderByComparator);
+			return findByGroupId_PrevAndNext(
+				tasksEntryId, groupId, orderByComparator);
 		}
 
 		TasksEntry tasksEntry = findByPrimaryKey(tasksEntryId);
@@ -680,13 +665,13 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 			TasksEntry[] array = new TasksEntryImpl[3];
 
-			array[0] = filterGetByGroupId_PrevAndNext(session, tasksEntry,
-					groupId, orderByComparator, true);
+			array[0] = filterGetByGroupId_PrevAndNext(
+				session, tasksEntry, groupId, orderByComparator, true);
 
 			array[1] = tasksEntry;
 
-			array[2] = filterGetByGroupId_PrevAndNext(session, tasksEntry,
-					groupId, orderByComparator, false);
+			array[2] = filterGetByGroupId_PrevAndNext(
+				session, tasksEntry, groupId, orderByComparator, false);
 
 			return array;
 		}
@@ -698,14 +683,15 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 		}
 	}
 
-	protected TasksEntry filterGetByGroupId_PrevAndNext(Session session,
-		TasksEntry tasksEntry, long groupId,
+	protected TasksEntry filterGetByGroupId_PrevAndNext(
+		Session session, TasksEntry tasksEntry, long groupId,
 		OrderByComparator<TasksEntry> orderByComparator, boolean previous) {
+
 		StringBundler query = null;
 
 		if (orderByComparator != null) {
-			query = new StringBundler(5 +
-					(orderByComparator.getOrderByConditionFields().length * 3) +
+			query = new StringBundler(
+				5 + (orderByComparator.getOrderByConditionFields().length * 3) +
 					(orderByComparator.getOrderByFields().length * 3));
 		}
 		else {
@@ -716,17 +702,20 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 			query.append(_FILTER_SQL_SELECT_TASKSENTRY_WHERE);
 		}
 		else {
-			query.append(_FILTER_SQL_SELECT_TASKSENTRY_NO_INLINE_DISTINCT_WHERE_1);
+			query.append(
+				_FILTER_SQL_SELECT_TASKSENTRY_NO_INLINE_DISTINCT_WHERE_1);
 		}
 
 		query.append(_FINDER_COLUMN_GROUPID_GROUPID_2);
 
 		if (!getDB().isSupportsInlineDistinct()) {
-			query.append(_FILTER_SQL_SELECT_TASKSENTRY_NO_INLINE_DISTINCT_WHERE_2);
+			query.append(
+				_FILTER_SQL_SELECT_TASKSENTRY_NO_INLINE_DISTINCT_WHERE_2);
 		}
 
 		if (orderByComparator != null) {
-			String[] orderByConditionFields = orderByComparator.getOrderByConditionFields();
+			String[] orderByConditionFields =
+				orderByComparator.getOrderByConditionFields();
 
 			if (orderByConditionFields.length > 0) {
 				query.append(WHERE_AND);
@@ -734,13 +723,17 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 			for (int i = 0; i < orderByConditionFields.length; i++) {
 				if (getDB().isSupportsInlineDistinct()) {
-					query.append(_ORDER_BY_ENTITY_ALIAS);
+					query.append(
+						getColumnName(
+							_ORDER_BY_ENTITY_ALIAS, orderByConditionFields[i],
+							true));
 				}
 				else {
-					query.append(_ORDER_BY_ENTITY_TABLE);
+					query.append(
+						getColumnName(
+							_ORDER_BY_ENTITY_TABLE, orderByConditionFields[i],
+							true));
 				}
-
-				query.append(orderByConditionFields[i]);
 
 				if ((i + 1) < orderByConditionFields.length) {
 					if (orderByComparator.isAscending() ^ previous) {
@@ -766,13 +759,15 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 			for (int i = 0; i < orderByFields.length; i++) {
 				if (getDB().isSupportsInlineDistinct()) {
-					query.append(_ORDER_BY_ENTITY_ALIAS);
+					query.append(
+						getColumnName(
+							_ORDER_BY_ENTITY_ALIAS, orderByFields[i], true));
 				}
 				else {
-					query.append(_ORDER_BY_ENTITY_TABLE);
+					query.append(
+						getColumnName(
+							_ORDER_BY_ENTITY_TABLE, orderByFields[i], true));
 				}
-
-				query.append(orderByFields[i]);
 
 				if ((i + 1) < orderByFields.length) {
 					if (orderByComparator.isAscending() ^ previous) {
@@ -801,9 +796,9 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 			}
 		}
 
-		String sql = InlineSQLHelperUtil.replacePermissionCheck(query.toString(),
-				TasksEntry.class.getName(),
-				_FILTER_ENTITY_TABLE_FILTER_PK_COLUMN, groupId);
+		String sql = InlineSQLHelperUtil.replacePermissionCheck(
+			query.toString(), TasksEntry.class.getName(),
+			_FILTER_ENTITY_TABLE_FILTER_PK_COLUMN, groupId);
 
 		SQLQuery q = session.createSynchronizedSQLQuery(sql);
 
@@ -822,10 +817,10 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 		qPos.add(groupId);
 
 		if (orderByComparator != null) {
-			Object[] values = orderByComparator.getOrderByConditionValues(tasksEntry);
+			for (Object orderByConditionValue :
+					orderByComparator.getOrderByConditionValues(tasksEntry)) {
 
-			for (Object value : values) {
-				qPos.add(value);
+				qPos.add(orderByConditionValue);
 			}
 		}
 
@@ -846,8 +841,10 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 */
 	@Override
 	public void removeByGroupId(long groupId) {
-		for (TasksEntry tasksEntry : findByGroupId(groupId, QueryUtil.ALL_POS,
-				QueryUtil.ALL_POS, null)) {
+		for (TasksEntry tasksEntry :
+				findByGroupId(
+					groupId, QueryUtil.ALL_POS, QueryUtil.ALL_POS, null)) {
+
 			remove(tasksEntry);
 		}
 	}
@@ -860,11 +857,12 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 */
 	@Override
 	public int countByGroupId(long groupId) {
-		FinderPath finderPath = FINDER_PATH_COUNT_BY_GROUPID;
+		FinderPath finderPath = _finderPathCountByGroupId;
 
-		Object[] finderArgs = new Object[] { groupId };
+		Object[] finderArgs = new Object[] {groupId};
 
-		Long count = (Long)finderCache.getResult(finderPath, finderArgs, this);
+		Long count = (Long)FinderCacheUtil.getResult(
+			finderPath, finderArgs, this);
 
 		if (count == null) {
 			StringBundler query = new StringBundler(2);
@@ -888,10 +886,10 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 				count = (Long)q.uniqueResult();
 
-				finderCache.putResult(finderPath, finderArgs, count);
+				FinderCacheUtil.putResult(finderPath, finderArgs, count);
 			}
 			catch (Exception e) {
-				finderCache.removeResult(finderPath, finderArgs);
+				FinderCacheUtil.removeResult(finderPath, finderArgs);
 
 				throw processException(e);
 			}
@@ -921,9 +919,9 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 		query.append(_FINDER_COLUMN_GROUPID_GROUPID_2);
 
-		String sql = InlineSQLHelperUtil.replacePermissionCheck(query.toString(),
-				TasksEntry.class.getName(),
-				_FILTER_ENTITY_TABLE_FILTER_PK_COLUMN, groupId);
+		String sql = InlineSQLHelperUtil.replacePermissionCheck(
+			query.toString(), TasksEntry.class.getName(),
+			_FILTER_ENTITY_TABLE_FILTER_PK_COLUMN, groupId);
 
 		Session session = null;
 
@@ -932,8 +930,8 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 			SQLQuery q = session.createSynchronizedSQLQuery(sql);
 
-			q.addScalar(COUNT_COLUMN_NAME,
-				com.liferay.portal.kernel.dao.orm.Type.LONG);
+			q.addScalar(
+				COUNT_COLUMN_NAME, com.liferay.portal.kernel.dao.orm.Type.LONG);
 
 			QueryPos qPos = QueryPos.getInstance(q);
 
@@ -951,29 +949,12 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 		}
 	}
 
-	private static final String _FINDER_COLUMN_GROUPID_GROUPID_2 = "tasksEntry.groupId = ?";
-	public static final FinderPath FINDER_PATH_WITH_PAGINATION_FIND_BY_USERID = new FinderPath(TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
-			TasksEntryModelImpl.FINDER_CACHE_ENABLED, TasksEntryImpl.class,
-			FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByUserId",
-			new String[] {
-				Long.class.getName(),
-				
-			Integer.class.getName(), Integer.class.getName(),
-				OrderByComparator.class.getName()
-			});
-	public static final FinderPath FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_USERID =
-		new FinderPath(TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
-			TasksEntryModelImpl.FINDER_CACHE_ENABLED, TasksEntryImpl.class,
-			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findByUserId",
-			new String[] { Long.class.getName() },
-			TasksEntryModelImpl.USERID_COLUMN_BITMASK |
-			TasksEntryModelImpl.PRIORITY_COLUMN_BITMASK |
-			TasksEntryModelImpl.DUEDATE_COLUMN_BITMASK |
-			TasksEntryModelImpl.CREATEDATE_COLUMN_BITMASK);
-	public static final FinderPath FINDER_PATH_COUNT_BY_USERID = new FinderPath(TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
-			TasksEntryModelImpl.FINDER_CACHE_ENABLED, Long.class,
-			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByUserId",
-			new String[] { Long.class.getName() });
+	private static final String _FINDER_COLUMN_GROUPID_GROUPID_2 =
+		"tasksEntry.groupId = ?";
+
+	private FinderPath _finderPathWithPaginationFindByUserId;
+	private FinderPath _finderPathWithoutPaginationFindByUserId;
+	private FinderPath _finderPathCountByUserId;
 
 	/**
 	 * Returns all the tasks entries where userId = &#63;.
@@ -990,7 +971,7 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * Returns a range of all the tasks entries where userId = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link TasksEntryModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>TasksEntryModelImpl</code>.
 	 * </p>
 	 *
 	 * @param userId the user ID
@@ -1007,7 +988,7 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * Returns an ordered range of all the tasks entries where userId = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link TasksEntryModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>TasksEntryModelImpl</code>.
 	 * </p>
 	 *
 	 * @param userId the user ID
@@ -1017,8 +998,10 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @return the ordered range of matching tasks entries
 	 */
 	@Override
-	public List<TasksEntry> findByUserId(long userId, int start, int end,
+	public List<TasksEntry> findByUserId(
+		long userId, int start, int end,
 		OrderByComparator<TasksEntry> orderByComparator) {
+
 		return findByUserId(userId, start, end, orderByComparator, true);
 	}
 
@@ -1026,44 +1009,47 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * Returns an ordered range of all the tasks entries where userId = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link TasksEntryModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>TasksEntryModelImpl</code>.
 	 * </p>
 	 *
 	 * @param userId the user ID
 	 * @param start the lower bound of the range of tasks entries
 	 * @param end the upper bound of the range of tasks entries (not inclusive)
 	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
-	 * @param retrieveFromCache whether to retrieve from the finder cache
+	 * @param useFinderCache whether to use the finder cache
 	 * @return the ordered range of matching tasks entries
 	 */
 	@Override
-	public List<TasksEntry> findByUserId(long userId, int start, int end,
+	public List<TasksEntry> findByUserId(
+		long userId, int start, int end,
 		OrderByComparator<TasksEntry> orderByComparator,
-		boolean retrieveFromCache) {
-		boolean pagination = true;
+		boolean useFinderCache) {
+
 		FinderPath finderPath = null;
 		Object[] finderArgs = null;
 
 		if ((start == QueryUtil.ALL_POS) && (end == QueryUtil.ALL_POS) &&
-				(orderByComparator == null)) {
-			pagination = false;
-			finderPath = FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_USERID;
-			finderArgs = new Object[] { userId };
+			(orderByComparator == null)) {
+
+			if (useFinderCache) {
+				finderPath = _finderPathWithoutPaginationFindByUserId;
+				finderArgs = new Object[] {userId};
+			}
 		}
-		else {
-			finderPath = FINDER_PATH_WITH_PAGINATION_FIND_BY_USERID;
-			finderArgs = new Object[] { userId, start, end, orderByComparator };
+		else if (useFinderCache) {
+			finderPath = _finderPathWithPaginationFindByUserId;
+			finderArgs = new Object[] {userId, start, end, orderByComparator};
 		}
 
 		List<TasksEntry> list = null;
 
-		if (retrieveFromCache) {
-			list = (List<TasksEntry>)finderCache.getResult(finderPath,
-					finderArgs, this);
+		if (useFinderCache) {
+			list = (List<TasksEntry>)FinderCacheUtil.getResult(
+				finderPath, finderArgs, this);
 
 			if ((list != null) && !list.isEmpty()) {
 				for (TasksEntry tasksEntry : list) {
-					if ((userId != tasksEntry.getUserId())) {
+					if (userId != tasksEntry.getUserId()) {
 						list = null;
 
 						break;
@@ -1076,8 +1062,8 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 			StringBundler query = null;
 
 			if (orderByComparator != null) {
-				query = new StringBundler(3 +
-						(orderByComparator.getOrderByFields().length * 2));
+				query = new StringBundler(
+					3 + (orderByComparator.getOrderByFields().length * 2));
 			}
 			else {
 				query = new StringBundler(3);
@@ -1088,11 +1074,10 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 			query.append(_FINDER_COLUMN_USERID_USERID_2);
 
 			if (orderByComparator != null) {
-				appendOrderByComparator(query, _ORDER_BY_ENTITY_ALIAS,
-					orderByComparator);
+				appendOrderByComparator(
+					query, _ORDER_BY_ENTITY_ALIAS, orderByComparator);
 			}
-			else
-			 if (pagination) {
+			else {
 				query.append(TasksEntryModelImpl.ORDER_BY_JPQL);
 			}
 
@@ -1109,25 +1094,19 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 				qPos.add(userId);
 
-				if (!pagination) {
-					list = (List<TasksEntry>)QueryUtil.list(q, getDialect(),
-							start, end, false);
-
-					Collections.sort(list);
-
-					list = Collections.unmodifiableList(list);
-				}
-				else {
-					list = (List<TasksEntry>)QueryUtil.list(q, getDialect(),
-							start, end);
-				}
+				list = (List<TasksEntry>)QueryUtil.list(
+					q, getDialect(), start, end);
 
 				cacheResult(list);
 
-				finderCache.putResult(finderPath, finderArgs, list);
+				if (useFinderCache) {
+					FinderCacheUtil.putResult(finderPath, finderArgs, list);
+				}
 			}
 			catch (Exception e) {
-				finderCache.removeResult(finderPath, finderArgs);
+				if (useFinderCache) {
+					FinderCacheUtil.removeResult(finderPath, finderArgs);
+				}
 
 				throw processException(e);
 			}
@@ -1148,9 +1127,10 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @throws NoSuchTasksEntryException if a matching tasks entry could not be found
 	 */
 	@Override
-	public TasksEntry findByUserId_First(long userId,
-		OrderByComparator<TasksEntry> orderByComparator)
+	public TasksEntry findByUserId_First(
+			long userId, OrderByComparator<TasksEntry> orderByComparator)
 		throws NoSuchTasksEntryException {
+
 		TasksEntry tasksEntry = fetchByUserId_First(userId, orderByComparator);
 
 		if (tasksEntry != null) {
@@ -1177,8 +1157,9 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @return the first matching tasks entry, or <code>null</code> if a matching tasks entry could not be found
 	 */
 	@Override
-	public TasksEntry fetchByUserId_First(long userId,
-		OrderByComparator<TasksEntry> orderByComparator) {
+	public TasksEntry fetchByUserId_First(
+		long userId, OrderByComparator<TasksEntry> orderByComparator) {
+
 		List<TasksEntry> list = findByUserId(userId, 0, 1, orderByComparator);
 
 		if (!list.isEmpty()) {
@@ -1197,9 +1178,10 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @throws NoSuchTasksEntryException if a matching tasks entry could not be found
 	 */
 	@Override
-	public TasksEntry findByUserId_Last(long userId,
-		OrderByComparator<TasksEntry> orderByComparator)
+	public TasksEntry findByUserId_Last(
+			long userId, OrderByComparator<TasksEntry> orderByComparator)
 		throws NoSuchTasksEntryException {
+
 		TasksEntry tasksEntry = fetchByUserId_Last(userId, orderByComparator);
 
 		if (tasksEntry != null) {
@@ -1226,16 +1208,17 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @return the last matching tasks entry, or <code>null</code> if a matching tasks entry could not be found
 	 */
 	@Override
-	public TasksEntry fetchByUserId_Last(long userId,
-		OrderByComparator<TasksEntry> orderByComparator) {
+	public TasksEntry fetchByUserId_Last(
+		long userId, OrderByComparator<TasksEntry> orderByComparator) {
+
 		int count = countByUserId(userId);
 
 		if (count == 0) {
 			return null;
 		}
 
-		List<TasksEntry> list = findByUserId(userId, count - 1, count,
-				orderByComparator);
+		List<TasksEntry> list = findByUserId(
+			userId, count - 1, count, orderByComparator);
 
 		if (!list.isEmpty()) {
 			return list.get(0);
@@ -1254,9 +1237,11 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @throws NoSuchTasksEntryException if a tasks entry with the primary key could not be found
 	 */
 	@Override
-	public TasksEntry[] findByUserId_PrevAndNext(long tasksEntryId,
-		long userId, OrderByComparator<TasksEntry> orderByComparator)
+	public TasksEntry[] findByUserId_PrevAndNext(
+			long tasksEntryId, long userId,
+			OrderByComparator<TasksEntry> orderByComparator)
 		throws NoSuchTasksEntryException {
+
 		TasksEntry tasksEntry = findByPrimaryKey(tasksEntryId);
 
 		Session session = null;
@@ -1266,13 +1251,13 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 			TasksEntry[] array = new TasksEntryImpl[3];
 
-			array[0] = getByUserId_PrevAndNext(session, tasksEntry, userId,
-					orderByComparator, true);
+			array[0] = getByUserId_PrevAndNext(
+				session, tasksEntry, userId, orderByComparator, true);
 
 			array[1] = tasksEntry;
 
-			array[2] = getByUserId_PrevAndNext(session, tasksEntry, userId,
-					orderByComparator, false);
+			array[2] = getByUserId_PrevAndNext(
+				session, tasksEntry, userId, orderByComparator, false);
 
 			return array;
 		}
@@ -1284,14 +1269,15 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 		}
 	}
 
-	protected TasksEntry getByUserId_PrevAndNext(Session session,
-		TasksEntry tasksEntry, long userId,
+	protected TasksEntry getByUserId_PrevAndNext(
+		Session session, TasksEntry tasksEntry, long userId,
 		OrderByComparator<TasksEntry> orderByComparator, boolean previous) {
+
 		StringBundler query = null;
 
 		if (orderByComparator != null) {
-			query = new StringBundler(4 +
-					(orderByComparator.getOrderByConditionFields().length * 3) +
+			query = new StringBundler(
+				4 + (orderByComparator.getOrderByConditionFields().length * 3) +
 					(orderByComparator.getOrderByFields().length * 3));
 		}
 		else {
@@ -1303,7 +1289,8 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 		query.append(_FINDER_COLUMN_USERID_USERID_2);
 
 		if (orderByComparator != null) {
-			String[] orderByConditionFields = orderByComparator.getOrderByConditionFields();
+			String[] orderByConditionFields =
+				orderByComparator.getOrderByConditionFields();
 
 			if (orderByConditionFields.length > 0) {
 				query.append(WHERE_AND);
@@ -1373,10 +1360,10 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 		qPos.add(userId);
 
 		if (orderByComparator != null) {
-			Object[] values = orderByComparator.getOrderByConditionValues(tasksEntry);
+			for (Object orderByConditionValue :
+					orderByComparator.getOrderByConditionValues(tasksEntry)) {
 
-			for (Object value : values) {
-				qPos.add(value);
+				qPos.add(orderByConditionValue);
 			}
 		}
 
@@ -1397,8 +1384,10 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 */
 	@Override
 	public void removeByUserId(long userId) {
-		for (TasksEntry tasksEntry : findByUserId(userId, QueryUtil.ALL_POS,
-				QueryUtil.ALL_POS, null)) {
+		for (TasksEntry tasksEntry :
+				findByUserId(
+					userId, QueryUtil.ALL_POS, QueryUtil.ALL_POS, null)) {
+
 			remove(tasksEntry);
 		}
 	}
@@ -1411,11 +1400,12 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 */
 	@Override
 	public int countByUserId(long userId) {
-		FinderPath finderPath = FINDER_PATH_COUNT_BY_USERID;
+		FinderPath finderPath = _finderPathCountByUserId;
 
-		Object[] finderArgs = new Object[] { userId };
+		Object[] finderArgs = new Object[] {userId};
 
-		Long count = (Long)finderCache.getResult(finderPath, finderArgs, this);
+		Long count = (Long)FinderCacheUtil.getResult(
+			finderPath, finderArgs, this);
 
 		if (count == null) {
 			StringBundler query = new StringBundler(2);
@@ -1439,10 +1429,10 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 				count = (Long)q.uniqueResult();
 
-				finderCache.putResult(finderPath, finderArgs, count);
+				FinderCacheUtil.putResult(finderPath, finderArgs, count);
 			}
 			catch (Exception e) {
-				finderCache.removeResult(finderPath, finderArgs);
+				FinderCacheUtil.removeResult(finderPath, finderArgs);
 
 				throw processException(e);
 			}
@@ -1454,30 +1444,12 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 		return count.intValue();
 	}
 
-	private static final String _FINDER_COLUMN_USERID_USERID_2 = "tasksEntry.userId = ?";
-	public static final FinderPath FINDER_PATH_WITH_PAGINATION_FIND_BY_ASSIGNEEUSERID =
-		new FinderPath(TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
-			TasksEntryModelImpl.FINDER_CACHE_ENABLED, TasksEntryImpl.class,
-			FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByAssigneeUserId",
-			new String[] {
-				Long.class.getName(),
-				
-			Integer.class.getName(), Integer.class.getName(),
-				OrderByComparator.class.getName()
-			});
-	public static final FinderPath FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_ASSIGNEEUSERID =
-		new FinderPath(TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
-			TasksEntryModelImpl.FINDER_CACHE_ENABLED, TasksEntryImpl.class,
-			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findByAssigneeUserId",
-			new String[] { Long.class.getName() },
-			TasksEntryModelImpl.ASSIGNEEUSERID_COLUMN_BITMASK |
-			TasksEntryModelImpl.PRIORITY_COLUMN_BITMASK |
-			TasksEntryModelImpl.DUEDATE_COLUMN_BITMASK |
-			TasksEntryModelImpl.CREATEDATE_COLUMN_BITMASK);
-	public static final FinderPath FINDER_PATH_COUNT_BY_ASSIGNEEUSERID = new FinderPath(TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
-			TasksEntryModelImpl.FINDER_CACHE_ENABLED, Long.class,
-			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByAssigneeUserId",
-			new String[] { Long.class.getName() });
+	private static final String _FINDER_COLUMN_USERID_USERID_2 =
+		"tasksEntry.userId = ?";
+
+	private FinderPath _finderPathWithPaginationFindByAssigneeUserId;
+	private FinderPath _finderPathWithoutPaginationFindByAssigneeUserId;
+	private FinderPath _finderPathCountByAssigneeUserId;
 
 	/**
 	 * Returns all the tasks entries where assigneeUserId = &#63;.
@@ -1487,15 +1459,15 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 */
 	@Override
 	public List<TasksEntry> findByAssigneeUserId(long assigneeUserId) {
-		return findByAssigneeUserId(assigneeUserId, QueryUtil.ALL_POS,
-			QueryUtil.ALL_POS, null);
+		return findByAssigneeUserId(
+			assigneeUserId, QueryUtil.ALL_POS, QueryUtil.ALL_POS, null);
 	}
 
 	/**
 	 * Returns a range of all the tasks entries where assigneeUserId = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link TasksEntryModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>TasksEntryModelImpl</code>.
 	 * </p>
 	 *
 	 * @param assigneeUserId the assignee user ID
@@ -1504,8 +1476,9 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @return the range of matching tasks entries
 	 */
 	@Override
-	public List<TasksEntry> findByAssigneeUserId(long assigneeUserId,
-		int start, int end) {
+	public List<TasksEntry> findByAssigneeUserId(
+		long assigneeUserId, int start, int end) {
+
 		return findByAssigneeUserId(assigneeUserId, start, end, null);
 	}
 
@@ -1513,7 +1486,7 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * Returns an ordered range of all the tasks entries where assigneeUserId = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link TasksEntryModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>TasksEntryModelImpl</code>.
 	 * </p>
 	 *
 	 * @param assigneeUserId the assignee user ID
@@ -1523,58 +1496,61 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @return the ordered range of matching tasks entries
 	 */
 	@Override
-	public List<TasksEntry> findByAssigneeUserId(long assigneeUserId,
-		int start, int end, OrderByComparator<TasksEntry> orderByComparator) {
-		return findByAssigneeUserId(assigneeUserId, start, end,
-			orderByComparator, true);
+	public List<TasksEntry> findByAssigneeUserId(
+		long assigneeUserId, int start, int end,
+		OrderByComparator<TasksEntry> orderByComparator) {
+
+		return findByAssigneeUserId(
+			assigneeUserId, start, end, orderByComparator, true);
 	}
 
 	/**
 	 * Returns an ordered range of all the tasks entries where assigneeUserId = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link TasksEntryModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>TasksEntryModelImpl</code>.
 	 * </p>
 	 *
 	 * @param assigneeUserId the assignee user ID
 	 * @param start the lower bound of the range of tasks entries
 	 * @param end the upper bound of the range of tasks entries (not inclusive)
 	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
-	 * @param retrieveFromCache whether to retrieve from the finder cache
+	 * @param useFinderCache whether to use the finder cache
 	 * @return the ordered range of matching tasks entries
 	 */
 	@Override
-	public List<TasksEntry> findByAssigneeUserId(long assigneeUserId,
-		int start, int end, OrderByComparator<TasksEntry> orderByComparator,
-		boolean retrieveFromCache) {
-		boolean pagination = true;
+	public List<TasksEntry> findByAssigneeUserId(
+		long assigneeUserId, int start, int end,
+		OrderByComparator<TasksEntry> orderByComparator,
+		boolean useFinderCache) {
+
 		FinderPath finderPath = null;
 		Object[] finderArgs = null;
 
 		if ((start == QueryUtil.ALL_POS) && (end == QueryUtil.ALL_POS) &&
-				(orderByComparator == null)) {
-			pagination = false;
-			finderPath = FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_ASSIGNEEUSERID;
-			finderArgs = new Object[] { assigneeUserId };
+			(orderByComparator == null)) {
+
+			if (useFinderCache) {
+				finderPath = _finderPathWithoutPaginationFindByAssigneeUserId;
+				finderArgs = new Object[] {assigneeUserId};
+			}
 		}
-		else {
-			finderPath = FINDER_PATH_WITH_PAGINATION_FIND_BY_ASSIGNEEUSERID;
+		else if (useFinderCache) {
+			finderPath = _finderPathWithPaginationFindByAssigneeUserId;
 			finderArgs = new Object[] {
-					assigneeUserId,
-					
-					start, end, orderByComparator
-				};
+				assigneeUserId, start, end, orderByComparator
+			};
 		}
 
 		List<TasksEntry> list = null;
 
-		if (retrieveFromCache) {
-			list = (List<TasksEntry>)finderCache.getResult(finderPath,
-					finderArgs, this);
+		if (useFinderCache) {
+			list = (List<TasksEntry>)FinderCacheUtil.getResult(
+				finderPath, finderArgs, this);
 
 			if ((list != null) && !list.isEmpty()) {
 				for (TasksEntry tasksEntry : list) {
-					if ((assigneeUserId != tasksEntry.getAssigneeUserId())) {
+					if (assigneeUserId != tasksEntry.getAssigneeUserId()) {
 						list = null;
 
 						break;
@@ -1587,8 +1563,8 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 			StringBundler query = null;
 
 			if (orderByComparator != null) {
-				query = new StringBundler(3 +
-						(orderByComparator.getOrderByFields().length * 2));
+				query = new StringBundler(
+					3 + (orderByComparator.getOrderByFields().length * 2));
 			}
 			else {
 				query = new StringBundler(3);
@@ -1599,11 +1575,10 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 			query.append(_FINDER_COLUMN_ASSIGNEEUSERID_ASSIGNEEUSERID_2);
 
 			if (orderByComparator != null) {
-				appendOrderByComparator(query, _ORDER_BY_ENTITY_ALIAS,
-					orderByComparator);
+				appendOrderByComparator(
+					query, _ORDER_BY_ENTITY_ALIAS, orderByComparator);
 			}
-			else
-			 if (pagination) {
+			else {
 				query.append(TasksEntryModelImpl.ORDER_BY_JPQL);
 			}
 
@@ -1620,25 +1595,19 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 				qPos.add(assigneeUserId);
 
-				if (!pagination) {
-					list = (List<TasksEntry>)QueryUtil.list(q, getDialect(),
-							start, end, false);
-
-					Collections.sort(list);
-
-					list = Collections.unmodifiableList(list);
-				}
-				else {
-					list = (List<TasksEntry>)QueryUtil.list(q, getDialect(),
-							start, end);
-				}
+				list = (List<TasksEntry>)QueryUtil.list(
+					q, getDialect(), start, end);
 
 				cacheResult(list);
 
-				finderCache.putResult(finderPath, finderArgs, list);
+				if (useFinderCache) {
+					FinderCacheUtil.putResult(finderPath, finderArgs, list);
+				}
 			}
 			catch (Exception e) {
-				finderCache.removeResult(finderPath, finderArgs);
+				if (useFinderCache) {
+					FinderCacheUtil.removeResult(finderPath, finderArgs);
+				}
 
 				throw processException(e);
 			}
@@ -1659,11 +1628,13 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @throws NoSuchTasksEntryException if a matching tasks entry could not be found
 	 */
 	@Override
-	public TasksEntry findByAssigneeUserId_First(long assigneeUserId,
-		OrderByComparator<TasksEntry> orderByComparator)
+	public TasksEntry findByAssigneeUserId_First(
+			long assigneeUserId,
+			OrderByComparator<TasksEntry> orderByComparator)
 		throws NoSuchTasksEntryException {
-		TasksEntry tasksEntry = fetchByAssigneeUserId_First(assigneeUserId,
-				orderByComparator);
+
+		TasksEntry tasksEntry = fetchByAssigneeUserId_First(
+			assigneeUserId, orderByComparator);
 
 		if (tasksEntry != null) {
 			return tasksEntry;
@@ -1689,10 +1660,11 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @return the first matching tasks entry, or <code>null</code> if a matching tasks entry could not be found
 	 */
 	@Override
-	public TasksEntry fetchByAssigneeUserId_First(long assigneeUserId,
-		OrderByComparator<TasksEntry> orderByComparator) {
-		List<TasksEntry> list = findByAssigneeUserId(assigneeUserId, 0, 1,
-				orderByComparator);
+	public TasksEntry fetchByAssigneeUserId_First(
+		long assigneeUserId, OrderByComparator<TasksEntry> orderByComparator) {
+
+		List<TasksEntry> list = findByAssigneeUserId(
+			assigneeUserId, 0, 1, orderByComparator);
 
 		if (!list.isEmpty()) {
 			return list.get(0);
@@ -1710,11 +1682,13 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @throws NoSuchTasksEntryException if a matching tasks entry could not be found
 	 */
 	@Override
-	public TasksEntry findByAssigneeUserId_Last(long assigneeUserId,
-		OrderByComparator<TasksEntry> orderByComparator)
+	public TasksEntry findByAssigneeUserId_Last(
+			long assigneeUserId,
+			OrderByComparator<TasksEntry> orderByComparator)
 		throws NoSuchTasksEntryException {
-		TasksEntry tasksEntry = fetchByAssigneeUserId_Last(assigneeUserId,
-				orderByComparator);
+
+		TasksEntry tasksEntry = fetchByAssigneeUserId_Last(
+			assigneeUserId, orderByComparator);
 
 		if (tasksEntry != null) {
 			return tasksEntry;
@@ -1740,16 +1714,17 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @return the last matching tasks entry, or <code>null</code> if a matching tasks entry could not be found
 	 */
 	@Override
-	public TasksEntry fetchByAssigneeUserId_Last(long assigneeUserId,
-		OrderByComparator<TasksEntry> orderByComparator) {
+	public TasksEntry fetchByAssigneeUserId_Last(
+		long assigneeUserId, OrderByComparator<TasksEntry> orderByComparator) {
+
 		int count = countByAssigneeUserId(assigneeUserId);
 
 		if (count == 0) {
 			return null;
 		}
 
-		List<TasksEntry> list = findByAssigneeUserId(assigneeUserId, count - 1,
-				count, orderByComparator);
+		List<TasksEntry> list = findByAssigneeUserId(
+			assigneeUserId, count - 1, count, orderByComparator);
 
 		if (!list.isEmpty()) {
 			return list.get(0);
@@ -1768,9 +1743,11 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @throws NoSuchTasksEntryException if a tasks entry with the primary key could not be found
 	 */
 	@Override
-	public TasksEntry[] findByAssigneeUserId_PrevAndNext(long tasksEntryId,
-		long assigneeUserId, OrderByComparator<TasksEntry> orderByComparator)
+	public TasksEntry[] findByAssigneeUserId_PrevAndNext(
+			long tasksEntryId, long assigneeUserId,
+			OrderByComparator<TasksEntry> orderByComparator)
 		throws NoSuchTasksEntryException {
+
 		TasksEntry tasksEntry = findByPrimaryKey(tasksEntryId);
 
 		Session session = null;
@@ -1780,13 +1757,13 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 			TasksEntry[] array = new TasksEntryImpl[3];
 
-			array[0] = getByAssigneeUserId_PrevAndNext(session, tasksEntry,
-					assigneeUserId, orderByComparator, true);
+			array[0] = getByAssigneeUserId_PrevAndNext(
+				session, tasksEntry, assigneeUserId, orderByComparator, true);
 
 			array[1] = tasksEntry;
 
-			array[2] = getByAssigneeUserId_PrevAndNext(session, tasksEntry,
-					assigneeUserId, orderByComparator, false);
+			array[2] = getByAssigneeUserId_PrevAndNext(
+				session, tasksEntry, assigneeUserId, orderByComparator, false);
 
 			return array;
 		}
@@ -1798,14 +1775,15 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 		}
 	}
 
-	protected TasksEntry getByAssigneeUserId_PrevAndNext(Session session,
-		TasksEntry tasksEntry, long assigneeUserId,
+	protected TasksEntry getByAssigneeUserId_PrevAndNext(
+		Session session, TasksEntry tasksEntry, long assigneeUserId,
 		OrderByComparator<TasksEntry> orderByComparator, boolean previous) {
+
 		StringBundler query = null;
 
 		if (orderByComparator != null) {
-			query = new StringBundler(4 +
-					(orderByComparator.getOrderByConditionFields().length * 3) +
+			query = new StringBundler(
+				4 + (orderByComparator.getOrderByConditionFields().length * 3) +
 					(orderByComparator.getOrderByFields().length * 3));
 		}
 		else {
@@ -1817,7 +1795,8 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 		query.append(_FINDER_COLUMN_ASSIGNEEUSERID_ASSIGNEEUSERID_2);
 
 		if (orderByComparator != null) {
-			String[] orderByConditionFields = orderByComparator.getOrderByConditionFields();
+			String[] orderByConditionFields =
+				orderByComparator.getOrderByConditionFields();
 
 			if (orderByConditionFields.length > 0) {
 				query.append(WHERE_AND);
@@ -1887,10 +1866,10 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 		qPos.add(assigneeUserId);
 
 		if (orderByComparator != null) {
-			Object[] values = orderByComparator.getOrderByConditionValues(tasksEntry);
+			for (Object orderByConditionValue :
+					orderByComparator.getOrderByConditionValues(tasksEntry)) {
 
-			for (Object value : values) {
-				qPos.add(value);
+				qPos.add(orderByConditionValue);
 			}
 		}
 
@@ -1911,8 +1890,11 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 */
 	@Override
 	public void removeByAssigneeUserId(long assigneeUserId) {
-		for (TasksEntry tasksEntry : findByAssigneeUserId(assigneeUserId,
-				QueryUtil.ALL_POS, QueryUtil.ALL_POS, null)) {
+		for (TasksEntry tasksEntry :
+				findByAssigneeUserId(
+					assigneeUserId, QueryUtil.ALL_POS, QueryUtil.ALL_POS,
+					null)) {
+
 			remove(tasksEntry);
 		}
 	}
@@ -1925,11 +1907,12 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 */
 	@Override
 	public int countByAssigneeUserId(long assigneeUserId) {
-		FinderPath finderPath = FINDER_PATH_COUNT_BY_ASSIGNEEUSERID;
+		FinderPath finderPath = _finderPathCountByAssigneeUserId;
 
-		Object[] finderArgs = new Object[] { assigneeUserId };
+		Object[] finderArgs = new Object[] {assigneeUserId};
 
-		Long count = (Long)finderCache.getResult(finderPath, finderArgs, this);
+		Long count = (Long)FinderCacheUtil.getResult(
+			finderPath, finderArgs, this);
 
 		if (count == null) {
 			StringBundler query = new StringBundler(2);
@@ -1953,10 +1936,10 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 				count = (Long)q.uniqueResult();
 
-				finderCache.putResult(finderPath, finderArgs, count);
+				FinderCacheUtil.putResult(finderPath, finderArgs, count);
 			}
 			catch (Exception e) {
-				finderCache.removeResult(finderPath, finderArgs);
+				FinderCacheUtil.removeResult(finderPath, finderArgs);
 
 				throw processException(e);
 			}
@@ -1968,30 +1951,12 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 		return count.intValue();
 	}
 
-	private static final String _FINDER_COLUMN_ASSIGNEEUSERID_ASSIGNEEUSERID_2 = "tasksEntry.assigneeUserId = ?";
-	public static final FinderPath FINDER_PATH_WITH_PAGINATION_FIND_BY_RESOLVERUSERID =
-		new FinderPath(TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
-			TasksEntryModelImpl.FINDER_CACHE_ENABLED, TasksEntryImpl.class,
-			FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByResolverUserId",
-			new String[] {
-				Long.class.getName(),
-				
-			Integer.class.getName(), Integer.class.getName(),
-				OrderByComparator.class.getName()
-			});
-	public static final FinderPath FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_RESOLVERUSERID =
-		new FinderPath(TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
-			TasksEntryModelImpl.FINDER_CACHE_ENABLED, TasksEntryImpl.class,
-			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findByResolverUserId",
-			new String[] { Long.class.getName() },
-			TasksEntryModelImpl.RESOLVERUSERID_COLUMN_BITMASK |
-			TasksEntryModelImpl.PRIORITY_COLUMN_BITMASK |
-			TasksEntryModelImpl.DUEDATE_COLUMN_BITMASK |
-			TasksEntryModelImpl.CREATEDATE_COLUMN_BITMASK);
-	public static final FinderPath FINDER_PATH_COUNT_BY_RESOLVERUSERID = new FinderPath(TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
-			TasksEntryModelImpl.FINDER_CACHE_ENABLED, Long.class,
-			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByResolverUserId",
-			new String[] { Long.class.getName() });
+	private static final String _FINDER_COLUMN_ASSIGNEEUSERID_ASSIGNEEUSERID_2 =
+		"tasksEntry.assigneeUserId = ?";
+
+	private FinderPath _finderPathWithPaginationFindByResolverUserId;
+	private FinderPath _finderPathWithoutPaginationFindByResolverUserId;
+	private FinderPath _finderPathCountByResolverUserId;
 
 	/**
 	 * Returns all the tasks entries where resolverUserId = &#63;.
@@ -2001,15 +1966,15 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 */
 	@Override
 	public List<TasksEntry> findByResolverUserId(long resolverUserId) {
-		return findByResolverUserId(resolverUserId, QueryUtil.ALL_POS,
-			QueryUtil.ALL_POS, null);
+		return findByResolverUserId(
+			resolverUserId, QueryUtil.ALL_POS, QueryUtil.ALL_POS, null);
 	}
 
 	/**
 	 * Returns a range of all the tasks entries where resolverUserId = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link TasksEntryModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>TasksEntryModelImpl</code>.
 	 * </p>
 	 *
 	 * @param resolverUserId the resolver user ID
@@ -2018,8 +1983,9 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @return the range of matching tasks entries
 	 */
 	@Override
-	public List<TasksEntry> findByResolverUserId(long resolverUserId,
-		int start, int end) {
+	public List<TasksEntry> findByResolverUserId(
+		long resolverUserId, int start, int end) {
+
 		return findByResolverUserId(resolverUserId, start, end, null);
 	}
 
@@ -2027,7 +1993,7 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * Returns an ordered range of all the tasks entries where resolverUserId = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link TasksEntryModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>TasksEntryModelImpl</code>.
 	 * </p>
 	 *
 	 * @param resolverUserId the resolver user ID
@@ -2037,58 +2003,61 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @return the ordered range of matching tasks entries
 	 */
 	@Override
-	public List<TasksEntry> findByResolverUserId(long resolverUserId,
-		int start, int end, OrderByComparator<TasksEntry> orderByComparator) {
-		return findByResolverUserId(resolverUserId, start, end,
-			orderByComparator, true);
+	public List<TasksEntry> findByResolverUserId(
+		long resolverUserId, int start, int end,
+		OrderByComparator<TasksEntry> orderByComparator) {
+
+		return findByResolverUserId(
+			resolverUserId, start, end, orderByComparator, true);
 	}
 
 	/**
 	 * Returns an ordered range of all the tasks entries where resolverUserId = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link TasksEntryModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>TasksEntryModelImpl</code>.
 	 * </p>
 	 *
 	 * @param resolverUserId the resolver user ID
 	 * @param start the lower bound of the range of tasks entries
 	 * @param end the upper bound of the range of tasks entries (not inclusive)
 	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
-	 * @param retrieveFromCache whether to retrieve from the finder cache
+	 * @param useFinderCache whether to use the finder cache
 	 * @return the ordered range of matching tasks entries
 	 */
 	@Override
-	public List<TasksEntry> findByResolverUserId(long resolverUserId,
-		int start, int end, OrderByComparator<TasksEntry> orderByComparator,
-		boolean retrieveFromCache) {
-		boolean pagination = true;
+	public List<TasksEntry> findByResolverUserId(
+		long resolverUserId, int start, int end,
+		OrderByComparator<TasksEntry> orderByComparator,
+		boolean useFinderCache) {
+
 		FinderPath finderPath = null;
 		Object[] finderArgs = null;
 
 		if ((start == QueryUtil.ALL_POS) && (end == QueryUtil.ALL_POS) &&
-				(orderByComparator == null)) {
-			pagination = false;
-			finderPath = FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_RESOLVERUSERID;
-			finderArgs = new Object[] { resolverUserId };
+			(orderByComparator == null)) {
+
+			if (useFinderCache) {
+				finderPath = _finderPathWithoutPaginationFindByResolverUserId;
+				finderArgs = new Object[] {resolverUserId};
+			}
 		}
-		else {
-			finderPath = FINDER_PATH_WITH_PAGINATION_FIND_BY_RESOLVERUSERID;
+		else if (useFinderCache) {
+			finderPath = _finderPathWithPaginationFindByResolverUserId;
 			finderArgs = new Object[] {
-					resolverUserId,
-					
-					start, end, orderByComparator
-				};
+				resolverUserId, start, end, orderByComparator
+			};
 		}
 
 		List<TasksEntry> list = null;
 
-		if (retrieveFromCache) {
-			list = (List<TasksEntry>)finderCache.getResult(finderPath,
-					finderArgs, this);
+		if (useFinderCache) {
+			list = (List<TasksEntry>)FinderCacheUtil.getResult(
+				finderPath, finderArgs, this);
 
 			if ((list != null) && !list.isEmpty()) {
 				for (TasksEntry tasksEntry : list) {
-					if ((resolverUserId != tasksEntry.getResolverUserId())) {
+					if (resolverUserId != tasksEntry.getResolverUserId()) {
 						list = null;
 
 						break;
@@ -2101,8 +2070,8 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 			StringBundler query = null;
 
 			if (orderByComparator != null) {
-				query = new StringBundler(3 +
-						(orderByComparator.getOrderByFields().length * 2));
+				query = new StringBundler(
+					3 + (orderByComparator.getOrderByFields().length * 2));
 			}
 			else {
 				query = new StringBundler(3);
@@ -2113,11 +2082,10 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 			query.append(_FINDER_COLUMN_RESOLVERUSERID_RESOLVERUSERID_2);
 
 			if (orderByComparator != null) {
-				appendOrderByComparator(query, _ORDER_BY_ENTITY_ALIAS,
-					orderByComparator);
+				appendOrderByComparator(
+					query, _ORDER_BY_ENTITY_ALIAS, orderByComparator);
 			}
-			else
-			 if (pagination) {
+			else {
 				query.append(TasksEntryModelImpl.ORDER_BY_JPQL);
 			}
 
@@ -2134,25 +2102,19 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 				qPos.add(resolverUserId);
 
-				if (!pagination) {
-					list = (List<TasksEntry>)QueryUtil.list(q, getDialect(),
-							start, end, false);
-
-					Collections.sort(list);
-
-					list = Collections.unmodifiableList(list);
-				}
-				else {
-					list = (List<TasksEntry>)QueryUtil.list(q, getDialect(),
-							start, end);
-				}
+				list = (List<TasksEntry>)QueryUtil.list(
+					q, getDialect(), start, end);
 
 				cacheResult(list);
 
-				finderCache.putResult(finderPath, finderArgs, list);
+				if (useFinderCache) {
+					FinderCacheUtil.putResult(finderPath, finderArgs, list);
+				}
 			}
 			catch (Exception e) {
-				finderCache.removeResult(finderPath, finderArgs);
+				if (useFinderCache) {
+					FinderCacheUtil.removeResult(finderPath, finderArgs);
+				}
 
 				throw processException(e);
 			}
@@ -2173,11 +2135,13 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @throws NoSuchTasksEntryException if a matching tasks entry could not be found
 	 */
 	@Override
-	public TasksEntry findByResolverUserId_First(long resolverUserId,
-		OrderByComparator<TasksEntry> orderByComparator)
+	public TasksEntry findByResolverUserId_First(
+			long resolverUserId,
+			OrderByComparator<TasksEntry> orderByComparator)
 		throws NoSuchTasksEntryException {
-		TasksEntry tasksEntry = fetchByResolverUserId_First(resolverUserId,
-				orderByComparator);
+
+		TasksEntry tasksEntry = fetchByResolverUserId_First(
+			resolverUserId, orderByComparator);
 
 		if (tasksEntry != null) {
 			return tasksEntry;
@@ -2203,10 +2167,11 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @return the first matching tasks entry, or <code>null</code> if a matching tasks entry could not be found
 	 */
 	@Override
-	public TasksEntry fetchByResolverUserId_First(long resolverUserId,
-		OrderByComparator<TasksEntry> orderByComparator) {
-		List<TasksEntry> list = findByResolverUserId(resolverUserId, 0, 1,
-				orderByComparator);
+	public TasksEntry fetchByResolverUserId_First(
+		long resolverUserId, OrderByComparator<TasksEntry> orderByComparator) {
+
+		List<TasksEntry> list = findByResolverUserId(
+			resolverUserId, 0, 1, orderByComparator);
 
 		if (!list.isEmpty()) {
 			return list.get(0);
@@ -2224,11 +2189,13 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @throws NoSuchTasksEntryException if a matching tasks entry could not be found
 	 */
 	@Override
-	public TasksEntry findByResolverUserId_Last(long resolverUserId,
-		OrderByComparator<TasksEntry> orderByComparator)
+	public TasksEntry findByResolverUserId_Last(
+			long resolverUserId,
+			OrderByComparator<TasksEntry> orderByComparator)
 		throws NoSuchTasksEntryException {
-		TasksEntry tasksEntry = fetchByResolverUserId_Last(resolverUserId,
-				orderByComparator);
+
+		TasksEntry tasksEntry = fetchByResolverUserId_Last(
+			resolverUserId, orderByComparator);
 
 		if (tasksEntry != null) {
 			return tasksEntry;
@@ -2254,16 +2221,17 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @return the last matching tasks entry, or <code>null</code> if a matching tasks entry could not be found
 	 */
 	@Override
-	public TasksEntry fetchByResolverUserId_Last(long resolverUserId,
-		OrderByComparator<TasksEntry> orderByComparator) {
+	public TasksEntry fetchByResolverUserId_Last(
+		long resolverUserId, OrderByComparator<TasksEntry> orderByComparator) {
+
 		int count = countByResolverUserId(resolverUserId);
 
 		if (count == 0) {
 			return null;
 		}
 
-		List<TasksEntry> list = findByResolverUserId(resolverUserId, count - 1,
-				count, orderByComparator);
+		List<TasksEntry> list = findByResolverUserId(
+			resolverUserId, count - 1, count, orderByComparator);
 
 		if (!list.isEmpty()) {
 			return list.get(0);
@@ -2282,9 +2250,11 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @throws NoSuchTasksEntryException if a tasks entry with the primary key could not be found
 	 */
 	@Override
-	public TasksEntry[] findByResolverUserId_PrevAndNext(long tasksEntryId,
-		long resolverUserId, OrderByComparator<TasksEntry> orderByComparator)
+	public TasksEntry[] findByResolverUserId_PrevAndNext(
+			long tasksEntryId, long resolverUserId,
+			OrderByComparator<TasksEntry> orderByComparator)
 		throws NoSuchTasksEntryException {
+
 		TasksEntry tasksEntry = findByPrimaryKey(tasksEntryId);
 
 		Session session = null;
@@ -2294,13 +2264,13 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 			TasksEntry[] array = new TasksEntryImpl[3];
 
-			array[0] = getByResolverUserId_PrevAndNext(session, tasksEntry,
-					resolverUserId, orderByComparator, true);
+			array[0] = getByResolverUserId_PrevAndNext(
+				session, tasksEntry, resolverUserId, orderByComparator, true);
 
 			array[1] = tasksEntry;
 
-			array[2] = getByResolverUserId_PrevAndNext(session, tasksEntry,
-					resolverUserId, orderByComparator, false);
+			array[2] = getByResolverUserId_PrevAndNext(
+				session, tasksEntry, resolverUserId, orderByComparator, false);
 
 			return array;
 		}
@@ -2312,14 +2282,15 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 		}
 	}
 
-	protected TasksEntry getByResolverUserId_PrevAndNext(Session session,
-		TasksEntry tasksEntry, long resolverUserId,
+	protected TasksEntry getByResolverUserId_PrevAndNext(
+		Session session, TasksEntry tasksEntry, long resolverUserId,
 		OrderByComparator<TasksEntry> orderByComparator, boolean previous) {
+
 		StringBundler query = null;
 
 		if (orderByComparator != null) {
-			query = new StringBundler(4 +
-					(orderByComparator.getOrderByConditionFields().length * 3) +
+			query = new StringBundler(
+				4 + (orderByComparator.getOrderByConditionFields().length * 3) +
 					(orderByComparator.getOrderByFields().length * 3));
 		}
 		else {
@@ -2331,7 +2302,8 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 		query.append(_FINDER_COLUMN_RESOLVERUSERID_RESOLVERUSERID_2);
 
 		if (orderByComparator != null) {
-			String[] orderByConditionFields = orderByComparator.getOrderByConditionFields();
+			String[] orderByConditionFields =
+				orderByComparator.getOrderByConditionFields();
 
 			if (orderByConditionFields.length > 0) {
 				query.append(WHERE_AND);
@@ -2401,10 +2373,10 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 		qPos.add(resolverUserId);
 
 		if (orderByComparator != null) {
-			Object[] values = orderByComparator.getOrderByConditionValues(tasksEntry);
+			for (Object orderByConditionValue :
+					orderByComparator.getOrderByConditionValues(tasksEntry)) {
 
-			for (Object value : values) {
-				qPos.add(value);
+				qPos.add(orderByConditionValue);
 			}
 		}
 
@@ -2425,8 +2397,11 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 */
 	@Override
 	public void removeByResolverUserId(long resolverUserId) {
-		for (TasksEntry tasksEntry : findByResolverUserId(resolverUserId,
-				QueryUtil.ALL_POS, QueryUtil.ALL_POS, null)) {
+		for (TasksEntry tasksEntry :
+				findByResolverUserId(
+					resolverUserId, QueryUtil.ALL_POS, QueryUtil.ALL_POS,
+					null)) {
+
 			remove(tasksEntry);
 		}
 	}
@@ -2439,11 +2414,12 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 */
 	@Override
 	public int countByResolverUserId(long resolverUserId) {
-		FinderPath finderPath = FINDER_PATH_COUNT_BY_RESOLVERUSERID;
+		FinderPath finderPath = _finderPathCountByResolverUserId;
 
-		Object[] finderArgs = new Object[] { resolverUserId };
+		Object[] finderArgs = new Object[] {resolverUserId};
 
-		Long count = (Long)finderCache.getResult(finderPath, finderArgs, this);
+		Long count = (Long)FinderCacheUtil.getResult(
+			finderPath, finderArgs, this);
 
 		if (count == null) {
 			StringBundler query = new StringBundler(2);
@@ -2467,10 +2443,10 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 				count = (Long)q.uniqueResult();
 
-				finderCache.putResult(finderPath, finderArgs, count);
+				FinderCacheUtil.putResult(finderPath, finderArgs, count);
 			}
 			catch (Exception e) {
-				finderCache.removeResult(finderPath, finderArgs);
+				FinderCacheUtil.removeResult(finderPath, finderArgs);
 
 				throw processException(e);
 			}
@@ -2482,29 +2458,12 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 		return count.intValue();
 	}
 
-	private static final String _FINDER_COLUMN_RESOLVERUSERID_RESOLVERUSERID_2 = "tasksEntry.resolverUserId = ?";
-	public static final FinderPath FINDER_PATH_WITH_PAGINATION_FIND_BY_G_U = new FinderPath(TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
-			TasksEntryModelImpl.FINDER_CACHE_ENABLED, TasksEntryImpl.class,
-			FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByG_U",
-			new String[] {
-				Long.class.getName(), Long.class.getName(),
-				
-			Integer.class.getName(), Integer.class.getName(),
-				OrderByComparator.class.getName()
-			});
-	public static final FinderPath FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_G_U = new FinderPath(TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
-			TasksEntryModelImpl.FINDER_CACHE_ENABLED, TasksEntryImpl.class,
-			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findByG_U",
-			new String[] { Long.class.getName(), Long.class.getName() },
-			TasksEntryModelImpl.GROUPID_COLUMN_BITMASK |
-			TasksEntryModelImpl.USERID_COLUMN_BITMASK |
-			TasksEntryModelImpl.PRIORITY_COLUMN_BITMASK |
-			TasksEntryModelImpl.DUEDATE_COLUMN_BITMASK |
-			TasksEntryModelImpl.CREATEDATE_COLUMN_BITMASK);
-	public static final FinderPath FINDER_PATH_COUNT_BY_G_U = new FinderPath(TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
-			TasksEntryModelImpl.FINDER_CACHE_ENABLED, Long.class,
-			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByG_U",
-			new String[] { Long.class.getName(), Long.class.getName() });
+	private static final String _FINDER_COLUMN_RESOLVERUSERID_RESOLVERUSERID_2 =
+		"tasksEntry.resolverUserId = ?";
+
+	private FinderPath _finderPathWithPaginationFindByG_U;
+	private FinderPath _finderPathWithoutPaginationFindByG_U;
+	private FinderPath _finderPathCountByG_U;
 
 	/**
 	 * Returns all the tasks entries where groupId = &#63; and userId = &#63;.
@@ -2515,15 +2474,15 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 */
 	@Override
 	public List<TasksEntry> findByG_U(long groupId, long userId) {
-		return findByG_U(groupId, userId, QueryUtil.ALL_POS, QueryUtil.ALL_POS,
-			null);
+		return findByG_U(
+			groupId, userId, QueryUtil.ALL_POS, QueryUtil.ALL_POS, null);
 	}
 
 	/**
 	 * Returns a range of all the tasks entries where groupId = &#63; and userId = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link TasksEntryModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>TasksEntryModelImpl</code>.
 	 * </p>
 	 *
 	 * @param groupId the group ID
@@ -2533,8 +2492,9 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @return the range of matching tasks entries
 	 */
 	@Override
-	public List<TasksEntry> findByG_U(long groupId, long userId, int start,
-		int end) {
+	public List<TasksEntry> findByG_U(
+		long groupId, long userId, int start, int end) {
+
 		return findByG_U(groupId, userId, start, end, null);
 	}
 
@@ -2542,7 +2502,7 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * Returns an ordered range of all the tasks entries where groupId = &#63; and userId = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link TasksEntryModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>TasksEntryModelImpl</code>.
 	 * </p>
 	 *
 	 * @param groupId the group ID
@@ -2553,8 +2513,10 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @return the ordered range of matching tasks entries
 	 */
 	@Override
-	public List<TasksEntry> findByG_U(long groupId, long userId, int start,
-		int end, OrderByComparator<TasksEntry> orderByComparator) {
+	public List<TasksEntry> findByG_U(
+		long groupId, long userId, int start, int end,
+		OrderByComparator<TasksEntry> orderByComparator) {
+
 		return findByG_U(groupId, userId, start, end, orderByComparator, true);
 	}
 
@@ -2562,7 +2524,7 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * Returns an ordered range of all the tasks entries where groupId = &#63; and userId = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link TasksEntryModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>TasksEntryModelImpl</code>.
 	 * </p>
 	 *
 	 * @param groupId the group ID
@@ -2570,42 +2532,44 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @param start the lower bound of the range of tasks entries
 	 * @param end the upper bound of the range of tasks entries (not inclusive)
 	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
-	 * @param retrieveFromCache whether to retrieve from the finder cache
+	 * @param useFinderCache whether to use the finder cache
 	 * @return the ordered range of matching tasks entries
 	 */
 	@Override
-	public List<TasksEntry> findByG_U(long groupId, long userId, int start,
-		int end, OrderByComparator<TasksEntry> orderByComparator,
-		boolean retrieveFromCache) {
-		boolean pagination = true;
+	public List<TasksEntry> findByG_U(
+		long groupId, long userId, int start, int end,
+		OrderByComparator<TasksEntry> orderByComparator,
+		boolean useFinderCache) {
+
 		FinderPath finderPath = null;
 		Object[] finderArgs = null;
 
 		if ((start == QueryUtil.ALL_POS) && (end == QueryUtil.ALL_POS) &&
-				(orderByComparator == null)) {
-			pagination = false;
-			finderPath = FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_G_U;
-			finderArgs = new Object[] { groupId, userId };
+			(orderByComparator == null)) {
+
+			if (useFinderCache) {
+				finderPath = _finderPathWithoutPaginationFindByG_U;
+				finderArgs = new Object[] {groupId, userId};
+			}
 		}
-		else {
-			finderPath = FINDER_PATH_WITH_PAGINATION_FIND_BY_G_U;
+		else if (useFinderCache) {
+			finderPath = _finderPathWithPaginationFindByG_U;
 			finderArgs = new Object[] {
-					groupId, userId,
-					
-					start, end, orderByComparator
-				};
+				groupId, userId, start, end, orderByComparator
+			};
 		}
 
 		List<TasksEntry> list = null;
 
-		if (retrieveFromCache) {
-			list = (List<TasksEntry>)finderCache.getResult(finderPath,
-					finderArgs, this);
+		if (useFinderCache) {
+			list = (List<TasksEntry>)FinderCacheUtil.getResult(
+				finderPath, finderArgs, this);
 
 			if ((list != null) && !list.isEmpty()) {
 				for (TasksEntry tasksEntry : list) {
 					if ((groupId != tasksEntry.getGroupId()) ||
-							(userId != tasksEntry.getUserId())) {
+						(userId != tasksEntry.getUserId())) {
+
 						list = null;
 
 						break;
@@ -2618,8 +2582,8 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 			StringBundler query = null;
 
 			if (orderByComparator != null) {
-				query = new StringBundler(4 +
-						(orderByComparator.getOrderByFields().length * 2));
+				query = new StringBundler(
+					4 + (orderByComparator.getOrderByFields().length * 2));
 			}
 			else {
 				query = new StringBundler(4);
@@ -2632,11 +2596,10 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 			query.append(_FINDER_COLUMN_G_U_USERID_2);
 
 			if (orderByComparator != null) {
-				appendOrderByComparator(query, _ORDER_BY_ENTITY_ALIAS,
-					orderByComparator);
+				appendOrderByComparator(
+					query, _ORDER_BY_ENTITY_ALIAS, orderByComparator);
 			}
-			else
-			 if (pagination) {
+			else {
 				query.append(TasksEntryModelImpl.ORDER_BY_JPQL);
 			}
 
@@ -2655,25 +2618,19 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 				qPos.add(userId);
 
-				if (!pagination) {
-					list = (List<TasksEntry>)QueryUtil.list(q, getDialect(),
-							start, end, false);
-
-					Collections.sort(list);
-
-					list = Collections.unmodifiableList(list);
-				}
-				else {
-					list = (List<TasksEntry>)QueryUtil.list(q, getDialect(),
-							start, end);
-				}
+				list = (List<TasksEntry>)QueryUtil.list(
+					q, getDialect(), start, end);
 
 				cacheResult(list);
 
-				finderCache.putResult(finderPath, finderArgs, list);
+				if (useFinderCache) {
+					FinderCacheUtil.putResult(finderPath, finderArgs, list);
+				}
 			}
 			catch (Exception e) {
-				finderCache.removeResult(finderPath, finderArgs);
+				if (useFinderCache) {
+					FinderCacheUtil.removeResult(finderPath, finderArgs);
+				}
 
 				throw processException(e);
 			}
@@ -2695,11 +2652,13 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @throws NoSuchTasksEntryException if a matching tasks entry could not be found
 	 */
 	@Override
-	public TasksEntry findByG_U_First(long groupId, long userId,
-		OrderByComparator<TasksEntry> orderByComparator)
+	public TasksEntry findByG_U_First(
+			long groupId, long userId,
+			OrderByComparator<TasksEntry> orderByComparator)
 		throws NoSuchTasksEntryException {
-		TasksEntry tasksEntry = fetchByG_U_First(groupId, userId,
-				orderByComparator);
+
+		TasksEntry tasksEntry = fetchByG_U_First(
+			groupId, userId, orderByComparator);
 
 		if (tasksEntry != null) {
 			return tasksEntry;
@@ -2729,10 +2688,12 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @return the first matching tasks entry, or <code>null</code> if a matching tasks entry could not be found
 	 */
 	@Override
-	public TasksEntry fetchByG_U_First(long groupId, long userId,
+	public TasksEntry fetchByG_U_First(
+		long groupId, long userId,
 		OrderByComparator<TasksEntry> orderByComparator) {
-		List<TasksEntry> list = findByG_U(groupId, userId, 0, 1,
-				orderByComparator);
+
+		List<TasksEntry> list = findByG_U(
+			groupId, userId, 0, 1, orderByComparator);
 
 		if (!list.isEmpty()) {
 			return list.get(0);
@@ -2751,11 +2712,13 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @throws NoSuchTasksEntryException if a matching tasks entry could not be found
 	 */
 	@Override
-	public TasksEntry findByG_U_Last(long groupId, long userId,
-		OrderByComparator<TasksEntry> orderByComparator)
+	public TasksEntry findByG_U_Last(
+			long groupId, long userId,
+			OrderByComparator<TasksEntry> orderByComparator)
 		throws NoSuchTasksEntryException {
-		TasksEntry tasksEntry = fetchByG_U_Last(groupId, userId,
-				orderByComparator);
+
+		TasksEntry tasksEntry = fetchByG_U_Last(
+			groupId, userId, orderByComparator);
 
 		if (tasksEntry != null) {
 			return tasksEntry;
@@ -2785,16 +2748,18 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @return the last matching tasks entry, or <code>null</code> if a matching tasks entry could not be found
 	 */
 	@Override
-	public TasksEntry fetchByG_U_Last(long groupId, long userId,
+	public TasksEntry fetchByG_U_Last(
+		long groupId, long userId,
 		OrderByComparator<TasksEntry> orderByComparator) {
+
 		int count = countByG_U(groupId, userId);
 
 		if (count == 0) {
 			return null;
 		}
 
-		List<TasksEntry> list = findByG_U(groupId, userId, count - 1, count,
-				orderByComparator);
+		List<TasksEntry> list = findByG_U(
+			groupId, userId, count - 1, count, orderByComparator);
 
 		if (!list.isEmpty()) {
 			return list.get(0);
@@ -2814,9 +2779,11 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @throws NoSuchTasksEntryException if a tasks entry with the primary key could not be found
 	 */
 	@Override
-	public TasksEntry[] findByG_U_PrevAndNext(long tasksEntryId, long groupId,
-		long userId, OrderByComparator<TasksEntry> orderByComparator)
+	public TasksEntry[] findByG_U_PrevAndNext(
+			long tasksEntryId, long groupId, long userId,
+			OrderByComparator<TasksEntry> orderByComparator)
 		throws NoSuchTasksEntryException {
+
 		TasksEntry tasksEntry = findByPrimaryKey(tasksEntryId);
 
 		Session session = null;
@@ -2826,13 +2793,13 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 			TasksEntry[] array = new TasksEntryImpl[3];
 
-			array[0] = getByG_U_PrevAndNext(session, tasksEntry, groupId,
-					userId, orderByComparator, true);
+			array[0] = getByG_U_PrevAndNext(
+				session, tasksEntry, groupId, userId, orderByComparator, true);
 
 			array[1] = tasksEntry;
 
-			array[2] = getByG_U_PrevAndNext(session, tasksEntry, groupId,
-					userId, orderByComparator, false);
+			array[2] = getByG_U_PrevAndNext(
+				session, tasksEntry, groupId, userId, orderByComparator, false);
 
 			return array;
 		}
@@ -2844,14 +2811,15 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 		}
 	}
 
-	protected TasksEntry getByG_U_PrevAndNext(Session session,
-		TasksEntry tasksEntry, long groupId, long userId,
+	protected TasksEntry getByG_U_PrevAndNext(
+		Session session, TasksEntry tasksEntry, long groupId, long userId,
 		OrderByComparator<TasksEntry> orderByComparator, boolean previous) {
+
 		StringBundler query = null;
 
 		if (orderByComparator != null) {
-			query = new StringBundler(5 +
-					(orderByComparator.getOrderByConditionFields().length * 3) +
+			query = new StringBundler(
+				5 + (orderByComparator.getOrderByConditionFields().length * 3) +
 					(orderByComparator.getOrderByFields().length * 3));
 		}
 		else {
@@ -2865,7 +2833,8 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 		query.append(_FINDER_COLUMN_G_U_USERID_2);
 
 		if (orderByComparator != null) {
-			String[] orderByConditionFields = orderByComparator.getOrderByConditionFields();
+			String[] orderByConditionFields =
+				orderByComparator.getOrderByConditionFields();
 
 			if (orderByConditionFields.length > 0) {
 				query.append(WHERE_AND);
@@ -2937,10 +2906,10 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 		qPos.add(userId);
 
 		if (orderByComparator != null) {
-			Object[] values = orderByComparator.getOrderByConditionValues(tasksEntry);
+			for (Object orderByConditionValue :
+					orderByComparator.getOrderByConditionValues(tasksEntry)) {
 
-			for (Object value : values) {
-				qPos.add(value);
+				qPos.add(orderByConditionValue);
 			}
 		}
 
@@ -2963,15 +2932,15 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 */
 	@Override
 	public List<TasksEntry> filterFindByG_U(long groupId, long userId) {
-		return filterFindByG_U(groupId, userId, QueryUtil.ALL_POS,
-			QueryUtil.ALL_POS, null);
+		return filterFindByG_U(
+			groupId, userId, QueryUtil.ALL_POS, QueryUtil.ALL_POS, null);
 	}
 
 	/**
 	 * Returns a range of all the tasks entries that the user has permission to view where groupId = &#63; and userId = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link TasksEntryModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>TasksEntryModelImpl</code>.
 	 * </p>
 	 *
 	 * @param groupId the group ID
@@ -2981,8 +2950,9 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @return the range of matching tasks entries that the user has permission to view
 	 */
 	@Override
-	public List<TasksEntry> filterFindByG_U(long groupId, long userId,
-		int start, int end) {
+	public List<TasksEntry> filterFindByG_U(
+		long groupId, long userId, int start, int end) {
+
 		return filterFindByG_U(groupId, userId, start, end, null);
 	}
 
@@ -2990,7 +2960,7 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * Returns an ordered range of all the tasks entries that the user has permissions to view where groupId = &#63; and userId = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link TasksEntryModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>TasksEntryModelImpl</code>.
 	 * </p>
 	 *
 	 * @param groupId the group ID
@@ -3001,8 +2971,10 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @return the ordered range of matching tasks entries that the user has permission to view
 	 */
 	@Override
-	public List<TasksEntry> filterFindByG_U(long groupId, long userId,
-		int start, int end, OrderByComparator<TasksEntry> orderByComparator) {
+	public List<TasksEntry> filterFindByG_U(
+		long groupId, long userId, int start, int end,
+		OrderByComparator<TasksEntry> orderByComparator) {
+
 		if (!InlineSQLHelperUtil.isEnabled(groupId)) {
 			return findByG_U(groupId, userId, start, end, orderByComparator);
 		}
@@ -3010,8 +2982,8 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 		StringBundler query = null;
 
 		if (orderByComparator != null) {
-			query = new StringBundler(4 +
-					(orderByComparator.getOrderByFields().length * 2));
+			query = new StringBundler(
+				4 + (orderByComparator.getOrderByFields().length * 2));
 		}
 		else {
 			query = new StringBundler(5);
@@ -3021,7 +2993,8 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 			query.append(_FILTER_SQL_SELECT_TASKSENTRY_WHERE);
 		}
 		else {
-			query.append(_FILTER_SQL_SELECT_TASKSENTRY_NO_INLINE_DISTINCT_WHERE_1);
+			query.append(
+				_FILTER_SQL_SELECT_TASKSENTRY_NO_INLINE_DISTINCT_WHERE_1);
 		}
 
 		query.append(_FINDER_COLUMN_G_U_GROUPID_2);
@@ -3029,17 +3002,18 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 		query.append(_FINDER_COLUMN_G_U_USERID_2);
 
 		if (!getDB().isSupportsInlineDistinct()) {
-			query.append(_FILTER_SQL_SELECT_TASKSENTRY_NO_INLINE_DISTINCT_WHERE_2);
+			query.append(
+				_FILTER_SQL_SELECT_TASKSENTRY_NO_INLINE_DISTINCT_WHERE_2);
 		}
 
 		if (orderByComparator != null) {
 			if (getDB().isSupportsInlineDistinct()) {
-				appendOrderByComparator(query, _ORDER_BY_ENTITY_ALIAS,
-					orderByComparator, true);
+				appendOrderByComparator(
+					query, _ORDER_BY_ENTITY_ALIAS, orderByComparator, true);
 			}
 			else {
-				appendOrderByComparator(query, _ORDER_BY_ENTITY_TABLE,
-					orderByComparator, true);
+				appendOrderByComparator(
+					query, _ORDER_BY_ENTITY_TABLE, orderByComparator, true);
 			}
 		}
 		else {
@@ -3051,9 +3025,9 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 			}
 		}
 
-		String sql = InlineSQLHelperUtil.replacePermissionCheck(query.toString(),
-				TasksEntry.class.getName(),
-				_FILTER_ENTITY_TABLE_FILTER_PK_COLUMN, groupId);
+		String sql = InlineSQLHelperUtil.replacePermissionCheck(
+			query.toString(), TasksEntry.class.getName(),
+			_FILTER_ENTITY_TABLE_FILTER_PK_COLUMN, groupId);
 
 		Session session = null;
 
@@ -3075,7 +3049,8 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 			qPos.add(userId);
 
-			return (List<TasksEntry>)QueryUtil.list(q, getDialect(), start, end);
+			return (List<TasksEntry>)QueryUtil.list(
+				q, getDialect(), start, end);
 		}
 		catch (Exception e) {
 			throw processException(e);
@@ -3096,13 +3071,14 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @throws NoSuchTasksEntryException if a tasks entry with the primary key could not be found
 	 */
 	@Override
-	public TasksEntry[] filterFindByG_U_PrevAndNext(long tasksEntryId,
-		long groupId, long userId,
-		OrderByComparator<TasksEntry> orderByComparator)
+	public TasksEntry[] filterFindByG_U_PrevAndNext(
+			long tasksEntryId, long groupId, long userId,
+			OrderByComparator<TasksEntry> orderByComparator)
 		throws NoSuchTasksEntryException {
+
 		if (!InlineSQLHelperUtil.isEnabled(groupId)) {
-			return findByG_U_PrevAndNext(tasksEntryId, groupId, userId,
-				orderByComparator);
+			return findByG_U_PrevAndNext(
+				tasksEntryId, groupId, userId, orderByComparator);
 		}
 
 		TasksEntry tasksEntry = findByPrimaryKey(tasksEntryId);
@@ -3114,13 +3090,13 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 			TasksEntry[] array = new TasksEntryImpl[3];
 
-			array[0] = filterGetByG_U_PrevAndNext(session, tasksEntry, groupId,
-					userId, orderByComparator, true);
+			array[0] = filterGetByG_U_PrevAndNext(
+				session, tasksEntry, groupId, userId, orderByComparator, true);
 
 			array[1] = tasksEntry;
 
-			array[2] = filterGetByG_U_PrevAndNext(session, tasksEntry, groupId,
-					userId, orderByComparator, false);
+			array[2] = filterGetByG_U_PrevAndNext(
+				session, tasksEntry, groupId, userId, orderByComparator, false);
 
 			return array;
 		}
@@ -3132,14 +3108,15 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 		}
 	}
 
-	protected TasksEntry filterGetByG_U_PrevAndNext(Session session,
-		TasksEntry tasksEntry, long groupId, long userId,
+	protected TasksEntry filterGetByG_U_PrevAndNext(
+		Session session, TasksEntry tasksEntry, long groupId, long userId,
 		OrderByComparator<TasksEntry> orderByComparator, boolean previous) {
+
 		StringBundler query = null;
 
 		if (orderByComparator != null) {
-			query = new StringBundler(6 +
-					(orderByComparator.getOrderByConditionFields().length * 3) +
+			query = new StringBundler(
+				6 + (orderByComparator.getOrderByConditionFields().length * 3) +
 					(orderByComparator.getOrderByFields().length * 3));
 		}
 		else {
@@ -3150,7 +3127,8 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 			query.append(_FILTER_SQL_SELECT_TASKSENTRY_WHERE);
 		}
 		else {
-			query.append(_FILTER_SQL_SELECT_TASKSENTRY_NO_INLINE_DISTINCT_WHERE_1);
+			query.append(
+				_FILTER_SQL_SELECT_TASKSENTRY_NO_INLINE_DISTINCT_WHERE_1);
 		}
 
 		query.append(_FINDER_COLUMN_G_U_GROUPID_2);
@@ -3158,11 +3136,13 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 		query.append(_FINDER_COLUMN_G_U_USERID_2);
 
 		if (!getDB().isSupportsInlineDistinct()) {
-			query.append(_FILTER_SQL_SELECT_TASKSENTRY_NO_INLINE_DISTINCT_WHERE_2);
+			query.append(
+				_FILTER_SQL_SELECT_TASKSENTRY_NO_INLINE_DISTINCT_WHERE_2);
 		}
 
 		if (orderByComparator != null) {
-			String[] orderByConditionFields = orderByComparator.getOrderByConditionFields();
+			String[] orderByConditionFields =
+				orderByComparator.getOrderByConditionFields();
 
 			if (orderByConditionFields.length > 0) {
 				query.append(WHERE_AND);
@@ -3170,13 +3150,17 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 			for (int i = 0; i < orderByConditionFields.length; i++) {
 				if (getDB().isSupportsInlineDistinct()) {
-					query.append(_ORDER_BY_ENTITY_ALIAS);
+					query.append(
+						getColumnName(
+							_ORDER_BY_ENTITY_ALIAS, orderByConditionFields[i],
+							true));
 				}
 				else {
-					query.append(_ORDER_BY_ENTITY_TABLE);
+					query.append(
+						getColumnName(
+							_ORDER_BY_ENTITY_TABLE, orderByConditionFields[i],
+							true));
 				}
-
-				query.append(orderByConditionFields[i]);
 
 				if ((i + 1) < orderByConditionFields.length) {
 					if (orderByComparator.isAscending() ^ previous) {
@@ -3202,13 +3186,15 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 			for (int i = 0; i < orderByFields.length; i++) {
 				if (getDB().isSupportsInlineDistinct()) {
-					query.append(_ORDER_BY_ENTITY_ALIAS);
+					query.append(
+						getColumnName(
+							_ORDER_BY_ENTITY_ALIAS, orderByFields[i], true));
 				}
 				else {
-					query.append(_ORDER_BY_ENTITY_TABLE);
+					query.append(
+						getColumnName(
+							_ORDER_BY_ENTITY_TABLE, orderByFields[i], true));
 				}
-
-				query.append(orderByFields[i]);
 
 				if ((i + 1) < orderByFields.length) {
 					if (orderByComparator.isAscending() ^ previous) {
@@ -3237,9 +3223,9 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 			}
 		}
 
-		String sql = InlineSQLHelperUtil.replacePermissionCheck(query.toString(),
-				TasksEntry.class.getName(),
-				_FILTER_ENTITY_TABLE_FILTER_PK_COLUMN, groupId);
+		String sql = InlineSQLHelperUtil.replacePermissionCheck(
+			query.toString(), TasksEntry.class.getName(),
+			_FILTER_ENTITY_TABLE_FILTER_PK_COLUMN, groupId);
 
 		SQLQuery q = session.createSynchronizedSQLQuery(sql);
 
@@ -3260,10 +3246,10 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 		qPos.add(userId);
 
 		if (orderByComparator != null) {
-			Object[] values = orderByComparator.getOrderByConditionValues(tasksEntry);
+			for (Object orderByConditionValue :
+					orderByComparator.getOrderByConditionValues(tasksEntry)) {
 
-			for (Object value : values) {
-				qPos.add(value);
+				qPos.add(orderByConditionValue);
 			}
 		}
 
@@ -3285,8 +3271,11 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 */
 	@Override
 	public void removeByG_U(long groupId, long userId) {
-		for (TasksEntry tasksEntry : findByG_U(groupId, userId,
-				QueryUtil.ALL_POS, QueryUtil.ALL_POS, null)) {
+		for (TasksEntry tasksEntry :
+				findByG_U(
+					groupId, userId, QueryUtil.ALL_POS, QueryUtil.ALL_POS,
+					null)) {
+
 			remove(tasksEntry);
 		}
 	}
@@ -3300,11 +3289,12 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 */
 	@Override
 	public int countByG_U(long groupId, long userId) {
-		FinderPath finderPath = FINDER_PATH_COUNT_BY_G_U;
+		FinderPath finderPath = _finderPathCountByG_U;
 
-		Object[] finderArgs = new Object[] { groupId, userId };
+		Object[] finderArgs = new Object[] {groupId, userId};
 
-		Long count = (Long)finderCache.getResult(finderPath, finderArgs, this);
+		Long count = (Long)FinderCacheUtil.getResult(
+			finderPath, finderArgs, this);
 
 		if (count == null) {
 			StringBundler query = new StringBundler(3);
@@ -3332,10 +3322,10 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 				count = (Long)q.uniqueResult();
 
-				finderCache.putResult(finderPath, finderArgs, count);
+				FinderCacheUtil.putResult(finderPath, finderArgs, count);
 			}
 			catch (Exception e) {
-				finderCache.removeResult(finderPath, finderArgs);
+				FinderCacheUtil.removeResult(finderPath, finderArgs);
 
 				throw processException(e);
 			}
@@ -3368,9 +3358,9 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 		query.append(_FINDER_COLUMN_G_U_USERID_2);
 
-		String sql = InlineSQLHelperUtil.replacePermissionCheck(query.toString(),
-				TasksEntry.class.getName(),
-				_FILTER_ENTITY_TABLE_FILTER_PK_COLUMN, groupId);
+		String sql = InlineSQLHelperUtil.replacePermissionCheck(
+			query.toString(), TasksEntry.class.getName(),
+			_FILTER_ENTITY_TABLE_FILTER_PK_COLUMN, groupId);
 
 		Session session = null;
 
@@ -3379,8 +3369,8 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 			SQLQuery q = session.createSynchronizedSQLQuery(sql);
 
-			q.addScalar(COUNT_COLUMN_NAME,
-				com.liferay.portal.kernel.dao.orm.Type.LONG);
+			q.addScalar(
+				COUNT_COLUMN_NAME, com.liferay.portal.kernel.dao.orm.Type.LONG);
 
 			QueryPos qPos = QueryPos.getInstance(q);
 
@@ -3400,30 +3390,15 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 		}
 	}
 
-	private static final String _FINDER_COLUMN_G_U_GROUPID_2 = "tasksEntry.groupId = ? AND ";
-	private static final String _FINDER_COLUMN_G_U_USERID_2 = "tasksEntry.userId = ?";
-	public static final FinderPath FINDER_PATH_WITH_PAGINATION_FIND_BY_G_A = new FinderPath(TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
-			TasksEntryModelImpl.FINDER_CACHE_ENABLED, TasksEntryImpl.class,
-			FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByG_A",
-			new String[] {
-				Long.class.getName(), Long.class.getName(),
-				
-			Integer.class.getName(), Integer.class.getName(),
-				OrderByComparator.class.getName()
-			});
-	public static final FinderPath FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_G_A = new FinderPath(TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
-			TasksEntryModelImpl.FINDER_CACHE_ENABLED, TasksEntryImpl.class,
-			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findByG_A",
-			new String[] { Long.class.getName(), Long.class.getName() },
-			TasksEntryModelImpl.GROUPID_COLUMN_BITMASK |
-			TasksEntryModelImpl.ASSIGNEEUSERID_COLUMN_BITMASK |
-			TasksEntryModelImpl.PRIORITY_COLUMN_BITMASK |
-			TasksEntryModelImpl.DUEDATE_COLUMN_BITMASK |
-			TasksEntryModelImpl.CREATEDATE_COLUMN_BITMASK);
-	public static final FinderPath FINDER_PATH_COUNT_BY_G_A = new FinderPath(TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
-			TasksEntryModelImpl.FINDER_CACHE_ENABLED, Long.class,
-			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByG_A",
-			new String[] { Long.class.getName(), Long.class.getName() });
+	private static final String _FINDER_COLUMN_G_U_GROUPID_2 =
+		"tasksEntry.groupId = ? AND ";
+
+	private static final String _FINDER_COLUMN_G_U_USERID_2 =
+		"tasksEntry.userId = ?";
+
+	private FinderPath _finderPathWithPaginationFindByG_A;
+	private FinderPath _finderPathWithoutPaginationFindByG_A;
+	private FinderPath _finderPathCountByG_A;
 
 	/**
 	 * Returns all the tasks entries where groupId = &#63; and assigneeUserId = &#63;.
@@ -3434,15 +3409,16 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 */
 	@Override
 	public List<TasksEntry> findByG_A(long groupId, long assigneeUserId) {
-		return findByG_A(groupId, assigneeUserId, QueryUtil.ALL_POS,
-			QueryUtil.ALL_POS, null);
+		return findByG_A(
+			groupId, assigneeUserId, QueryUtil.ALL_POS, QueryUtil.ALL_POS,
+			null);
 	}
 
 	/**
 	 * Returns a range of all the tasks entries where groupId = &#63; and assigneeUserId = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link TasksEntryModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>TasksEntryModelImpl</code>.
 	 * </p>
 	 *
 	 * @param groupId the group ID
@@ -3452,8 +3428,9 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @return the range of matching tasks entries
 	 */
 	@Override
-	public List<TasksEntry> findByG_A(long groupId, long assigneeUserId,
-		int start, int end) {
+	public List<TasksEntry> findByG_A(
+		long groupId, long assigneeUserId, int start, int end) {
+
 		return findByG_A(groupId, assigneeUserId, start, end, null);
 	}
 
@@ -3461,7 +3438,7 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * Returns an ordered range of all the tasks entries where groupId = &#63; and assigneeUserId = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link TasksEntryModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>TasksEntryModelImpl</code>.
 	 * </p>
 	 *
 	 * @param groupId the group ID
@@ -3472,17 +3449,19 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @return the ordered range of matching tasks entries
 	 */
 	@Override
-	public List<TasksEntry> findByG_A(long groupId, long assigneeUserId,
-		int start, int end, OrderByComparator<TasksEntry> orderByComparator) {
-		return findByG_A(groupId, assigneeUserId, start, end,
-			orderByComparator, true);
+	public List<TasksEntry> findByG_A(
+		long groupId, long assigneeUserId, int start, int end,
+		OrderByComparator<TasksEntry> orderByComparator) {
+
+		return findByG_A(
+			groupId, assigneeUserId, start, end, orderByComparator, true);
 	}
 
 	/**
 	 * Returns an ordered range of all the tasks entries where groupId = &#63; and assigneeUserId = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link TasksEntryModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>TasksEntryModelImpl</code>.
 	 * </p>
 	 *
 	 * @param groupId the group ID
@@ -3490,42 +3469,44 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @param start the lower bound of the range of tasks entries
 	 * @param end the upper bound of the range of tasks entries (not inclusive)
 	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
-	 * @param retrieveFromCache whether to retrieve from the finder cache
+	 * @param useFinderCache whether to use the finder cache
 	 * @return the ordered range of matching tasks entries
 	 */
 	@Override
-	public List<TasksEntry> findByG_A(long groupId, long assigneeUserId,
-		int start, int end, OrderByComparator<TasksEntry> orderByComparator,
-		boolean retrieveFromCache) {
-		boolean pagination = true;
+	public List<TasksEntry> findByG_A(
+		long groupId, long assigneeUserId, int start, int end,
+		OrderByComparator<TasksEntry> orderByComparator,
+		boolean useFinderCache) {
+
 		FinderPath finderPath = null;
 		Object[] finderArgs = null;
 
 		if ((start == QueryUtil.ALL_POS) && (end == QueryUtil.ALL_POS) &&
-				(orderByComparator == null)) {
-			pagination = false;
-			finderPath = FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_G_A;
-			finderArgs = new Object[] { groupId, assigneeUserId };
+			(orderByComparator == null)) {
+
+			if (useFinderCache) {
+				finderPath = _finderPathWithoutPaginationFindByG_A;
+				finderArgs = new Object[] {groupId, assigneeUserId};
+			}
 		}
-		else {
-			finderPath = FINDER_PATH_WITH_PAGINATION_FIND_BY_G_A;
+		else if (useFinderCache) {
+			finderPath = _finderPathWithPaginationFindByG_A;
 			finderArgs = new Object[] {
-					groupId, assigneeUserId,
-					
-					start, end, orderByComparator
-				};
+				groupId, assigneeUserId, start, end, orderByComparator
+			};
 		}
 
 		List<TasksEntry> list = null;
 
-		if (retrieveFromCache) {
-			list = (List<TasksEntry>)finderCache.getResult(finderPath,
-					finderArgs, this);
+		if (useFinderCache) {
+			list = (List<TasksEntry>)FinderCacheUtil.getResult(
+				finderPath, finderArgs, this);
 
 			if ((list != null) && !list.isEmpty()) {
 				for (TasksEntry tasksEntry : list) {
 					if ((groupId != tasksEntry.getGroupId()) ||
-							(assigneeUserId != tasksEntry.getAssigneeUserId())) {
+						(assigneeUserId != tasksEntry.getAssigneeUserId())) {
+
 						list = null;
 
 						break;
@@ -3538,8 +3519,8 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 			StringBundler query = null;
 
 			if (orderByComparator != null) {
-				query = new StringBundler(4 +
-						(orderByComparator.getOrderByFields().length * 2));
+				query = new StringBundler(
+					4 + (orderByComparator.getOrderByFields().length * 2));
 			}
 			else {
 				query = new StringBundler(4);
@@ -3552,11 +3533,10 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 			query.append(_FINDER_COLUMN_G_A_ASSIGNEEUSERID_2);
 
 			if (orderByComparator != null) {
-				appendOrderByComparator(query, _ORDER_BY_ENTITY_ALIAS,
-					orderByComparator);
+				appendOrderByComparator(
+					query, _ORDER_BY_ENTITY_ALIAS, orderByComparator);
 			}
-			else
-			 if (pagination) {
+			else {
 				query.append(TasksEntryModelImpl.ORDER_BY_JPQL);
 			}
 
@@ -3575,25 +3555,19 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 				qPos.add(assigneeUserId);
 
-				if (!pagination) {
-					list = (List<TasksEntry>)QueryUtil.list(q, getDialect(),
-							start, end, false);
-
-					Collections.sort(list);
-
-					list = Collections.unmodifiableList(list);
-				}
-				else {
-					list = (List<TasksEntry>)QueryUtil.list(q, getDialect(),
-							start, end);
-				}
+				list = (List<TasksEntry>)QueryUtil.list(
+					q, getDialect(), start, end);
 
 				cacheResult(list);
 
-				finderCache.putResult(finderPath, finderArgs, list);
+				if (useFinderCache) {
+					FinderCacheUtil.putResult(finderPath, finderArgs, list);
+				}
 			}
 			catch (Exception e) {
-				finderCache.removeResult(finderPath, finderArgs);
+				if (useFinderCache) {
+					FinderCacheUtil.removeResult(finderPath, finderArgs);
+				}
 
 				throw processException(e);
 			}
@@ -3615,11 +3589,13 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @throws NoSuchTasksEntryException if a matching tasks entry could not be found
 	 */
 	@Override
-	public TasksEntry findByG_A_First(long groupId, long assigneeUserId,
-		OrderByComparator<TasksEntry> orderByComparator)
+	public TasksEntry findByG_A_First(
+			long groupId, long assigneeUserId,
+			OrderByComparator<TasksEntry> orderByComparator)
 		throws NoSuchTasksEntryException {
-		TasksEntry tasksEntry = fetchByG_A_First(groupId, assigneeUserId,
-				orderByComparator);
+
+		TasksEntry tasksEntry = fetchByG_A_First(
+			groupId, assigneeUserId, orderByComparator);
 
 		if (tasksEntry != null) {
 			return tasksEntry;
@@ -3649,10 +3625,12 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @return the first matching tasks entry, or <code>null</code> if a matching tasks entry could not be found
 	 */
 	@Override
-	public TasksEntry fetchByG_A_First(long groupId, long assigneeUserId,
+	public TasksEntry fetchByG_A_First(
+		long groupId, long assigneeUserId,
 		OrderByComparator<TasksEntry> orderByComparator) {
-		List<TasksEntry> list = findByG_A(groupId, assigneeUserId, 0, 1,
-				orderByComparator);
+
+		List<TasksEntry> list = findByG_A(
+			groupId, assigneeUserId, 0, 1, orderByComparator);
 
 		if (!list.isEmpty()) {
 			return list.get(0);
@@ -3671,11 +3649,13 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @throws NoSuchTasksEntryException if a matching tasks entry could not be found
 	 */
 	@Override
-	public TasksEntry findByG_A_Last(long groupId, long assigneeUserId,
-		OrderByComparator<TasksEntry> orderByComparator)
+	public TasksEntry findByG_A_Last(
+			long groupId, long assigneeUserId,
+			OrderByComparator<TasksEntry> orderByComparator)
 		throws NoSuchTasksEntryException {
-		TasksEntry tasksEntry = fetchByG_A_Last(groupId, assigneeUserId,
-				orderByComparator);
+
+		TasksEntry tasksEntry = fetchByG_A_Last(
+			groupId, assigneeUserId, orderByComparator);
 
 		if (tasksEntry != null) {
 			return tasksEntry;
@@ -3705,16 +3685,18 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @return the last matching tasks entry, or <code>null</code> if a matching tasks entry could not be found
 	 */
 	@Override
-	public TasksEntry fetchByG_A_Last(long groupId, long assigneeUserId,
+	public TasksEntry fetchByG_A_Last(
+		long groupId, long assigneeUserId,
 		OrderByComparator<TasksEntry> orderByComparator) {
+
 		int count = countByG_A(groupId, assigneeUserId);
 
 		if (count == 0) {
 			return null;
 		}
 
-		List<TasksEntry> list = findByG_A(groupId, assigneeUserId, count - 1,
-				count, orderByComparator);
+		List<TasksEntry> list = findByG_A(
+			groupId, assigneeUserId, count - 1, count, orderByComparator);
 
 		if (!list.isEmpty()) {
 			return list.get(0);
@@ -3734,9 +3716,11 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @throws NoSuchTasksEntryException if a tasks entry with the primary key could not be found
 	 */
 	@Override
-	public TasksEntry[] findByG_A_PrevAndNext(long tasksEntryId, long groupId,
-		long assigneeUserId, OrderByComparator<TasksEntry> orderByComparator)
+	public TasksEntry[] findByG_A_PrevAndNext(
+			long tasksEntryId, long groupId, long assigneeUserId,
+			OrderByComparator<TasksEntry> orderByComparator)
 		throws NoSuchTasksEntryException {
+
 		TasksEntry tasksEntry = findByPrimaryKey(tasksEntryId);
 
 		Session session = null;
@@ -3746,13 +3730,15 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 			TasksEntry[] array = new TasksEntryImpl[3];
 
-			array[0] = getByG_A_PrevAndNext(session, tasksEntry, groupId,
-					assigneeUserId, orderByComparator, true);
+			array[0] = getByG_A_PrevAndNext(
+				session, tasksEntry, groupId, assigneeUserId, orderByComparator,
+				true);
 
 			array[1] = tasksEntry;
 
-			array[2] = getByG_A_PrevAndNext(session, tasksEntry, groupId,
-					assigneeUserId, orderByComparator, false);
+			array[2] = getByG_A_PrevAndNext(
+				session, tasksEntry, groupId, assigneeUserId, orderByComparator,
+				false);
 
 			return array;
 		}
@@ -3764,14 +3750,16 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 		}
 	}
 
-	protected TasksEntry getByG_A_PrevAndNext(Session session,
-		TasksEntry tasksEntry, long groupId, long assigneeUserId,
-		OrderByComparator<TasksEntry> orderByComparator, boolean previous) {
+	protected TasksEntry getByG_A_PrevAndNext(
+		Session session, TasksEntry tasksEntry, long groupId,
+		long assigneeUserId, OrderByComparator<TasksEntry> orderByComparator,
+		boolean previous) {
+
 		StringBundler query = null;
 
 		if (orderByComparator != null) {
-			query = new StringBundler(5 +
-					(orderByComparator.getOrderByConditionFields().length * 3) +
+			query = new StringBundler(
+				5 + (orderByComparator.getOrderByConditionFields().length * 3) +
 					(orderByComparator.getOrderByFields().length * 3));
 		}
 		else {
@@ -3785,7 +3773,8 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 		query.append(_FINDER_COLUMN_G_A_ASSIGNEEUSERID_2);
 
 		if (orderByComparator != null) {
-			String[] orderByConditionFields = orderByComparator.getOrderByConditionFields();
+			String[] orderByConditionFields =
+				orderByComparator.getOrderByConditionFields();
 
 			if (orderByConditionFields.length > 0) {
 				query.append(WHERE_AND);
@@ -3857,10 +3846,10 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 		qPos.add(assigneeUserId);
 
 		if (orderByComparator != null) {
-			Object[] values = orderByComparator.getOrderByConditionValues(tasksEntry);
+			for (Object orderByConditionValue :
+					orderByComparator.getOrderByConditionValues(tasksEntry)) {
 
-			for (Object value : values) {
-				qPos.add(value);
+				qPos.add(orderByConditionValue);
 			}
 		}
 
@@ -3883,15 +3872,16 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 */
 	@Override
 	public List<TasksEntry> filterFindByG_A(long groupId, long assigneeUserId) {
-		return filterFindByG_A(groupId, assigneeUserId, QueryUtil.ALL_POS,
-			QueryUtil.ALL_POS, null);
+		return filterFindByG_A(
+			groupId, assigneeUserId, QueryUtil.ALL_POS, QueryUtil.ALL_POS,
+			null);
 	}
 
 	/**
 	 * Returns a range of all the tasks entries that the user has permission to view where groupId = &#63; and assigneeUserId = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link TasksEntryModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>TasksEntryModelImpl</code>.
 	 * </p>
 	 *
 	 * @param groupId the group ID
@@ -3901,8 +3891,9 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @return the range of matching tasks entries that the user has permission to view
 	 */
 	@Override
-	public List<TasksEntry> filterFindByG_A(long groupId, long assigneeUserId,
-		int start, int end) {
+	public List<TasksEntry> filterFindByG_A(
+		long groupId, long assigneeUserId, int start, int end) {
+
 		return filterFindByG_A(groupId, assigneeUserId, start, end, null);
 	}
 
@@ -3910,7 +3901,7 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * Returns an ordered range of all the tasks entries that the user has permissions to view where groupId = &#63; and assigneeUserId = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link TasksEntryModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>TasksEntryModelImpl</code>.
 	 * </p>
 	 *
 	 * @param groupId the group ID
@@ -3921,18 +3912,20 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @return the ordered range of matching tasks entries that the user has permission to view
 	 */
 	@Override
-	public List<TasksEntry> filterFindByG_A(long groupId, long assigneeUserId,
-		int start, int end, OrderByComparator<TasksEntry> orderByComparator) {
+	public List<TasksEntry> filterFindByG_A(
+		long groupId, long assigneeUserId, int start, int end,
+		OrderByComparator<TasksEntry> orderByComparator) {
+
 		if (!InlineSQLHelperUtil.isEnabled(groupId)) {
-			return findByG_A(groupId, assigneeUserId, start, end,
-				orderByComparator);
+			return findByG_A(
+				groupId, assigneeUserId, start, end, orderByComparator);
 		}
 
 		StringBundler query = null;
 
 		if (orderByComparator != null) {
-			query = new StringBundler(4 +
-					(orderByComparator.getOrderByFields().length * 2));
+			query = new StringBundler(
+				4 + (orderByComparator.getOrderByFields().length * 2));
 		}
 		else {
 			query = new StringBundler(5);
@@ -3942,7 +3935,8 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 			query.append(_FILTER_SQL_SELECT_TASKSENTRY_WHERE);
 		}
 		else {
-			query.append(_FILTER_SQL_SELECT_TASKSENTRY_NO_INLINE_DISTINCT_WHERE_1);
+			query.append(
+				_FILTER_SQL_SELECT_TASKSENTRY_NO_INLINE_DISTINCT_WHERE_1);
 		}
 
 		query.append(_FINDER_COLUMN_G_A_GROUPID_2);
@@ -3950,17 +3944,18 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 		query.append(_FINDER_COLUMN_G_A_ASSIGNEEUSERID_2);
 
 		if (!getDB().isSupportsInlineDistinct()) {
-			query.append(_FILTER_SQL_SELECT_TASKSENTRY_NO_INLINE_DISTINCT_WHERE_2);
+			query.append(
+				_FILTER_SQL_SELECT_TASKSENTRY_NO_INLINE_DISTINCT_WHERE_2);
 		}
 
 		if (orderByComparator != null) {
 			if (getDB().isSupportsInlineDistinct()) {
-				appendOrderByComparator(query, _ORDER_BY_ENTITY_ALIAS,
-					orderByComparator, true);
+				appendOrderByComparator(
+					query, _ORDER_BY_ENTITY_ALIAS, orderByComparator, true);
 			}
 			else {
-				appendOrderByComparator(query, _ORDER_BY_ENTITY_TABLE,
-					orderByComparator, true);
+				appendOrderByComparator(
+					query, _ORDER_BY_ENTITY_TABLE, orderByComparator, true);
 			}
 		}
 		else {
@@ -3972,9 +3967,9 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 			}
 		}
 
-		String sql = InlineSQLHelperUtil.replacePermissionCheck(query.toString(),
-				TasksEntry.class.getName(),
-				_FILTER_ENTITY_TABLE_FILTER_PK_COLUMN, groupId);
+		String sql = InlineSQLHelperUtil.replacePermissionCheck(
+			query.toString(), TasksEntry.class.getName(),
+			_FILTER_ENTITY_TABLE_FILTER_PK_COLUMN, groupId);
 
 		Session session = null;
 
@@ -3996,7 +3991,8 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 			qPos.add(assigneeUserId);
 
-			return (List<TasksEntry>)QueryUtil.list(q, getDialect(), start, end);
+			return (List<TasksEntry>)QueryUtil.list(
+				q, getDialect(), start, end);
 		}
 		catch (Exception e) {
 			throw processException(e);
@@ -4017,13 +4013,14 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @throws NoSuchTasksEntryException if a tasks entry with the primary key could not be found
 	 */
 	@Override
-	public TasksEntry[] filterFindByG_A_PrevAndNext(long tasksEntryId,
-		long groupId, long assigneeUserId,
-		OrderByComparator<TasksEntry> orderByComparator)
+	public TasksEntry[] filterFindByG_A_PrevAndNext(
+			long tasksEntryId, long groupId, long assigneeUserId,
+			OrderByComparator<TasksEntry> orderByComparator)
 		throws NoSuchTasksEntryException {
+
 		if (!InlineSQLHelperUtil.isEnabled(groupId)) {
-			return findByG_A_PrevAndNext(tasksEntryId, groupId, assigneeUserId,
-				orderByComparator);
+			return findByG_A_PrevAndNext(
+				tasksEntryId, groupId, assigneeUserId, orderByComparator);
 		}
 
 		TasksEntry tasksEntry = findByPrimaryKey(tasksEntryId);
@@ -4035,13 +4032,15 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 			TasksEntry[] array = new TasksEntryImpl[3];
 
-			array[0] = filterGetByG_A_PrevAndNext(session, tasksEntry, groupId,
-					assigneeUserId, orderByComparator, true);
+			array[0] = filterGetByG_A_PrevAndNext(
+				session, tasksEntry, groupId, assigneeUserId, orderByComparator,
+				true);
 
 			array[1] = tasksEntry;
 
-			array[2] = filterGetByG_A_PrevAndNext(session, tasksEntry, groupId,
-					assigneeUserId, orderByComparator, false);
+			array[2] = filterGetByG_A_PrevAndNext(
+				session, tasksEntry, groupId, assigneeUserId, orderByComparator,
+				false);
 
 			return array;
 		}
@@ -4053,14 +4052,16 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 		}
 	}
 
-	protected TasksEntry filterGetByG_A_PrevAndNext(Session session,
-		TasksEntry tasksEntry, long groupId, long assigneeUserId,
-		OrderByComparator<TasksEntry> orderByComparator, boolean previous) {
+	protected TasksEntry filterGetByG_A_PrevAndNext(
+		Session session, TasksEntry tasksEntry, long groupId,
+		long assigneeUserId, OrderByComparator<TasksEntry> orderByComparator,
+		boolean previous) {
+
 		StringBundler query = null;
 
 		if (orderByComparator != null) {
-			query = new StringBundler(6 +
-					(orderByComparator.getOrderByConditionFields().length * 3) +
+			query = new StringBundler(
+				6 + (orderByComparator.getOrderByConditionFields().length * 3) +
 					(orderByComparator.getOrderByFields().length * 3));
 		}
 		else {
@@ -4071,7 +4072,8 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 			query.append(_FILTER_SQL_SELECT_TASKSENTRY_WHERE);
 		}
 		else {
-			query.append(_FILTER_SQL_SELECT_TASKSENTRY_NO_INLINE_DISTINCT_WHERE_1);
+			query.append(
+				_FILTER_SQL_SELECT_TASKSENTRY_NO_INLINE_DISTINCT_WHERE_1);
 		}
 
 		query.append(_FINDER_COLUMN_G_A_GROUPID_2);
@@ -4079,11 +4081,13 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 		query.append(_FINDER_COLUMN_G_A_ASSIGNEEUSERID_2);
 
 		if (!getDB().isSupportsInlineDistinct()) {
-			query.append(_FILTER_SQL_SELECT_TASKSENTRY_NO_INLINE_DISTINCT_WHERE_2);
+			query.append(
+				_FILTER_SQL_SELECT_TASKSENTRY_NO_INLINE_DISTINCT_WHERE_2);
 		}
 
 		if (orderByComparator != null) {
-			String[] orderByConditionFields = orderByComparator.getOrderByConditionFields();
+			String[] orderByConditionFields =
+				orderByComparator.getOrderByConditionFields();
 
 			if (orderByConditionFields.length > 0) {
 				query.append(WHERE_AND);
@@ -4091,13 +4095,17 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 			for (int i = 0; i < orderByConditionFields.length; i++) {
 				if (getDB().isSupportsInlineDistinct()) {
-					query.append(_ORDER_BY_ENTITY_ALIAS);
+					query.append(
+						getColumnName(
+							_ORDER_BY_ENTITY_ALIAS, orderByConditionFields[i],
+							true));
 				}
 				else {
-					query.append(_ORDER_BY_ENTITY_TABLE);
+					query.append(
+						getColumnName(
+							_ORDER_BY_ENTITY_TABLE, orderByConditionFields[i],
+							true));
 				}
-
-				query.append(orderByConditionFields[i]);
 
 				if ((i + 1) < orderByConditionFields.length) {
 					if (orderByComparator.isAscending() ^ previous) {
@@ -4123,13 +4131,15 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 			for (int i = 0; i < orderByFields.length; i++) {
 				if (getDB().isSupportsInlineDistinct()) {
-					query.append(_ORDER_BY_ENTITY_ALIAS);
+					query.append(
+						getColumnName(
+							_ORDER_BY_ENTITY_ALIAS, orderByFields[i], true));
 				}
 				else {
-					query.append(_ORDER_BY_ENTITY_TABLE);
+					query.append(
+						getColumnName(
+							_ORDER_BY_ENTITY_TABLE, orderByFields[i], true));
 				}
-
-				query.append(orderByFields[i]);
 
 				if ((i + 1) < orderByFields.length) {
 					if (orderByComparator.isAscending() ^ previous) {
@@ -4158,9 +4168,9 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 			}
 		}
 
-		String sql = InlineSQLHelperUtil.replacePermissionCheck(query.toString(),
-				TasksEntry.class.getName(),
-				_FILTER_ENTITY_TABLE_FILTER_PK_COLUMN, groupId);
+		String sql = InlineSQLHelperUtil.replacePermissionCheck(
+			query.toString(), TasksEntry.class.getName(),
+			_FILTER_ENTITY_TABLE_FILTER_PK_COLUMN, groupId);
 
 		SQLQuery q = session.createSynchronizedSQLQuery(sql);
 
@@ -4181,10 +4191,10 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 		qPos.add(assigneeUserId);
 
 		if (orderByComparator != null) {
-			Object[] values = orderByComparator.getOrderByConditionValues(tasksEntry);
+			for (Object orderByConditionValue :
+					orderByComparator.getOrderByConditionValues(tasksEntry)) {
 
-			for (Object value : values) {
-				qPos.add(value);
+				qPos.add(orderByConditionValue);
 			}
 		}
 
@@ -4206,8 +4216,11 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 */
 	@Override
 	public void removeByG_A(long groupId, long assigneeUserId) {
-		for (TasksEntry tasksEntry : findByG_A(groupId, assigneeUserId,
-				QueryUtil.ALL_POS, QueryUtil.ALL_POS, null)) {
+		for (TasksEntry tasksEntry :
+				findByG_A(
+					groupId, assigneeUserId, QueryUtil.ALL_POS,
+					QueryUtil.ALL_POS, null)) {
+
 			remove(tasksEntry);
 		}
 	}
@@ -4221,11 +4234,12 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 */
 	@Override
 	public int countByG_A(long groupId, long assigneeUserId) {
-		FinderPath finderPath = FINDER_PATH_COUNT_BY_G_A;
+		FinderPath finderPath = _finderPathCountByG_A;
 
-		Object[] finderArgs = new Object[] { groupId, assigneeUserId };
+		Object[] finderArgs = new Object[] {groupId, assigneeUserId};
 
-		Long count = (Long)finderCache.getResult(finderPath, finderArgs, this);
+		Long count = (Long)FinderCacheUtil.getResult(
+			finderPath, finderArgs, this);
 
 		if (count == null) {
 			StringBundler query = new StringBundler(3);
@@ -4253,10 +4267,10 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 				count = (Long)q.uniqueResult();
 
-				finderCache.putResult(finderPath, finderArgs, count);
+				FinderCacheUtil.putResult(finderPath, finderArgs, count);
 			}
 			catch (Exception e) {
-				finderCache.removeResult(finderPath, finderArgs);
+				FinderCacheUtil.removeResult(finderPath, finderArgs);
 
 				throw processException(e);
 			}
@@ -4289,9 +4303,9 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 		query.append(_FINDER_COLUMN_G_A_ASSIGNEEUSERID_2);
 
-		String sql = InlineSQLHelperUtil.replacePermissionCheck(query.toString(),
-				TasksEntry.class.getName(),
-				_FILTER_ENTITY_TABLE_FILTER_PK_COLUMN, groupId);
+		String sql = InlineSQLHelperUtil.replacePermissionCheck(
+			query.toString(), TasksEntry.class.getName(),
+			_FILTER_ENTITY_TABLE_FILTER_PK_COLUMN, groupId);
 
 		Session session = null;
 
@@ -4300,8 +4314,8 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 			SQLQuery q = session.createSynchronizedSQLQuery(sql);
 
-			q.addScalar(COUNT_COLUMN_NAME,
-				com.liferay.portal.kernel.dao.orm.Type.LONG);
+			q.addScalar(
+				COUNT_COLUMN_NAME, com.liferay.portal.kernel.dao.orm.Type.LONG);
 
 			QueryPos qPos = QueryPos.getInstance(q);
 
@@ -4321,30 +4335,15 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 		}
 	}
 
-	private static final String _FINDER_COLUMN_G_A_GROUPID_2 = "tasksEntry.groupId = ? AND ";
-	private static final String _FINDER_COLUMN_G_A_ASSIGNEEUSERID_2 = "tasksEntry.assigneeUserId = ?";
-	public static final FinderPath FINDER_PATH_WITH_PAGINATION_FIND_BY_G_R = new FinderPath(TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
-			TasksEntryModelImpl.FINDER_CACHE_ENABLED, TasksEntryImpl.class,
-			FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByG_R",
-			new String[] {
-				Long.class.getName(), Long.class.getName(),
-				
-			Integer.class.getName(), Integer.class.getName(),
-				OrderByComparator.class.getName()
-			});
-	public static final FinderPath FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_G_R = new FinderPath(TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
-			TasksEntryModelImpl.FINDER_CACHE_ENABLED, TasksEntryImpl.class,
-			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findByG_R",
-			new String[] { Long.class.getName(), Long.class.getName() },
-			TasksEntryModelImpl.GROUPID_COLUMN_BITMASK |
-			TasksEntryModelImpl.RESOLVERUSERID_COLUMN_BITMASK |
-			TasksEntryModelImpl.PRIORITY_COLUMN_BITMASK |
-			TasksEntryModelImpl.DUEDATE_COLUMN_BITMASK |
-			TasksEntryModelImpl.CREATEDATE_COLUMN_BITMASK);
-	public static final FinderPath FINDER_PATH_COUNT_BY_G_R = new FinderPath(TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
-			TasksEntryModelImpl.FINDER_CACHE_ENABLED, Long.class,
-			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByG_R",
-			new String[] { Long.class.getName(), Long.class.getName() });
+	private static final String _FINDER_COLUMN_G_A_GROUPID_2 =
+		"tasksEntry.groupId = ? AND ";
+
+	private static final String _FINDER_COLUMN_G_A_ASSIGNEEUSERID_2 =
+		"tasksEntry.assigneeUserId = ?";
+
+	private FinderPath _finderPathWithPaginationFindByG_R;
+	private FinderPath _finderPathWithoutPaginationFindByG_R;
+	private FinderPath _finderPathCountByG_R;
 
 	/**
 	 * Returns all the tasks entries where groupId = &#63; and resolverUserId = &#63;.
@@ -4355,15 +4354,16 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 */
 	@Override
 	public List<TasksEntry> findByG_R(long groupId, long resolverUserId) {
-		return findByG_R(groupId, resolverUserId, QueryUtil.ALL_POS,
-			QueryUtil.ALL_POS, null);
+		return findByG_R(
+			groupId, resolverUserId, QueryUtil.ALL_POS, QueryUtil.ALL_POS,
+			null);
 	}
 
 	/**
 	 * Returns a range of all the tasks entries where groupId = &#63; and resolverUserId = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link TasksEntryModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>TasksEntryModelImpl</code>.
 	 * </p>
 	 *
 	 * @param groupId the group ID
@@ -4373,8 +4373,9 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @return the range of matching tasks entries
 	 */
 	@Override
-	public List<TasksEntry> findByG_R(long groupId, long resolverUserId,
-		int start, int end) {
+	public List<TasksEntry> findByG_R(
+		long groupId, long resolverUserId, int start, int end) {
+
 		return findByG_R(groupId, resolverUserId, start, end, null);
 	}
 
@@ -4382,7 +4383,7 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * Returns an ordered range of all the tasks entries where groupId = &#63; and resolverUserId = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link TasksEntryModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>TasksEntryModelImpl</code>.
 	 * </p>
 	 *
 	 * @param groupId the group ID
@@ -4393,17 +4394,19 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @return the ordered range of matching tasks entries
 	 */
 	@Override
-	public List<TasksEntry> findByG_R(long groupId, long resolverUserId,
-		int start, int end, OrderByComparator<TasksEntry> orderByComparator) {
-		return findByG_R(groupId, resolverUserId, start, end,
-			orderByComparator, true);
+	public List<TasksEntry> findByG_R(
+		long groupId, long resolverUserId, int start, int end,
+		OrderByComparator<TasksEntry> orderByComparator) {
+
+		return findByG_R(
+			groupId, resolverUserId, start, end, orderByComparator, true);
 	}
 
 	/**
 	 * Returns an ordered range of all the tasks entries where groupId = &#63; and resolverUserId = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link TasksEntryModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>TasksEntryModelImpl</code>.
 	 * </p>
 	 *
 	 * @param groupId the group ID
@@ -4411,42 +4414,44 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @param start the lower bound of the range of tasks entries
 	 * @param end the upper bound of the range of tasks entries (not inclusive)
 	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
-	 * @param retrieveFromCache whether to retrieve from the finder cache
+	 * @param useFinderCache whether to use the finder cache
 	 * @return the ordered range of matching tasks entries
 	 */
 	@Override
-	public List<TasksEntry> findByG_R(long groupId, long resolverUserId,
-		int start, int end, OrderByComparator<TasksEntry> orderByComparator,
-		boolean retrieveFromCache) {
-		boolean pagination = true;
+	public List<TasksEntry> findByG_R(
+		long groupId, long resolverUserId, int start, int end,
+		OrderByComparator<TasksEntry> orderByComparator,
+		boolean useFinderCache) {
+
 		FinderPath finderPath = null;
 		Object[] finderArgs = null;
 
 		if ((start == QueryUtil.ALL_POS) && (end == QueryUtil.ALL_POS) &&
-				(orderByComparator == null)) {
-			pagination = false;
-			finderPath = FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_G_R;
-			finderArgs = new Object[] { groupId, resolverUserId };
+			(orderByComparator == null)) {
+
+			if (useFinderCache) {
+				finderPath = _finderPathWithoutPaginationFindByG_R;
+				finderArgs = new Object[] {groupId, resolverUserId};
+			}
 		}
-		else {
-			finderPath = FINDER_PATH_WITH_PAGINATION_FIND_BY_G_R;
+		else if (useFinderCache) {
+			finderPath = _finderPathWithPaginationFindByG_R;
 			finderArgs = new Object[] {
-					groupId, resolverUserId,
-					
-					start, end, orderByComparator
-				};
+				groupId, resolverUserId, start, end, orderByComparator
+			};
 		}
 
 		List<TasksEntry> list = null;
 
-		if (retrieveFromCache) {
-			list = (List<TasksEntry>)finderCache.getResult(finderPath,
-					finderArgs, this);
+		if (useFinderCache) {
+			list = (List<TasksEntry>)FinderCacheUtil.getResult(
+				finderPath, finderArgs, this);
 
 			if ((list != null) && !list.isEmpty()) {
 				for (TasksEntry tasksEntry : list) {
 					if ((groupId != tasksEntry.getGroupId()) ||
-							(resolverUserId != tasksEntry.getResolverUserId())) {
+						(resolverUserId != tasksEntry.getResolverUserId())) {
+
 						list = null;
 
 						break;
@@ -4459,8 +4464,8 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 			StringBundler query = null;
 
 			if (orderByComparator != null) {
-				query = new StringBundler(4 +
-						(orderByComparator.getOrderByFields().length * 2));
+				query = new StringBundler(
+					4 + (orderByComparator.getOrderByFields().length * 2));
 			}
 			else {
 				query = new StringBundler(4);
@@ -4473,11 +4478,10 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 			query.append(_FINDER_COLUMN_G_R_RESOLVERUSERID_2);
 
 			if (orderByComparator != null) {
-				appendOrderByComparator(query, _ORDER_BY_ENTITY_ALIAS,
-					orderByComparator);
+				appendOrderByComparator(
+					query, _ORDER_BY_ENTITY_ALIAS, orderByComparator);
 			}
-			else
-			 if (pagination) {
+			else {
 				query.append(TasksEntryModelImpl.ORDER_BY_JPQL);
 			}
 
@@ -4496,25 +4500,19 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 				qPos.add(resolverUserId);
 
-				if (!pagination) {
-					list = (List<TasksEntry>)QueryUtil.list(q, getDialect(),
-							start, end, false);
-
-					Collections.sort(list);
-
-					list = Collections.unmodifiableList(list);
-				}
-				else {
-					list = (List<TasksEntry>)QueryUtil.list(q, getDialect(),
-							start, end);
-				}
+				list = (List<TasksEntry>)QueryUtil.list(
+					q, getDialect(), start, end);
 
 				cacheResult(list);
 
-				finderCache.putResult(finderPath, finderArgs, list);
+				if (useFinderCache) {
+					FinderCacheUtil.putResult(finderPath, finderArgs, list);
+				}
 			}
 			catch (Exception e) {
-				finderCache.removeResult(finderPath, finderArgs);
+				if (useFinderCache) {
+					FinderCacheUtil.removeResult(finderPath, finderArgs);
+				}
 
 				throw processException(e);
 			}
@@ -4536,11 +4534,13 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @throws NoSuchTasksEntryException if a matching tasks entry could not be found
 	 */
 	@Override
-	public TasksEntry findByG_R_First(long groupId, long resolverUserId,
-		OrderByComparator<TasksEntry> orderByComparator)
+	public TasksEntry findByG_R_First(
+			long groupId, long resolverUserId,
+			OrderByComparator<TasksEntry> orderByComparator)
 		throws NoSuchTasksEntryException {
-		TasksEntry tasksEntry = fetchByG_R_First(groupId, resolverUserId,
-				orderByComparator);
+
+		TasksEntry tasksEntry = fetchByG_R_First(
+			groupId, resolverUserId, orderByComparator);
 
 		if (tasksEntry != null) {
 			return tasksEntry;
@@ -4570,10 +4570,12 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @return the first matching tasks entry, or <code>null</code> if a matching tasks entry could not be found
 	 */
 	@Override
-	public TasksEntry fetchByG_R_First(long groupId, long resolverUserId,
+	public TasksEntry fetchByG_R_First(
+		long groupId, long resolverUserId,
 		OrderByComparator<TasksEntry> orderByComparator) {
-		List<TasksEntry> list = findByG_R(groupId, resolverUserId, 0, 1,
-				orderByComparator);
+
+		List<TasksEntry> list = findByG_R(
+			groupId, resolverUserId, 0, 1, orderByComparator);
 
 		if (!list.isEmpty()) {
 			return list.get(0);
@@ -4592,11 +4594,13 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @throws NoSuchTasksEntryException if a matching tasks entry could not be found
 	 */
 	@Override
-	public TasksEntry findByG_R_Last(long groupId, long resolverUserId,
-		OrderByComparator<TasksEntry> orderByComparator)
+	public TasksEntry findByG_R_Last(
+			long groupId, long resolverUserId,
+			OrderByComparator<TasksEntry> orderByComparator)
 		throws NoSuchTasksEntryException {
-		TasksEntry tasksEntry = fetchByG_R_Last(groupId, resolverUserId,
-				orderByComparator);
+
+		TasksEntry tasksEntry = fetchByG_R_Last(
+			groupId, resolverUserId, orderByComparator);
 
 		if (tasksEntry != null) {
 			return tasksEntry;
@@ -4626,16 +4630,18 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @return the last matching tasks entry, or <code>null</code> if a matching tasks entry could not be found
 	 */
 	@Override
-	public TasksEntry fetchByG_R_Last(long groupId, long resolverUserId,
+	public TasksEntry fetchByG_R_Last(
+		long groupId, long resolverUserId,
 		OrderByComparator<TasksEntry> orderByComparator) {
+
 		int count = countByG_R(groupId, resolverUserId);
 
 		if (count == 0) {
 			return null;
 		}
 
-		List<TasksEntry> list = findByG_R(groupId, resolverUserId, count - 1,
-				count, orderByComparator);
+		List<TasksEntry> list = findByG_R(
+			groupId, resolverUserId, count - 1, count, orderByComparator);
 
 		if (!list.isEmpty()) {
 			return list.get(0);
@@ -4655,9 +4661,11 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @throws NoSuchTasksEntryException if a tasks entry with the primary key could not be found
 	 */
 	@Override
-	public TasksEntry[] findByG_R_PrevAndNext(long tasksEntryId, long groupId,
-		long resolverUserId, OrderByComparator<TasksEntry> orderByComparator)
+	public TasksEntry[] findByG_R_PrevAndNext(
+			long tasksEntryId, long groupId, long resolverUserId,
+			OrderByComparator<TasksEntry> orderByComparator)
 		throws NoSuchTasksEntryException {
+
 		TasksEntry tasksEntry = findByPrimaryKey(tasksEntryId);
 
 		Session session = null;
@@ -4667,13 +4675,15 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 			TasksEntry[] array = new TasksEntryImpl[3];
 
-			array[0] = getByG_R_PrevAndNext(session, tasksEntry, groupId,
-					resolverUserId, orderByComparator, true);
+			array[0] = getByG_R_PrevAndNext(
+				session, tasksEntry, groupId, resolverUserId, orderByComparator,
+				true);
 
 			array[1] = tasksEntry;
 
-			array[2] = getByG_R_PrevAndNext(session, tasksEntry, groupId,
-					resolverUserId, orderByComparator, false);
+			array[2] = getByG_R_PrevAndNext(
+				session, tasksEntry, groupId, resolverUserId, orderByComparator,
+				false);
 
 			return array;
 		}
@@ -4685,14 +4695,16 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 		}
 	}
 
-	protected TasksEntry getByG_R_PrevAndNext(Session session,
-		TasksEntry tasksEntry, long groupId, long resolverUserId,
-		OrderByComparator<TasksEntry> orderByComparator, boolean previous) {
+	protected TasksEntry getByG_R_PrevAndNext(
+		Session session, TasksEntry tasksEntry, long groupId,
+		long resolverUserId, OrderByComparator<TasksEntry> orderByComparator,
+		boolean previous) {
+
 		StringBundler query = null;
 
 		if (orderByComparator != null) {
-			query = new StringBundler(5 +
-					(orderByComparator.getOrderByConditionFields().length * 3) +
+			query = new StringBundler(
+				5 + (orderByComparator.getOrderByConditionFields().length * 3) +
 					(orderByComparator.getOrderByFields().length * 3));
 		}
 		else {
@@ -4706,7 +4718,8 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 		query.append(_FINDER_COLUMN_G_R_RESOLVERUSERID_2);
 
 		if (orderByComparator != null) {
-			String[] orderByConditionFields = orderByComparator.getOrderByConditionFields();
+			String[] orderByConditionFields =
+				orderByComparator.getOrderByConditionFields();
 
 			if (orderByConditionFields.length > 0) {
 				query.append(WHERE_AND);
@@ -4778,10 +4791,10 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 		qPos.add(resolverUserId);
 
 		if (orderByComparator != null) {
-			Object[] values = orderByComparator.getOrderByConditionValues(tasksEntry);
+			for (Object orderByConditionValue :
+					orderByComparator.getOrderByConditionValues(tasksEntry)) {
 
-			for (Object value : values) {
-				qPos.add(value);
+				qPos.add(orderByConditionValue);
 			}
 		}
 
@@ -4804,15 +4817,16 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 */
 	@Override
 	public List<TasksEntry> filterFindByG_R(long groupId, long resolverUserId) {
-		return filterFindByG_R(groupId, resolverUserId, QueryUtil.ALL_POS,
-			QueryUtil.ALL_POS, null);
+		return filterFindByG_R(
+			groupId, resolverUserId, QueryUtil.ALL_POS, QueryUtil.ALL_POS,
+			null);
 	}
 
 	/**
 	 * Returns a range of all the tasks entries that the user has permission to view where groupId = &#63; and resolverUserId = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link TasksEntryModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>TasksEntryModelImpl</code>.
 	 * </p>
 	 *
 	 * @param groupId the group ID
@@ -4822,8 +4836,9 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @return the range of matching tasks entries that the user has permission to view
 	 */
 	@Override
-	public List<TasksEntry> filterFindByG_R(long groupId, long resolverUserId,
-		int start, int end) {
+	public List<TasksEntry> filterFindByG_R(
+		long groupId, long resolverUserId, int start, int end) {
+
 		return filterFindByG_R(groupId, resolverUserId, start, end, null);
 	}
 
@@ -4831,7 +4846,7 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * Returns an ordered range of all the tasks entries that the user has permissions to view where groupId = &#63; and resolverUserId = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link TasksEntryModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>TasksEntryModelImpl</code>.
 	 * </p>
 	 *
 	 * @param groupId the group ID
@@ -4842,18 +4857,20 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @return the ordered range of matching tasks entries that the user has permission to view
 	 */
 	@Override
-	public List<TasksEntry> filterFindByG_R(long groupId, long resolverUserId,
-		int start, int end, OrderByComparator<TasksEntry> orderByComparator) {
+	public List<TasksEntry> filterFindByG_R(
+		long groupId, long resolverUserId, int start, int end,
+		OrderByComparator<TasksEntry> orderByComparator) {
+
 		if (!InlineSQLHelperUtil.isEnabled(groupId)) {
-			return findByG_R(groupId, resolverUserId, start, end,
-				orderByComparator);
+			return findByG_R(
+				groupId, resolverUserId, start, end, orderByComparator);
 		}
 
 		StringBundler query = null;
 
 		if (orderByComparator != null) {
-			query = new StringBundler(4 +
-					(orderByComparator.getOrderByFields().length * 2));
+			query = new StringBundler(
+				4 + (orderByComparator.getOrderByFields().length * 2));
 		}
 		else {
 			query = new StringBundler(5);
@@ -4863,7 +4880,8 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 			query.append(_FILTER_SQL_SELECT_TASKSENTRY_WHERE);
 		}
 		else {
-			query.append(_FILTER_SQL_SELECT_TASKSENTRY_NO_INLINE_DISTINCT_WHERE_1);
+			query.append(
+				_FILTER_SQL_SELECT_TASKSENTRY_NO_INLINE_DISTINCT_WHERE_1);
 		}
 
 		query.append(_FINDER_COLUMN_G_R_GROUPID_2);
@@ -4871,17 +4889,18 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 		query.append(_FINDER_COLUMN_G_R_RESOLVERUSERID_2);
 
 		if (!getDB().isSupportsInlineDistinct()) {
-			query.append(_FILTER_SQL_SELECT_TASKSENTRY_NO_INLINE_DISTINCT_WHERE_2);
+			query.append(
+				_FILTER_SQL_SELECT_TASKSENTRY_NO_INLINE_DISTINCT_WHERE_2);
 		}
 
 		if (orderByComparator != null) {
 			if (getDB().isSupportsInlineDistinct()) {
-				appendOrderByComparator(query, _ORDER_BY_ENTITY_ALIAS,
-					orderByComparator, true);
+				appendOrderByComparator(
+					query, _ORDER_BY_ENTITY_ALIAS, orderByComparator, true);
 			}
 			else {
-				appendOrderByComparator(query, _ORDER_BY_ENTITY_TABLE,
-					orderByComparator, true);
+				appendOrderByComparator(
+					query, _ORDER_BY_ENTITY_TABLE, orderByComparator, true);
 			}
 		}
 		else {
@@ -4893,9 +4912,9 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 			}
 		}
 
-		String sql = InlineSQLHelperUtil.replacePermissionCheck(query.toString(),
-				TasksEntry.class.getName(),
-				_FILTER_ENTITY_TABLE_FILTER_PK_COLUMN, groupId);
+		String sql = InlineSQLHelperUtil.replacePermissionCheck(
+			query.toString(), TasksEntry.class.getName(),
+			_FILTER_ENTITY_TABLE_FILTER_PK_COLUMN, groupId);
 
 		Session session = null;
 
@@ -4917,7 +4936,8 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 			qPos.add(resolverUserId);
 
-			return (List<TasksEntry>)QueryUtil.list(q, getDialect(), start, end);
+			return (List<TasksEntry>)QueryUtil.list(
+				q, getDialect(), start, end);
 		}
 		catch (Exception e) {
 			throw processException(e);
@@ -4938,13 +4958,14 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @throws NoSuchTasksEntryException if a tasks entry with the primary key could not be found
 	 */
 	@Override
-	public TasksEntry[] filterFindByG_R_PrevAndNext(long tasksEntryId,
-		long groupId, long resolverUserId,
-		OrderByComparator<TasksEntry> orderByComparator)
+	public TasksEntry[] filterFindByG_R_PrevAndNext(
+			long tasksEntryId, long groupId, long resolverUserId,
+			OrderByComparator<TasksEntry> orderByComparator)
 		throws NoSuchTasksEntryException {
+
 		if (!InlineSQLHelperUtil.isEnabled(groupId)) {
-			return findByG_R_PrevAndNext(tasksEntryId, groupId, resolverUserId,
-				orderByComparator);
+			return findByG_R_PrevAndNext(
+				tasksEntryId, groupId, resolverUserId, orderByComparator);
 		}
 
 		TasksEntry tasksEntry = findByPrimaryKey(tasksEntryId);
@@ -4956,13 +4977,15 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 			TasksEntry[] array = new TasksEntryImpl[3];
 
-			array[0] = filterGetByG_R_PrevAndNext(session, tasksEntry, groupId,
-					resolverUserId, orderByComparator, true);
+			array[0] = filterGetByG_R_PrevAndNext(
+				session, tasksEntry, groupId, resolverUserId, orderByComparator,
+				true);
 
 			array[1] = tasksEntry;
 
-			array[2] = filterGetByG_R_PrevAndNext(session, tasksEntry, groupId,
-					resolverUserId, orderByComparator, false);
+			array[2] = filterGetByG_R_PrevAndNext(
+				session, tasksEntry, groupId, resolverUserId, orderByComparator,
+				false);
 
 			return array;
 		}
@@ -4974,14 +4997,16 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 		}
 	}
 
-	protected TasksEntry filterGetByG_R_PrevAndNext(Session session,
-		TasksEntry tasksEntry, long groupId, long resolverUserId,
-		OrderByComparator<TasksEntry> orderByComparator, boolean previous) {
+	protected TasksEntry filterGetByG_R_PrevAndNext(
+		Session session, TasksEntry tasksEntry, long groupId,
+		long resolverUserId, OrderByComparator<TasksEntry> orderByComparator,
+		boolean previous) {
+
 		StringBundler query = null;
 
 		if (orderByComparator != null) {
-			query = new StringBundler(6 +
-					(orderByComparator.getOrderByConditionFields().length * 3) +
+			query = new StringBundler(
+				6 + (orderByComparator.getOrderByConditionFields().length * 3) +
 					(orderByComparator.getOrderByFields().length * 3));
 		}
 		else {
@@ -4992,7 +5017,8 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 			query.append(_FILTER_SQL_SELECT_TASKSENTRY_WHERE);
 		}
 		else {
-			query.append(_FILTER_SQL_SELECT_TASKSENTRY_NO_INLINE_DISTINCT_WHERE_1);
+			query.append(
+				_FILTER_SQL_SELECT_TASKSENTRY_NO_INLINE_DISTINCT_WHERE_1);
 		}
 
 		query.append(_FINDER_COLUMN_G_R_GROUPID_2);
@@ -5000,11 +5026,13 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 		query.append(_FINDER_COLUMN_G_R_RESOLVERUSERID_2);
 
 		if (!getDB().isSupportsInlineDistinct()) {
-			query.append(_FILTER_SQL_SELECT_TASKSENTRY_NO_INLINE_DISTINCT_WHERE_2);
+			query.append(
+				_FILTER_SQL_SELECT_TASKSENTRY_NO_INLINE_DISTINCT_WHERE_2);
 		}
 
 		if (orderByComparator != null) {
-			String[] orderByConditionFields = orderByComparator.getOrderByConditionFields();
+			String[] orderByConditionFields =
+				orderByComparator.getOrderByConditionFields();
 
 			if (orderByConditionFields.length > 0) {
 				query.append(WHERE_AND);
@@ -5012,13 +5040,17 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 			for (int i = 0; i < orderByConditionFields.length; i++) {
 				if (getDB().isSupportsInlineDistinct()) {
-					query.append(_ORDER_BY_ENTITY_ALIAS);
+					query.append(
+						getColumnName(
+							_ORDER_BY_ENTITY_ALIAS, orderByConditionFields[i],
+							true));
 				}
 				else {
-					query.append(_ORDER_BY_ENTITY_TABLE);
+					query.append(
+						getColumnName(
+							_ORDER_BY_ENTITY_TABLE, orderByConditionFields[i],
+							true));
 				}
-
-				query.append(orderByConditionFields[i]);
 
 				if ((i + 1) < orderByConditionFields.length) {
 					if (orderByComparator.isAscending() ^ previous) {
@@ -5044,13 +5076,15 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 			for (int i = 0; i < orderByFields.length; i++) {
 				if (getDB().isSupportsInlineDistinct()) {
-					query.append(_ORDER_BY_ENTITY_ALIAS);
+					query.append(
+						getColumnName(
+							_ORDER_BY_ENTITY_ALIAS, orderByFields[i], true));
 				}
 				else {
-					query.append(_ORDER_BY_ENTITY_TABLE);
+					query.append(
+						getColumnName(
+							_ORDER_BY_ENTITY_TABLE, orderByFields[i], true));
 				}
-
-				query.append(orderByFields[i]);
 
 				if ((i + 1) < orderByFields.length) {
 					if (orderByComparator.isAscending() ^ previous) {
@@ -5079,9 +5113,9 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 			}
 		}
 
-		String sql = InlineSQLHelperUtil.replacePermissionCheck(query.toString(),
-				TasksEntry.class.getName(),
-				_FILTER_ENTITY_TABLE_FILTER_PK_COLUMN, groupId);
+		String sql = InlineSQLHelperUtil.replacePermissionCheck(
+			query.toString(), TasksEntry.class.getName(),
+			_FILTER_ENTITY_TABLE_FILTER_PK_COLUMN, groupId);
 
 		SQLQuery q = session.createSynchronizedSQLQuery(sql);
 
@@ -5102,10 +5136,10 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 		qPos.add(resolverUserId);
 
 		if (orderByComparator != null) {
-			Object[] values = orderByComparator.getOrderByConditionValues(tasksEntry);
+			for (Object orderByConditionValue :
+					orderByComparator.getOrderByConditionValues(tasksEntry)) {
 
-			for (Object value : values) {
-				qPos.add(value);
+				qPos.add(orderByConditionValue);
 			}
 		}
 
@@ -5127,8 +5161,11 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 */
 	@Override
 	public void removeByG_R(long groupId, long resolverUserId) {
-		for (TasksEntry tasksEntry : findByG_R(groupId, resolverUserId,
-				QueryUtil.ALL_POS, QueryUtil.ALL_POS, null)) {
+		for (TasksEntry tasksEntry :
+				findByG_R(
+					groupId, resolverUserId, QueryUtil.ALL_POS,
+					QueryUtil.ALL_POS, null)) {
+
 			remove(tasksEntry);
 		}
 	}
@@ -5142,11 +5179,12 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 */
 	@Override
 	public int countByG_R(long groupId, long resolverUserId) {
-		FinderPath finderPath = FINDER_PATH_COUNT_BY_G_R;
+		FinderPath finderPath = _finderPathCountByG_R;
 
-		Object[] finderArgs = new Object[] { groupId, resolverUserId };
+		Object[] finderArgs = new Object[] {groupId, resolverUserId};
 
-		Long count = (Long)finderCache.getResult(finderPath, finderArgs, this);
+		Long count = (Long)FinderCacheUtil.getResult(
+			finderPath, finderArgs, this);
 
 		if (count == null) {
 			StringBundler query = new StringBundler(3);
@@ -5174,10 +5212,10 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 				count = (Long)q.uniqueResult();
 
-				finderCache.putResult(finderPath, finderArgs, count);
+				FinderCacheUtil.putResult(finderPath, finderArgs, count);
 			}
 			catch (Exception e) {
-				finderCache.removeResult(finderPath, finderArgs);
+				FinderCacheUtil.removeResult(finderPath, finderArgs);
 
 				throw processException(e);
 			}
@@ -5210,9 +5248,9 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 		query.append(_FINDER_COLUMN_G_R_RESOLVERUSERID_2);
 
-		String sql = InlineSQLHelperUtil.replacePermissionCheck(query.toString(),
-				TasksEntry.class.getName(),
-				_FILTER_ENTITY_TABLE_FILTER_PK_COLUMN, groupId);
+		String sql = InlineSQLHelperUtil.replacePermissionCheck(
+			query.toString(), TasksEntry.class.getName(),
+			_FILTER_ENTITY_TABLE_FILTER_PK_COLUMN, groupId);
 
 		Session session = null;
 
@@ -5221,8 +5259,8 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 			SQLQuery q = session.createSynchronizedSQLQuery(sql);
 
-			q.addScalar(COUNT_COLUMN_NAME,
-				com.liferay.portal.kernel.dao.orm.Type.LONG);
+			q.addScalar(
+				COUNT_COLUMN_NAME, com.liferay.portal.kernel.dao.orm.Type.LONG);
 
 			QueryPos qPos = QueryPos.getInstance(q);
 
@@ -5242,34 +5280,16 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 		}
 	}
 
-	private static final String _FINDER_COLUMN_G_R_GROUPID_2 = "tasksEntry.groupId = ? AND ";
-	private static final String _FINDER_COLUMN_G_R_RESOLVERUSERID_2 = "tasksEntry.resolverUserId = ?";
-	public static final FinderPath FINDER_PATH_WITH_PAGINATION_FIND_BY_U_S = new FinderPath(TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
-			TasksEntryModelImpl.FINDER_CACHE_ENABLED, TasksEntryImpl.class,
-			FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByU_S",
-			new String[] {
-				Long.class.getName(), Integer.class.getName(),
-				
-			Integer.class.getName(), Integer.class.getName(),
-				OrderByComparator.class.getName()
-			});
-	public static final FinderPath FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_U_S = new FinderPath(TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
-			TasksEntryModelImpl.FINDER_CACHE_ENABLED, TasksEntryImpl.class,
-			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findByU_S",
-			new String[] { Long.class.getName(), Integer.class.getName() },
-			TasksEntryModelImpl.USERID_COLUMN_BITMASK |
-			TasksEntryModelImpl.STATUS_COLUMN_BITMASK |
-			TasksEntryModelImpl.PRIORITY_COLUMN_BITMASK |
-			TasksEntryModelImpl.DUEDATE_COLUMN_BITMASK |
-			TasksEntryModelImpl.CREATEDATE_COLUMN_BITMASK);
-	public static final FinderPath FINDER_PATH_COUNT_BY_U_S = new FinderPath(TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
-			TasksEntryModelImpl.FINDER_CACHE_ENABLED, Long.class,
-			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByU_S",
-			new String[] { Long.class.getName(), Integer.class.getName() });
-	public static final FinderPath FINDER_PATH_WITH_PAGINATION_COUNT_BY_U_S = new FinderPath(TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
-			TasksEntryModelImpl.FINDER_CACHE_ENABLED, Long.class,
-			FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "countByU_S",
-			new String[] { Long.class.getName(), Integer.class.getName() });
+	private static final String _FINDER_COLUMN_G_R_GROUPID_2 =
+		"tasksEntry.groupId = ? AND ";
+
+	private static final String _FINDER_COLUMN_G_R_RESOLVERUSERID_2 =
+		"tasksEntry.resolverUserId = ?";
+
+	private FinderPath _finderPathWithPaginationFindByU_S;
+	private FinderPath _finderPathWithoutPaginationFindByU_S;
+	private FinderPath _finderPathCountByU_S;
+	private FinderPath _finderPathWithPaginationCountByU_S;
 
 	/**
 	 * Returns all the tasks entries where userId = &#63; and status = &#63;.
@@ -5280,15 +5300,15 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 */
 	@Override
 	public List<TasksEntry> findByU_S(long userId, int status) {
-		return findByU_S(userId, status, QueryUtil.ALL_POS, QueryUtil.ALL_POS,
-			null);
+		return findByU_S(
+			userId, status, QueryUtil.ALL_POS, QueryUtil.ALL_POS, null);
 	}
 
 	/**
 	 * Returns a range of all the tasks entries where userId = &#63; and status = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link TasksEntryModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>TasksEntryModelImpl</code>.
 	 * </p>
 	 *
 	 * @param userId the user ID
@@ -5298,8 +5318,9 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @return the range of matching tasks entries
 	 */
 	@Override
-	public List<TasksEntry> findByU_S(long userId, int status, int start,
-		int end) {
+	public List<TasksEntry> findByU_S(
+		long userId, int status, int start, int end) {
+
 		return findByU_S(userId, status, start, end, null);
 	}
 
@@ -5307,7 +5328,7 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * Returns an ordered range of all the tasks entries where userId = &#63; and status = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link TasksEntryModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>TasksEntryModelImpl</code>.
 	 * </p>
 	 *
 	 * @param userId the user ID
@@ -5318,8 +5339,10 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @return the ordered range of matching tasks entries
 	 */
 	@Override
-	public List<TasksEntry> findByU_S(long userId, int status, int start,
-		int end, OrderByComparator<TasksEntry> orderByComparator) {
+	public List<TasksEntry> findByU_S(
+		long userId, int status, int start, int end,
+		OrderByComparator<TasksEntry> orderByComparator) {
+
 		return findByU_S(userId, status, start, end, orderByComparator, true);
 	}
 
@@ -5327,7 +5350,7 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * Returns an ordered range of all the tasks entries where userId = &#63; and status = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link TasksEntryModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>TasksEntryModelImpl</code>.
 	 * </p>
 	 *
 	 * @param userId the user ID
@@ -5335,42 +5358,44 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @param start the lower bound of the range of tasks entries
 	 * @param end the upper bound of the range of tasks entries (not inclusive)
 	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
-	 * @param retrieveFromCache whether to retrieve from the finder cache
+	 * @param useFinderCache whether to use the finder cache
 	 * @return the ordered range of matching tasks entries
 	 */
 	@Override
-	public List<TasksEntry> findByU_S(long userId, int status, int start,
-		int end, OrderByComparator<TasksEntry> orderByComparator,
-		boolean retrieveFromCache) {
-		boolean pagination = true;
+	public List<TasksEntry> findByU_S(
+		long userId, int status, int start, int end,
+		OrderByComparator<TasksEntry> orderByComparator,
+		boolean useFinderCache) {
+
 		FinderPath finderPath = null;
 		Object[] finderArgs = null;
 
 		if ((start == QueryUtil.ALL_POS) && (end == QueryUtil.ALL_POS) &&
-				(orderByComparator == null)) {
-			pagination = false;
-			finderPath = FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_U_S;
-			finderArgs = new Object[] { userId, status };
+			(orderByComparator == null)) {
+
+			if (useFinderCache) {
+				finderPath = _finderPathWithoutPaginationFindByU_S;
+				finderArgs = new Object[] {userId, status};
+			}
 		}
-		else {
-			finderPath = FINDER_PATH_WITH_PAGINATION_FIND_BY_U_S;
+		else if (useFinderCache) {
+			finderPath = _finderPathWithPaginationFindByU_S;
 			finderArgs = new Object[] {
-					userId, status,
-					
-					start, end, orderByComparator
-				};
+				userId, status, start, end, orderByComparator
+			};
 		}
 
 		List<TasksEntry> list = null;
 
-		if (retrieveFromCache) {
-			list = (List<TasksEntry>)finderCache.getResult(finderPath,
-					finderArgs, this);
+		if (useFinderCache) {
+			list = (List<TasksEntry>)FinderCacheUtil.getResult(
+				finderPath, finderArgs, this);
 
 			if ((list != null) && !list.isEmpty()) {
 				for (TasksEntry tasksEntry : list) {
 					if ((userId != tasksEntry.getUserId()) ||
-							(status != tasksEntry.getStatus())) {
+						(status != tasksEntry.getStatus())) {
+
 						list = null;
 
 						break;
@@ -5383,8 +5408,8 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 			StringBundler query = null;
 
 			if (orderByComparator != null) {
-				query = new StringBundler(4 +
-						(orderByComparator.getOrderByFields().length * 2));
+				query = new StringBundler(
+					4 + (orderByComparator.getOrderByFields().length * 2));
 			}
 			else {
 				query = new StringBundler(4);
@@ -5397,11 +5422,10 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 			query.append(_FINDER_COLUMN_U_S_STATUS_2);
 
 			if (orderByComparator != null) {
-				appendOrderByComparator(query, _ORDER_BY_ENTITY_ALIAS,
-					orderByComparator);
+				appendOrderByComparator(
+					query, _ORDER_BY_ENTITY_ALIAS, orderByComparator);
 			}
-			else
-			 if (pagination) {
+			else {
 				query.append(TasksEntryModelImpl.ORDER_BY_JPQL);
 			}
 
@@ -5420,25 +5444,19 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 				qPos.add(status);
 
-				if (!pagination) {
-					list = (List<TasksEntry>)QueryUtil.list(q, getDialect(),
-							start, end, false);
-
-					Collections.sort(list);
-
-					list = Collections.unmodifiableList(list);
-				}
-				else {
-					list = (List<TasksEntry>)QueryUtil.list(q, getDialect(),
-							start, end);
-				}
+				list = (List<TasksEntry>)QueryUtil.list(
+					q, getDialect(), start, end);
 
 				cacheResult(list);
 
-				finderCache.putResult(finderPath, finderArgs, list);
+				if (useFinderCache) {
+					FinderCacheUtil.putResult(finderPath, finderArgs, list);
+				}
 			}
 			catch (Exception e) {
-				finderCache.removeResult(finderPath, finderArgs);
+				if (useFinderCache) {
+					FinderCacheUtil.removeResult(finderPath, finderArgs);
+				}
 
 				throw processException(e);
 			}
@@ -5460,11 +5478,13 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @throws NoSuchTasksEntryException if a matching tasks entry could not be found
 	 */
 	@Override
-	public TasksEntry findByU_S_First(long userId, int status,
-		OrderByComparator<TasksEntry> orderByComparator)
+	public TasksEntry findByU_S_First(
+			long userId, int status,
+			OrderByComparator<TasksEntry> orderByComparator)
 		throws NoSuchTasksEntryException {
-		TasksEntry tasksEntry = fetchByU_S_First(userId, status,
-				orderByComparator);
+
+		TasksEntry tasksEntry = fetchByU_S_First(
+			userId, status, orderByComparator);
 
 		if (tasksEntry != null) {
 			return tasksEntry;
@@ -5494,10 +5514,12 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @return the first matching tasks entry, or <code>null</code> if a matching tasks entry could not be found
 	 */
 	@Override
-	public TasksEntry fetchByU_S_First(long userId, int status,
+	public TasksEntry fetchByU_S_First(
+		long userId, int status,
 		OrderByComparator<TasksEntry> orderByComparator) {
-		List<TasksEntry> list = findByU_S(userId, status, 0, 1,
-				orderByComparator);
+
+		List<TasksEntry> list = findByU_S(
+			userId, status, 0, 1, orderByComparator);
 
 		if (!list.isEmpty()) {
 			return list.get(0);
@@ -5516,11 +5538,13 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @throws NoSuchTasksEntryException if a matching tasks entry could not be found
 	 */
 	@Override
-	public TasksEntry findByU_S_Last(long userId, int status,
-		OrderByComparator<TasksEntry> orderByComparator)
+	public TasksEntry findByU_S_Last(
+			long userId, int status,
+			OrderByComparator<TasksEntry> orderByComparator)
 		throws NoSuchTasksEntryException {
-		TasksEntry tasksEntry = fetchByU_S_Last(userId, status,
-				orderByComparator);
+
+		TasksEntry tasksEntry = fetchByU_S_Last(
+			userId, status, orderByComparator);
 
 		if (tasksEntry != null) {
 			return tasksEntry;
@@ -5550,16 +5574,18 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @return the last matching tasks entry, or <code>null</code> if a matching tasks entry could not be found
 	 */
 	@Override
-	public TasksEntry fetchByU_S_Last(long userId, int status,
+	public TasksEntry fetchByU_S_Last(
+		long userId, int status,
 		OrderByComparator<TasksEntry> orderByComparator) {
+
 		int count = countByU_S(userId, status);
 
 		if (count == 0) {
 			return null;
 		}
 
-		List<TasksEntry> list = findByU_S(userId, status, count - 1, count,
-				orderByComparator);
+		List<TasksEntry> list = findByU_S(
+			userId, status, count - 1, count, orderByComparator);
 
 		if (!list.isEmpty()) {
 			return list.get(0);
@@ -5579,9 +5605,11 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @throws NoSuchTasksEntryException if a tasks entry with the primary key could not be found
 	 */
 	@Override
-	public TasksEntry[] findByU_S_PrevAndNext(long tasksEntryId, long userId,
-		int status, OrderByComparator<TasksEntry> orderByComparator)
+	public TasksEntry[] findByU_S_PrevAndNext(
+			long tasksEntryId, long userId, int status,
+			OrderByComparator<TasksEntry> orderByComparator)
 		throws NoSuchTasksEntryException {
+
 		TasksEntry tasksEntry = findByPrimaryKey(tasksEntryId);
 
 		Session session = null;
@@ -5591,13 +5619,13 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 			TasksEntry[] array = new TasksEntryImpl[3];
 
-			array[0] = getByU_S_PrevAndNext(session, tasksEntry, userId,
-					status, orderByComparator, true);
+			array[0] = getByU_S_PrevAndNext(
+				session, tasksEntry, userId, status, orderByComparator, true);
 
 			array[1] = tasksEntry;
 
-			array[2] = getByU_S_PrevAndNext(session, tasksEntry, userId,
-					status, orderByComparator, false);
+			array[2] = getByU_S_PrevAndNext(
+				session, tasksEntry, userId, status, orderByComparator, false);
 
 			return array;
 		}
@@ -5609,14 +5637,15 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 		}
 	}
 
-	protected TasksEntry getByU_S_PrevAndNext(Session session,
-		TasksEntry tasksEntry, long userId, int status,
+	protected TasksEntry getByU_S_PrevAndNext(
+		Session session, TasksEntry tasksEntry, long userId, int status,
 		OrderByComparator<TasksEntry> orderByComparator, boolean previous) {
+
 		StringBundler query = null;
 
 		if (orderByComparator != null) {
-			query = new StringBundler(5 +
-					(orderByComparator.getOrderByConditionFields().length * 3) +
+			query = new StringBundler(
+				5 + (orderByComparator.getOrderByConditionFields().length * 3) +
 					(orderByComparator.getOrderByFields().length * 3));
 		}
 		else {
@@ -5630,7 +5659,8 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 		query.append(_FINDER_COLUMN_U_S_STATUS_2);
 
 		if (orderByComparator != null) {
-			String[] orderByConditionFields = orderByComparator.getOrderByConditionFields();
+			String[] orderByConditionFields =
+				orderByComparator.getOrderByConditionFields();
 
 			if (orderByConditionFields.length > 0) {
 				query.append(WHERE_AND);
@@ -5702,10 +5732,10 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 		qPos.add(status);
 
 		if (orderByComparator != null) {
-			Object[] values = orderByComparator.getOrderByConditionValues(tasksEntry);
+			for (Object orderByConditionValue :
+					orderByComparator.getOrderByConditionValues(tasksEntry)) {
 
-			for (Object value : values) {
-				qPos.add(value);
+				qPos.add(orderByConditionValue);
 			}
 		}
 
@@ -5723,7 +5753,7 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * Returns all the tasks entries where userId = &#63; and status = any &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link TasksEntryModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>TasksEntryModelImpl</code>.
 	 * </p>
 	 *
 	 * @param userId the user ID
@@ -5732,15 +5762,15 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 */
 	@Override
 	public List<TasksEntry> findByU_S(long userId, int[] statuses) {
-		return findByU_S(userId, statuses, QueryUtil.ALL_POS,
-			QueryUtil.ALL_POS, null);
+		return findByU_S(
+			userId, statuses, QueryUtil.ALL_POS, QueryUtil.ALL_POS, null);
 	}
 
 	/**
 	 * Returns a range of all the tasks entries where userId = &#63; and status = any &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link TasksEntryModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>TasksEntryModelImpl</code>.
 	 * </p>
 	 *
 	 * @param userId the user ID
@@ -5750,8 +5780,9 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @return the range of matching tasks entries
 	 */
 	@Override
-	public List<TasksEntry> findByU_S(long userId, int[] statuses, int start,
-		int end) {
+	public List<TasksEntry> findByU_S(
+		long userId, int[] statuses, int start, int end) {
+
 		return findByU_S(userId, statuses, start, end, null);
 	}
 
@@ -5759,7 +5790,7 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * Returns an ordered range of all the tasks entries where userId = &#63; and status = any &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link TasksEntryModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>TasksEntryModelImpl</code>.
 	 * </p>
 	 *
 	 * @param userId the user ID
@@ -5770,8 +5801,10 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @return the ordered range of matching tasks entries
 	 */
 	@Override
-	public List<TasksEntry> findByU_S(long userId, int[] statuses, int start,
-		int end, OrderByComparator<TasksEntry> orderByComparator) {
+	public List<TasksEntry> findByU_S(
+		long userId, int[] statuses, int start, int end,
+		OrderByComparator<TasksEntry> orderByComparator) {
+
 		return findByU_S(userId, statuses, start, end, orderByComparator, true);
 	}
 
@@ -5779,7 +5812,7 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * Returns an ordered range of all the tasks entries where userId = &#63; and status = &#63;, optionally using the finder cache.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link TasksEntryModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>TasksEntryModelImpl</code>.
 	 * </p>
 	 *
 	 * @param userId the user ID
@@ -5787,52 +5820,54 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @param start the lower bound of the range of tasks entries
 	 * @param end the upper bound of the range of tasks entries (not inclusive)
 	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
-	 * @param retrieveFromCache whether to retrieve from the finder cache
+	 * @param useFinderCache whether to use the finder cache
 	 * @return the ordered range of matching tasks entries
 	 */
 	@Override
-	public List<TasksEntry> findByU_S(long userId, int[] statuses, int start,
-		int end, OrderByComparator<TasksEntry> orderByComparator,
-		boolean retrieveFromCache) {
+	public List<TasksEntry> findByU_S(
+		long userId, int[] statuses, int start, int end,
+		OrderByComparator<TasksEntry> orderByComparator,
+		boolean useFinderCache) {
+
 		if (statuses == null) {
 			statuses = new int[0];
 		}
 		else if (statuses.length > 1) {
-			statuses = ArrayUtil.unique(statuses);
-
-			Arrays.sort(statuses);
+			statuses = ArrayUtil.sortedUnique(statuses);
 		}
 
 		if (statuses.length == 1) {
-			return findByU_S(userId, statuses[0], start, end, orderByComparator);
+			return findByU_S(
+				userId, statuses[0], start, end, orderByComparator);
 		}
 
-		boolean pagination = true;
 		Object[] finderArgs = null;
 
 		if ((start == QueryUtil.ALL_POS) && (end == QueryUtil.ALL_POS) &&
-				(orderByComparator == null)) {
-			pagination = false;
-			finderArgs = new Object[] { userId, StringUtil.merge(statuses) };
+			(orderByComparator == null)) {
+
+			if (useFinderCache) {
+				finderArgs = new Object[] {userId, StringUtil.merge(statuses)};
+			}
 		}
-		else {
+		else if (useFinderCache) {
 			finderArgs = new Object[] {
-					userId, StringUtil.merge(statuses),
-					
-					start, end, orderByComparator
-				};
+				userId, StringUtil.merge(statuses), start, end,
+				orderByComparator
+			};
 		}
 
 		List<TasksEntry> list = null;
 
-		if (retrieveFromCache) {
-			list = (List<TasksEntry>)finderCache.getResult(FINDER_PATH_WITH_PAGINATION_FIND_BY_U_S,
-					finderArgs, this);
+		if (useFinderCache) {
+			list = (List<TasksEntry>)FinderCacheUtil.getResult(
+				_finderPathWithPaginationFindByU_S, finderArgs, this);
 
 			if ((list != null) && !list.isEmpty()) {
 				for (TasksEntry tasksEntry : list) {
 					if ((userId != tasksEntry.getUserId()) ||
-							!ArrayUtil.contains(statuses, tasksEntry.getStatus())) {
+						!ArrayUtil.contains(statuses, tasksEntry.getStatus())) {
+
 						list = null;
 
 						break;
@@ -5860,15 +5895,15 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 				query.append(")");
 			}
 
-			query.setStringAt(removeConjunction(query.stringAt(query.index() -
-						1)), query.index() - 1);
+			query.setStringAt(
+				removeConjunction(query.stringAt(query.index() - 1)),
+				query.index() - 1);
 
 			if (orderByComparator != null) {
-				appendOrderByComparator(query, _ORDER_BY_ENTITY_ALIAS,
-					orderByComparator);
+				appendOrderByComparator(
+					query, _ORDER_BY_ENTITY_ALIAS, orderByComparator);
 			}
-			else
-			 if (pagination) {
+			else {
 				query.append(TasksEntryModelImpl.ORDER_BY_JPQL);
 			}
 
@@ -5885,27 +5920,21 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 				qPos.add(userId);
 
-				if (!pagination) {
-					list = (List<TasksEntry>)QueryUtil.list(q, getDialect(),
-							start, end, false);
-
-					Collections.sort(list);
-
-					list = Collections.unmodifiableList(list);
-				}
-				else {
-					list = (List<TasksEntry>)QueryUtil.list(q, getDialect(),
-							start, end);
-				}
+				list = (List<TasksEntry>)QueryUtil.list(
+					q, getDialect(), start, end);
 
 				cacheResult(list);
 
-				finderCache.putResult(FINDER_PATH_WITH_PAGINATION_FIND_BY_U_S,
-					finderArgs, list);
+				if (useFinderCache) {
+					FinderCacheUtil.putResult(
+						_finderPathWithPaginationFindByU_S, finderArgs, list);
+				}
 			}
 			catch (Exception e) {
-				finderCache.removeResult(FINDER_PATH_WITH_PAGINATION_FIND_BY_U_S,
-					finderArgs);
+				if (useFinderCache) {
+					FinderCacheUtil.removeResult(
+						_finderPathWithPaginationFindByU_S, finderArgs);
+				}
 
 				throw processException(e);
 			}
@@ -5925,8 +5954,11 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 */
 	@Override
 	public void removeByU_S(long userId, int status) {
-		for (TasksEntry tasksEntry : findByU_S(userId, status,
-				QueryUtil.ALL_POS, QueryUtil.ALL_POS, null)) {
+		for (TasksEntry tasksEntry :
+				findByU_S(
+					userId, status, QueryUtil.ALL_POS, QueryUtil.ALL_POS,
+					null)) {
+
 			remove(tasksEntry);
 		}
 	}
@@ -5940,11 +5972,12 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 */
 	@Override
 	public int countByU_S(long userId, int status) {
-		FinderPath finderPath = FINDER_PATH_COUNT_BY_U_S;
+		FinderPath finderPath = _finderPathCountByU_S;
 
-		Object[] finderArgs = new Object[] { userId, status };
+		Object[] finderArgs = new Object[] {userId, status};
 
-		Long count = (Long)finderCache.getResult(finderPath, finderArgs, this);
+		Long count = (Long)FinderCacheUtil.getResult(
+			finderPath, finderArgs, this);
 
 		if (count == null) {
 			StringBundler query = new StringBundler(3);
@@ -5972,10 +6005,10 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 				count = (Long)q.uniqueResult();
 
-				finderCache.putResult(finderPath, finderArgs, count);
+				FinderCacheUtil.putResult(finderPath, finderArgs, count);
 			}
 			catch (Exception e) {
-				finderCache.removeResult(finderPath, finderArgs);
+				FinderCacheUtil.removeResult(finderPath, finderArgs);
 
 				throw processException(e);
 			}
@@ -6000,15 +6033,13 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 			statuses = new int[0];
 		}
 		else if (statuses.length > 1) {
-			statuses = ArrayUtil.unique(statuses);
-
-			Arrays.sort(statuses);
+			statuses = ArrayUtil.sortedUnique(statuses);
 		}
 
-		Object[] finderArgs = new Object[] { userId, StringUtil.merge(statuses) };
+		Object[] finderArgs = new Object[] {userId, StringUtil.merge(statuses)};
 
-		Long count = (Long)finderCache.getResult(FINDER_PATH_WITH_PAGINATION_COUNT_BY_U_S,
-				finderArgs, this);
+		Long count = (Long)FinderCacheUtil.getResult(
+			_finderPathWithPaginationCountByU_S, finderArgs, this);
 
 		if (count == null) {
 			StringBundler query = new StringBundler();
@@ -6029,8 +6060,9 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 				query.append(")");
 			}
 
-			query.setStringAt(removeConjunction(query.stringAt(query.index() -
-						1)), query.index() - 1);
+			query.setStringAt(
+				removeConjunction(query.stringAt(query.index() - 1)),
+				query.index() - 1);
 
 			String sql = query.toString();
 
@@ -6047,12 +6079,12 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 				count = (Long)q.uniqueResult();
 
-				finderCache.putResult(FINDER_PATH_WITH_PAGINATION_COUNT_BY_U_S,
-					finderArgs, count);
+				FinderCacheUtil.putResult(
+					_finderPathWithPaginationCountByU_S, finderArgs, count);
 			}
 			catch (Exception e) {
-				finderCache.removeResult(FINDER_PATH_WITH_PAGINATION_COUNT_BY_U_S,
-					finderArgs);
+				FinderCacheUtil.removeResult(
+					_finderPathWithPaginationCountByU_S, finderArgs);
 
 				throw processException(e);
 			}
@@ -6064,35 +6096,19 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 		return count.intValue();
 	}
 
-	private static final String _FINDER_COLUMN_U_S_USERID_2 = "tasksEntry.userId = ? AND ";
-	private static final String _FINDER_COLUMN_U_S_STATUS_2 = "tasksEntry.status = ?";
-	private static final String _FINDER_COLUMN_U_S_STATUS_7 = "tasksEntry.status IN (";
-	public static final FinderPath FINDER_PATH_WITH_PAGINATION_FIND_BY_A_S = new FinderPath(TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
-			TasksEntryModelImpl.FINDER_CACHE_ENABLED, TasksEntryImpl.class,
-			FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByA_S",
-			new String[] {
-				Long.class.getName(), Integer.class.getName(),
-				
-			Integer.class.getName(), Integer.class.getName(),
-				OrderByComparator.class.getName()
-			});
-	public static final FinderPath FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_A_S = new FinderPath(TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
-			TasksEntryModelImpl.FINDER_CACHE_ENABLED, TasksEntryImpl.class,
-			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findByA_S",
-			new String[] { Long.class.getName(), Integer.class.getName() },
-			TasksEntryModelImpl.ASSIGNEEUSERID_COLUMN_BITMASK |
-			TasksEntryModelImpl.STATUS_COLUMN_BITMASK |
-			TasksEntryModelImpl.PRIORITY_COLUMN_BITMASK |
-			TasksEntryModelImpl.DUEDATE_COLUMN_BITMASK |
-			TasksEntryModelImpl.CREATEDATE_COLUMN_BITMASK);
-	public static final FinderPath FINDER_PATH_COUNT_BY_A_S = new FinderPath(TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
-			TasksEntryModelImpl.FINDER_CACHE_ENABLED, Long.class,
-			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByA_S",
-			new String[] { Long.class.getName(), Integer.class.getName() });
-	public static final FinderPath FINDER_PATH_WITH_PAGINATION_COUNT_BY_A_S = new FinderPath(TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
-			TasksEntryModelImpl.FINDER_CACHE_ENABLED, Long.class,
-			FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "countByA_S",
-			new String[] { Long.class.getName(), Integer.class.getName() });
+	private static final String _FINDER_COLUMN_U_S_USERID_2 =
+		"tasksEntry.userId = ? AND ";
+
+	private static final String _FINDER_COLUMN_U_S_STATUS_2 =
+		"tasksEntry.status = ?";
+
+	private static final String _FINDER_COLUMN_U_S_STATUS_7 =
+		"tasksEntry.status IN (";
+
+	private FinderPath _finderPathWithPaginationFindByA_S;
+	private FinderPath _finderPathWithoutPaginationFindByA_S;
+	private FinderPath _finderPathCountByA_S;
+	private FinderPath _finderPathWithPaginationCountByA_S;
 
 	/**
 	 * Returns all the tasks entries where assigneeUserId = &#63; and status = &#63;.
@@ -6103,15 +6119,15 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 */
 	@Override
 	public List<TasksEntry> findByA_S(long assigneeUserId, int status) {
-		return findByA_S(assigneeUserId, status, QueryUtil.ALL_POS,
-			QueryUtil.ALL_POS, null);
+		return findByA_S(
+			assigneeUserId, status, QueryUtil.ALL_POS, QueryUtil.ALL_POS, null);
 	}
 
 	/**
 	 * Returns a range of all the tasks entries where assigneeUserId = &#63; and status = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link TasksEntryModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>TasksEntryModelImpl</code>.
 	 * </p>
 	 *
 	 * @param assigneeUserId the assignee user ID
@@ -6121,8 +6137,9 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @return the range of matching tasks entries
 	 */
 	@Override
-	public List<TasksEntry> findByA_S(long assigneeUserId, int status,
-		int start, int end) {
+	public List<TasksEntry> findByA_S(
+		long assigneeUserId, int status, int start, int end) {
+
 		return findByA_S(assigneeUserId, status, start, end, null);
 	}
 
@@ -6130,7 +6147,7 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * Returns an ordered range of all the tasks entries where assigneeUserId = &#63; and status = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link TasksEntryModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>TasksEntryModelImpl</code>.
 	 * </p>
 	 *
 	 * @param assigneeUserId the assignee user ID
@@ -6141,17 +6158,19 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @return the ordered range of matching tasks entries
 	 */
 	@Override
-	public List<TasksEntry> findByA_S(long assigneeUserId, int status,
-		int start, int end, OrderByComparator<TasksEntry> orderByComparator) {
-		return findByA_S(assigneeUserId, status, start, end, orderByComparator,
-			true);
+	public List<TasksEntry> findByA_S(
+		long assigneeUserId, int status, int start, int end,
+		OrderByComparator<TasksEntry> orderByComparator) {
+
+		return findByA_S(
+			assigneeUserId, status, start, end, orderByComparator, true);
 	}
 
 	/**
 	 * Returns an ordered range of all the tasks entries where assigneeUserId = &#63; and status = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link TasksEntryModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>TasksEntryModelImpl</code>.
 	 * </p>
 	 *
 	 * @param assigneeUserId the assignee user ID
@@ -6159,42 +6178,44 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @param start the lower bound of the range of tasks entries
 	 * @param end the upper bound of the range of tasks entries (not inclusive)
 	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
-	 * @param retrieveFromCache whether to retrieve from the finder cache
+	 * @param useFinderCache whether to use the finder cache
 	 * @return the ordered range of matching tasks entries
 	 */
 	@Override
-	public List<TasksEntry> findByA_S(long assigneeUserId, int status,
-		int start, int end, OrderByComparator<TasksEntry> orderByComparator,
-		boolean retrieveFromCache) {
-		boolean pagination = true;
+	public List<TasksEntry> findByA_S(
+		long assigneeUserId, int status, int start, int end,
+		OrderByComparator<TasksEntry> orderByComparator,
+		boolean useFinderCache) {
+
 		FinderPath finderPath = null;
 		Object[] finderArgs = null;
 
 		if ((start == QueryUtil.ALL_POS) && (end == QueryUtil.ALL_POS) &&
-				(orderByComparator == null)) {
-			pagination = false;
-			finderPath = FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_A_S;
-			finderArgs = new Object[] { assigneeUserId, status };
+			(orderByComparator == null)) {
+
+			if (useFinderCache) {
+				finderPath = _finderPathWithoutPaginationFindByA_S;
+				finderArgs = new Object[] {assigneeUserId, status};
+			}
 		}
-		else {
-			finderPath = FINDER_PATH_WITH_PAGINATION_FIND_BY_A_S;
+		else if (useFinderCache) {
+			finderPath = _finderPathWithPaginationFindByA_S;
 			finderArgs = new Object[] {
-					assigneeUserId, status,
-					
-					start, end, orderByComparator
-				};
+				assigneeUserId, status, start, end, orderByComparator
+			};
 		}
 
 		List<TasksEntry> list = null;
 
-		if (retrieveFromCache) {
-			list = (List<TasksEntry>)finderCache.getResult(finderPath,
-					finderArgs, this);
+		if (useFinderCache) {
+			list = (List<TasksEntry>)FinderCacheUtil.getResult(
+				finderPath, finderArgs, this);
 
 			if ((list != null) && !list.isEmpty()) {
 				for (TasksEntry tasksEntry : list) {
 					if ((assigneeUserId != tasksEntry.getAssigneeUserId()) ||
-							(status != tasksEntry.getStatus())) {
+						(status != tasksEntry.getStatus())) {
+
 						list = null;
 
 						break;
@@ -6207,8 +6228,8 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 			StringBundler query = null;
 
 			if (orderByComparator != null) {
-				query = new StringBundler(4 +
-						(orderByComparator.getOrderByFields().length * 2));
+				query = new StringBundler(
+					4 + (orderByComparator.getOrderByFields().length * 2));
 			}
 			else {
 				query = new StringBundler(4);
@@ -6221,11 +6242,10 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 			query.append(_FINDER_COLUMN_A_S_STATUS_2);
 
 			if (orderByComparator != null) {
-				appendOrderByComparator(query, _ORDER_BY_ENTITY_ALIAS,
-					orderByComparator);
+				appendOrderByComparator(
+					query, _ORDER_BY_ENTITY_ALIAS, orderByComparator);
 			}
-			else
-			 if (pagination) {
+			else {
 				query.append(TasksEntryModelImpl.ORDER_BY_JPQL);
 			}
 
@@ -6244,25 +6264,19 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 				qPos.add(status);
 
-				if (!pagination) {
-					list = (List<TasksEntry>)QueryUtil.list(q, getDialect(),
-							start, end, false);
-
-					Collections.sort(list);
-
-					list = Collections.unmodifiableList(list);
-				}
-				else {
-					list = (List<TasksEntry>)QueryUtil.list(q, getDialect(),
-							start, end);
-				}
+				list = (List<TasksEntry>)QueryUtil.list(
+					q, getDialect(), start, end);
 
 				cacheResult(list);
 
-				finderCache.putResult(finderPath, finderArgs, list);
+				if (useFinderCache) {
+					FinderCacheUtil.putResult(finderPath, finderArgs, list);
+				}
 			}
 			catch (Exception e) {
-				finderCache.removeResult(finderPath, finderArgs);
+				if (useFinderCache) {
+					FinderCacheUtil.removeResult(finderPath, finderArgs);
+				}
 
 				throw processException(e);
 			}
@@ -6284,11 +6298,13 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @throws NoSuchTasksEntryException if a matching tasks entry could not be found
 	 */
 	@Override
-	public TasksEntry findByA_S_First(long assigneeUserId, int status,
-		OrderByComparator<TasksEntry> orderByComparator)
+	public TasksEntry findByA_S_First(
+			long assigneeUserId, int status,
+			OrderByComparator<TasksEntry> orderByComparator)
 		throws NoSuchTasksEntryException {
-		TasksEntry tasksEntry = fetchByA_S_First(assigneeUserId, status,
-				orderByComparator);
+
+		TasksEntry tasksEntry = fetchByA_S_First(
+			assigneeUserId, status, orderByComparator);
 
 		if (tasksEntry != null) {
 			return tasksEntry;
@@ -6318,10 +6334,12 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @return the first matching tasks entry, or <code>null</code> if a matching tasks entry could not be found
 	 */
 	@Override
-	public TasksEntry fetchByA_S_First(long assigneeUserId, int status,
+	public TasksEntry fetchByA_S_First(
+		long assigneeUserId, int status,
 		OrderByComparator<TasksEntry> orderByComparator) {
-		List<TasksEntry> list = findByA_S(assigneeUserId, status, 0, 1,
-				orderByComparator);
+
+		List<TasksEntry> list = findByA_S(
+			assigneeUserId, status, 0, 1, orderByComparator);
 
 		if (!list.isEmpty()) {
 			return list.get(0);
@@ -6340,11 +6358,13 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @throws NoSuchTasksEntryException if a matching tasks entry could not be found
 	 */
 	@Override
-	public TasksEntry findByA_S_Last(long assigneeUserId, int status,
-		OrderByComparator<TasksEntry> orderByComparator)
+	public TasksEntry findByA_S_Last(
+			long assigneeUserId, int status,
+			OrderByComparator<TasksEntry> orderByComparator)
 		throws NoSuchTasksEntryException {
-		TasksEntry tasksEntry = fetchByA_S_Last(assigneeUserId, status,
-				orderByComparator);
+
+		TasksEntry tasksEntry = fetchByA_S_Last(
+			assigneeUserId, status, orderByComparator);
 
 		if (tasksEntry != null) {
 			return tasksEntry;
@@ -6374,16 +6394,18 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @return the last matching tasks entry, or <code>null</code> if a matching tasks entry could not be found
 	 */
 	@Override
-	public TasksEntry fetchByA_S_Last(long assigneeUserId, int status,
+	public TasksEntry fetchByA_S_Last(
+		long assigneeUserId, int status,
 		OrderByComparator<TasksEntry> orderByComparator) {
+
 		int count = countByA_S(assigneeUserId, status);
 
 		if (count == 0) {
 			return null;
 		}
 
-		List<TasksEntry> list = findByA_S(assigneeUserId, status, count - 1,
-				count, orderByComparator);
+		List<TasksEntry> list = findByA_S(
+			assigneeUserId, status, count - 1, count, orderByComparator);
 
 		if (!list.isEmpty()) {
 			return list.get(0);
@@ -6403,10 +6425,11 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @throws NoSuchTasksEntryException if a tasks entry with the primary key could not be found
 	 */
 	@Override
-	public TasksEntry[] findByA_S_PrevAndNext(long tasksEntryId,
-		long assigneeUserId, int status,
-		OrderByComparator<TasksEntry> orderByComparator)
+	public TasksEntry[] findByA_S_PrevAndNext(
+			long tasksEntryId, long assigneeUserId, int status,
+			OrderByComparator<TasksEntry> orderByComparator)
 		throws NoSuchTasksEntryException {
+
 		TasksEntry tasksEntry = findByPrimaryKey(tasksEntryId);
 
 		Session session = null;
@@ -6416,13 +6439,15 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 			TasksEntry[] array = new TasksEntryImpl[3];
 
-			array[0] = getByA_S_PrevAndNext(session, tasksEntry,
-					assigneeUserId, status, orderByComparator, true);
+			array[0] = getByA_S_PrevAndNext(
+				session, tasksEntry, assigneeUserId, status, orderByComparator,
+				true);
 
 			array[1] = tasksEntry;
 
-			array[2] = getByA_S_PrevAndNext(session, tasksEntry,
-					assigneeUserId, status, orderByComparator, false);
+			array[2] = getByA_S_PrevAndNext(
+				session, tasksEntry, assigneeUserId, status, orderByComparator,
+				false);
 
 			return array;
 		}
@@ -6434,14 +6459,15 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 		}
 	}
 
-	protected TasksEntry getByA_S_PrevAndNext(Session session,
-		TasksEntry tasksEntry, long assigneeUserId, int status,
+	protected TasksEntry getByA_S_PrevAndNext(
+		Session session, TasksEntry tasksEntry, long assigneeUserId, int status,
 		OrderByComparator<TasksEntry> orderByComparator, boolean previous) {
+
 		StringBundler query = null;
 
 		if (orderByComparator != null) {
-			query = new StringBundler(5 +
-					(orderByComparator.getOrderByConditionFields().length * 3) +
+			query = new StringBundler(
+				5 + (orderByComparator.getOrderByConditionFields().length * 3) +
 					(orderByComparator.getOrderByFields().length * 3));
 		}
 		else {
@@ -6455,7 +6481,8 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 		query.append(_FINDER_COLUMN_A_S_STATUS_2);
 
 		if (orderByComparator != null) {
-			String[] orderByConditionFields = orderByComparator.getOrderByConditionFields();
+			String[] orderByConditionFields =
+				orderByComparator.getOrderByConditionFields();
 
 			if (orderByConditionFields.length > 0) {
 				query.append(WHERE_AND);
@@ -6527,10 +6554,10 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 		qPos.add(status);
 
 		if (orderByComparator != null) {
-			Object[] values = orderByComparator.getOrderByConditionValues(tasksEntry);
+			for (Object orderByConditionValue :
+					orderByComparator.getOrderByConditionValues(tasksEntry)) {
 
-			for (Object value : values) {
-				qPos.add(value);
+				qPos.add(orderByConditionValue);
 			}
 		}
 
@@ -6548,7 +6575,7 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * Returns all the tasks entries where assigneeUserId = &#63; and status = any &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link TasksEntryModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>TasksEntryModelImpl</code>.
 	 * </p>
 	 *
 	 * @param assigneeUserId the assignee user ID
@@ -6557,15 +6584,16 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 */
 	@Override
 	public List<TasksEntry> findByA_S(long assigneeUserId, int[] statuses) {
-		return findByA_S(assigneeUserId, statuses, QueryUtil.ALL_POS,
-			QueryUtil.ALL_POS, null);
+		return findByA_S(
+			assigneeUserId, statuses, QueryUtil.ALL_POS, QueryUtil.ALL_POS,
+			null);
 	}
 
 	/**
 	 * Returns a range of all the tasks entries where assigneeUserId = &#63; and status = any &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link TasksEntryModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>TasksEntryModelImpl</code>.
 	 * </p>
 	 *
 	 * @param assigneeUserId the assignee user ID
@@ -6575,8 +6603,9 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @return the range of matching tasks entries
 	 */
 	@Override
-	public List<TasksEntry> findByA_S(long assigneeUserId, int[] statuses,
-		int start, int end) {
+	public List<TasksEntry> findByA_S(
+		long assigneeUserId, int[] statuses, int start, int end) {
+
 		return findByA_S(assigneeUserId, statuses, start, end, null);
 	}
 
@@ -6584,7 +6613,7 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * Returns an ordered range of all the tasks entries where assigneeUserId = &#63; and status = any &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link TasksEntryModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>TasksEntryModelImpl</code>.
 	 * </p>
 	 *
 	 * @param assigneeUserId the assignee user ID
@@ -6595,17 +6624,19 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @return the ordered range of matching tasks entries
 	 */
 	@Override
-	public List<TasksEntry> findByA_S(long assigneeUserId, int[] statuses,
-		int start, int end, OrderByComparator<TasksEntry> orderByComparator) {
-		return findByA_S(assigneeUserId, statuses, start, end,
-			orderByComparator, true);
+	public List<TasksEntry> findByA_S(
+		long assigneeUserId, int[] statuses, int start, int end,
+		OrderByComparator<TasksEntry> orderByComparator) {
+
+		return findByA_S(
+			assigneeUserId, statuses, start, end, orderByComparator, true);
 	}
 
 	/**
 	 * Returns an ordered range of all the tasks entries where assigneeUserId = &#63; and status = &#63;, optionally using the finder cache.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link TasksEntryModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>TasksEntryModelImpl</code>.
 	 * </p>
 	 *
 	 * @param assigneeUserId the assignee user ID
@@ -6613,53 +6644,56 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @param start the lower bound of the range of tasks entries
 	 * @param end the upper bound of the range of tasks entries (not inclusive)
 	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
-	 * @param retrieveFromCache whether to retrieve from the finder cache
+	 * @param useFinderCache whether to use the finder cache
 	 * @return the ordered range of matching tasks entries
 	 */
 	@Override
-	public List<TasksEntry> findByA_S(long assigneeUserId, int[] statuses,
-		int start, int end, OrderByComparator<TasksEntry> orderByComparator,
-		boolean retrieveFromCache) {
+	public List<TasksEntry> findByA_S(
+		long assigneeUserId, int[] statuses, int start, int end,
+		OrderByComparator<TasksEntry> orderByComparator,
+		boolean useFinderCache) {
+
 		if (statuses == null) {
 			statuses = new int[0];
 		}
 		else if (statuses.length > 1) {
-			statuses = ArrayUtil.unique(statuses);
-
-			Arrays.sort(statuses);
+			statuses = ArrayUtil.sortedUnique(statuses);
 		}
 
 		if (statuses.length == 1) {
-			return findByA_S(assigneeUserId, statuses[0], start, end,
-				orderByComparator);
+			return findByA_S(
+				assigneeUserId, statuses[0], start, end, orderByComparator);
 		}
 
-		boolean pagination = true;
 		Object[] finderArgs = null;
 
 		if ((start == QueryUtil.ALL_POS) && (end == QueryUtil.ALL_POS) &&
-				(orderByComparator == null)) {
-			pagination = false;
-			finderArgs = new Object[] { assigneeUserId, StringUtil.merge(statuses) };
-		}
-		else {
-			finderArgs = new Object[] {
-					assigneeUserId, StringUtil.merge(statuses),
-					
-					start, end, orderByComparator
+			(orderByComparator == null)) {
+
+			if (useFinderCache) {
+				finderArgs = new Object[] {
+					assigneeUserId, StringUtil.merge(statuses)
 				};
+			}
+		}
+		else if (useFinderCache) {
+			finderArgs = new Object[] {
+				assigneeUserId, StringUtil.merge(statuses), start, end,
+				orderByComparator
+			};
 		}
 
 		List<TasksEntry> list = null;
 
-		if (retrieveFromCache) {
-			list = (List<TasksEntry>)finderCache.getResult(FINDER_PATH_WITH_PAGINATION_FIND_BY_A_S,
-					finderArgs, this);
+		if (useFinderCache) {
+			list = (List<TasksEntry>)FinderCacheUtil.getResult(
+				_finderPathWithPaginationFindByA_S, finderArgs, this);
 
 			if ((list != null) && !list.isEmpty()) {
 				for (TasksEntry tasksEntry : list) {
 					if ((assigneeUserId != tasksEntry.getAssigneeUserId()) ||
-							!ArrayUtil.contains(statuses, tasksEntry.getStatus())) {
+						!ArrayUtil.contains(statuses, tasksEntry.getStatus())) {
+
 						list = null;
 
 						break;
@@ -6687,15 +6721,15 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 				query.append(")");
 			}
 
-			query.setStringAt(removeConjunction(query.stringAt(query.index() -
-						1)), query.index() - 1);
+			query.setStringAt(
+				removeConjunction(query.stringAt(query.index() - 1)),
+				query.index() - 1);
 
 			if (orderByComparator != null) {
-				appendOrderByComparator(query, _ORDER_BY_ENTITY_ALIAS,
-					orderByComparator);
+				appendOrderByComparator(
+					query, _ORDER_BY_ENTITY_ALIAS, orderByComparator);
 			}
-			else
-			 if (pagination) {
+			else {
 				query.append(TasksEntryModelImpl.ORDER_BY_JPQL);
 			}
 
@@ -6712,27 +6746,21 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 				qPos.add(assigneeUserId);
 
-				if (!pagination) {
-					list = (List<TasksEntry>)QueryUtil.list(q, getDialect(),
-							start, end, false);
-
-					Collections.sort(list);
-
-					list = Collections.unmodifiableList(list);
-				}
-				else {
-					list = (List<TasksEntry>)QueryUtil.list(q, getDialect(),
-							start, end);
-				}
+				list = (List<TasksEntry>)QueryUtil.list(
+					q, getDialect(), start, end);
 
 				cacheResult(list);
 
-				finderCache.putResult(FINDER_PATH_WITH_PAGINATION_FIND_BY_A_S,
-					finderArgs, list);
+				if (useFinderCache) {
+					FinderCacheUtil.putResult(
+						_finderPathWithPaginationFindByA_S, finderArgs, list);
+				}
 			}
 			catch (Exception e) {
-				finderCache.removeResult(FINDER_PATH_WITH_PAGINATION_FIND_BY_A_S,
-					finderArgs);
+				if (useFinderCache) {
+					FinderCacheUtil.removeResult(
+						_finderPathWithPaginationFindByA_S, finderArgs);
+				}
 
 				throw processException(e);
 			}
@@ -6752,8 +6780,11 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 */
 	@Override
 	public void removeByA_S(long assigneeUserId, int status) {
-		for (TasksEntry tasksEntry : findByA_S(assigneeUserId, status,
-				QueryUtil.ALL_POS, QueryUtil.ALL_POS, null)) {
+		for (TasksEntry tasksEntry :
+				findByA_S(
+					assigneeUserId, status, QueryUtil.ALL_POS,
+					QueryUtil.ALL_POS, null)) {
+
 			remove(tasksEntry);
 		}
 	}
@@ -6767,11 +6798,12 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 */
 	@Override
 	public int countByA_S(long assigneeUserId, int status) {
-		FinderPath finderPath = FINDER_PATH_COUNT_BY_A_S;
+		FinderPath finderPath = _finderPathCountByA_S;
 
-		Object[] finderArgs = new Object[] { assigneeUserId, status };
+		Object[] finderArgs = new Object[] {assigneeUserId, status};
 
-		Long count = (Long)finderCache.getResult(finderPath, finderArgs, this);
+		Long count = (Long)FinderCacheUtil.getResult(
+			finderPath, finderArgs, this);
 
 		if (count == null) {
 			StringBundler query = new StringBundler(3);
@@ -6799,10 +6831,10 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 				count = (Long)q.uniqueResult();
 
-				finderCache.putResult(finderPath, finderArgs, count);
+				FinderCacheUtil.putResult(finderPath, finderArgs, count);
 			}
 			catch (Exception e) {
-				finderCache.removeResult(finderPath, finderArgs);
+				FinderCacheUtil.removeResult(finderPath, finderArgs);
 
 				throw processException(e);
 			}
@@ -6827,17 +6859,15 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 			statuses = new int[0];
 		}
 		else if (statuses.length > 1) {
-			statuses = ArrayUtil.unique(statuses);
-
-			Arrays.sort(statuses);
+			statuses = ArrayUtil.sortedUnique(statuses);
 		}
 
 		Object[] finderArgs = new Object[] {
-				assigneeUserId, StringUtil.merge(statuses)
-			};
+			assigneeUserId, StringUtil.merge(statuses)
+		};
 
-		Long count = (Long)finderCache.getResult(FINDER_PATH_WITH_PAGINATION_COUNT_BY_A_S,
-				finderArgs, this);
+		Long count = (Long)FinderCacheUtil.getResult(
+			_finderPathWithPaginationCountByA_S, finderArgs, this);
 
 		if (count == null) {
 			StringBundler query = new StringBundler();
@@ -6858,8 +6888,9 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 				query.append(")");
 			}
 
-			query.setStringAt(removeConjunction(query.stringAt(query.index() -
-						1)), query.index() - 1);
+			query.setStringAt(
+				removeConjunction(query.stringAt(query.index() - 1)),
+				query.index() - 1);
 
 			String sql = query.toString();
 
@@ -6876,12 +6907,12 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 				count = (Long)q.uniqueResult();
 
-				finderCache.putResult(FINDER_PATH_WITH_PAGINATION_COUNT_BY_A_S,
-					finderArgs, count);
+				FinderCacheUtil.putResult(
+					_finderPathWithPaginationCountByA_S, finderArgs, count);
 			}
 			catch (Exception e) {
-				finderCache.removeResult(FINDER_PATH_WITH_PAGINATION_COUNT_BY_A_S,
-					finderArgs);
+				FinderCacheUtil.removeResult(
+					_finderPathWithPaginationCountByA_S, finderArgs);
 
 				throw processException(e);
 			}
@@ -6893,46 +6924,19 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 		return count.intValue();
 	}
 
-	private static final String _FINDER_COLUMN_A_S_ASSIGNEEUSERID_2 = "tasksEntry.assigneeUserId = ? AND ";
-	private static final String _FINDER_COLUMN_A_S_STATUS_2 = "tasksEntry.status = ?";
-	private static final String _FINDER_COLUMN_A_S_STATUS_7 = "tasksEntry.status IN (";
-	public static final FinderPath FINDER_PATH_WITH_PAGINATION_FIND_BY_G_U_S = new FinderPath(TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
-			TasksEntryModelImpl.FINDER_CACHE_ENABLED, TasksEntryImpl.class,
-			FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByG_U_S",
-			new String[] {
-				Long.class.getName(), Long.class.getName(),
-				Integer.class.getName(),
-				
-			Integer.class.getName(), Integer.class.getName(),
-				OrderByComparator.class.getName()
-			});
-	public static final FinderPath FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_G_U_S = new FinderPath(TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
-			TasksEntryModelImpl.FINDER_CACHE_ENABLED, TasksEntryImpl.class,
-			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findByG_U_S",
-			new String[] {
-				Long.class.getName(), Long.class.getName(),
-				Integer.class.getName()
-			},
-			TasksEntryModelImpl.GROUPID_COLUMN_BITMASK |
-			TasksEntryModelImpl.USERID_COLUMN_BITMASK |
-			TasksEntryModelImpl.STATUS_COLUMN_BITMASK |
-			TasksEntryModelImpl.PRIORITY_COLUMN_BITMASK |
-			TasksEntryModelImpl.DUEDATE_COLUMN_BITMASK |
-			TasksEntryModelImpl.CREATEDATE_COLUMN_BITMASK);
-	public static final FinderPath FINDER_PATH_COUNT_BY_G_U_S = new FinderPath(TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
-			TasksEntryModelImpl.FINDER_CACHE_ENABLED, Long.class,
-			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByG_U_S",
-			new String[] {
-				Long.class.getName(), Long.class.getName(),
-				Integer.class.getName()
-			});
-	public static final FinderPath FINDER_PATH_WITH_PAGINATION_COUNT_BY_G_U_S = new FinderPath(TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
-			TasksEntryModelImpl.FINDER_CACHE_ENABLED, Long.class,
-			FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "countByG_U_S",
-			new String[] {
-				Long.class.getName(), Long.class.getName(),
-				Integer.class.getName()
-			});
+	private static final String _FINDER_COLUMN_A_S_ASSIGNEEUSERID_2 =
+		"tasksEntry.assigneeUserId = ? AND ";
+
+	private static final String _FINDER_COLUMN_A_S_STATUS_2 =
+		"tasksEntry.status = ?";
+
+	private static final String _FINDER_COLUMN_A_S_STATUS_7 =
+		"tasksEntry.status IN (";
+
+	private FinderPath _finderPathWithPaginationFindByG_U_S;
+	private FinderPath _finderPathWithoutPaginationFindByG_U_S;
+	private FinderPath _finderPathCountByG_U_S;
+	private FinderPath _finderPathWithPaginationCountByG_U_S;
 
 	/**
 	 * Returns all the tasks entries where groupId = &#63; and userId = &#63; and status = &#63;.
@@ -6944,15 +6948,16 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 */
 	@Override
 	public List<TasksEntry> findByG_U_S(long groupId, long userId, int status) {
-		return findByG_U_S(groupId, userId, status, QueryUtil.ALL_POS,
-			QueryUtil.ALL_POS, null);
+		return findByG_U_S(
+			groupId, userId, status, QueryUtil.ALL_POS, QueryUtil.ALL_POS,
+			null);
 	}
 
 	/**
 	 * Returns a range of all the tasks entries where groupId = &#63; and userId = &#63; and status = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link TasksEntryModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>TasksEntryModelImpl</code>.
 	 * </p>
 	 *
 	 * @param groupId the group ID
@@ -6963,8 +6968,9 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @return the range of matching tasks entries
 	 */
 	@Override
-	public List<TasksEntry> findByG_U_S(long groupId, long userId, int status,
-		int start, int end) {
+	public List<TasksEntry> findByG_U_S(
+		long groupId, long userId, int status, int start, int end) {
+
 		return findByG_U_S(groupId, userId, status, start, end, null);
 	}
 
@@ -6972,7 +6978,7 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * Returns an ordered range of all the tasks entries where groupId = &#63; and userId = &#63; and status = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link TasksEntryModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>TasksEntryModelImpl</code>.
 	 * </p>
 	 *
 	 * @param groupId the group ID
@@ -6984,17 +6990,19 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @return the ordered range of matching tasks entries
 	 */
 	@Override
-	public List<TasksEntry> findByG_U_S(long groupId, long userId, int status,
-		int start, int end, OrderByComparator<TasksEntry> orderByComparator) {
-		return findByG_U_S(groupId, userId, status, start, end,
-			orderByComparator, true);
+	public List<TasksEntry> findByG_U_S(
+		long groupId, long userId, int status, int start, int end,
+		OrderByComparator<TasksEntry> orderByComparator) {
+
+		return findByG_U_S(
+			groupId, userId, status, start, end, orderByComparator, true);
 	}
 
 	/**
 	 * Returns an ordered range of all the tasks entries where groupId = &#63; and userId = &#63; and status = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link TasksEntryModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>TasksEntryModelImpl</code>.
 	 * </p>
 	 *
 	 * @param groupId the group ID
@@ -7003,43 +7011,45 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @param start the lower bound of the range of tasks entries
 	 * @param end the upper bound of the range of tasks entries (not inclusive)
 	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
-	 * @param retrieveFromCache whether to retrieve from the finder cache
+	 * @param useFinderCache whether to use the finder cache
 	 * @return the ordered range of matching tasks entries
 	 */
 	@Override
-	public List<TasksEntry> findByG_U_S(long groupId, long userId, int status,
-		int start, int end, OrderByComparator<TasksEntry> orderByComparator,
-		boolean retrieveFromCache) {
-		boolean pagination = true;
+	public List<TasksEntry> findByG_U_S(
+		long groupId, long userId, int status, int start, int end,
+		OrderByComparator<TasksEntry> orderByComparator,
+		boolean useFinderCache) {
+
 		FinderPath finderPath = null;
 		Object[] finderArgs = null;
 
 		if ((start == QueryUtil.ALL_POS) && (end == QueryUtil.ALL_POS) &&
-				(orderByComparator == null)) {
-			pagination = false;
-			finderPath = FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_G_U_S;
-			finderArgs = new Object[] { groupId, userId, status };
+			(orderByComparator == null)) {
+
+			if (useFinderCache) {
+				finderPath = _finderPathWithoutPaginationFindByG_U_S;
+				finderArgs = new Object[] {groupId, userId, status};
+			}
 		}
-		else {
-			finderPath = FINDER_PATH_WITH_PAGINATION_FIND_BY_G_U_S;
+		else if (useFinderCache) {
+			finderPath = _finderPathWithPaginationFindByG_U_S;
 			finderArgs = new Object[] {
-					groupId, userId, status,
-					
-					start, end, orderByComparator
-				};
+				groupId, userId, status, start, end, orderByComparator
+			};
 		}
 
 		List<TasksEntry> list = null;
 
-		if (retrieveFromCache) {
-			list = (List<TasksEntry>)finderCache.getResult(finderPath,
-					finderArgs, this);
+		if (useFinderCache) {
+			list = (List<TasksEntry>)FinderCacheUtil.getResult(
+				finderPath, finderArgs, this);
 
 			if ((list != null) && !list.isEmpty()) {
 				for (TasksEntry tasksEntry : list) {
 					if ((groupId != tasksEntry.getGroupId()) ||
-							(userId != tasksEntry.getUserId()) ||
-							(status != tasksEntry.getStatus())) {
+						(userId != tasksEntry.getUserId()) ||
+						(status != tasksEntry.getStatus())) {
+
 						list = null;
 
 						break;
@@ -7052,8 +7062,8 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 			StringBundler query = null;
 
 			if (orderByComparator != null) {
-				query = new StringBundler(5 +
-						(orderByComparator.getOrderByFields().length * 2));
+				query = new StringBundler(
+					5 + (orderByComparator.getOrderByFields().length * 2));
 			}
 			else {
 				query = new StringBundler(5);
@@ -7068,11 +7078,10 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 			query.append(_FINDER_COLUMN_G_U_S_STATUS_2);
 
 			if (orderByComparator != null) {
-				appendOrderByComparator(query, _ORDER_BY_ENTITY_ALIAS,
-					orderByComparator);
+				appendOrderByComparator(
+					query, _ORDER_BY_ENTITY_ALIAS, orderByComparator);
 			}
-			else
-			 if (pagination) {
+			else {
 				query.append(TasksEntryModelImpl.ORDER_BY_JPQL);
 			}
 
@@ -7093,25 +7102,19 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 				qPos.add(status);
 
-				if (!pagination) {
-					list = (List<TasksEntry>)QueryUtil.list(q, getDialect(),
-							start, end, false);
-
-					Collections.sort(list);
-
-					list = Collections.unmodifiableList(list);
-				}
-				else {
-					list = (List<TasksEntry>)QueryUtil.list(q, getDialect(),
-							start, end);
-				}
+				list = (List<TasksEntry>)QueryUtil.list(
+					q, getDialect(), start, end);
 
 				cacheResult(list);
 
-				finderCache.putResult(finderPath, finderArgs, list);
+				if (useFinderCache) {
+					FinderCacheUtil.putResult(finderPath, finderArgs, list);
+				}
 			}
 			catch (Exception e) {
-				finderCache.removeResult(finderPath, finderArgs);
+				if (useFinderCache) {
+					FinderCacheUtil.removeResult(finderPath, finderArgs);
+				}
 
 				throw processException(e);
 			}
@@ -7134,11 +7137,13 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @throws NoSuchTasksEntryException if a matching tasks entry could not be found
 	 */
 	@Override
-	public TasksEntry findByG_U_S_First(long groupId, long userId, int status,
-		OrderByComparator<TasksEntry> orderByComparator)
+	public TasksEntry findByG_U_S_First(
+			long groupId, long userId, int status,
+			OrderByComparator<TasksEntry> orderByComparator)
 		throws NoSuchTasksEntryException {
-		TasksEntry tasksEntry = fetchByG_U_S_First(groupId, userId, status,
-				orderByComparator);
+
+		TasksEntry tasksEntry = fetchByG_U_S_First(
+			groupId, userId, status, orderByComparator);
 
 		if (tasksEntry != null) {
 			return tasksEntry;
@@ -7172,10 +7177,12 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @return the first matching tasks entry, or <code>null</code> if a matching tasks entry could not be found
 	 */
 	@Override
-	public TasksEntry fetchByG_U_S_First(long groupId, long userId, int status,
+	public TasksEntry fetchByG_U_S_First(
+		long groupId, long userId, int status,
 		OrderByComparator<TasksEntry> orderByComparator) {
-		List<TasksEntry> list = findByG_U_S(groupId, userId, status, 0, 1,
-				orderByComparator);
+
+		List<TasksEntry> list = findByG_U_S(
+			groupId, userId, status, 0, 1, orderByComparator);
 
 		if (!list.isEmpty()) {
 			return list.get(0);
@@ -7195,11 +7202,13 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @throws NoSuchTasksEntryException if a matching tasks entry could not be found
 	 */
 	@Override
-	public TasksEntry findByG_U_S_Last(long groupId, long userId, int status,
-		OrderByComparator<TasksEntry> orderByComparator)
+	public TasksEntry findByG_U_S_Last(
+			long groupId, long userId, int status,
+			OrderByComparator<TasksEntry> orderByComparator)
 		throws NoSuchTasksEntryException {
-		TasksEntry tasksEntry = fetchByG_U_S_Last(groupId, userId, status,
-				orderByComparator);
+
+		TasksEntry tasksEntry = fetchByG_U_S_Last(
+			groupId, userId, status, orderByComparator);
 
 		if (tasksEntry != null) {
 			return tasksEntry;
@@ -7233,16 +7242,18 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @return the last matching tasks entry, or <code>null</code> if a matching tasks entry could not be found
 	 */
 	@Override
-	public TasksEntry fetchByG_U_S_Last(long groupId, long userId, int status,
+	public TasksEntry fetchByG_U_S_Last(
+		long groupId, long userId, int status,
 		OrderByComparator<TasksEntry> orderByComparator) {
+
 		int count = countByG_U_S(groupId, userId, status);
 
 		if (count == 0) {
 			return null;
 		}
 
-		List<TasksEntry> list = findByG_U_S(groupId, userId, status, count - 1,
-				count, orderByComparator);
+		List<TasksEntry> list = findByG_U_S(
+			groupId, userId, status, count - 1, count, orderByComparator);
 
 		if (!list.isEmpty()) {
 			return list.get(0);
@@ -7263,10 +7274,11 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @throws NoSuchTasksEntryException if a tasks entry with the primary key could not be found
 	 */
 	@Override
-	public TasksEntry[] findByG_U_S_PrevAndNext(long tasksEntryId,
-		long groupId, long userId, int status,
-		OrderByComparator<TasksEntry> orderByComparator)
+	public TasksEntry[] findByG_U_S_PrevAndNext(
+			long tasksEntryId, long groupId, long userId, int status,
+			OrderByComparator<TasksEntry> orderByComparator)
 		throws NoSuchTasksEntryException {
+
 		TasksEntry tasksEntry = findByPrimaryKey(tasksEntryId);
 
 		Session session = null;
@@ -7276,13 +7288,15 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 			TasksEntry[] array = new TasksEntryImpl[3];
 
-			array[0] = getByG_U_S_PrevAndNext(session, tasksEntry, groupId,
-					userId, status, orderByComparator, true);
+			array[0] = getByG_U_S_PrevAndNext(
+				session, tasksEntry, groupId, userId, status, orderByComparator,
+				true);
 
 			array[1] = tasksEntry;
 
-			array[2] = getByG_U_S_PrevAndNext(session, tasksEntry, groupId,
-					userId, status, orderByComparator, false);
+			array[2] = getByG_U_S_PrevAndNext(
+				session, tasksEntry, groupId, userId, status, orderByComparator,
+				false);
 
 			return array;
 		}
@@ -7294,14 +7308,16 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 		}
 	}
 
-	protected TasksEntry getByG_U_S_PrevAndNext(Session session,
-		TasksEntry tasksEntry, long groupId, long userId, int status,
-		OrderByComparator<TasksEntry> orderByComparator, boolean previous) {
+	protected TasksEntry getByG_U_S_PrevAndNext(
+		Session session, TasksEntry tasksEntry, long groupId, long userId,
+		int status, OrderByComparator<TasksEntry> orderByComparator,
+		boolean previous) {
+
 		StringBundler query = null;
 
 		if (orderByComparator != null) {
-			query = new StringBundler(6 +
-					(orderByComparator.getOrderByConditionFields().length * 3) +
+			query = new StringBundler(
+				6 + (orderByComparator.getOrderByConditionFields().length * 3) +
 					(orderByComparator.getOrderByFields().length * 3));
 		}
 		else {
@@ -7317,7 +7333,8 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 		query.append(_FINDER_COLUMN_G_U_S_STATUS_2);
 
 		if (orderByComparator != null) {
-			String[] orderByConditionFields = orderByComparator.getOrderByConditionFields();
+			String[] orderByConditionFields =
+				orderByComparator.getOrderByConditionFields();
 
 			if (orderByConditionFields.length > 0) {
 				query.append(WHERE_AND);
@@ -7391,10 +7408,10 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 		qPos.add(status);
 
 		if (orderByComparator != null) {
-			Object[] values = orderByComparator.getOrderByConditionValues(tasksEntry);
+			for (Object orderByConditionValue :
+					orderByComparator.getOrderByConditionValues(tasksEntry)) {
 
-			for (Object value : values) {
-				qPos.add(value);
+				qPos.add(orderByConditionValue);
 			}
 		}
 
@@ -7417,17 +7434,19 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @return the matching tasks entries that the user has permission to view
 	 */
 	@Override
-	public List<TasksEntry> filterFindByG_U_S(long groupId, long userId,
-		int status) {
-		return filterFindByG_U_S(groupId, userId, status, QueryUtil.ALL_POS,
-			QueryUtil.ALL_POS, null);
+	public List<TasksEntry> filterFindByG_U_S(
+		long groupId, long userId, int status) {
+
+		return filterFindByG_U_S(
+			groupId, userId, status, QueryUtil.ALL_POS, QueryUtil.ALL_POS,
+			null);
 	}
 
 	/**
 	 * Returns a range of all the tasks entries that the user has permission to view where groupId = &#63; and userId = &#63; and status = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link TasksEntryModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>TasksEntryModelImpl</code>.
 	 * </p>
 	 *
 	 * @param groupId the group ID
@@ -7438,8 +7457,9 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @return the range of matching tasks entries that the user has permission to view
 	 */
 	@Override
-	public List<TasksEntry> filterFindByG_U_S(long groupId, long userId,
-		int status, int start, int end) {
+	public List<TasksEntry> filterFindByG_U_S(
+		long groupId, long userId, int status, int start, int end) {
+
 		return filterFindByG_U_S(groupId, userId, status, start, end, null);
 	}
 
@@ -7447,7 +7467,7 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * Returns an ordered range of all the tasks entries that the user has permissions to view where groupId = &#63; and userId = &#63; and status = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link TasksEntryModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>TasksEntryModelImpl</code>.
 	 * </p>
 	 *
 	 * @param groupId the group ID
@@ -7459,19 +7479,20 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @return the ordered range of matching tasks entries that the user has permission to view
 	 */
 	@Override
-	public List<TasksEntry> filterFindByG_U_S(long groupId, long userId,
-		int status, int start, int end,
+	public List<TasksEntry> filterFindByG_U_S(
+		long groupId, long userId, int status, int start, int end,
 		OrderByComparator<TasksEntry> orderByComparator) {
+
 		if (!InlineSQLHelperUtil.isEnabled(groupId)) {
-			return findByG_U_S(groupId, userId, status, start, end,
-				orderByComparator);
+			return findByG_U_S(
+				groupId, userId, status, start, end, orderByComparator);
 		}
 
 		StringBundler query = null;
 
 		if (orderByComparator != null) {
-			query = new StringBundler(5 +
-					(orderByComparator.getOrderByFields().length * 2));
+			query = new StringBundler(
+				5 + (orderByComparator.getOrderByFields().length * 2));
 		}
 		else {
 			query = new StringBundler(6);
@@ -7481,7 +7502,8 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 			query.append(_FILTER_SQL_SELECT_TASKSENTRY_WHERE);
 		}
 		else {
-			query.append(_FILTER_SQL_SELECT_TASKSENTRY_NO_INLINE_DISTINCT_WHERE_1);
+			query.append(
+				_FILTER_SQL_SELECT_TASKSENTRY_NO_INLINE_DISTINCT_WHERE_1);
 		}
 
 		query.append(_FINDER_COLUMN_G_U_S_GROUPID_2);
@@ -7491,17 +7513,18 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 		query.append(_FINDER_COLUMN_G_U_S_STATUS_2);
 
 		if (!getDB().isSupportsInlineDistinct()) {
-			query.append(_FILTER_SQL_SELECT_TASKSENTRY_NO_INLINE_DISTINCT_WHERE_2);
+			query.append(
+				_FILTER_SQL_SELECT_TASKSENTRY_NO_INLINE_DISTINCT_WHERE_2);
 		}
 
 		if (orderByComparator != null) {
 			if (getDB().isSupportsInlineDistinct()) {
-				appendOrderByComparator(query, _ORDER_BY_ENTITY_ALIAS,
-					orderByComparator, true);
+				appendOrderByComparator(
+					query, _ORDER_BY_ENTITY_ALIAS, orderByComparator, true);
 			}
 			else {
-				appendOrderByComparator(query, _ORDER_BY_ENTITY_TABLE,
-					orderByComparator, true);
+				appendOrderByComparator(
+					query, _ORDER_BY_ENTITY_TABLE, orderByComparator, true);
 			}
 		}
 		else {
@@ -7513,9 +7536,9 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 			}
 		}
 
-		String sql = InlineSQLHelperUtil.replacePermissionCheck(query.toString(),
-				TasksEntry.class.getName(),
-				_FILTER_ENTITY_TABLE_FILTER_PK_COLUMN, groupId);
+		String sql = InlineSQLHelperUtil.replacePermissionCheck(
+			query.toString(), TasksEntry.class.getName(),
+			_FILTER_ENTITY_TABLE_FILTER_PK_COLUMN, groupId);
 
 		Session session = null;
 
@@ -7539,7 +7562,8 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 			qPos.add(status);
 
-			return (List<TasksEntry>)QueryUtil.list(q, getDialect(), start, end);
+			return (List<TasksEntry>)QueryUtil.list(
+				q, getDialect(), start, end);
 		}
 		catch (Exception e) {
 			throw processException(e);
@@ -7561,13 +7585,14 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @throws NoSuchTasksEntryException if a tasks entry with the primary key could not be found
 	 */
 	@Override
-	public TasksEntry[] filterFindByG_U_S_PrevAndNext(long tasksEntryId,
-		long groupId, long userId, int status,
-		OrderByComparator<TasksEntry> orderByComparator)
+	public TasksEntry[] filterFindByG_U_S_PrevAndNext(
+			long tasksEntryId, long groupId, long userId, int status,
+			OrderByComparator<TasksEntry> orderByComparator)
 		throws NoSuchTasksEntryException {
+
 		if (!InlineSQLHelperUtil.isEnabled(groupId)) {
-			return findByG_U_S_PrevAndNext(tasksEntryId, groupId, userId,
-				status, orderByComparator);
+			return findByG_U_S_PrevAndNext(
+				tasksEntryId, groupId, userId, status, orderByComparator);
 		}
 
 		TasksEntry tasksEntry = findByPrimaryKey(tasksEntryId);
@@ -7579,13 +7604,15 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 			TasksEntry[] array = new TasksEntryImpl[3];
 
-			array[0] = filterGetByG_U_S_PrevAndNext(session, tasksEntry,
-					groupId, userId, status, orderByComparator, true);
+			array[0] = filterGetByG_U_S_PrevAndNext(
+				session, tasksEntry, groupId, userId, status, orderByComparator,
+				true);
 
 			array[1] = tasksEntry;
 
-			array[2] = filterGetByG_U_S_PrevAndNext(session, tasksEntry,
-					groupId, userId, status, orderByComparator, false);
+			array[2] = filterGetByG_U_S_PrevAndNext(
+				session, tasksEntry, groupId, userId, status, orderByComparator,
+				false);
 
 			return array;
 		}
@@ -7597,14 +7624,16 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 		}
 	}
 
-	protected TasksEntry filterGetByG_U_S_PrevAndNext(Session session,
-		TasksEntry tasksEntry, long groupId, long userId, int status,
-		OrderByComparator<TasksEntry> orderByComparator, boolean previous) {
+	protected TasksEntry filterGetByG_U_S_PrevAndNext(
+		Session session, TasksEntry tasksEntry, long groupId, long userId,
+		int status, OrderByComparator<TasksEntry> orderByComparator,
+		boolean previous) {
+
 		StringBundler query = null;
 
 		if (orderByComparator != null) {
-			query = new StringBundler(7 +
-					(orderByComparator.getOrderByConditionFields().length * 3) +
+			query = new StringBundler(
+				7 + (orderByComparator.getOrderByConditionFields().length * 3) +
 					(orderByComparator.getOrderByFields().length * 3));
 		}
 		else {
@@ -7615,7 +7644,8 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 			query.append(_FILTER_SQL_SELECT_TASKSENTRY_WHERE);
 		}
 		else {
-			query.append(_FILTER_SQL_SELECT_TASKSENTRY_NO_INLINE_DISTINCT_WHERE_1);
+			query.append(
+				_FILTER_SQL_SELECT_TASKSENTRY_NO_INLINE_DISTINCT_WHERE_1);
 		}
 
 		query.append(_FINDER_COLUMN_G_U_S_GROUPID_2);
@@ -7625,11 +7655,13 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 		query.append(_FINDER_COLUMN_G_U_S_STATUS_2);
 
 		if (!getDB().isSupportsInlineDistinct()) {
-			query.append(_FILTER_SQL_SELECT_TASKSENTRY_NO_INLINE_DISTINCT_WHERE_2);
+			query.append(
+				_FILTER_SQL_SELECT_TASKSENTRY_NO_INLINE_DISTINCT_WHERE_2);
 		}
 
 		if (orderByComparator != null) {
-			String[] orderByConditionFields = orderByComparator.getOrderByConditionFields();
+			String[] orderByConditionFields =
+				orderByComparator.getOrderByConditionFields();
 
 			if (orderByConditionFields.length > 0) {
 				query.append(WHERE_AND);
@@ -7637,13 +7669,17 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 			for (int i = 0; i < orderByConditionFields.length; i++) {
 				if (getDB().isSupportsInlineDistinct()) {
-					query.append(_ORDER_BY_ENTITY_ALIAS);
+					query.append(
+						getColumnName(
+							_ORDER_BY_ENTITY_ALIAS, orderByConditionFields[i],
+							true));
 				}
 				else {
-					query.append(_ORDER_BY_ENTITY_TABLE);
+					query.append(
+						getColumnName(
+							_ORDER_BY_ENTITY_TABLE, orderByConditionFields[i],
+							true));
 				}
-
-				query.append(orderByConditionFields[i]);
 
 				if ((i + 1) < orderByConditionFields.length) {
 					if (orderByComparator.isAscending() ^ previous) {
@@ -7669,13 +7705,15 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 			for (int i = 0; i < orderByFields.length; i++) {
 				if (getDB().isSupportsInlineDistinct()) {
-					query.append(_ORDER_BY_ENTITY_ALIAS);
+					query.append(
+						getColumnName(
+							_ORDER_BY_ENTITY_ALIAS, orderByFields[i], true));
 				}
 				else {
-					query.append(_ORDER_BY_ENTITY_TABLE);
+					query.append(
+						getColumnName(
+							_ORDER_BY_ENTITY_TABLE, orderByFields[i], true));
 				}
-
-				query.append(orderByFields[i]);
 
 				if ((i + 1) < orderByFields.length) {
 					if (orderByComparator.isAscending() ^ previous) {
@@ -7704,9 +7742,9 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 			}
 		}
 
-		String sql = InlineSQLHelperUtil.replacePermissionCheck(query.toString(),
-				TasksEntry.class.getName(),
-				_FILTER_ENTITY_TABLE_FILTER_PK_COLUMN, groupId);
+		String sql = InlineSQLHelperUtil.replacePermissionCheck(
+			query.toString(), TasksEntry.class.getName(),
+			_FILTER_ENTITY_TABLE_FILTER_PK_COLUMN, groupId);
 
 		SQLQuery q = session.createSynchronizedSQLQuery(sql);
 
@@ -7729,10 +7767,10 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 		qPos.add(status);
 
 		if (orderByComparator != null) {
-			Object[] values = orderByComparator.getOrderByConditionValues(tasksEntry);
+			for (Object orderByConditionValue :
+					orderByComparator.getOrderByConditionValues(tasksEntry)) {
 
-			for (Object value : values) {
-				qPos.add(value);
+				qPos.add(orderByConditionValue);
 			}
 		}
 
@@ -7755,17 +7793,19 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @return the matching tasks entries that the user has permission to view
 	 */
 	@Override
-	public List<TasksEntry> filterFindByG_U_S(long groupId, long userId,
-		int[] statuses) {
-		return filterFindByG_U_S(groupId, userId, statuses, QueryUtil.ALL_POS,
-			QueryUtil.ALL_POS, null);
+	public List<TasksEntry> filterFindByG_U_S(
+		long groupId, long userId, int[] statuses) {
+
+		return filterFindByG_U_S(
+			groupId, userId, statuses, QueryUtil.ALL_POS, QueryUtil.ALL_POS,
+			null);
 	}
 
 	/**
 	 * Returns a range of all the tasks entries that the user has permission to view where groupId = &#63; and userId = &#63; and status = any &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link TasksEntryModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>TasksEntryModelImpl</code>.
 	 * </p>
 	 *
 	 * @param groupId the group ID
@@ -7776,8 +7816,9 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @return the range of matching tasks entries that the user has permission to view
 	 */
 	@Override
-	public List<TasksEntry> filterFindByG_U_S(long groupId, long userId,
-		int[] statuses, int start, int end) {
+	public List<TasksEntry> filterFindByG_U_S(
+		long groupId, long userId, int[] statuses, int start, int end) {
+
 		return filterFindByG_U_S(groupId, userId, statuses, start, end, null);
 	}
 
@@ -7785,7 +7826,7 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * Returns an ordered range of all the tasks entries that the user has permission to view where groupId = &#63; and userId = &#63; and status = any &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link TasksEntryModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>TasksEntryModelImpl</code>.
 	 * </p>
 	 *
 	 * @param groupId the group ID
@@ -7797,21 +7838,20 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @return the ordered range of matching tasks entries that the user has permission to view
 	 */
 	@Override
-	public List<TasksEntry> filterFindByG_U_S(long groupId, long userId,
-		int[] statuses, int start, int end,
+	public List<TasksEntry> filterFindByG_U_S(
+		long groupId, long userId, int[] statuses, int start, int end,
 		OrderByComparator<TasksEntry> orderByComparator) {
+
 		if (!InlineSQLHelperUtil.isEnabled(groupId)) {
-			return findByG_U_S(groupId, userId, statuses, start, end,
-				orderByComparator);
+			return findByG_U_S(
+				groupId, userId, statuses, start, end, orderByComparator);
 		}
 
 		if (statuses == null) {
 			statuses = new int[0];
 		}
 		else if (statuses.length > 1) {
-			statuses = ArrayUtil.unique(statuses);
-
-			Arrays.sort(statuses);
+			statuses = ArrayUtil.sortedUnique(statuses);
 		}
 
 		StringBundler query = new StringBundler();
@@ -7820,7 +7860,8 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 			query.append(_FILTER_SQL_SELECT_TASKSENTRY_WHERE);
 		}
 		else {
-			query.append(_FILTER_SQL_SELECT_TASKSENTRY_NO_INLINE_DISTINCT_WHERE_1);
+			query.append(
+				_FILTER_SQL_SELECT_TASKSENTRY_NO_INLINE_DISTINCT_WHERE_1);
 		}
 
 		query.append(_FINDER_COLUMN_G_U_S_GROUPID_2);
@@ -7839,21 +7880,23 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 			query.append(")");
 		}
 
-		query.setStringAt(removeConjunction(query.stringAt(query.index() - 1)),
+		query.setStringAt(
+			removeConjunction(query.stringAt(query.index() - 1)),
 			query.index() - 1);
 
 		if (!getDB().isSupportsInlineDistinct()) {
-			query.append(_FILTER_SQL_SELECT_TASKSENTRY_NO_INLINE_DISTINCT_WHERE_2);
+			query.append(
+				_FILTER_SQL_SELECT_TASKSENTRY_NO_INLINE_DISTINCT_WHERE_2);
 		}
 
 		if (orderByComparator != null) {
 			if (getDB().isSupportsInlineDistinct()) {
-				appendOrderByComparator(query, _ORDER_BY_ENTITY_ALIAS,
-					orderByComparator, true);
+				appendOrderByComparator(
+					query, _ORDER_BY_ENTITY_ALIAS, orderByComparator, true);
 			}
 			else {
-				appendOrderByComparator(query, _ORDER_BY_ENTITY_TABLE,
-					orderByComparator, true);
+				appendOrderByComparator(
+					query, _ORDER_BY_ENTITY_TABLE, orderByComparator, true);
 			}
 		}
 		else {
@@ -7865,9 +7908,9 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 			}
 		}
 
-		String sql = InlineSQLHelperUtil.replacePermissionCheck(query.toString(),
-				TasksEntry.class.getName(),
-				_FILTER_ENTITY_TABLE_FILTER_PK_COLUMN, groupId);
+		String sql = InlineSQLHelperUtil.replacePermissionCheck(
+			query.toString(), TasksEntry.class.getName(),
+			_FILTER_ENTITY_TABLE_FILTER_PK_COLUMN, groupId);
 
 		Session session = null;
 
@@ -7889,7 +7932,8 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 			qPos.add(userId);
 
-			return (List<TasksEntry>)QueryUtil.list(q, getDialect(), start, end);
+			return (List<TasksEntry>)QueryUtil.list(
+				q, getDialect(), start, end);
 		}
 		catch (Exception e) {
 			throw processException(e);
@@ -7903,7 +7947,7 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * Returns all the tasks entries where groupId = &#63; and userId = &#63; and status = any &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link TasksEntryModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>TasksEntryModelImpl</code>.
 	 * </p>
 	 *
 	 * @param groupId the group ID
@@ -7912,17 +7956,19 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @return the matching tasks entries
 	 */
 	@Override
-	public List<TasksEntry> findByG_U_S(long groupId, long userId,
-		int[] statuses) {
-		return findByG_U_S(groupId, userId, statuses, QueryUtil.ALL_POS,
-			QueryUtil.ALL_POS, null);
+	public List<TasksEntry> findByG_U_S(
+		long groupId, long userId, int[] statuses) {
+
+		return findByG_U_S(
+			groupId, userId, statuses, QueryUtil.ALL_POS, QueryUtil.ALL_POS,
+			null);
 	}
 
 	/**
 	 * Returns a range of all the tasks entries where groupId = &#63; and userId = &#63; and status = any &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link TasksEntryModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>TasksEntryModelImpl</code>.
 	 * </p>
 	 *
 	 * @param groupId the group ID
@@ -7933,8 +7979,9 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @return the range of matching tasks entries
 	 */
 	@Override
-	public List<TasksEntry> findByG_U_S(long groupId, long userId,
-		int[] statuses, int start, int end) {
+	public List<TasksEntry> findByG_U_S(
+		long groupId, long userId, int[] statuses, int start, int end) {
+
 		return findByG_U_S(groupId, userId, statuses, start, end, null);
 	}
 
@@ -7942,7 +7989,7 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * Returns an ordered range of all the tasks entries where groupId = &#63; and userId = &#63; and status = any &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link TasksEntryModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>TasksEntryModelImpl</code>.
 	 * </p>
 	 *
 	 * @param groupId the group ID
@@ -7954,18 +8001,19 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @return the ordered range of matching tasks entries
 	 */
 	@Override
-	public List<TasksEntry> findByG_U_S(long groupId, long userId,
-		int[] statuses, int start, int end,
+	public List<TasksEntry> findByG_U_S(
+		long groupId, long userId, int[] statuses, int start, int end,
 		OrderByComparator<TasksEntry> orderByComparator) {
-		return findByG_U_S(groupId, userId, statuses, start, end,
-			orderByComparator, true);
+
+		return findByG_U_S(
+			groupId, userId, statuses, start, end, orderByComparator, true);
 	}
 
 	/**
 	 * Returns an ordered range of all the tasks entries where groupId = &#63; and userId = &#63; and status = &#63;, optionally using the finder cache.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link TasksEntryModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>TasksEntryModelImpl</code>.
 	 * </p>
 	 *
 	 * @param groupId the group ID
@@ -7974,57 +8022,57 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @param start the lower bound of the range of tasks entries
 	 * @param end the upper bound of the range of tasks entries (not inclusive)
 	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
-	 * @param retrieveFromCache whether to retrieve from the finder cache
+	 * @param useFinderCache whether to use the finder cache
 	 * @return the ordered range of matching tasks entries
 	 */
 	@Override
-	public List<TasksEntry> findByG_U_S(long groupId, long userId,
-		int[] statuses, int start, int end,
+	public List<TasksEntry> findByG_U_S(
+		long groupId, long userId, int[] statuses, int start, int end,
 		OrderByComparator<TasksEntry> orderByComparator,
-		boolean retrieveFromCache) {
+		boolean useFinderCache) {
+
 		if (statuses == null) {
 			statuses = new int[0];
 		}
 		else if (statuses.length > 1) {
-			statuses = ArrayUtil.unique(statuses);
-
-			Arrays.sort(statuses);
+			statuses = ArrayUtil.sortedUnique(statuses);
 		}
 
 		if (statuses.length == 1) {
-			return findByG_U_S(groupId, userId, statuses[0], start, end,
-				orderByComparator);
+			return findByG_U_S(
+				groupId, userId, statuses[0], start, end, orderByComparator);
 		}
 
-		boolean pagination = true;
 		Object[] finderArgs = null;
 
 		if ((start == QueryUtil.ALL_POS) && (end == QueryUtil.ALL_POS) &&
-				(orderByComparator == null)) {
-			pagination = false;
-			finderArgs = new Object[] {
+			(orderByComparator == null)) {
+
+			if (useFinderCache) {
+				finderArgs = new Object[] {
 					groupId, userId, StringUtil.merge(statuses)
 				};
+			}
 		}
-		else {
+		else if (useFinderCache) {
 			finderArgs = new Object[] {
-					groupId, userId, StringUtil.merge(statuses),
-					
-					start, end, orderByComparator
-				};
+				groupId, userId, StringUtil.merge(statuses), start, end,
+				orderByComparator
+			};
 		}
 
 		List<TasksEntry> list = null;
 
-		if (retrieveFromCache) {
-			list = (List<TasksEntry>)finderCache.getResult(FINDER_PATH_WITH_PAGINATION_FIND_BY_G_U_S,
-					finderArgs, this);
+		if (useFinderCache) {
+			list = (List<TasksEntry>)FinderCacheUtil.getResult(
+				_finderPathWithPaginationFindByG_U_S, finderArgs, this);
 
 			if ((list != null) && !list.isEmpty()) {
 				for (TasksEntry tasksEntry : list) {
 					if ((groupId != tasksEntry.getGroupId()) ||
-							(userId != tasksEntry.getUserId()) ||
-							!ArrayUtil.contains(statuses, tasksEntry.getStatus())) {
+						(userId != tasksEntry.getUserId()) ||
+						!ArrayUtil.contains(statuses, tasksEntry.getStatus())) {
+
 						list = null;
 
 						break;
@@ -8054,15 +8102,15 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 				query.append(")");
 			}
 
-			query.setStringAt(removeConjunction(query.stringAt(query.index() -
-						1)), query.index() - 1);
+			query.setStringAt(
+				removeConjunction(query.stringAt(query.index() - 1)),
+				query.index() - 1);
 
 			if (orderByComparator != null) {
-				appendOrderByComparator(query, _ORDER_BY_ENTITY_ALIAS,
-					orderByComparator);
+				appendOrderByComparator(
+					query, _ORDER_BY_ENTITY_ALIAS, orderByComparator);
 			}
-			else
-			 if (pagination) {
+			else {
 				query.append(TasksEntryModelImpl.ORDER_BY_JPQL);
 			}
 
@@ -8081,27 +8129,21 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 				qPos.add(userId);
 
-				if (!pagination) {
-					list = (List<TasksEntry>)QueryUtil.list(q, getDialect(),
-							start, end, false);
-
-					Collections.sort(list);
-
-					list = Collections.unmodifiableList(list);
-				}
-				else {
-					list = (List<TasksEntry>)QueryUtil.list(q, getDialect(),
-							start, end);
-				}
+				list = (List<TasksEntry>)QueryUtil.list(
+					q, getDialect(), start, end);
 
 				cacheResult(list);
 
-				finderCache.putResult(FINDER_PATH_WITH_PAGINATION_FIND_BY_G_U_S,
-					finderArgs, list);
+				if (useFinderCache) {
+					FinderCacheUtil.putResult(
+						_finderPathWithPaginationFindByG_U_S, finderArgs, list);
+				}
 			}
 			catch (Exception e) {
-				finderCache.removeResult(FINDER_PATH_WITH_PAGINATION_FIND_BY_G_U_S,
-					finderArgs);
+				if (useFinderCache) {
+					FinderCacheUtil.removeResult(
+						_finderPathWithPaginationFindByG_U_S, finderArgs);
+				}
 
 				throw processException(e);
 			}
@@ -8122,8 +8164,11 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 */
 	@Override
 	public void removeByG_U_S(long groupId, long userId, int status) {
-		for (TasksEntry tasksEntry : findByG_U_S(groupId, userId, status,
-				QueryUtil.ALL_POS, QueryUtil.ALL_POS, null)) {
+		for (TasksEntry tasksEntry :
+				findByG_U_S(
+					groupId, userId, status, QueryUtil.ALL_POS,
+					QueryUtil.ALL_POS, null)) {
+
 			remove(tasksEntry);
 		}
 	}
@@ -8138,11 +8183,12 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 */
 	@Override
 	public int countByG_U_S(long groupId, long userId, int status) {
-		FinderPath finderPath = FINDER_PATH_COUNT_BY_G_U_S;
+		FinderPath finderPath = _finderPathCountByG_U_S;
 
-		Object[] finderArgs = new Object[] { groupId, userId, status };
+		Object[] finderArgs = new Object[] {groupId, userId, status};
 
-		Long count = (Long)finderCache.getResult(finderPath, finderArgs, this);
+		Long count = (Long)FinderCacheUtil.getResult(
+			finderPath, finderArgs, this);
 
 		if (count == null) {
 			StringBundler query = new StringBundler(4);
@@ -8174,10 +8220,10 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 				count = (Long)q.uniqueResult();
 
-				finderCache.putResult(finderPath, finderArgs, count);
+				FinderCacheUtil.putResult(finderPath, finderArgs, count);
 			}
 			catch (Exception e) {
-				finderCache.removeResult(finderPath, finderArgs);
+				FinderCacheUtil.removeResult(finderPath, finderArgs);
 
 				throw processException(e);
 			}
@@ -8203,17 +8249,15 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 			statuses = new int[0];
 		}
 		else if (statuses.length > 1) {
-			statuses = ArrayUtil.unique(statuses);
-
-			Arrays.sort(statuses);
+			statuses = ArrayUtil.sortedUnique(statuses);
 		}
 
 		Object[] finderArgs = new Object[] {
-				groupId, userId, StringUtil.merge(statuses)
-			};
+			groupId, userId, StringUtil.merge(statuses)
+		};
 
-		Long count = (Long)finderCache.getResult(FINDER_PATH_WITH_PAGINATION_COUNT_BY_G_U_S,
-				finderArgs, this);
+		Long count = (Long)FinderCacheUtil.getResult(
+			_finderPathWithPaginationCountByG_U_S, finderArgs, this);
 
 		if (count == null) {
 			StringBundler query = new StringBundler();
@@ -8236,8 +8280,9 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 				query.append(")");
 			}
 
-			query.setStringAt(removeConjunction(query.stringAt(query.index() -
-						1)), query.index() - 1);
+			query.setStringAt(
+				removeConjunction(query.stringAt(query.index() - 1)),
+				query.index() - 1);
 
 			String sql = query.toString();
 
@@ -8256,12 +8301,12 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 				count = (Long)q.uniqueResult();
 
-				finderCache.putResult(FINDER_PATH_WITH_PAGINATION_COUNT_BY_G_U_S,
-					finderArgs, count);
+				FinderCacheUtil.putResult(
+					_finderPathWithPaginationCountByG_U_S, finderArgs, count);
 			}
 			catch (Exception e) {
-				finderCache.removeResult(FINDER_PATH_WITH_PAGINATION_COUNT_BY_G_U_S,
-					finderArgs);
+				FinderCacheUtil.removeResult(
+					_finderPathWithPaginationCountByG_U_S, finderArgs);
 
 				throw processException(e);
 			}
@@ -8297,9 +8342,9 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 		query.append(_FINDER_COLUMN_G_U_S_STATUS_2);
 
-		String sql = InlineSQLHelperUtil.replacePermissionCheck(query.toString(),
-				TasksEntry.class.getName(),
-				_FILTER_ENTITY_TABLE_FILTER_PK_COLUMN, groupId);
+		String sql = InlineSQLHelperUtil.replacePermissionCheck(
+			query.toString(), TasksEntry.class.getName(),
+			_FILTER_ENTITY_TABLE_FILTER_PK_COLUMN, groupId);
 
 		Session session = null;
 
@@ -8308,8 +8353,8 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 			SQLQuery q = session.createSynchronizedSQLQuery(sql);
 
-			q.addScalar(COUNT_COLUMN_NAME,
-				com.liferay.portal.kernel.dao.orm.Type.LONG);
+			q.addScalar(
+				COUNT_COLUMN_NAME, com.liferay.portal.kernel.dao.orm.Type.LONG);
 
 			QueryPos qPos = QueryPos.getInstance(q);
 
@@ -8349,9 +8394,7 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 			statuses = new int[0];
 		}
 		else if (statuses.length > 1) {
-			statuses = ArrayUtil.unique(statuses);
-
-			Arrays.sort(statuses);
+			statuses = ArrayUtil.sortedUnique(statuses);
 		}
 
 		StringBundler query = new StringBundler();
@@ -8374,12 +8417,13 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 			query.append(")");
 		}
 
-		query.setStringAt(removeConjunction(query.stringAt(query.index() - 1)),
+		query.setStringAt(
+			removeConjunction(query.stringAt(query.index() - 1)),
 			query.index() - 1);
 
-		String sql = InlineSQLHelperUtil.replacePermissionCheck(query.toString(),
-				TasksEntry.class.getName(),
-				_FILTER_ENTITY_TABLE_FILTER_PK_COLUMN, groupId);
+		String sql = InlineSQLHelperUtil.replacePermissionCheck(
+			query.toString(), TasksEntry.class.getName(),
+			_FILTER_ENTITY_TABLE_FILTER_PK_COLUMN, groupId);
 
 		Session session = null;
 
@@ -8388,8 +8432,8 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 			SQLQuery q = session.createSynchronizedSQLQuery(sql);
 
-			q.addScalar(COUNT_COLUMN_NAME,
-				com.liferay.portal.kernel.dao.orm.Type.LONG);
+			q.addScalar(
+				COUNT_COLUMN_NAME, com.liferay.portal.kernel.dao.orm.Type.LONG);
 
 			QueryPos qPos = QueryPos.getInstance(q);
 
@@ -8409,47 +8453,22 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 		}
 	}
 
-	private static final String _FINDER_COLUMN_G_U_S_GROUPID_2 = "tasksEntry.groupId = ? AND ";
-	private static final String _FINDER_COLUMN_G_U_S_USERID_2 = "tasksEntry.userId = ? AND ";
-	private static final String _FINDER_COLUMN_G_U_S_STATUS_2 = "tasksEntry.status = ?";
-	private static final String _FINDER_COLUMN_G_U_S_STATUS_7 = "tasksEntry.status IN (";
-	public static final FinderPath FINDER_PATH_WITH_PAGINATION_FIND_BY_G_A_S = new FinderPath(TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
-			TasksEntryModelImpl.FINDER_CACHE_ENABLED, TasksEntryImpl.class,
-			FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByG_A_S",
-			new String[] {
-				Long.class.getName(), Long.class.getName(),
-				Integer.class.getName(),
-				
-			Integer.class.getName(), Integer.class.getName(),
-				OrderByComparator.class.getName()
-			});
-	public static final FinderPath FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_G_A_S = new FinderPath(TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
-			TasksEntryModelImpl.FINDER_CACHE_ENABLED, TasksEntryImpl.class,
-			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findByG_A_S",
-			new String[] {
-				Long.class.getName(), Long.class.getName(),
-				Integer.class.getName()
-			},
-			TasksEntryModelImpl.GROUPID_COLUMN_BITMASK |
-			TasksEntryModelImpl.ASSIGNEEUSERID_COLUMN_BITMASK |
-			TasksEntryModelImpl.STATUS_COLUMN_BITMASK |
-			TasksEntryModelImpl.PRIORITY_COLUMN_BITMASK |
-			TasksEntryModelImpl.DUEDATE_COLUMN_BITMASK |
-			TasksEntryModelImpl.CREATEDATE_COLUMN_BITMASK);
-	public static final FinderPath FINDER_PATH_COUNT_BY_G_A_S = new FinderPath(TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
-			TasksEntryModelImpl.FINDER_CACHE_ENABLED, Long.class,
-			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByG_A_S",
-			new String[] {
-				Long.class.getName(), Long.class.getName(),
-				Integer.class.getName()
-			});
-	public static final FinderPath FINDER_PATH_WITH_PAGINATION_COUNT_BY_G_A_S = new FinderPath(TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
-			TasksEntryModelImpl.FINDER_CACHE_ENABLED, Long.class,
-			FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "countByG_A_S",
-			new String[] {
-				Long.class.getName(), Long.class.getName(),
-				Integer.class.getName()
-			});
+	private static final String _FINDER_COLUMN_G_U_S_GROUPID_2 =
+		"tasksEntry.groupId = ? AND ";
+
+	private static final String _FINDER_COLUMN_G_U_S_USERID_2 =
+		"tasksEntry.userId = ? AND ";
+
+	private static final String _FINDER_COLUMN_G_U_S_STATUS_2 =
+		"tasksEntry.status = ?";
+
+	private static final String _FINDER_COLUMN_G_U_S_STATUS_7 =
+		"tasksEntry.status IN (";
+
+	private FinderPath _finderPathWithPaginationFindByG_A_S;
+	private FinderPath _finderPathWithoutPaginationFindByG_A_S;
+	private FinderPath _finderPathCountByG_A_S;
+	private FinderPath _finderPathWithPaginationCountByG_A_S;
 
 	/**
 	 * Returns all the tasks entries where groupId = &#63; and assigneeUserId = &#63; and status = &#63;.
@@ -8460,9 +8479,11 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @return the matching tasks entries
 	 */
 	@Override
-	public List<TasksEntry> findByG_A_S(long groupId, long assigneeUserId,
-		int status) {
-		return findByG_A_S(groupId, assigneeUserId, status, QueryUtil.ALL_POS,
+	public List<TasksEntry> findByG_A_S(
+		long groupId, long assigneeUserId, int status) {
+
+		return findByG_A_S(
+			groupId, assigneeUserId, status, QueryUtil.ALL_POS,
 			QueryUtil.ALL_POS, null);
 	}
 
@@ -8470,7 +8491,7 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * Returns a range of all the tasks entries where groupId = &#63; and assigneeUserId = &#63; and status = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link TasksEntryModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>TasksEntryModelImpl</code>.
 	 * </p>
 	 *
 	 * @param groupId the group ID
@@ -8481,8 +8502,9 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @return the range of matching tasks entries
 	 */
 	@Override
-	public List<TasksEntry> findByG_A_S(long groupId, long assigneeUserId,
-		int status, int start, int end) {
+	public List<TasksEntry> findByG_A_S(
+		long groupId, long assigneeUserId, int status, int start, int end) {
+
 		return findByG_A_S(groupId, assigneeUserId, status, start, end, null);
 	}
 
@@ -8490,7 +8512,7 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * Returns an ordered range of all the tasks entries where groupId = &#63; and assigneeUserId = &#63; and status = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link TasksEntryModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>TasksEntryModelImpl</code>.
 	 * </p>
 	 *
 	 * @param groupId the group ID
@@ -8502,18 +8524,20 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @return the ordered range of matching tasks entries
 	 */
 	@Override
-	public List<TasksEntry> findByG_A_S(long groupId, long assigneeUserId,
-		int status, int start, int end,
+	public List<TasksEntry> findByG_A_S(
+		long groupId, long assigneeUserId, int status, int start, int end,
 		OrderByComparator<TasksEntry> orderByComparator) {
-		return findByG_A_S(groupId, assigneeUserId, status, start, end,
-			orderByComparator, true);
+
+		return findByG_A_S(
+			groupId, assigneeUserId, status, start, end, orderByComparator,
+			true);
 	}
 
 	/**
 	 * Returns an ordered range of all the tasks entries where groupId = &#63; and assigneeUserId = &#63; and status = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link TasksEntryModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>TasksEntryModelImpl</code>.
 	 * </p>
 	 *
 	 * @param groupId the group ID
@@ -8522,44 +8546,45 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @param start the lower bound of the range of tasks entries
 	 * @param end the upper bound of the range of tasks entries (not inclusive)
 	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
-	 * @param retrieveFromCache whether to retrieve from the finder cache
+	 * @param useFinderCache whether to use the finder cache
 	 * @return the ordered range of matching tasks entries
 	 */
 	@Override
-	public List<TasksEntry> findByG_A_S(long groupId, long assigneeUserId,
-		int status, int start, int end,
+	public List<TasksEntry> findByG_A_S(
+		long groupId, long assigneeUserId, int status, int start, int end,
 		OrderByComparator<TasksEntry> orderByComparator,
-		boolean retrieveFromCache) {
-		boolean pagination = true;
+		boolean useFinderCache) {
+
 		FinderPath finderPath = null;
 		Object[] finderArgs = null;
 
 		if ((start == QueryUtil.ALL_POS) && (end == QueryUtil.ALL_POS) &&
-				(orderByComparator == null)) {
-			pagination = false;
-			finderPath = FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_G_A_S;
-			finderArgs = new Object[] { groupId, assigneeUserId, status };
+			(orderByComparator == null)) {
+
+			if (useFinderCache) {
+				finderPath = _finderPathWithoutPaginationFindByG_A_S;
+				finderArgs = new Object[] {groupId, assigneeUserId, status};
+			}
 		}
-		else {
-			finderPath = FINDER_PATH_WITH_PAGINATION_FIND_BY_G_A_S;
+		else if (useFinderCache) {
+			finderPath = _finderPathWithPaginationFindByG_A_S;
 			finderArgs = new Object[] {
-					groupId, assigneeUserId, status,
-					
-					start, end, orderByComparator
-				};
+				groupId, assigneeUserId, status, start, end, orderByComparator
+			};
 		}
 
 		List<TasksEntry> list = null;
 
-		if (retrieveFromCache) {
-			list = (List<TasksEntry>)finderCache.getResult(finderPath,
-					finderArgs, this);
+		if (useFinderCache) {
+			list = (List<TasksEntry>)FinderCacheUtil.getResult(
+				finderPath, finderArgs, this);
 
 			if ((list != null) && !list.isEmpty()) {
 				for (TasksEntry tasksEntry : list) {
 					if ((groupId != tasksEntry.getGroupId()) ||
-							(assigneeUserId != tasksEntry.getAssigneeUserId()) ||
-							(status != tasksEntry.getStatus())) {
+						(assigneeUserId != tasksEntry.getAssigneeUserId()) ||
+						(status != tasksEntry.getStatus())) {
+
 						list = null;
 
 						break;
@@ -8572,8 +8597,8 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 			StringBundler query = null;
 
 			if (orderByComparator != null) {
-				query = new StringBundler(5 +
-						(orderByComparator.getOrderByFields().length * 2));
+				query = new StringBundler(
+					5 + (orderByComparator.getOrderByFields().length * 2));
 			}
 			else {
 				query = new StringBundler(5);
@@ -8588,11 +8613,10 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 			query.append(_FINDER_COLUMN_G_A_S_STATUS_2);
 
 			if (orderByComparator != null) {
-				appendOrderByComparator(query, _ORDER_BY_ENTITY_ALIAS,
-					orderByComparator);
+				appendOrderByComparator(
+					query, _ORDER_BY_ENTITY_ALIAS, orderByComparator);
 			}
-			else
-			 if (pagination) {
+			else {
 				query.append(TasksEntryModelImpl.ORDER_BY_JPQL);
 			}
 
@@ -8613,25 +8637,19 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 				qPos.add(status);
 
-				if (!pagination) {
-					list = (List<TasksEntry>)QueryUtil.list(q, getDialect(),
-							start, end, false);
-
-					Collections.sort(list);
-
-					list = Collections.unmodifiableList(list);
-				}
-				else {
-					list = (List<TasksEntry>)QueryUtil.list(q, getDialect(),
-							start, end);
-				}
+				list = (List<TasksEntry>)QueryUtil.list(
+					q, getDialect(), start, end);
 
 				cacheResult(list);
 
-				finderCache.putResult(finderPath, finderArgs, list);
+				if (useFinderCache) {
+					FinderCacheUtil.putResult(finderPath, finderArgs, list);
+				}
 			}
 			catch (Exception e) {
-				finderCache.removeResult(finderPath, finderArgs);
+				if (useFinderCache) {
+					FinderCacheUtil.removeResult(finderPath, finderArgs);
+				}
 
 				throw processException(e);
 			}
@@ -8654,11 +8672,13 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @throws NoSuchTasksEntryException if a matching tasks entry could not be found
 	 */
 	@Override
-	public TasksEntry findByG_A_S_First(long groupId, long assigneeUserId,
-		int status, OrderByComparator<TasksEntry> orderByComparator)
+	public TasksEntry findByG_A_S_First(
+			long groupId, long assigneeUserId, int status,
+			OrderByComparator<TasksEntry> orderByComparator)
 		throws NoSuchTasksEntryException {
-		TasksEntry tasksEntry = fetchByG_A_S_First(groupId, assigneeUserId,
-				status, orderByComparator);
+
+		TasksEntry tasksEntry = fetchByG_A_S_First(
+			groupId, assigneeUserId, status, orderByComparator);
 
 		if (tasksEntry != null) {
 			return tasksEntry;
@@ -8692,10 +8712,12 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @return the first matching tasks entry, or <code>null</code> if a matching tasks entry could not be found
 	 */
 	@Override
-	public TasksEntry fetchByG_A_S_First(long groupId, long assigneeUserId,
-		int status, OrderByComparator<TasksEntry> orderByComparator) {
-		List<TasksEntry> list = findByG_A_S(groupId, assigneeUserId, status, 0,
-				1, orderByComparator);
+	public TasksEntry fetchByG_A_S_First(
+		long groupId, long assigneeUserId, int status,
+		OrderByComparator<TasksEntry> orderByComparator) {
+
+		List<TasksEntry> list = findByG_A_S(
+			groupId, assigneeUserId, status, 0, 1, orderByComparator);
 
 		if (!list.isEmpty()) {
 			return list.get(0);
@@ -8715,11 +8737,13 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @throws NoSuchTasksEntryException if a matching tasks entry could not be found
 	 */
 	@Override
-	public TasksEntry findByG_A_S_Last(long groupId, long assigneeUserId,
-		int status, OrderByComparator<TasksEntry> orderByComparator)
+	public TasksEntry findByG_A_S_Last(
+			long groupId, long assigneeUserId, int status,
+			OrderByComparator<TasksEntry> orderByComparator)
 		throws NoSuchTasksEntryException {
-		TasksEntry tasksEntry = fetchByG_A_S_Last(groupId, assigneeUserId,
-				status, orderByComparator);
+
+		TasksEntry tasksEntry = fetchByG_A_S_Last(
+			groupId, assigneeUserId, status, orderByComparator);
 
 		if (tasksEntry != null) {
 			return tasksEntry;
@@ -8753,16 +8777,19 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @return the last matching tasks entry, or <code>null</code> if a matching tasks entry could not be found
 	 */
 	@Override
-	public TasksEntry fetchByG_A_S_Last(long groupId, long assigneeUserId,
-		int status, OrderByComparator<TasksEntry> orderByComparator) {
+	public TasksEntry fetchByG_A_S_Last(
+		long groupId, long assigneeUserId, int status,
+		OrderByComparator<TasksEntry> orderByComparator) {
+
 		int count = countByG_A_S(groupId, assigneeUserId, status);
 
 		if (count == 0) {
 			return null;
 		}
 
-		List<TasksEntry> list = findByG_A_S(groupId, assigneeUserId, status,
-				count - 1, count, orderByComparator);
+		List<TasksEntry> list = findByG_A_S(
+			groupId, assigneeUserId, status, count - 1, count,
+			orderByComparator);
 
 		if (!list.isEmpty()) {
 			return list.get(0);
@@ -8783,10 +8810,11 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @throws NoSuchTasksEntryException if a tasks entry with the primary key could not be found
 	 */
 	@Override
-	public TasksEntry[] findByG_A_S_PrevAndNext(long tasksEntryId,
-		long groupId, long assigneeUserId, int status,
-		OrderByComparator<TasksEntry> orderByComparator)
+	public TasksEntry[] findByG_A_S_PrevAndNext(
+			long tasksEntryId, long groupId, long assigneeUserId, int status,
+			OrderByComparator<TasksEntry> orderByComparator)
 		throws NoSuchTasksEntryException {
+
 		TasksEntry tasksEntry = findByPrimaryKey(tasksEntryId);
 
 		Session session = null;
@@ -8796,13 +8824,15 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 			TasksEntry[] array = new TasksEntryImpl[3];
 
-			array[0] = getByG_A_S_PrevAndNext(session, tasksEntry, groupId,
-					assigneeUserId, status, orderByComparator, true);
+			array[0] = getByG_A_S_PrevAndNext(
+				session, tasksEntry, groupId, assigneeUserId, status,
+				orderByComparator, true);
 
 			array[1] = tasksEntry;
 
-			array[2] = getByG_A_S_PrevAndNext(session, tasksEntry, groupId,
-					assigneeUserId, status, orderByComparator, false);
+			array[2] = getByG_A_S_PrevAndNext(
+				session, tasksEntry, groupId, assigneeUserId, status,
+				orderByComparator, false);
 
 			return array;
 		}
@@ -8814,14 +8844,16 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 		}
 	}
 
-	protected TasksEntry getByG_A_S_PrevAndNext(Session session,
-		TasksEntry tasksEntry, long groupId, long assigneeUserId, int status,
+	protected TasksEntry getByG_A_S_PrevAndNext(
+		Session session, TasksEntry tasksEntry, long groupId,
+		long assigneeUserId, int status,
 		OrderByComparator<TasksEntry> orderByComparator, boolean previous) {
+
 		StringBundler query = null;
 
 		if (orderByComparator != null) {
-			query = new StringBundler(6 +
-					(orderByComparator.getOrderByConditionFields().length * 3) +
+			query = new StringBundler(
+				6 + (orderByComparator.getOrderByConditionFields().length * 3) +
 					(orderByComparator.getOrderByFields().length * 3));
 		}
 		else {
@@ -8837,7 +8869,8 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 		query.append(_FINDER_COLUMN_G_A_S_STATUS_2);
 
 		if (orderByComparator != null) {
-			String[] orderByConditionFields = orderByComparator.getOrderByConditionFields();
+			String[] orderByConditionFields =
+				orderByComparator.getOrderByConditionFields();
 
 			if (orderByConditionFields.length > 0) {
 				query.append(WHERE_AND);
@@ -8911,10 +8944,10 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 		qPos.add(status);
 
 		if (orderByComparator != null) {
-			Object[] values = orderByComparator.getOrderByConditionValues(tasksEntry);
+			for (Object orderByConditionValue :
+					orderByComparator.getOrderByConditionValues(tasksEntry)) {
 
-			for (Object value : values) {
-				qPos.add(value);
+				qPos.add(orderByConditionValue);
 			}
 		}
 
@@ -8937,17 +8970,19 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @return the matching tasks entries that the user has permission to view
 	 */
 	@Override
-	public List<TasksEntry> filterFindByG_A_S(long groupId,
-		long assigneeUserId, int status) {
-		return filterFindByG_A_S(groupId, assigneeUserId, status,
-			QueryUtil.ALL_POS, QueryUtil.ALL_POS, null);
+	public List<TasksEntry> filterFindByG_A_S(
+		long groupId, long assigneeUserId, int status) {
+
+		return filterFindByG_A_S(
+			groupId, assigneeUserId, status, QueryUtil.ALL_POS,
+			QueryUtil.ALL_POS, null);
 	}
 
 	/**
 	 * Returns a range of all the tasks entries that the user has permission to view where groupId = &#63; and assigneeUserId = &#63; and status = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link TasksEntryModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>TasksEntryModelImpl</code>.
 	 * </p>
 	 *
 	 * @param groupId the group ID
@@ -8958,17 +8993,18 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @return the range of matching tasks entries that the user has permission to view
 	 */
 	@Override
-	public List<TasksEntry> filterFindByG_A_S(long groupId,
-		long assigneeUserId, int status, int start, int end) {
-		return filterFindByG_A_S(groupId, assigneeUserId, status, start, end,
-			null);
+	public List<TasksEntry> filterFindByG_A_S(
+		long groupId, long assigneeUserId, int status, int start, int end) {
+
+		return filterFindByG_A_S(
+			groupId, assigneeUserId, status, start, end, null);
 	}
 
 	/**
 	 * Returns an ordered range of all the tasks entries that the user has permissions to view where groupId = &#63; and assigneeUserId = &#63; and status = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link TasksEntryModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>TasksEntryModelImpl</code>.
 	 * </p>
 	 *
 	 * @param groupId the group ID
@@ -8980,19 +9016,20 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @return the ordered range of matching tasks entries that the user has permission to view
 	 */
 	@Override
-	public List<TasksEntry> filterFindByG_A_S(long groupId,
-		long assigneeUserId, int status, int start, int end,
+	public List<TasksEntry> filterFindByG_A_S(
+		long groupId, long assigneeUserId, int status, int start, int end,
 		OrderByComparator<TasksEntry> orderByComparator) {
+
 		if (!InlineSQLHelperUtil.isEnabled(groupId)) {
-			return findByG_A_S(groupId, assigneeUserId, status, start, end,
-				orderByComparator);
+			return findByG_A_S(
+				groupId, assigneeUserId, status, start, end, orderByComparator);
 		}
 
 		StringBundler query = null;
 
 		if (orderByComparator != null) {
-			query = new StringBundler(5 +
-					(orderByComparator.getOrderByFields().length * 2));
+			query = new StringBundler(
+				5 + (orderByComparator.getOrderByFields().length * 2));
 		}
 		else {
 			query = new StringBundler(6);
@@ -9002,7 +9039,8 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 			query.append(_FILTER_SQL_SELECT_TASKSENTRY_WHERE);
 		}
 		else {
-			query.append(_FILTER_SQL_SELECT_TASKSENTRY_NO_INLINE_DISTINCT_WHERE_1);
+			query.append(
+				_FILTER_SQL_SELECT_TASKSENTRY_NO_INLINE_DISTINCT_WHERE_1);
 		}
 
 		query.append(_FINDER_COLUMN_G_A_S_GROUPID_2);
@@ -9012,17 +9050,18 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 		query.append(_FINDER_COLUMN_G_A_S_STATUS_2);
 
 		if (!getDB().isSupportsInlineDistinct()) {
-			query.append(_FILTER_SQL_SELECT_TASKSENTRY_NO_INLINE_DISTINCT_WHERE_2);
+			query.append(
+				_FILTER_SQL_SELECT_TASKSENTRY_NO_INLINE_DISTINCT_WHERE_2);
 		}
 
 		if (orderByComparator != null) {
 			if (getDB().isSupportsInlineDistinct()) {
-				appendOrderByComparator(query, _ORDER_BY_ENTITY_ALIAS,
-					orderByComparator, true);
+				appendOrderByComparator(
+					query, _ORDER_BY_ENTITY_ALIAS, orderByComparator, true);
 			}
 			else {
-				appendOrderByComparator(query, _ORDER_BY_ENTITY_TABLE,
-					orderByComparator, true);
+				appendOrderByComparator(
+					query, _ORDER_BY_ENTITY_TABLE, orderByComparator, true);
 			}
 		}
 		else {
@@ -9034,9 +9073,9 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 			}
 		}
 
-		String sql = InlineSQLHelperUtil.replacePermissionCheck(query.toString(),
-				TasksEntry.class.getName(),
-				_FILTER_ENTITY_TABLE_FILTER_PK_COLUMN, groupId);
+		String sql = InlineSQLHelperUtil.replacePermissionCheck(
+			query.toString(), TasksEntry.class.getName(),
+			_FILTER_ENTITY_TABLE_FILTER_PK_COLUMN, groupId);
 
 		Session session = null;
 
@@ -9060,7 +9099,8 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 			qPos.add(status);
 
-			return (List<TasksEntry>)QueryUtil.list(q, getDialect(), start, end);
+			return (List<TasksEntry>)QueryUtil.list(
+				q, getDialect(), start, end);
 		}
 		catch (Exception e) {
 			throw processException(e);
@@ -9082,13 +9122,15 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @throws NoSuchTasksEntryException if a tasks entry with the primary key could not be found
 	 */
 	@Override
-	public TasksEntry[] filterFindByG_A_S_PrevAndNext(long tasksEntryId,
-		long groupId, long assigneeUserId, int status,
-		OrderByComparator<TasksEntry> orderByComparator)
+	public TasksEntry[] filterFindByG_A_S_PrevAndNext(
+			long tasksEntryId, long groupId, long assigneeUserId, int status,
+			OrderByComparator<TasksEntry> orderByComparator)
 		throws NoSuchTasksEntryException {
+
 		if (!InlineSQLHelperUtil.isEnabled(groupId)) {
-			return findByG_A_S_PrevAndNext(tasksEntryId, groupId,
-				assigneeUserId, status, orderByComparator);
+			return findByG_A_S_PrevAndNext(
+				tasksEntryId, groupId, assigneeUserId, status,
+				orderByComparator);
 		}
 
 		TasksEntry tasksEntry = findByPrimaryKey(tasksEntryId);
@@ -9100,13 +9142,15 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 			TasksEntry[] array = new TasksEntryImpl[3];
 
-			array[0] = filterGetByG_A_S_PrevAndNext(session, tasksEntry,
-					groupId, assigneeUserId, status, orderByComparator, true);
+			array[0] = filterGetByG_A_S_PrevAndNext(
+				session, tasksEntry, groupId, assigneeUserId, status,
+				orderByComparator, true);
 
 			array[1] = tasksEntry;
 
-			array[2] = filterGetByG_A_S_PrevAndNext(session, tasksEntry,
-					groupId, assigneeUserId, status, orderByComparator, false);
+			array[2] = filterGetByG_A_S_PrevAndNext(
+				session, tasksEntry, groupId, assigneeUserId, status,
+				orderByComparator, false);
 
 			return array;
 		}
@@ -9118,14 +9162,16 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 		}
 	}
 
-	protected TasksEntry filterGetByG_A_S_PrevAndNext(Session session,
-		TasksEntry tasksEntry, long groupId, long assigneeUserId, int status,
+	protected TasksEntry filterGetByG_A_S_PrevAndNext(
+		Session session, TasksEntry tasksEntry, long groupId,
+		long assigneeUserId, int status,
 		OrderByComparator<TasksEntry> orderByComparator, boolean previous) {
+
 		StringBundler query = null;
 
 		if (orderByComparator != null) {
-			query = new StringBundler(7 +
-					(orderByComparator.getOrderByConditionFields().length * 3) +
+			query = new StringBundler(
+				7 + (orderByComparator.getOrderByConditionFields().length * 3) +
 					(orderByComparator.getOrderByFields().length * 3));
 		}
 		else {
@@ -9136,7 +9182,8 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 			query.append(_FILTER_SQL_SELECT_TASKSENTRY_WHERE);
 		}
 		else {
-			query.append(_FILTER_SQL_SELECT_TASKSENTRY_NO_INLINE_DISTINCT_WHERE_1);
+			query.append(
+				_FILTER_SQL_SELECT_TASKSENTRY_NO_INLINE_DISTINCT_WHERE_1);
 		}
 
 		query.append(_FINDER_COLUMN_G_A_S_GROUPID_2);
@@ -9146,11 +9193,13 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 		query.append(_FINDER_COLUMN_G_A_S_STATUS_2);
 
 		if (!getDB().isSupportsInlineDistinct()) {
-			query.append(_FILTER_SQL_SELECT_TASKSENTRY_NO_INLINE_DISTINCT_WHERE_2);
+			query.append(
+				_FILTER_SQL_SELECT_TASKSENTRY_NO_INLINE_DISTINCT_WHERE_2);
 		}
 
 		if (orderByComparator != null) {
-			String[] orderByConditionFields = orderByComparator.getOrderByConditionFields();
+			String[] orderByConditionFields =
+				orderByComparator.getOrderByConditionFields();
 
 			if (orderByConditionFields.length > 0) {
 				query.append(WHERE_AND);
@@ -9158,13 +9207,17 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 			for (int i = 0; i < orderByConditionFields.length; i++) {
 				if (getDB().isSupportsInlineDistinct()) {
-					query.append(_ORDER_BY_ENTITY_ALIAS);
+					query.append(
+						getColumnName(
+							_ORDER_BY_ENTITY_ALIAS, orderByConditionFields[i],
+							true));
 				}
 				else {
-					query.append(_ORDER_BY_ENTITY_TABLE);
+					query.append(
+						getColumnName(
+							_ORDER_BY_ENTITY_TABLE, orderByConditionFields[i],
+							true));
 				}
-
-				query.append(orderByConditionFields[i]);
 
 				if ((i + 1) < orderByConditionFields.length) {
 					if (orderByComparator.isAscending() ^ previous) {
@@ -9190,13 +9243,15 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 			for (int i = 0; i < orderByFields.length; i++) {
 				if (getDB().isSupportsInlineDistinct()) {
-					query.append(_ORDER_BY_ENTITY_ALIAS);
+					query.append(
+						getColumnName(
+							_ORDER_BY_ENTITY_ALIAS, orderByFields[i], true));
 				}
 				else {
-					query.append(_ORDER_BY_ENTITY_TABLE);
+					query.append(
+						getColumnName(
+							_ORDER_BY_ENTITY_TABLE, orderByFields[i], true));
 				}
-
-				query.append(orderByFields[i]);
 
 				if ((i + 1) < orderByFields.length) {
 					if (orderByComparator.isAscending() ^ previous) {
@@ -9225,9 +9280,9 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 			}
 		}
 
-		String sql = InlineSQLHelperUtil.replacePermissionCheck(query.toString(),
-				TasksEntry.class.getName(),
-				_FILTER_ENTITY_TABLE_FILTER_PK_COLUMN, groupId);
+		String sql = InlineSQLHelperUtil.replacePermissionCheck(
+			query.toString(), TasksEntry.class.getName(),
+			_FILTER_ENTITY_TABLE_FILTER_PK_COLUMN, groupId);
 
 		SQLQuery q = session.createSynchronizedSQLQuery(sql);
 
@@ -9250,10 +9305,10 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 		qPos.add(status);
 
 		if (orderByComparator != null) {
-			Object[] values = orderByComparator.getOrderByConditionValues(tasksEntry);
+			for (Object orderByConditionValue :
+					orderByComparator.getOrderByConditionValues(tasksEntry)) {
 
-			for (Object value : values) {
-				qPos.add(value);
+				qPos.add(orderByConditionValue);
 			}
 		}
 
@@ -9276,17 +9331,19 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @return the matching tasks entries that the user has permission to view
 	 */
 	@Override
-	public List<TasksEntry> filterFindByG_A_S(long groupId,
-		long assigneeUserId, int[] statuses) {
-		return filterFindByG_A_S(groupId, assigneeUserId, statuses,
-			QueryUtil.ALL_POS, QueryUtil.ALL_POS, null);
+	public List<TasksEntry> filterFindByG_A_S(
+		long groupId, long assigneeUserId, int[] statuses) {
+
+		return filterFindByG_A_S(
+			groupId, assigneeUserId, statuses, QueryUtil.ALL_POS,
+			QueryUtil.ALL_POS, null);
 	}
 
 	/**
 	 * Returns a range of all the tasks entries that the user has permission to view where groupId = &#63; and assigneeUserId = &#63; and status = any &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link TasksEntryModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>TasksEntryModelImpl</code>.
 	 * </p>
 	 *
 	 * @param groupId the group ID
@@ -9297,17 +9354,18 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @return the range of matching tasks entries that the user has permission to view
 	 */
 	@Override
-	public List<TasksEntry> filterFindByG_A_S(long groupId,
-		long assigneeUserId, int[] statuses, int start, int end) {
-		return filterFindByG_A_S(groupId, assigneeUserId, statuses, start, end,
-			null);
+	public List<TasksEntry> filterFindByG_A_S(
+		long groupId, long assigneeUserId, int[] statuses, int start, int end) {
+
+		return filterFindByG_A_S(
+			groupId, assigneeUserId, statuses, start, end, null);
 	}
 
 	/**
 	 * Returns an ordered range of all the tasks entries that the user has permission to view where groupId = &#63; and assigneeUserId = &#63; and status = any &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link TasksEntryModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>TasksEntryModelImpl</code>.
 	 * </p>
 	 *
 	 * @param groupId the group ID
@@ -9319,11 +9377,13 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @return the ordered range of matching tasks entries that the user has permission to view
 	 */
 	@Override
-	public List<TasksEntry> filterFindByG_A_S(long groupId,
-		long assigneeUserId, int[] statuses, int start, int end,
+	public List<TasksEntry> filterFindByG_A_S(
+		long groupId, long assigneeUserId, int[] statuses, int start, int end,
 		OrderByComparator<TasksEntry> orderByComparator) {
+
 		if (!InlineSQLHelperUtil.isEnabled(groupId)) {
-			return findByG_A_S(groupId, assigneeUserId, statuses, start, end,
+			return findByG_A_S(
+				groupId, assigneeUserId, statuses, start, end,
 				orderByComparator);
 		}
 
@@ -9331,9 +9391,7 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 			statuses = new int[0];
 		}
 		else if (statuses.length > 1) {
-			statuses = ArrayUtil.unique(statuses);
-
-			Arrays.sort(statuses);
+			statuses = ArrayUtil.sortedUnique(statuses);
 		}
 
 		StringBundler query = new StringBundler();
@@ -9342,7 +9400,8 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 			query.append(_FILTER_SQL_SELECT_TASKSENTRY_WHERE);
 		}
 		else {
-			query.append(_FILTER_SQL_SELECT_TASKSENTRY_NO_INLINE_DISTINCT_WHERE_1);
+			query.append(
+				_FILTER_SQL_SELECT_TASKSENTRY_NO_INLINE_DISTINCT_WHERE_1);
 		}
 
 		query.append(_FINDER_COLUMN_G_A_S_GROUPID_2);
@@ -9361,21 +9420,23 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 			query.append(")");
 		}
 
-		query.setStringAt(removeConjunction(query.stringAt(query.index() - 1)),
+		query.setStringAt(
+			removeConjunction(query.stringAt(query.index() - 1)),
 			query.index() - 1);
 
 		if (!getDB().isSupportsInlineDistinct()) {
-			query.append(_FILTER_SQL_SELECT_TASKSENTRY_NO_INLINE_DISTINCT_WHERE_2);
+			query.append(
+				_FILTER_SQL_SELECT_TASKSENTRY_NO_INLINE_DISTINCT_WHERE_2);
 		}
 
 		if (orderByComparator != null) {
 			if (getDB().isSupportsInlineDistinct()) {
-				appendOrderByComparator(query, _ORDER_BY_ENTITY_ALIAS,
-					orderByComparator, true);
+				appendOrderByComparator(
+					query, _ORDER_BY_ENTITY_ALIAS, orderByComparator, true);
 			}
 			else {
-				appendOrderByComparator(query, _ORDER_BY_ENTITY_TABLE,
-					orderByComparator, true);
+				appendOrderByComparator(
+					query, _ORDER_BY_ENTITY_TABLE, orderByComparator, true);
 			}
 		}
 		else {
@@ -9387,9 +9448,9 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 			}
 		}
 
-		String sql = InlineSQLHelperUtil.replacePermissionCheck(query.toString(),
-				TasksEntry.class.getName(),
-				_FILTER_ENTITY_TABLE_FILTER_PK_COLUMN, groupId);
+		String sql = InlineSQLHelperUtil.replacePermissionCheck(
+			query.toString(), TasksEntry.class.getName(),
+			_FILTER_ENTITY_TABLE_FILTER_PK_COLUMN, groupId);
 
 		Session session = null;
 
@@ -9411,7 +9472,8 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 			qPos.add(assigneeUserId);
 
-			return (List<TasksEntry>)QueryUtil.list(q, getDialect(), start, end);
+			return (List<TasksEntry>)QueryUtil.list(
+				q, getDialect(), start, end);
 		}
 		catch (Exception e) {
 			throw processException(e);
@@ -9425,7 +9487,7 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * Returns all the tasks entries where groupId = &#63; and assigneeUserId = &#63; and status = any &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link TasksEntryModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>TasksEntryModelImpl</code>.
 	 * </p>
 	 *
 	 * @param groupId the group ID
@@ -9434,17 +9496,19 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @return the matching tasks entries
 	 */
 	@Override
-	public List<TasksEntry> findByG_A_S(long groupId, long assigneeUserId,
-		int[] statuses) {
-		return findByG_A_S(groupId, assigneeUserId, statuses,
-			QueryUtil.ALL_POS, QueryUtil.ALL_POS, null);
+	public List<TasksEntry> findByG_A_S(
+		long groupId, long assigneeUserId, int[] statuses) {
+
+		return findByG_A_S(
+			groupId, assigneeUserId, statuses, QueryUtil.ALL_POS,
+			QueryUtil.ALL_POS, null);
 	}
 
 	/**
 	 * Returns a range of all the tasks entries where groupId = &#63; and assigneeUserId = &#63; and status = any &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link TasksEntryModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>TasksEntryModelImpl</code>.
 	 * </p>
 	 *
 	 * @param groupId the group ID
@@ -9455,8 +9519,9 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @return the range of matching tasks entries
 	 */
 	@Override
-	public List<TasksEntry> findByG_A_S(long groupId, long assigneeUserId,
-		int[] statuses, int start, int end) {
+	public List<TasksEntry> findByG_A_S(
+		long groupId, long assigneeUserId, int[] statuses, int start, int end) {
+
 		return findByG_A_S(groupId, assigneeUserId, statuses, start, end, null);
 	}
 
@@ -9464,7 +9529,7 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * Returns an ordered range of all the tasks entries where groupId = &#63; and assigneeUserId = &#63; and status = any &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link TasksEntryModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>TasksEntryModelImpl</code>.
 	 * </p>
 	 *
 	 * @param groupId the group ID
@@ -9476,18 +9541,20 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @return the ordered range of matching tasks entries
 	 */
 	@Override
-	public List<TasksEntry> findByG_A_S(long groupId, long assigneeUserId,
-		int[] statuses, int start, int end,
+	public List<TasksEntry> findByG_A_S(
+		long groupId, long assigneeUserId, int[] statuses, int start, int end,
 		OrderByComparator<TasksEntry> orderByComparator) {
-		return findByG_A_S(groupId, assigneeUserId, statuses, start, end,
-			orderByComparator, true);
+
+		return findByG_A_S(
+			groupId, assigneeUserId, statuses, start, end, orderByComparator,
+			true);
 	}
 
 	/**
 	 * Returns an ordered range of all the tasks entries where groupId = &#63; and assigneeUserId = &#63; and status = &#63;, optionally using the finder cache.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link TasksEntryModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>TasksEntryModelImpl</code>.
 	 * </p>
 	 *
 	 * @param groupId the group ID
@@ -9496,57 +9563,58 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @param start the lower bound of the range of tasks entries
 	 * @param end the upper bound of the range of tasks entries (not inclusive)
 	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
-	 * @param retrieveFromCache whether to retrieve from the finder cache
+	 * @param useFinderCache whether to use the finder cache
 	 * @return the ordered range of matching tasks entries
 	 */
 	@Override
-	public List<TasksEntry> findByG_A_S(long groupId, long assigneeUserId,
-		int[] statuses, int start, int end,
+	public List<TasksEntry> findByG_A_S(
+		long groupId, long assigneeUserId, int[] statuses, int start, int end,
 		OrderByComparator<TasksEntry> orderByComparator,
-		boolean retrieveFromCache) {
+		boolean useFinderCache) {
+
 		if (statuses == null) {
 			statuses = new int[0];
 		}
 		else if (statuses.length > 1) {
-			statuses = ArrayUtil.unique(statuses);
-
-			Arrays.sort(statuses);
+			statuses = ArrayUtil.sortedUnique(statuses);
 		}
 
 		if (statuses.length == 1) {
-			return findByG_A_S(groupId, assigneeUserId, statuses[0], start,
-				end, orderByComparator);
+			return findByG_A_S(
+				groupId, assigneeUserId, statuses[0], start, end,
+				orderByComparator);
 		}
 
-		boolean pagination = true;
 		Object[] finderArgs = null;
 
 		if ((start == QueryUtil.ALL_POS) && (end == QueryUtil.ALL_POS) &&
-				(orderByComparator == null)) {
-			pagination = false;
-			finderArgs = new Object[] {
+			(orderByComparator == null)) {
+
+			if (useFinderCache) {
+				finderArgs = new Object[] {
 					groupId, assigneeUserId, StringUtil.merge(statuses)
 				};
+			}
 		}
-		else {
+		else if (useFinderCache) {
 			finderArgs = new Object[] {
-					groupId, assigneeUserId, StringUtil.merge(statuses),
-					
-					start, end, orderByComparator
-				};
+				groupId, assigneeUserId, StringUtil.merge(statuses), start, end,
+				orderByComparator
+			};
 		}
 
 		List<TasksEntry> list = null;
 
-		if (retrieveFromCache) {
-			list = (List<TasksEntry>)finderCache.getResult(FINDER_PATH_WITH_PAGINATION_FIND_BY_G_A_S,
-					finderArgs, this);
+		if (useFinderCache) {
+			list = (List<TasksEntry>)FinderCacheUtil.getResult(
+				_finderPathWithPaginationFindByG_A_S, finderArgs, this);
 
 			if ((list != null) && !list.isEmpty()) {
 				for (TasksEntry tasksEntry : list) {
 					if ((groupId != tasksEntry.getGroupId()) ||
-							(assigneeUserId != tasksEntry.getAssigneeUserId()) ||
-							!ArrayUtil.contains(statuses, tasksEntry.getStatus())) {
+						(assigneeUserId != tasksEntry.getAssigneeUserId()) ||
+						!ArrayUtil.contains(statuses, tasksEntry.getStatus())) {
+
 						list = null;
 
 						break;
@@ -9576,15 +9644,15 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 				query.append(")");
 			}
 
-			query.setStringAt(removeConjunction(query.stringAt(query.index() -
-						1)), query.index() - 1);
+			query.setStringAt(
+				removeConjunction(query.stringAt(query.index() - 1)),
+				query.index() - 1);
 
 			if (orderByComparator != null) {
-				appendOrderByComparator(query, _ORDER_BY_ENTITY_ALIAS,
-					orderByComparator);
+				appendOrderByComparator(
+					query, _ORDER_BY_ENTITY_ALIAS, orderByComparator);
 			}
-			else
-			 if (pagination) {
+			else {
 				query.append(TasksEntryModelImpl.ORDER_BY_JPQL);
 			}
 
@@ -9603,27 +9671,21 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 				qPos.add(assigneeUserId);
 
-				if (!pagination) {
-					list = (List<TasksEntry>)QueryUtil.list(q, getDialect(),
-							start, end, false);
-
-					Collections.sort(list);
-
-					list = Collections.unmodifiableList(list);
-				}
-				else {
-					list = (List<TasksEntry>)QueryUtil.list(q, getDialect(),
-							start, end);
-				}
+				list = (List<TasksEntry>)QueryUtil.list(
+					q, getDialect(), start, end);
 
 				cacheResult(list);
 
-				finderCache.putResult(FINDER_PATH_WITH_PAGINATION_FIND_BY_G_A_S,
-					finderArgs, list);
+				if (useFinderCache) {
+					FinderCacheUtil.putResult(
+						_finderPathWithPaginationFindByG_A_S, finderArgs, list);
+				}
 			}
 			catch (Exception e) {
-				finderCache.removeResult(FINDER_PATH_WITH_PAGINATION_FIND_BY_G_A_S,
-					finderArgs);
+				if (useFinderCache) {
+					FinderCacheUtil.removeResult(
+						_finderPathWithPaginationFindByG_A_S, finderArgs);
+				}
 
 				throw processException(e);
 			}
@@ -9644,8 +9706,11 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 */
 	@Override
 	public void removeByG_A_S(long groupId, long assigneeUserId, int status) {
-		for (TasksEntry tasksEntry : findByG_A_S(groupId, assigneeUserId,
-				status, QueryUtil.ALL_POS, QueryUtil.ALL_POS, null)) {
+		for (TasksEntry tasksEntry :
+				findByG_A_S(
+					groupId, assigneeUserId, status, QueryUtil.ALL_POS,
+					QueryUtil.ALL_POS, null)) {
+
 			remove(tasksEntry);
 		}
 	}
@@ -9660,11 +9725,12 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 */
 	@Override
 	public int countByG_A_S(long groupId, long assigneeUserId, int status) {
-		FinderPath finderPath = FINDER_PATH_COUNT_BY_G_A_S;
+		FinderPath finderPath = _finderPathCountByG_A_S;
 
-		Object[] finderArgs = new Object[] { groupId, assigneeUserId, status };
+		Object[] finderArgs = new Object[] {groupId, assigneeUserId, status};
 
-		Long count = (Long)finderCache.getResult(finderPath, finderArgs, this);
+		Long count = (Long)FinderCacheUtil.getResult(
+			finderPath, finderArgs, this);
 
 		if (count == null) {
 			StringBundler query = new StringBundler(4);
@@ -9696,10 +9762,10 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 				count = (Long)q.uniqueResult();
 
-				finderCache.putResult(finderPath, finderArgs, count);
+				FinderCacheUtil.putResult(finderPath, finderArgs, count);
 			}
 			catch (Exception e) {
-				finderCache.removeResult(finderPath, finderArgs);
+				FinderCacheUtil.removeResult(finderPath, finderArgs);
 
 				throw processException(e);
 			}
@@ -9725,17 +9791,15 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 			statuses = new int[0];
 		}
 		else if (statuses.length > 1) {
-			statuses = ArrayUtil.unique(statuses);
-
-			Arrays.sort(statuses);
+			statuses = ArrayUtil.sortedUnique(statuses);
 		}
 
 		Object[] finderArgs = new Object[] {
-				groupId, assigneeUserId, StringUtil.merge(statuses)
-			};
+			groupId, assigneeUserId, StringUtil.merge(statuses)
+		};
 
-		Long count = (Long)finderCache.getResult(FINDER_PATH_WITH_PAGINATION_COUNT_BY_G_A_S,
-				finderArgs, this);
+		Long count = (Long)FinderCacheUtil.getResult(
+			_finderPathWithPaginationCountByG_A_S, finderArgs, this);
 
 		if (count == null) {
 			StringBundler query = new StringBundler();
@@ -9758,8 +9822,9 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 				query.append(")");
 			}
 
-			query.setStringAt(removeConjunction(query.stringAt(query.index() -
-						1)), query.index() - 1);
+			query.setStringAt(
+				removeConjunction(query.stringAt(query.index() - 1)),
+				query.index() - 1);
 
 			String sql = query.toString();
 
@@ -9778,12 +9843,12 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 				count = (Long)q.uniqueResult();
 
-				finderCache.putResult(FINDER_PATH_WITH_PAGINATION_COUNT_BY_G_A_S,
-					finderArgs, count);
+				FinderCacheUtil.putResult(
+					_finderPathWithPaginationCountByG_A_S, finderArgs, count);
 			}
 			catch (Exception e) {
-				finderCache.removeResult(FINDER_PATH_WITH_PAGINATION_COUNT_BY_G_A_S,
-					finderArgs);
+				FinderCacheUtil.removeResult(
+					_finderPathWithPaginationCountByG_A_S, finderArgs);
 
 				throw processException(e);
 			}
@@ -9804,7 +9869,9 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @return the number of matching tasks entries that the user has permission to view
 	 */
 	@Override
-	public int filterCountByG_A_S(long groupId, long assigneeUserId, int status) {
+	public int filterCountByG_A_S(
+		long groupId, long assigneeUserId, int status) {
+
 		if (!InlineSQLHelperUtil.isEnabled(groupId)) {
 			return countByG_A_S(groupId, assigneeUserId, status);
 		}
@@ -9819,9 +9886,9 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 		query.append(_FINDER_COLUMN_G_A_S_STATUS_2);
 
-		String sql = InlineSQLHelperUtil.replacePermissionCheck(query.toString(),
-				TasksEntry.class.getName(),
-				_FILTER_ENTITY_TABLE_FILTER_PK_COLUMN, groupId);
+		String sql = InlineSQLHelperUtil.replacePermissionCheck(
+			query.toString(), TasksEntry.class.getName(),
+			_FILTER_ENTITY_TABLE_FILTER_PK_COLUMN, groupId);
 
 		Session session = null;
 
@@ -9830,8 +9897,8 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 			SQLQuery q = session.createSynchronizedSQLQuery(sql);
 
-			q.addScalar(COUNT_COLUMN_NAME,
-				com.liferay.portal.kernel.dao.orm.Type.LONG);
+			q.addScalar(
+				COUNT_COLUMN_NAME, com.liferay.portal.kernel.dao.orm.Type.LONG);
 
 			QueryPos qPos = QueryPos.getInstance(q);
 
@@ -9862,8 +9929,9 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @return the number of matching tasks entries that the user has permission to view
 	 */
 	@Override
-	public int filterCountByG_A_S(long groupId, long assigneeUserId,
-		int[] statuses) {
+	public int filterCountByG_A_S(
+		long groupId, long assigneeUserId, int[] statuses) {
+
 		if (!InlineSQLHelperUtil.isEnabled(groupId)) {
 			return countByG_A_S(groupId, assigneeUserId, statuses);
 		}
@@ -9872,9 +9940,7 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 			statuses = new int[0];
 		}
 		else if (statuses.length > 1) {
-			statuses = ArrayUtil.unique(statuses);
-
-			Arrays.sort(statuses);
+			statuses = ArrayUtil.sortedUnique(statuses);
 		}
 
 		StringBundler query = new StringBundler();
@@ -9897,12 +9963,13 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 			query.append(")");
 		}
 
-		query.setStringAt(removeConjunction(query.stringAt(query.index() - 1)),
+		query.setStringAt(
+			removeConjunction(query.stringAt(query.index() - 1)),
 			query.index() - 1);
 
-		String sql = InlineSQLHelperUtil.replacePermissionCheck(query.toString(),
-				TasksEntry.class.getName(),
-				_FILTER_ENTITY_TABLE_FILTER_PK_COLUMN, groupId);
+		String sql = InlineSQLHelperUtil.replacePermissionCheck(
+			query.toString(), TasksEntry.class.getName(),
+			_FILTER_ENTITY_TABLE_FILTER_PK_COLUMN, groupId);
 
 		Session session = null;
 
@@ -9911,8 +9978,8 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 			SQLQuery q = session.createSynchronizedSQLQuery(sql);
 
-			q.addScalar(COUNT_COLUMN_NAME,
-				com.liferay.portal.kernel.dao.orm.Type.LONG);
+			q.addScalar(
+				COUNT_COLUMN_NAME, com.liferay.portal.kernel.dao.orm.Type.LONG);
 
 			QueryPos qPos = QueryPos.getInstance(q);
 
@@ -9932,13 +9999,24 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 		}
 	}
 
-	private static final String _FINDER_COLUMN_G_A_S_GROUPID_2 = "tasksEntry.groupId = ? AND ";
-	private static final String _FINDER_COLUMN_G_A_S_ASSIGNEEUSERID_2 = "tasksEntry.assigneeUserId = ? AND ";
-	private static final String _FINDER_COLUMN_G_A_S_STATUS_2 = "tasksEntry.status = ?";
-	private static final String _FINDER_COLUMN_G_A_S_STATUS_7 = "tasksEntry.status IN (";
+	private static final String _FINDER_COLUMN_G_A_S_GROUPID_2 =
+		"tasksEntry.groupId = ? AND ";
+
+	private static final String _FINDER_COLUMN_G_A_S_ASSIGNEEUSERID_2 =
+		"tasksEntry.assigneeUserId = ? AND ";
+
+	private static final String _FINDER_COLUMN_G_A_S_STATUS_2 =
+		"tasksEntry.status = ?";
+
+	private static final String _FINDER_COLUMN_G_A_S_STATUS_7 =
+		"tasksEntry.status IN (";
 
 	public TasksEntryPersistenceImpl() {
 		setModelClass(TasksEntry.class);
+
+		setModelImplClass(TasksEntryImpl.class);
+		setModelPKClass(long.class);
+		setEntityCacheEnabled(TasksEntryModelImpl.ENTITY_CACHE_ENABLED);
 	}
 
 	/**
@@ -9948,8 +10026,9 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 */
 	@Override
 	public void cacheResult(TasksEntry tasksEntry) {
-		entityCache.putResult(TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
-			TasksEntryImpl.class, tasksEntry.getPrimaryKey(), tasksEntry);
+		EntityCacheUtil.putResult(
+			TasksEntryModelImpl.ENTITY_CACHE_ENABLED, TasksEntryImpl.class,
+			tasksEntry.getPrimaryKey(), tasksEntry);
 
 		tasksEntry.resetOriginalValues();
 	}
@@ -9962,9 +10041,10 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	@Override
 	public void cacheResult(List<TasksEntry> tasksEntries) {
 		for (TasksEntry tasksEntry : tasksEntries) {
-			if (entityCache.getResult(
-						TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
-						TasksEntryImpl.class, tasksEntry.getPrimaryKey()) == null) {
+			if (EntityCacheUtil.getResult(
+					TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
+					TasksEntryImpl.class, tasksEntry.getPrimaryKey()) == null) {
+
 				cacheResult(tasksEntry);
 			}
 			else {
@@ -9977,42 +10057,44 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * Clears the cache for all tasks entries.
 	 *
 	 * <p>
-	 * The {@link EntityCache} and {@link FinderCache} are both cleared by this method.
+	 * The <code>EntityCache</code> and <code>com.liferay.portal.kernel.dao.orm.FinderCache</code> are both cleared by this method.
 	 * </p>
 	 */
 	@Override
 	public void clearCache() {
-		entityCache.clearCache(TasksEntryImpl.class);
+		EntityCacheUtil.clearCache(TasksEntryImpl.class);
 
-		finderCache.clearCache(FINDER_CLASS_NAME_ENTITY);
-		finderCache.clearCache(FINDER_CLASS_NAME_LIST_WITH_PAGINATION);
-		finderCache.clearCache(FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION);
+		FinderCacheUtil.clearCache(FINDER_CLASS_NAME_ENTITY);
+		FinderCacheUtil.clearCache(FINDER_CLASS_NAME_LIST_WITH_PAGINATION);
+		FinderCacheUtil.clearCache(FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION);
 	}
 
 	/**
 	 * Clears the cache for the tasks entry.
 	 *
 	 * <p>
-	 * The {@link EntityCache} and {@link FinderCache} are both cleared by this method.
+	 * The <code>EntityCache</code> and <code>com.liferay.portal.kernel.dao.orm.FinderCache</code> are both cleared by this method.
 	 * </p>
 	 */
 	@Override
 	public void clearCache(TasksEntry tasksEntry) {
-		entityCache.removeResult(TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
-			TasksEntryImpl.class, tasksEntry.getPrimaryKey());
+		EntityCacheUtil.removeResult(
+			TasksEntryModelImpl.ENTITY_CACHE_ENABLED, TasksEntryImpl.class,
+			tasksEntry.getPrimaryKey());
 
-		finderCache.clearCache(FINDER_CLASS_NAME_LIST_WITH_PAGINATION);
-		finderCache.clearCache(FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION);
+		FinderCacheUtil.clearCache(FINDER_CLASS_NAME_LIST_WITH_PAGINATION);
+		FinderCacheUtil.clearCache(FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION);
 	}
 
 	@Override
 	public void clearCache(List<TasksEntry> tasksEntries) {
-		finderCache.clearCache(FINDER_CLASS_NAME_LIST_WITH_PAGINATION);
-		finderCache.clearCache(FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION);
+		FinderCacheUtil.clearCache(FINDER_CLASS_NAME_LIST_WITH_PAGINATION);
+		FinderCacheUtil.clearCache(FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION);
 
 		for (TasksEntry tasksEntry : tasksEntries) {
-			entityCache.removeResult(TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
-				TasksEntryImpl.class, tasksEntry.getPrimaryKey());
+			EntityCacheUtil.removeResult(
+				TasksEntryModelImpl.ENTITY_CACHE_ENABLED, TasksEntryImpl.class,
+				tasksEntry.getPrimaryKey());
 		}
 	}
 
@@ -10029,7 +10111,7 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 		tasksEntry.setNew(true);
 		tasksEntry.setPrimaryKey(tasksEntryId);
 
-		tasksEntry.setCompanyId(companyProvider.getCompanyId());
+		tasksEntry.setCompanyId(CompanyThreadLocal.getCompanyId());
 
 		return tasksEntry;
 	}
@@ -10044,6 +10126,7 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	@Override
 	public TasksEntry remove(long tasksEntryId)
 		throws NoSuchTasksEntryException {
+
 		return remove((Serializable)tasksEntryId);
 	}
 
@@ -10057,21 +10140,22 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	@Override
 	public TasksEntry remove(Serializable primaryKey)
 		throws NoSuchTasksEntryException {
+
 		Session session = null;
 
 		try {
 			session = openSession();
 
-			TasksEntry tasksEntry = (TasksEntry)session.get(TasksEntryImpl.class,
-					primaryKey);
+			TasksEntry tasksEntry = (TasksEntry)session.get(
+				TasksEntryImpl.class, primaryKey);
 
 			if (tasksEntry == null) {
 				if (_log.isDebugEnabled()) {
 					_log.debug(_NO_SUCH_ENTITY_WITH_PRIMARY_KEY + primaryKey);
 				}
 
-				throw new NoSuchTasksEntryException(_NO_SUCH_ENTITY_WITH_PRIMARY_KEY +
-					primaryKey);
+				throw new NoSuchTasksEntryException(
+					_NO_SUCH_ENTITY_WITH_PRIMARY_KEY + primaryKey);
 			}
 
 			return remove(tasksEntry);
@@ -10089,16 +10173,14 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 	@Override
 	protected TasksEntry removeImpl(TasksEntry tasksEntry) {
-		tasksEntry = toUnwrappedModel(tasksEntry);
-
 		Session session = null;
 
 		try {
 			session = openSession();
 
 			if (!session.contains(tasksEntry)) {
-				tasksEntry = (TasksEntry)session.get(TasksEntryImpl.class,
-						tasksEntry.getPrimaryKeyObj());
+				tasksEntry = (TasksEntry)session.get(
+					TasksEntryImpl.class, tasksEntry.getPrimaryKeyObj());
 			}
 
 			if (tasksEntry != null) {
@@ -10121,13 +10203,29 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 	@Override
 	public TasksEntry updateImpl(TasksEntry tasksEntry) {
-		tasksEntry = toUnwrappedModel(tasksEntry);
-
 		boolean isNew = tasksEntry.isNew();
 
-		TasksEntryModelImpl tasksEntryModelImpl = (TasksEntryModelImpl)tasksEntry;
+		if (!(tasksEntry instanceof TasksEntryModelImpl)) {
+			InvocationHandler invocationHandler = null;
 
-		ServiceContext serviceContext = ServiceContextThreadLocal.getServiceContext();
+			if (ProxyUtil.isProxyClass(tasksEntry.getClass())) {
+				invocationHandler = ProxyUtil.getInvocationHandler(tasksEntry);
+
+				throw new IllegalArgumentException(
+					"Implement ModelWrapper in tasksEntry proxy " +
+						invocationHandler.getClass());
+			}
+
+			throw new IllegalArgumentException(
+				"Implement ModelWrapper in custom TasksEntry implementation " +
+					tasksEntry.getClass());
+		}
+
+		TasksEntryModelImpl tasksEntryModelImpl =
+			(TasksEntryModelImpl)tasksEntry;
+
+		ServiceContext serviceContext =
+			ServiceContextThreadLocal.getServiceContext();
 
 		Date now = new Date();
 
@@ -10170,370 +10268,365 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 			closeSession(session);
 		}
 
-		finderCache.clearCache(FINDER_CLASS_NAME_LIST_WITH_PAGINATION);
+		FinderCacheUtil.clearCache(FINDER_CLASS_NAME_LIST_WITH_PAGINATION);
 
 		if (!TasksEntryModelImpl.COLUMN_BITMASK_ENABLED) {
-			finderCache.clearCache(FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION);
+			FinderCacheUtil.clearCache(
+				FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION);
 		}
-		else
-		 if (isNew) {
-			Object[] args = new Object[] { tasksEntryModelImpl.getGroupId() };
+		else if (isNew) {
+			Object[] args = new Object[] {tasksEntryModelImpl.getGroupId()};
 
-			finderCache.removeResult(FINDER_PATH_COUNT_BY_GROUPID, args);
-			finderCache.removeResult(FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_GROUPID,
-				args);
+			FinderCacheUtil.removeResult(_finderPathCountByGroupId, args);
+			FinderCacheUtil.removeResult(
+				_finderPathWithoutPaginationFindByGroupId, args);
 
-			args = new Object[] { tasksEntryModelImpl.getUserId() };
+			args = new Object[] {tasksEntryModelImpl.getUserId()};
 
-			finderCache.removeResult(FINDER_PATH_COUNT_BY_USERID, args);
-			finderCache.removeResult(FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_USERID,
-				args);
+			FinderCacheUtil.removeResult(_finderPathCountByUserId, args);
+			FinderCacheUtil.removeResult(
+				_finderPathWithoutPaginationFindByUserId, args);
 
-			args = new Object[] { tasksEntryModelImpl.getAssigneeUserId() };
+			args = new Object[] {tasksEntryModelImpl.getAssigneeUserId()};
 
-			finderCache.removeResult(FINDER_PATH_COUNT_BY_ASSIGNEEUSERID, args);
-			finderCache.removeResult(FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_ASSIGNEEUSERID,
-				args);
+			FinderCacheUtil.removeResult(
+				_finderPathCountByAssigneeUserId, args);
+			FinderCacheUtil.removeResult(
+				_finderPathWithoutPaginationFindByAssigneeUserId, args);
 
-			args = new Object[] { tasksEntryModelImpl.getResolverUserId() };
+			args = new Object[] {tasksEntryModelImpl.getResolverUserId()};
 
-			finderCache.removeResult(FINDER_PATH_COUNT_BY_RESOLVERUSERID, args);
-			finderCache.removeResult(FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_RESOLVERUSERID,
-				args);
+			FinderCacheUtil.removeResult(
+				_finderPathCountByResolverUserId, args);
+			FinderCacheUtil.removeResult(
+				_finderPathWithoutPaginationFindByResolverUserId, args);
 
 			args = new Object[] {
+				tasksEntryModelImpl.getGroupId(),
+				tasksEntryModelImpl.getUserId()
+			};
+
+			FinderCacheUtil.removeResult(_finderPathCountByG_U, args);
+			FinderCacheUtil.removeResult(
+				_finderPathWithoutPaginationFindByG_U, args);
+
+			args = new Object[] {
+				tasksEntryModelImpl.getGroupId(),
+				tasksEntryModelImpl.getAssigneeUserId()
+			};
+
+			FinderCacheUtil.removeResult(_finderPathCountByG_A, args);
+			FinderCacheUtil.removeResult(
+				_finderPathWithoutPaginationFindByG_A, args);
+
+			args = new Object[] {
+				tasksEntryModelImpl.getGroupId(),
+				tasksEntryModelImpl.getResolverUserId()
+			};
+
+			FinderCacheUtil.removeResult(_finderPathCountByG_R, args);
+			FinderCacheUtil.removeResult(
+				_finderPathWithoutPaginationFindByG_R, args);
+
+			args = new Object[] {
+				tasksEntryModelImpl.getUserId(), tasksEntryModelImpl.getStatus()
+			};
+
+			FinderCacheUtil.removeResult(_finderPathCountByU_S, args);
+			FinderCacheUtil.removeResult(
+				_finderPathWithoutPaginationFindByU_S, args);
+
+			args = new Object[] {
+				tasksEntryModelImpl.getAssigneeUserId(),
+				tasksEntryModelImpl.getStatus()
+			};
+
+			FinderCacheUtil.removeResult(_finderPathCountByA_S, args);
+			FinderCacheUtil.removeResult(
+				_finderPathWithoutPaginationFindByA_S, args);
+
+			args = new Object[] {
+				tasksEntryModelImpl.getGroupId(),
+				tasksEntryModelImpl.getUserId(), tasksEntryModelImpl.getStatus()
+			};
+
+			FinderCacheUtil.removeResult(_finderPathCountByG_U_S, args);
+			FinderCacheUtil.removeResult(
+				_finderPathWithoutPaginationFindByG_U_S, args);
+
+			args = new Object[] {
+				tasksEntryModelImpl.getGroupId(),
+				tasksEntryModelImpl.getAssigneeUserId(),
+				tasksEntryModelImpl.getStatus()
+			};
+
+			FinderCacheUtil.removeResult(_finderPathCountByG_A_S, args);
+			FinderCacheUtil.removeResult(
+				_finderPathWithoutPaginationFindByG_A_S, args);
+
+			FinderCacheUtil.removeResult(
+				_finderPathCountAll, FINDER_ARGS_EMPTY);
+			FinderCacheUtil.removeResult(
+				_finderPathWithoutPaginationFindAll, FINDER_ARGS_EMPTY);
+		}
+		else {
+			if ((tasksEntryModelImpl.getColumnBitmask() &
+				 _finderPathWithoutPaginationFindByGroupId.
+					 getColumnBitmask()) != 0) {
+
+				Object[] args = new Object[] {
+					tasksEntryModelImpl.getOriginalGroupId()
+				};
+
+				FinderCacheUtil.removeResult(_finderPathCountByGroupId, args);
+				FinderCacheUtil.removeResult(
+					_finderPathWithoutPaginationFindByGroupId, args);
+
+				args = new Object[] {tasksEntryModelImpl.getGroupId()};
+
+				FinderCacheUtil.removeResult(_finderPathCountByGroupId, args);
+				FinderCacheUtil.removeResult(
+					_finderPathWithoutPaginationFindByGroupId, args);
+			}
+
+			if ((tasksEntryModelImpl.getColumnBitmask() &
+				 _finderPathWithoutPaginationFindByUserId.getColumnBitmask()) !=
+					 0) {
+
+				Object[] args = new Object[] {
+					tasksEntryModelImpl.getOriginalUserId()
+				};
+
+				FinderCacheUtil.removeResult(_finderPathCountByUserId, args);
+				FinderCacheUtil.removeResult(
+					_finderPathWithoutPaginationFindByUserId, args);
+
+				args = new Object[] {tasksEntryModelImpl.getUserId()};
+
+				FinderCacheUtil.removeResult(_finderPathCountByUserId, args);
+				FinderCacheUtil.removeResult(
+					_finderPathWithoutPaginationFindByUserId, args);
+			}
+
+			if ((tasksEntryModelImpl.getColumnBitmask() &
+				 _finderPathWithoutPaginationFindByAssigneeUserId.
+					 getColumnBitmask()) != 0) {
+
+				Object[] args = new Object[] {
+					tasksEntryModelImpl.getOriginalAssigneeUserId()
+				};
+
+				FinderCacheUtil.removeResult(
+					_finderPathCountByAssigneeUserId, args);
+				FinderCacheUtil.removeResult(
+					_finderPathWithoutPaginationFindByAssigneeUserId, args);
+
+				args = new Object[] {tasksEntryModelImpl.getAssigneeUserId()};
+
+				FinderCacheUtil.removeResult(
+					_finderPathCountByAssigneeUserId, args);
+				FinderCacheUtil.removeResult(
+					_finderPathWithoutPaginationFindByAssigneeUserId, args);
+			}
+
+			if ((tasksEntryModelImpl.getColumnBitmask() &
+				 _finderPathWithoutPaginationFindByResolverUserId.
+					 getColumnBitmask()) != 0) {
+
+				Object[] args = new Object[] {
+					tasksEntryModelImpl.getOriginalResolverUserId()
+				};
+
+				FinderCacheUtil.removeResult(
+					_finderPathCountByResolverUserId, args);
+				FinderCacheUtil.removeResult(
+					_finderPathWithoutPaginationFindByResolverUserId, args);
+
+				args = new Object[] {tasksEntryModelImpl.getResolverUserId()};
+
+				FinderCacheUtil.removeResult(
+					_finderPathCountByResolverUserId, args);
+				FinderCacheUtil.removeResult(
+					_finderPathWithoutPaginationFindByResolverUserId, args);
+			}
+
+			if ((tasksEntryModelImpl.getColumnBitmask() &
+				 _finderPathWithoutPaginationFindByG_U.getColumnBitmask()) !=
+					 0) {
+
+				Object[] args = new Object[] {
+					tasksEntryModelImpl.getOriginalGroupId(),
+					tasksEntryModelImpl.getOriginalUserId()
+				};
+
+				FinderCacheUtil.removeResult(_finderPathCountByG_U, args);
+				FinderCacheUtil.removeResult(
+					_finderPathWithoutPaginationFindByG_U, args);
+
+				args = new Object[] {
 					tasksEntryModelImpl.getGroupId(),
 					tasksEntryModelImpl.getUserId()
 				};
 
-			finderCache.removeResult(FINDER_PATH_COUNT_BY_G_U, args);
-			finderCache.removeResult(FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_G_U,
-				args);
+				FinderCacheUtil.removeResult(_finderPathCountByG_U, args);
+				FinderCacheUtil.removeResult(
+					_finderPathWithoutPaginationFindByG_U, args);
+			}
 
-			args = new Object[] {
+			if ((tasksEntryModelImpl.getColumnBitmask() &
+				 _finderPathWithoutPaginationFindByG_A.getColumnBitmask()) !=
+					 0) {
+
+				Object[] args = new Object[] {
+					tasksEntryModelImpl.getOriginalGroupId(),
+					tasksEntryModelImpl.getOriginalAssigneeUserId()
+				};
+
+				FinderCacheUtil.removeResult(_finderPathCountByG_A, args);
+				FinderCacheUtil.removeResult(
+					_finderPathWithoutPaginationFindByG_A, args);
+
+				args = new Object[] {
 					tasksEntryModelImpl.getGroupId(),
 					tasksEntryModelImpl.getAssigneeUserId()
 				};
 
-			finderCache.removeResult(FINDER_PATH_COUNT_BY_G_A, args);
-			finderCache.removeResult(FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_G_A,
-				args);
+				FinderCacheUtil.removeResult(_finderPathCountByG_A, args);
+				FinderCacheUtil.removeResult(
+					_finderPathWithoutPaginationFindByG_A, args);
+			}
 
-			args = new Object[] {
+			if ((tasksEntryModelImpl.getColumnBitmask() &
+				 _finderPathWithoutPaginationFindByG_R.getColumnBitmask()) !=
+					 0) {
+
+				Object[] args = new Object[] {
+					tasksEntryModelImpl.getOriginalGroupId(),
+					tasksEntryModelImpl.getOriginalResolverUserId()
+				};
+
+				FinderCacheUtil.removeResult(_finderPathCountByG_R, args);
+				FinderCacheUtil.removeResult(
+					_finderPathWithoutPaginationFindByG_R, args);
+
+				args = new Object[] {
 					tasksEntryModelImpl.getGroupId(),
 					tasksEntryModelImpl.getResolverUserId()
 				};
 
-			finderCache.removeResult(FINDER_PATH_COUNT_BY_G_R, args);
-			finderCache.removeResult(FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_G_R,
-				args);
+				FinderCacheUtil.removeResult(_finderPathCountByG_R, args);
+				FinderCacheUtil.removeResult(
+					_finderPathWithoutPaginationFindByG_R, args);
+			}
 
-			args = new Object[] {
+			if ((tasksEntryModelImpl.getColumnBitmask() &
+				 _finderPathWithoutPaginationFindByU_S.getColumnBitmask()) !=
+					 0) {
+
+				Object[] args = new Object[] {
+					tasksEntryModelImpl.getOriginalUserId(),
+					tasksEntryModelImpl.getOriginalStatus()
+				};
+
+				FinderCacheUtil.removeResult(_finderPathCountByU_S, args);
+				FinderCacheUtil.removeResult(
+					_finderPathWithoutPaginationFindByU_S, args);
+
+				args = new Object[] {
 					tasksEntryModelImpl.getUserId(),
 					tasksEntryModelImpl.getStatus()
 				};
 
-			finderCache.removeResult(FINDER_PATH_COUNT_BY_U_S, args);
-			finderCache.removeResult(FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_U_S,
-				args);
+				FinderCacheUtil.removeResult(_finderPathCountByU_S, args);
+				FinderCacheUtil.removeResult(
+					_finderPathWithoutPaginationFindByU_S, args);
+			}
 
-			args = new Object[] {
+			if ((tasksEntryModelImpl.getColumnBitmask() &
+				 _finderPathWithoutPaginationFindByA_S.getColumnBitmask()) !=
+					 0) {
+
+				Object[] args = new Object[] {
+					tasksEntryModelImpl.getOriginalAssigneeUserId(),
+					tasksEntryModelImpl.getOriginalStatus()
+				};
+
+				FinderCacheUtil.removeResult(_finderPathCountByA_S, args);
+				FinderCacheUtil.removeResult(
+					_finderPathWithoutPaginationFindByA_S, args);
+
+				args = new Object[] {
 					tasksEntryModelImpl.getAssigneeUserId(),
 					tasksEntryModelImpl.getStatus()
 				};
 
-			finderCache.removeResult(FINDER_PATH_COUNT_BY_A_S, args);
-			finderCache.removeResult(FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_A_S,
-				args);
+				FinderCacheUtil.removeResult(_finderPathCountByA_S, args);
+				FinderCacheUtil.removeResult(
+					_finderPathWithoutPaginationFindByA_S, args);
+			}
 
-			args = new Object[] {
+			if ((tasksEntryModelImpl.getColumnBitmask() &
+				 _finderPathWithoutPaginationFindByG_U_S.getColumnBitmask()) !=
+					 0) {
+
+				Object[] args = new Object[] {
+					tasksEntryModelImpl.getOriginalGroupId(),
+					tasksEntryModelImpl.getOriginalUserId(),
+					tasksEntryModelImpl.getOriginalStatus()
+				};
+
+				FinderCacheUtil.removeResult(_finderPathCountByG_U_S, args);
+				FinderCacheUtil.removeResult(
+					_finderPathWithoutPaginationFindByG_U_S, args);
+
+				args = new Object[] {
 					tasksEntryModelImpl.getGroupId(),
 					tasksEntryModelImpl.getUserId(),
 					tasksEntryModelImpl.getStatus()
 				};
 
-			finderCache.removeResult(FINDER_PATH_COUNT_BY_G_U_S, args);
-			finderCache.removeResult(FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_G_U_S,
-				args);
+				FinderCacheUtil.removeResult(_finderPathCountByG_U_S, args);
+				FinderCacheUtil.removeResult(
+					_finderPathWithoutPaginationFindByG_U_S, args);
+			}
 
-			args = new Object[] {
+			if ((tasksEntryModelImpl.getColumnBitmask() &
+				 _finderPathWithoutPaginationFindByG_A_S.getColumnBitmask()) !=
+					 0) {
+
+				Object[] args = new Object[] {
+					tasksEntryModelImpl.getOriginalGroupId(),
+					tasksEntryModelImpl.getOriginalAssigneeUserId(),
+					tasksEntryModelImpl.getOriginalStatus()
+				};
+
+				FinderCacheUtil.removeResult(_finderPathCountByG_A_S, args);
+				FinderCacheUtil.removeResult(
+					_finderPathWithoutPaginationFindByG_A_S, args);
+
+				args = new Object[] {
 					tasksEntryModelImpl.getGroupId(),
 					tasksEntryModelImpl.getAssigneeUserId(),
 					tasksEntryModelImpl.getStatus()
 				};
 
-			finderCache.removeResult(FINDER_PATH_COUNT_BY_G_A_S, args);
-			finderCache.removeResult(FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_G_A_S,
-				args);
-
-			finderCache.removeResult(FINDER_PATH_COUNT_ALL, FINDER_ARGS_EMPTY);
-			finderCache.removeResult(FINDER_PATH_WITHOUT_PAGINATION_FIND_ALL,
-				FINDER_ARGS_EMPTY);
-		}
-
-		else {
-			if ((tasksEntryModelImpl.getColumnBitmask() &
-					FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_GROUPID.getColumnBitmask()) != 0) {
-				Object[] args = new Object[] {
-						tasksEntryModelImpl.getOriginalGroupId()
-					};
-
-				finderCache.removeResult(FINDER_PATH_COUNT_BY_GROUPID, args);
-				finderCache.removeResult(FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_GROUPID,
-					args);
-
-				args = new Object[] { tasksEntryModelImpl.getGroupId() };
-
-				finderCache.removeResult(FINDER_PATH_COUNT_BY_GROUPID, args);
-				finderCache.removeResult(FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_GROUPID,
-					args);
-			}
-
-			if ((tasksEntryModelImpl.getColumnBitmask() &
-					FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_USERID.getColumnBitmask()) != 0) {
-				Object[] args = new Object[] {
-						tasksEntryModelImpl.getOriginalUserId()
-					};
-
-				finderCache.removeResult(FINDER_PATH_COUNT_BY_USERID, args);
-				finderCache.removeResult(FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_USERID,
-					args);
-
-				args = new Object[] { tasksEntryModelImpl.getUserId() };
-
-				finderCache.removeResult(FINDER_PATH_COUNT_BY_USERID, args);
-				finderCache.removeResult(FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_USERID,
-					args);
-			}
-
-			if ((tasksEntryModelImpl.getColumnBitmask() &
-					FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_ASSIGNEEUSERID.getColumnBitmask()) != 0) {
-				Object[] args = new Object[] {
-						tasksEntryModelImpl.getOriginalAssigneeUserId()
-					};
-
-				finderCache.removeResult(FINDER_PATH_COUNT_BY_ASSIGNEEUSERID,
-					args);
-				finderCache.removeResult(FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_ASSIGNEEUSERID,
-					args);
-
-				args = new Object[] { tasksEntryModelImpl.getAssigneeUserId() };
-
-				finderCache.removeResult(FINDER_PATH_COUNT_BY_ASSIGNEEUSERID,
-					args);
-				finderCache.removeResult(FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_ASSIGNEEUSERID,
-					args);
-			}
-
-			if ((tasksEntryModelImpl.getColumnBitmask() &
-					FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_RESOLVERUSERID.getColumnBitmask()) != 0) {
-				Object[] args = new Object[] {
-						tasksEntryModelImpl.getOriginalResolverUserId()
-					};
-
-				finderCache.removeResult(FINDER_PATH_COUNT_BY_RESOLVERUSERID,
-					args);
-				finderCache.removeResult(FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_RESOLVERUSERID,
-					args);
-
-				args = new Object[] { tasksEntryModelImpl.getResolverUserId() };
-
-				finderCache.removeResult(FINDER_PATH_COUNT_BY_RESOLVERUSERID,
-					args);
-				finderCache.removeResult(FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_RESOLVERUSERID,
-					args);
-			}
-
-			if ((tasksEntryModelImpl.getColumnBitmask() &
-					FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_G_U.getColumnBitmask()) != 0) {
-				Object[] args = new Object[] {
-						tasksEntryModelImpl.getOriginalGroupId(),
-						tasksEntryModelImpl.getOriginalUserId()
-					};
-
-				finderCache.removeResult(FINDER_PATH_COUNT_BY_G_U, args);
-				finderCache.removeResult(FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_G_U,
-					args);
-
-				args = new Object[] {
-						tasksEntryModelImpl.getGroupId(),
-						tasksEntryModelImpl.getUserId()
-					};
-
-				finderCache.removeResult(FINDER_PATH_COUNT_BY_G_U, args);
-				finderCache.removeResult(FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_G_U,
-					args);
-			}
-
-			if ((tasksEntryModelImpl.getColumnBitmask() &
-					FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_G_A.getColumnBitmask()) != 0) {
-				Object[] args = new Object[] {
-						tasksEntryModelImpl.getOriginalGroupId(),
-						tasksEntryModelImpl.getOriginalAssigneeUserId()
-					};
-
-				finderCache.removeResult(FINDER_PATH_COUNT_BY_G_A, args);
-				finderCache.removeResult(FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_G_A,
-					args);
-
-				args = new Object[] {
-						tasksEntryModelImpl.getGroupId(),
-						tasksEntryModelImpl.getAssigneeUserId()
-					};
-
-				finderCache.removeResult(FINDER_PATH_COUNT_BY_G_A, args);
-				finderCache.removeResult(FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_G_A,
-					args);
-			}
-
-			if ((tasksEntryModelImpl.getColumnBitmask() &
-					FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_G_R.getColumnBitmask()) != 0) {
-				Object[] args = new Object[] {
-						tasksEntryModelImpl.getOriginalGroupId(),
-						tasksEntryModelImpl.getOriginalResolverUserId()
-					};
-
-				finderCache.removeResult(FINDER_PATH_COUNT_BY_G_R, args);
-				finderCache.removeResult(FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_G_R,
-					args);
-
-				args = new Object[] {
-						tasksEntryModelImpl.getGroupId(),
-						tasksEntryModelImpl.getResolverUserId()
-					};
-
-				finderCache.removeResult(FINDER_PATH_COUNT_BY_G_R, args);
-				finderCache.removeResult(FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_G_R,
-					args);
-			}
-
-			if ((tasksEntryModelImpl.getColumnBitmask() &
-					FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_U_S.getColumnBitmask()) != 0) {
-				Object[] args = new Object[] {
-						tasksEntryModelImpl.getOriginalUserId(),
-						tasksEntryModelImpl.getOriginalStatus()
-					};
-
-				finderCache.removeResult(FINDER_PATH_COUNT_BY_U_S, args);
-				finderCache.removeResult(FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_U_S,
-					args);
-
-				args = new Object[] {
-						tasksEntryModelImpl.getUserId(),
-						tasksEntryModelImpl.getStatus()
-					};
-
-				finderCache.removeResult(FINDER_PATH_COUNT_BY_U_S, args);
-				finderCache.removeResult(FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_U_S,
-					args);
-			}
-
-			if ((tasksEntryModelImpl.getColumnBitmask() &
-					FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_A_S.getColumnBitmask()) != 0) {
-				Object[] args = new Object[] {
-						tasksEntryModelImpl.getOriginalAssigneeUserId(),
-						tasksEntryModelImpl.getOriginalStatus()
-					};
-
-				finderCache.removeResult(FINDER_PATH_COUNT_BY_A_S, args);
-				finderCache.removeResult(FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_A_S,
-					args);
-
-				args = new Object[] {
-						tasksEntryModelImpl.getAssigneeUserId(),
-						tasksEntryModelImpl.getStatus()
-					};
-
-				finderCache.removeResult(FINDER_PATH_COUNT_BY_A_S, args);
-				finderCache.removeResult(FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_A_S,
-					args);
-			}
-
-			if ((tasksEntryModelImpl.getColumnBitmask() &
-					FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_G_U_S.getColumnBitmask()) != 0) {
-				Object[] args = new Object[] {
-						tasksEntryModelImpl.getOriginalGroupId(),
-						tasksEntryModelImpl.getOriginalUserId(),
-						tasksEntryModelImpl.getOriginalStatus()
-					};
-
-				finderCache.removeResult(FINDER_PATH_COUNT_BY_G_U_S, args);
-				finderCache.removeResult(FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_G_U_S,
-					args);
-
-				args = new Object[] {
-						tasksEntryModelImpl.getGroupId(),
-						tasksEntryModelImpl.getUserId(),
-						tasksEntryModelImpl.getStatus()
-					};
-
-				finderCache.removeResult(FINDER_PATH_COUNT_BY_G_U_S, args);
-				finderCache.removeResult(FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_G_U_S,
-					args);
-			}
-
-			if ((tasksEntryModelImpl.getColumnBitmask() &
-					FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_G_A_S.getColumnBitmask()) != 0) {
-				Object[] args = new Object[] {
-						tasksEntryModelImpl.getOriginalGroupId(),
-						tasksEntryModelImpl.getOriginalAssigneeUserId(),
-						tasksEntryModelImpl.getOriginalStatus()
-					};
-
-				finderCache.removeResult(FINDER_PATH_COUNT_BY_G_A_S, args);
-				finderCache.removeResult(FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_G_A_S,
-					args);
-
-				args = new Object[] {
-						tasksEntryModelImpl.getGroupId(),
-						tasksEntryModelImpl.getAssigneeUserId(),
-						tasksEntryModelImpl.getStatus()
-					};
-
-				finderCache.removeResult(FINDER_PATH_COUNT_BY_G_A_S, args);
-				finderCache.removeResult(FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_G_A_S,
-					args);
+				FinderCacheUtil.removeResult(_finderPathCountByG_A_S, args);
+				FinderCacheUtil.removeResult(
+					_finderPathWithoutPaginationFindByG_A_S, args);
 			}
 		}
 
-		entityCache.putResult(TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
-			TasksEntryImpl.class, tasksEntry.getPrimaryKey(), tasksEntry, false);
+		EntityCacheUtil.putResult(
+			TasksEntryModelImpl.ENTITY_CACHE_ENABLED, TasksEntryImpl.class,
+			tasksEntry.getPrimaryKey(), tasksEntry, false);
 
 		tasksEntry.resetOriginalValues();
 
 		return tasksEntry;
 	}
 
-	protected TasksEntry toUnwrappedModel(TasksEntry tasksEntry) {
-		if (tasksEntry instanceof TasksEntryImpl) {
-			return tasksEntry;
-		}
-
-		TasksEntryImpl tasksEntryImpl = new TasksEntryImpl();
-
-		tasksEntryImpl.setNew(tasksEntry.isNew());
-		tasksEntryImpl.setPrimaryKey(tasksEntry.getPrimaryKey());
-
-		tasksEntryImpl.setTasksEntryId(tasksEntry.getTasksEntryId());
-		tasksEntryImpl.setGroupId(tasksEntry.getGroupId());
-		tasksEntryImpl.setCompanyId(tasksEntry.getCompanyId());
-		tasksEntryImpl.setUserId(tasksEntry.getUserId());
-		tasksEntryImpl.setUserName(tasksEntry.getUserName());
-		tasksEntryImpl.setCreateDate(tasksEntry.getCreateDate());
-		tasksEntryImpl.setModifiedDate(tasksEntry.getModifiedDate());
-		tasksEntryImpl.setTitle(tasksEntry.getTitle());
-		tasksEntryImpl.setPriority(tasksEntry.getPriority());
-		tasksEntryImpl.setAssigneeUserId(tasksEntry.getAssigneeUserId());
-		tasksEntryImpl.setResolverUserId(tasksEntry.getResolverUserId());
-		tasksEntryImpl.setDueDate(tasksEntry.getDueDate());
-		tasksEntryImpl.setFinishDate(tasksEntry.getFinishDate());
-		tasksEntryImpl.setStatus(tasksEntry.getStatus());
-
-		return tasksEntryImpl;
-	}
-
 	/**
-	 * Returns the tasks entry with the primary key or throws a {@link com.liferay.portal.kernel.exception.NoSuchModelException} if it could not be found.
+	 * Returns the tasks entry with the primary key or throws a <code>com.liferay.portal.kernel.exception.NoSuchModelException</code> if it could not be found.
 	 *
 	 * @param primaryKey the primary key of the tasks entry
 	 * @return the tasks entry
@@ -10542,6 +10635,7 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	@Override
 	public TasksEntry findByPrimaryKey(Serializable primaryKey)
 		throws NoSuchTasksEntryException {
+
 		TasksEntry tasksEntry = fetchByPrimaryKey(primaryKey);
 
 		if (tasksEntry == null) {
@@ -10549,15 +10643,15 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 				_log.debug(_NO_SUCH_ENTITY_WITH_PRIMARY_KEY + primaryKey);
 			}
 
-			throw new NoSuchTasksEntryException(_NO_SUCH_ENTITY_WITH_PRIMARY_KEY +
-				primaryKey);
+			throw new NoSuchTasksEntryException(
+				_NO_SUCH_ENTITY_WITH_PRIMARY_KEY + primaryKey);
 		}
 
 		return tasksEntry;
 	}
 
 	/**
-	 * Returns the tasks entry with the primary key or throws a {@link NoSuchTasksEntryException} if it could not be found.
+	 * Returns the tasks entry with the primary key or throws a <code>NoSuchTasksEntryException</code> if it could not be found.
 	 *
 	 * @param tasksEntryId the primary key of the tasks entry
 	 * @return the tasks entry
@@ -10566,55 +10660,8 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	@Override
 	public TasksEntry findByPrimaryKey(long tasksEntryId)
 		throws NoSuchTasksEntryException {
+
 		return findByPrimaryKey((Serializable)tasksEntryId);
-	}
-
-	/**
-	 * Returns the tasks entry with the primary key or returns <code>null</code> if it could not be found.
-	 *
-	 * @param primaryKey the primary key of the tasks entry
-	 * @return the tasks entry, or <code>null</code> if a tasks entry with the primary key could not be found
-	 */
-	@Override
-	public TasksEntry fetchByPrimaryKey(Serializable primaryKey) {
-		Serializable serializable = entityCache.getResult(TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
-				TasksEntryImpl.class, primaryKey);
-
-		if (serializable == nullModel) {
-			return null;
-		}
-
-		TasksEntry tasksEntry = (TasksEntry)serializable;
-
-		if (tasksEntry == null) {
-			Session session = null;
-
-			try {
-				session = openSession();
-
-				tasksEntry = (TasksEntry)session.get(TasksEntryImpl.class,
-						primaryKey);
-
-				if (tasksEntry != null) {
-					cacheResult(tasksEntry);
-				}
-				else {
-					entityCache.putResult(TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
-						TasksEntryImpl.class, primaryKey, nullModel);
-				}
-			}
-			catch (Exception e) {
-				entityCache.removeResult(TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
-					TasksEntryImpl.class, primaryKey);
-
-				throw processException(e);
-			}
-			finally {
-				closeSession(session);
-			}
-		}
-
-		return tasksEntry;
 	}
 
 	/**
@@ -10626,100 +10673,6 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	@Override
 	public TasksEntry fetchByPrimaryKey(long tasksEntryId) {
 		return fetchByPrimaryKey((Serializable)tasksEntryId);
-	}
-
-	@Override
-	public Map<Serializable, TasksEntry> fetchByPrimaryKeys(
-		Set<Serializable> primaryKeys) {
-		if (primaryKeys.isEmpty()) {
-			return Collections.emptyMap();
-		}
-
-		Map<Serializable, TasksEntry> map = new HashMap<Serializable, TasksEntry>();
-
-		if (primaryKeys.size() == 1) {
-			Iterator<Serializable> iterator = primaryKeys.iterator();
-
-			Serializable primaryKey = iterator.next();
-
-			TasksEntry tasksEntry = fetchByPrimaryKey(primaryKey);
-
-			if (tasksEntry != null) {
-				map.put(primaryKey, tasksEntry);
-			}
-
-			return map;
-		}
-
-		Set<Serializable> uncachedPrimaryKeys = null;
-
-		for (Serializable primaryKey : primaryKeys) {
-			Serializable serializable = entityCache.getResult(TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
-					TasksEntryImpl.class, primaryKey);
-
-			if (serializable != nullModel) {
-				if (serializable == null) {
-					if (uncachedPrimaryKeys == null) {
-						uncachedPrimaryKeys = new HashSet<Serializable>();
-					}
-
-					uncachedPrimaryKeys.add(primaryKey);
-				}
-				else {
-					map.put(primaryKey, (TasksEntry)serializable);
-				}
-			}
-		}
-
-		if (uncachedPrimaryKeys == null) {
-			return map;
-		}
-
-		StringBundler query = new StringBundler((uncachedPrimaryKeys.size() * 2) +
-				1);
-
-		query.append(_SQL_SELECT_TASKSENTRY_WHERE_PKS_IN);
-
-		for (Serializable primaryKey : uncachedPrimaryKeys) {
-			query.append((long)primaryKey);
-
-			query.append(",");
-		}
-
-		query.setIndex(query.index() - 1);
-
-		query.append(")");
-
-		String sql = query.toString();
-
-		Session session = null;
-
-		try {
-			session = openSession();
-
-			Query q = session.createQuery(sql);
-
-			for (TasksEntry tasksEntry : (List<TasksEntry>)q.list()) {
-				map.put(tasksEntry.getPrimaryKeyObj(), tasksEntry);
-
-				cacheResult(tasksEntry);
-
-				uncachedPrimaryKeys.remove(tasksEntry.getPrimaryKeyObj());
-			}
-
-			for (Serializable primaryKey : uncachedPrimaryKeys) {
-				entityCache.putResult(TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
-					TasksEntryImpl.class, primaryKey, nullModel);
-			}
-		}
-		catch (Exception e) {
-			throw processException(e);
-		}
-		finally {
-			closeSession(session);
-		}
-
-		return map;
 	}
 
 	/**
@@ -10736,7 +10689,7 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * Returns a range of all the tasks entries.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link TasksEntryModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>TasksEntryModelImpl</code>.
 	 * </p>
 	 *
 	 * @param start the lower bound of the range of tasks entries
@@ -10752,7 +10705,7 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * Returns an ordered range of all the tasks entries.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link TasksEntryModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>TasksEntryModelImpl</code>.
 	 * </p>
 	 *
 	 * @param start the lower bound of the range of tasks entries
@@ -10761,8 +10714,9 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * @return the ordered range of tasks entries
 	 */
 	@Override
-	public List<TasksEntry> findAll(int start, int end,
-		OrderByComparator<TasksEntry> orderByComparator) {
+	public List<TasksEntry> findAll(
+		int start, int end, OrderByComparator<TasksEntry> orderByComparator) {
+
 		return findAll(start, end, orderByComparator, true);
 	}
 
@@ -10770,39 +10724,41 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * Returns an ordered range of all the tasks entries.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link TasksEntryModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>TasksEntryModelImpl</code>.
 	 * </p>
 	 *
 	 * @param start the lower bound of the range of tasks entries
 	 * @param end the upper bound of the range of tasks entries (not inclusive)
 	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
-	 * @param retrieveFromCache whether to retrieve from the finder cache
+	 * @param useFinderCache whether to use the finder cache
 	 * @return the ordered range of tasks entries
 	 */
 	@Override
-	public List<TasksEntry> findAll(int start, int end,
-		OrderByComparator<TasksEntry> orderByComparator,
-		boolean retrieveFromCache) {
-		boolean pagination = true;
+	public List<TasksEntry> findAll(
+		int start, int end, OrderByComparator<TasksEntry> orderByComparator,
+		boolean useFinderCache) {
+
 		FinderPath finderPath = null;
 		Object[] finderArgs = null;
 
 		if ((start == QueryUtil.ALL_POS) && (end == QueryUtil.ALL_POS) &&
-				(orderByComparator == null)) {
-			pagination = false;
-			finderPath = FINDER_PATH_WITHOUT_PAGINATION_FIND_ALL;
-			finderArgs = FINDER_ARGS_EMPTY;
+			(orderByComparator == null)) {
+
+			if (useFinderCache) {
+				finderPath = _finderPathWithoutPaginationFindAll;
+				finderArgs = FINDER_ARGS_EMPTY;
+			}
 		}
-		else {
-			finderPath = FINDER_PATH_WITH_PAGINATION_FIND_ALL;
-			finderArgs = new Object[] { start, end, orderByComparator };
+		else if (useFinderCache) {
+			finderPath = _finderPathWithPaginationFindAll;
+			finderArgs = new Object[] {start, end, orderByComparator};
 		}
 
 		List<TasksEntry> list = null;
 
-		if (retrieveFromCache) {
-			list = (List<TasksEntry>)finderCache.getResult(finderPath,
-					finderArgs, this);
+		if (useFinderCache) {
+			list = (List<TasksEntry>)FinderCacheUtil.getResult(
+				finderPath, finderArgs, this);
 		}
 
 		if (list == null) {
@@ -10810,22 +10766,20 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 			String sql = null;
 
 			if (orderByComparator != null) {
-				query = new StringBundler(2 +
-						(orderByComparator.getOrderByFields().length * 2));
+				query = new StringBundler(
+					2 + (orderByComparator.getOrderByFields().length * 2));
 
 				query.append(_SQL_SELECT_TASKSENTRY);
 
-				appendOrderByComparator(query, _ORDER_BY_ENTITY_ALIAS,
-					orderByComparator);
+				appendOrderByComparator(
+					query, _ORDER_BY_ENTITY_ALIAS, orderByComparator);
 
 				sql = query.toString();
 			}
 			else {
 				sql = _SQL_SELECT_TASKSENTRY;
 
-				if (pagination) {
-					sql = sql.concat(TasksEntryModelImpl.ORDER_BY_JPQL);
-				}
+				sql = sql.concat(TasksEntryModelImpl.ORDER_BY_JPQL);
 			}
 
 			Session session = null;
@@ -10835,25 +10789,19 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 				Query q = session.createQuery(sql);
 
-				if (!pagination) {
-					list = (List<TasksEntry>)QueryUtil.list(q, getDialect(),
-							start, end, false);
-
-					Collections.sort(list);
-
-					list = Collections.unmodifiableList(list);
-				}
-				else {
-					list = (List<TasksEntry>)QueryUtil.list(q, getDialect(),
-							start, end);
-				}
+				list = (List<TasksEntry>)QueryUtil.list(
+					q, getDialect(), start, end);
 
 				cacheResult(list);
 
-				finderCache.putResult(finderPath, finderArgs, list);
+				if (useFinderCache) {
+					FinderCacheUtil.putResult(finderPath, finderArgs, list);
+				}
 			}
 			catch (Exception e) {
-				finderCache.removeResult(finderPath, finderArgs);
+				if (useFinderCache) {
+					FinderCacheUtil.removeResult(finderPath, finderArgs);
+				}
 
 				throw processException(e);
 			}
@@ -10883,8 +10831,8 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 */
 	@Override
 	public int countAll() {
-		Long count = (Long)finderCache.getResult(FINDER_PATH_COUNT_ALL,
-				FINDER_ARGS_EMPTY, this);
+		Long count = (Long)FinderCacheUtil.getResult(
+			_finderPathCountAll, FINDER_ARGS_EMPTY, this);
 
 		if (count == null) {
 			Session session = null;
@@ -10896,12 +10844,12 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 
 				count = (Long)q.uniqueResult();
 
-				finderCache.putResult(FINDER_PATH_COUNT_ALL, FINDER_ARGS_EMPTY,
-					count);
+				FinderCacheUtil.putResult(
+					_finderPathCountAll, FINDER_ARGS_EMPTY, count);
 			}
 			catch (Exception e) {
-				finderCache.removeResult(FINDER_PATH_COUNT_ALL,
-					FINDER_ARGS_EMPTY);
+				FinderCacheUtil.removeResult(
+					_finderPathCountAll, FINDER_ARGS_EMPTY);
 
 				throw processException(e);
 			}
@@ -10914,6 +10862,21 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	}
 
 	@Override
+	protected EntityCache getEntityCache() {
+		return EntityCacheUtil.getEntityCache();
+	}
+
+	@Override
+	protected String getPKDBName() {
+		return "tasksEntryId";
+	}
+
+	@Override
+	protected String getSelectSQL() {
+		return _SQL_SELECT_TASKSENTRY;
+	}
+
+	@Override
 	protected Map<String, Integer> getTableColumnsMap() {
 		return TasksEntryModelImpl.TABLE_COLUMNS_MAP;
 	}
@@ -10922,36 +10885,408 @@ public class TasksEntryPersistenceImpl extends BasePersistenceImpl<TasksEntry>
 	 * Initializes the tasks entry persistence.
 	 */
 	public void afterPropertiesSet() {
+		_finderPathWithPaginationFindAll = new FinderPath(
+			TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
+			TasksEntryModelImpl.FINDER_CACHE_ENABLED, TasksEntryImpl.class,
+			FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findAll", new String[0]);
+
+		_finderPathWithoutPaginationFindAll = new FinderPath(
+			TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
+			TasksEntryModelImpl.FINDER_CACHE_ENABLED, TasksEntryImpl.class,
+			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findAll",
+			new String[0]);
+
+		_finderPathCountAll = new FinderPath(
+			TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
+			TasksEntryModelImpl.FINDER_CACHE_ENABLED, Long.class,
+			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countAll",
+			new String[0]);
+
+		_finderPathWithPaginationFindByGroupId = new FinderPath(
+			TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
+			TasksEntryModelImpl.FINDER_CACHE_ENABLED, TasksEntryImpl.class,
+			FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByGroupId",
+			new String[] {
+				Long.class.getName(), Integer.class.getName(),
+				Integer.class.getName(), OrderByComparator.class.getName()
+			});
+
+		_finderPathWithoutPaginationFindByGroupId = new FinderPath(
+			TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
+			TasksEntryModelImpl.FINDER_CACHE_ENABLED, TasksEntryImpl.class,
+			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findByGroupId",
+			new String[] {Long.class.getName()},
+			TasksEntryModelImpl.GROUPID_COLUMN_BITMASK |
+			TasksEntryModelImpl.PRIORITY_COLUMN_BITMASK |
+			TasksEntryModelImpl.DUEDATE_COLUMN_BITMASK |
+			TasksEntryModelImpl.CREATEDATE_COLUMN_BITMASK);
+
+		_finderPathCountByGroupId = new FinderPath(
+			TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
+			TasksEntryModelImpl.FINDER_CACHE_ENABLED, Long.class,
+			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByGroupId",
+			new String[] {Long.class.getName()});
+
+		_finderPathWithPaginationFindByUserId = new FinderPath(
+			TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
+			TasksEntryModelImpl.FINDER_CACHE_ENABLED, TasksEntryImpl.class,
+			FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByUserId",
+			new String[] {
+				Long.class.getName(), Integer.class.getName(),
+				Integer.class.getName(), OrderByComparator.class.getName()
+			});
+
+		_finderPathWithoutPaginationFindByUserId = new FinderPath(
+			TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
+			TasksEntryModelImpl.FINDER_CACHE_ENABLED, TasksEntryImpl.class,
+			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findByUserId",
+			new String[] {Long.class.getName()},
+			TasksEntryModelImpl.USERID_COLUMN_BITMASK |
+			TasksEntryModelImpl.PRIORITY_COLUMN_BITMASK |
+			TasksEntryModelImpl.DUEDATE_COLUMN_BITMASK |
+			TasksEntryModelImpl.CREATEDATE_COLUMN_BITMASK);
+
+		_finderPathCountByUserId = new FinderPath(
+			TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
+			TasksEntryModelImpl.FINDER_CACHE_ENABLED, Long.class,
+			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByUserId",
+			new String[] {Long.class.getName()});
+
+		_finderPathWithPaginationFindByAssigneeUserId = new FinderPath(
+			TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
+			TasksEntryModelImpl.FINDER_CACHE_ENABLED, TasksEntryImpl.class,
+			FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByAssigneeUserId",
+			new String[] {
+				Long.class.getName(), Integer.class.getName(),
+				Integer.class.getName(), OrderByComparator.class.getName()
+			});
+
+		_finderPathWithoutPaginationFindByAssigneeUserId = new FinderPath(
+			TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
+			TasksEntryModelImpl.FINDER_CACHE_ENABLED, TasksEntryImpl.class,
+			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findByAssigneeUserId",
+			new String[] {Long.class.getName()},
+			TasksEntryModelImpl.ASSIGNEEUSERID_COLUMN_BITMASK |
+			TasksEntryModelImpl.PRIORITY_COLUMN_BITMASK |
+			TasksEntryModelImpl.DUEDATE_COLUMN_BITMASK |
+			TasksEntryModelImpl.CREATEDATE_COLUMN_BITMASK);
+
+		_finderPathCountByAssigneeUserId = new FinderPath(
+			TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
+			TasksEntryModelImpl.FINDER_CACHE_ENABLED, Long.class,
+			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByAssigneeUserId",
+			new String[] {Long.class.getName()});
+
+		_finderPathWithPaginationFindByResolverUserId = new FinderPath(
+			TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
+			TasksEntryModelImpl.FINDER_CACHE_ENABLED, TasksEntryImpl.class,
+			FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByResolverUserId",
+			new String[] {
+				Long.class.getName(), Integer.class.getName(),
+				Integer.class.getName(), OrderByComparator.class.getName()
+			});
+
+		_finderPathWithoutPaginationFindByResolverUserId = new FinderPath(
+			TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
+			TasksEntryModelImpl.FINDER_CACHE_ENABLED, TasksEntryImpl.class,
+			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findByResolverUserId",
+			new String[] {Long.class.getName()},
+			TasksEntryModelImpl.RESOLVERUSERID_COLUMN_BITMASK |
+			TasksEntryModelImpl.PRIORITY_COLUMN_BITMASK |
+			TasksEntryModelImpl.DUEDATE_COLUMN_BITMASK |
+			TasksEntryModelImpl.CREATEDATE_COLUMN_BITMASK);
+
+		_finderPathCountByResolverUserId = new FinderPath(
+			TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
+			TasksEntryModelImpl.FINDER_CACHE_ENABLED, Long.class,
+			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByResolverUserId",
+			new String[] {Long.class.getName()});
+
+		_finderPathWithPaginationFindByG_U = new FinderPath(
+			TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
+			TasksEntryModelImpl.FINDER_CACHE_ENABLED, TasksEntryImpl.class,
+			FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByG_U",
+			new String[] {
+				Long.class.getName(), Long.class.getName(),
+				Integer.class.getName(), Integer.class.getName(),
+				OrderByComparator.class.getName()
+			});
+
+		_finderPathWithoutPaginationFindByG_U = new FinderPath(
+			TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
+			TasksEntryModelImpl.FINDER_CACHE_ENABLED, TasksEntryImpl.class,
+			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findByG_U",
+			new String[] {Long.class.getName(), Long.class.getName()},
+			TasksEntryModelImpl.GROUPID_COLUMN_BITMASK |
+			TasksEntryModelImpl.USERID_COLUMN_BITMASK |
+			TasksEntryModelImpl.PRIORITY_COLUMN_BITMASK |
+			TasksEntryModelImpl.DUEDATE_COLUMN_BITMASK |
+			TasksEntryModelImpl.CREATEDATE_COLUMN_BITMASK);
+
+		_finderPathCountByG_U = new FinderPath(
+			TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
+			TasksEntryModelImpl.FINDER_CACHE_ENABLED, Long.class,
+			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByG_U",
+			new String[] {Long.class.getName(), Long.class.getName()});
+
+		_finderPathWithPaginationFindByG_A = new FinderPath(
+			TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
+			TasksEntryModelImpl.FINDER_CACHE_ENABLED, TasksEntryImpl.class,
+			FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByG_A",
+			new String[] {
+				Long.class.getName(), Long.class.getName(),
+				Integer.class.getName(), Integer.class.getName(),
+				OrderByComparator.class.getName()
+			});
+
+		_finderPathWithoutPaginationFindByG_A = new FinderPath(
+			TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
+			TasksEntryModelImpl.FINDER_CACHE_ENABLED, TasksEntryImpl.class,
+			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findByG_A",
+			new String[] {Long.class.getName(), Long.class.getName()},
+			TasksEntryModelImpl.GROUPID_COLUMN_BITMASK |
+			TasksEntryModelImpl.ASSIGNEEUSERID_COLUMN_BITMASK |
+			TasksEntryModelImpl.PRIORITY_COLUMN_BITMASK |
+			TasksEntryModelImpl.DUEDATE_COLUMN_BITMASK |
+			TasksEntryModelImpl.CREATEDATE_COLUMN_BITMASK);
+
+		_finderPathCountByG_A = new FinderPath(
+			TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
+			TasksEntryModelImpl.FINDER_CACHE_ENABLED, Long.class,
+			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByG_A",
+			new String[] {Long.class.getName(), Long.class.getName()});
+
+		_finderPathWithPaginationFindByG_R = new FinderPath(
+			TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
+			TasksEntryModelImpl.FINDER_CACHE_ENABLED, TasksEntryImpl.class,
+			FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByG_R",
+			new String[] {
+				Long.class.getName(), Long.class.getName(),
+				Integer.class.getName(), Integer.class.getName(),
+				OrderByComparator.class.getName()
+			});
+
+		_finderPathWithoutPaginationFindByG_R = new FinderPath(
+			TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
+			TasksEntryModelImpl.FINDER_CACHE_ENABLED, TasksEntryImpl.class,
+			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findByG_R",
+			new String[] {Long.class.getName(), Long.class.getName()},
+			TasksEntryModelImpl.GROUPID_COLUMN_BITMASK |
+			TasksEntryModelImpl.RESOLVERUSERID_COLUMN_BITMASK |
+			TasksEntryModelImpl.PRIORITY_COLUMN_BITMASK |
+			TasksEntryModelImpl.DUEDATE_COLUMN_BITMASK |
+			TasksEntryModelImpl.CREATEDATE_COLUMN_BITMASK);
+
+		_finderPathCountByG_R = new FinderPath(
+			TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
+			TasksEntryModelImpl.FINDER_CACHE_ENABLED, Long.class,
+			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByG_R",
+			new String[] {Long.class.getName(), Long.class.getName()});
+
+		_finderPathWithPaginationFindByU_S = new FinderPath(
+			TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
+			TasksEntryModelImpl.FINDER_CACHE_ENABLED, TasksEntryImpl.class,
+			FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByU_S",
+			new String[] {
+				Long.class.getName(), Integer.class.getName(),
+				Integer.class.getName(), Integer.class.getName(),
+				OrderByComparator.class.getName()
+			});
+
+		_finderPathWithoutPaginationFindByU_S = new FinderPath(
+			TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
+			TasksEntryModelImpl.FINDER_CACHE_ENABLED, TasksEntryImpl.class,
+			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findByU_S",
+			new String[] {Long.class.getName(), Integer.class.getName()},
+			TasksEntryModelImpl.USERID_COLUMN_BITMASK |
+			TasksEntryModelImpl.STATUS_COLUMN_BITMASK |
+			TasksEntryModelImpl.PRIORITY_COLUMN_BITMASK |
+			TasksEntryModelImpl.DUEDATE_COLUMN_BITMASK |
+			TasksEntryModelImpl.CREATEDATE_COLUMN_BITMASK);
+
+		_finderPathCountByU_S = new FinderPath(
+			TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
+			TasksEntryModelImpl.FINDER_CACHE_ENABLED, Long.class,
+			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByU_S",
+			new String[] {Long.class.getName(), Integer.class.getName()});
+
+		_finderPathWithPaginationCountByU_S = new FinderPath(
+			TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
+			TasksEntryModelImpl.FINDER_CACHE_ENABLED, Long.class,
+			FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "countByU_S",
+			new String[] {Long.class.getName(), Integer.class.getName()});
+
+		_finderPathWithPaginationFindByA_S = new FinderPath(
+			TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
+			TasksEntryModelImpl.FINDER_CACHE_ENABLED, TasksEntryImpl.class,
+			FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByA_S",
+			new String[] {
+				Long.class.getName(), Integer.class.getName(),
+				Integer.class.getName(), Integer.class.getName(),
+				OrderByComparator.class.getName()
+			});
+
+		_finderPathWithoutPaginationFindByA_S = new FinderPath(
+			TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
+			TasksEntryModelImpl.FINDER_CACHE_ENABLED, TasksEntryImpl.class,
+			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findByA_S",
+			new String[] {Long.class.getName(), Integer.class.getName()},
+			TasksEntryModelImpl.ASSIGNEEUSERID_COLUMN_BITMASK |
+			TasksEntryModelImpl.STATUS_COLUMN_BITMASK |
+			TasksEntryModelImpl.PRIORITY_COLUMN_BITMASK |
+			TasksEntryModelImpl.DUEDATE_COLUMN_BITMASK |
+			TasksEntryModelImpl.CREATEDATE_COLUMN_BITMASK);
+
+		_finderPathCountByA_S = new FinderPath(
+			TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
+			TasksEntryModelImpl.FINDER_CACHE_ENABLED, Long.class,
+			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByA_S",
+			new String[] {Long.class.getName(), Integer.class.getName()});
+
+		_finderPathWithPaginationCountByA_S = new FinderPath(
+			TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
+			TasksEntryModelImpl.FINDER_CACHE_ENABLED, Long.class,
+			FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "countByA_S",
+			new String[] {Long.class.getName(), Integer.class.getName()});
+
+		_finderPathWithPaginationFindByG_U_S = new FinderPath(
+			TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
+			TasksEntryModelImpl.FINDER_CACHE_ENABLED, TasksEntryImpl.class,
+			FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByG_U_S",
+			new String[] {
+				Long.class.getName(), Long.class.getName(),
+				Integer.class.getName(), Integer.class.getName(),
+				Integer.class.getName(), OrderByComparator.class.getName()
+			});
+
+		_finderPathWithoutPaginationFindByG_U_S = new FinderPath(
+			TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
+			TasksEntryModelImpl.FINDER_CACHE_ENABLED, TasksEntryImpl.class,
+			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findByG_U_S",
+			new String[] {
+				Long.class.getName(), Long.class.getName(),
+				Integer.class.getName()
+			},
+			TasksEntryModelImpl.GROUPID_COLUMN_BITMASK |
+			TasksEntryModelImpl.USERID_COLUMN_BITMASK |
+			TasksEntryModelImpl.STATUS_COLUMN_BITMASK |
+			TasksEntryModelImpl.PRIORITY_COLUMN_BITMASK |
+			TasksEntryModelImpl.DUEDATE_COLUMN_BITMASK |
+			TasksEntryModelImpl.CREATEDATE_COLUMN_BITMASK);
+
+		_finderPathCountByG_U_S = new FinderPath(
+			TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
+			TasksEntryModelImpl.FINDER_CACHE_ENABLED, Long.class,
+			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByG_U_S",
+			new String[] {
+				Long.class.getName(), Long.class.getName(),
+				Integer.class.getName()
+			});
+
+		_finderPathWithPaginationCountByG_U_S = new FinderPath(
+			TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
+			TasksEntryModelImpl.FINDER_CACHE_ENABLED, Long.class,
+			FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "countByG_U_S",
+			new String[] {
+				Long.class.getName(), Long.class.getName(),
+				Integer.class.getName()
+			});
+
+		_finderPathWithPaginationFindByG_A_S = new FinderPath(
+			TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
+			TasksEntryModelImpl.FINDER_CACHE_ENABLED, TasksEntryImpl.class,
+			FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByG_A_S",
+			new String[] {
+				Long.class.getName(), Long.class.getName(),
+				Integer.class.getName(), Integer.class.getName(),
+				Integer.class.getName(), OrderByComparator.class.getName()
+			});
+
+		_finderPathWithoutPaginationFindByG_A_S = new FinderPath(
+			TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
+			TasksEntryModelImpl.FINDER_CACHE_ENABLED, TasksEntryImpl.class,
+			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findByG_A_S",
+			new String[] {
+				Long.class.getName(), Long.class.getName(),
+				Integer.class.getName()
+			},
+			TasksEntryModelImpl.GROUPID_COLUMN_BITMASK |
+			TasksEntryModelImpl.ASSIGNEEUSERID_COLUMN_BITMASK |
+			TasksEntryModelImpl.STATUS_COLUMN_BITMASK |
+			TasksEntryModelImpl.PRIORITY_COLUMN_BITMASK |
+			TasksEntryModelImpl.DUEDATE_COLUMN_BITMASK |
+			TasksEntryModelImpl.CREATEDATE_COLUMN_BITMASK);
+
+		_finderPathCountByG_A_S = new FinderPath(
+			TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
+			TasksEntryModelImpl.FINDER_CACHE_ENABLED, Long.class,
+			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByG_A_S",
+			new String[] {
+				Long.class.getName(), Long.class.getName(),
+				Integer.class.getName()
+			});
+
+		_finderPathWithPaginationCountByG_A_S = new FinderPath(
+			TasksEntryModelImpl.ENTITY_CACHE_ENABLED,
+			TasksEntryModelImpl.FINDER_CACHE_ENABLED, Long.class,
+			FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "countByG_A_S",
+			new String[] {
+				Long.class.getName(), Long.class.getName(),
+				Integer.class.getName()
+			});
 	}
 
 	public void destroy() {
-		entityCache.removeCache(TasksEntryImpl.class.getName());
-		finderCache.removeCache(FINDER_CLASS_NAME_ENTITY);
-		finderCache.removeCache(FINDER_CLASS_NAME_LIST_WITH_PAGINATION);
-		finderCache.removeCache(FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION);
+		EntityCacheUtil.removeCache(TasksEntryImpl.class.getName());
+		FinderCacheUtil.removeCache(FINDER_CLASS_NAME_ENTITY);
+		FinderCacheUtil.removeCache(FINDER_CLASS_NAME_LIST_WITH_PAGINATION);
+		FinderCacheUtil.removeCache(FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION);
 	}
 
-	@BeanReference(type = CompanyProviderWrapper.class)
-	protected CompanyProvider companyProvider;
-	protected EntityCache entityCache = EntityCacheUtil.getEntityCache();
-	protected FinderCache finderCache = FinderCacheUtil.getFinderCache();
-	private static final String _SQL_SELECT_TASKSENTRY = "SELECT tasksEntry FROM TasksEntry tasksEntry";
-	private static final String _SQL_SELECT_TASKSENTRY_WHERE_PKS_IN = "SELECT tasksEntry FROM TasksEntry tasksEntry WHERE tasksEntryId IN (";
-	private static final String _SQL_SELECT_TASKSENTRY_WHERE = "SELECT tasksEntry FROM TasksEntry tasksEntry WHERE ";
-	private static final String _SQL_COUNT_TASKSENTRY = "SELECT COUNT(tasksEntry) FROM TasksEntry tasksEntry";
-	private static final String _SQL_COUNT_TASKSENTRY_WHERE = "SELECT COUNT(tasksEntry) FROM TasksEntry tasksEntry WHERE ";
-	private static final String _FILTER_ENTITY_TABLE_FILTER_PK_COLUMN = "tasksEntry.tasksEntryId";
-	private static final String _FILTER_SQL_SELECT_TASKSENTRY_WHERE = "SELECT DISTINCT {tasksEntry.*} FROM TMS_TasksEntry tasksEntry WHERE ";
-	private static final String _FILTER_SQL_SELECT_TASKSENTRY_NO_INLINE_DISTINCT_WHERE_1 =
-		"SELECT {TMS_TasksEntry.*} FROM (SELECT DISTINCT tasksEntry.tasksEntryId FROM TMS_TasksEntry tasksEntry WHERE ";
-	private static final String _FILTER_SQL_SELECT_TASKSENTRY_NO_INLINE_DISTINCT_WHERE_2 =
-		") TEMP_TABLE INNER JOIN TMS_TasksEntry ON TEMP_TABLE.tasksEntryId = TMS_TasksEntry.tasksEntryId";
-	private static final String _FILTER_SQL_COUNT_TASKSENTRY_WHERE = "SELECT COUNT(DISTINCT tasksEntry.tasksEntryId) AS COUNT_VALUE FROM TMS_TasksEntry tasksEntry WHERE ";
+	private static final String _SQL_SELECT_TASKSENTRY =
+		"SELECT tasksEntry FROM TasksEntry tasksEntry";
+
+	private static final String _SQL_SELECT_TASKSENTRY_WHERE =
+		"SELECT tasksEntry FROM TasksEntry tasksEntry WHERE ";
+
+	private static final String _SQL_COUNT_TASKSENTRY =
+		"SELECT COUNT(tasksEntry) FROM TasksEntry tasksEntry";
+
+	private static final String _SQL_COUNT_TASKSENTRY_WHERE =
+		"SELECT COUNT(tasksEntry) FROM TasksEntry tasksEntry WHERE ";
+
+	private static final String _FILTER_ENTITY_TABLE_FILTER_PK_COLUMN =
+		"tasksEntry.tasksEntryId";
+
+	private static final String _FILTER_SQL_SELECT_TASKSENTRY_WHERE =
+		"SELECT DISTINCT {tasksEntry.*} FROM TMS_TasksEntry tasksEntry WHERE ";
+
+	private static final String
+		_FILTER_SQL_SELECT_TASKSENTRY_NO_INLINE_DISTINCT_WHERE_1 =
+			"SELECT {TMS_TasksEntry.*} FROM (SELECT DISTINCT tasksEntry.tasksEntryId FROM TMS_TasksEntry tasksEntry WHERE ";
+
+	private static final String
+		_FILTER_SQL_SELECT_TASKSENTRY_NO_INLINE_DISTINCT_WHERE_2 =
+			") TEMP_TABLE INNER JOIN TMS_TasksEntry ON TEMP_TABLE.tasksEntryId = TMS_TasksEntry.tasksEntryId";
+
+	private static final String _FILTER_SQL_COUNT_TASKSENTRY_WHERE =
+		"SELECT COUNT(DISTINCT tasksEntry.tasksEntryId) AS COUNT_VALUE FROM TMS_TasksEntry tasksEntry WHERE ";
+
 	private static final String _FILTER_ENTITY_ALIAS = "tasksEntry";
+
 	private static final String _FILTER_ENTITY_TABLE = "TMS_TasksEntry";
+
 	private static final String _ORDER_BY_ENTITY_ALIAS = "tasksEntry.";
+
 	private static final String _ORDER_BY_ENTITY_TABLE = "TMS_TasksEntry.";
-	private static final String _NO_SUCH_ENTITY_WITH_PRIMARY_KEY = "No TasksEntry exists with the primary key ";
-	private static final String _NO_SUCH_ENTITY_WITH_KEY = "No TasksEntry exists with the key {";
-	private static final Log _log = LogFactoryUtil.getLog(TasksEntryPersistenceImpl.class);
+
+	private static final String _NO_SUCH_ENTITY_WITH_PRIMARY_KEY =
+		"No TasksEntry exists with the primary key ";
+
+	private static final String _NO_SUCH_ENTITY_WITH_KEY =
+		"No TasksEntry exists with the key {";
+
+	private static final Log _log = LogFactoryUtil.getLog(
+		TasksEntryPersistenceImpl.class);
+
 }

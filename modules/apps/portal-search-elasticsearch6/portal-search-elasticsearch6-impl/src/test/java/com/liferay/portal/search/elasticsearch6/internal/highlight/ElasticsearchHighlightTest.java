@@ -17,16 +17,13 @@ package com.liferay.portal.search.elasticsearch6.internal.highlight;
 import com.liferay.portal.kernel.search.Field;
 import com.liferay.portal.kernel.search.Query;
 import com.liferay.portal.kernel.search.generic.StringQuery;
-import com.liferay.portal.search.elasticsearch6.internal.ElasticsearchIndexingFixture;
-import com.liferay.portal.search.elasticsearch6.internal.connection.ElasticsearchFixture;
+import com.liferay.portal.search.elasticsearch6.internal.ElasticsearchIndexingFixtureFactory;
 import com.liferay.portal.search.test.util.highlight.BaseHighlightTestCase;
-import com.liferay.portal.search.test.util.indexing.BaseIndexingTestCase;
 import com.liferay.portal.search.test.util.indexing.DocumentCreationHelpers;
 import com.liferay.portal.search.test.util.indexing.IndexingFixture;
 
 import java.util.Arrays;
 
-import org.junit.Ignore;
 import org.junit.Test;
 
 /**
@@ -35,14 +32,8 @@ import org.junit.Test;
  */
 public class ElasticsearchHighlightTest extends BaseHighlightTestCase {
 
-	@Ignore
-	@Override
 	@Test
-	public void testEllipsis() throws Exception {
-	}
-
-	@Test
-	public void testEllipsisWithUnifiedHighlighter() throws Exception {
+	public void testEllipsisElasticsearch() throws Exception {
 		String fieldName = Field.TITLE;
 
 		addDocuments(
@@ -68,10 +59,7 @@ public class ElasticsearchHighlightTest extends BaseHighlightTestCase {
 
 	@Override
 	protected IndexingFixture createIndexingFixture() {
-		return new ElasticsearchIndexingFixture(
-			new ElasticsearchFixture(
-				ElasticsearchHighlightTest.class.getSimpleName()),
-			BaseIndexingTestCase.COMPANY_ID);
+		return ElasticsearchIndexingFixtureFactory.getInstance();
 	}
 
 }

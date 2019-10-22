@@ -21,16 +21,15 @@ import aQute.bnd.osgi.Analyzer;
 import aQute.bnd.osgi.Clazz;
 import aQute.bnd.osgi.Constants;
 import aQute.bnd.osgi.Descriptors;
-import aQute.bnd.osgi.Descriptors.PackageRef;
 import aQute.bnd.osgi.Domain;
 import aQute.bnd.osgi.Instruction;
 import aQute.bnd.osgi.Instructions;
 import aQute.bnd.osgi.Jar;
 import aQute.bnd.osgi.Packages;
+import aQute.bnd.osgi.Processor;
 import aQute.bnd.osgi.Resource;
 import aQute.bnd.service.AnalyzerPlugin;
 
-import aQute.lib.env.Header;
 import aQute.lib.io.IO;
 import aQute.lib.strings.Strings;
 
@@ -42,7 +41,6 @@ import java.io.InputStream;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.jar.Manifest;
@@ -114,7 +112,7 @@ public class JspAnalyzerPlugin implements AnalyzerPlugin {
 	}
 
 	protected void addApiUses(Analyzer analyzer, String originalContent) {
-		String content = originalContent.replaceAll("<%--[\\s\\S]*?--%>", "");
+		String content = _removeComments(originalContent);
 
 		int contentX = -1;
 		int contentY = content.length();
@@ -164,8 +162,8 @@ public class JspAnalyzerPlugin implements AnalyzerPlugin {
 						String packageName = packageFragment.substring(
 							0, index);
 
-						PackageRef packageRef = analyzer.getPackageRef(
-							packageName);
+						Descriptors.PackageRef packageRef =
+							analyzer.getPackageRef(packageName);
 
 						packages.put(packageRef, new Attrs());
 
@@ -179,7 +177,7 @@ public class JspAnalyzerPlugin implements AnalyzerPlugin {
 	}
 
 	protected void addApiUses(
-		Analyzer analyzer, String content, PackageRef packageRef) {
+		Analyzer analyzer, String content, Descriptors.PackageRef packageRef) {
 
 		for (Jar jar : analyzer.getClasspath()) {
 			addJarApiUses(analyzer, content, packageRef, jar);
@@ -187,7 +185,8 @@ public class JspAnalyzerPlugin implements AnalyzerPlugin {
 	}
 
 	protected void addJarApiUses(
-		Analyzer analyzer, String content, PackageRef packageRef, Jar jar) {
+		Analyzer analyzer, String content, Descriptors.PackageRef packageRef,
+		Jar jar) {
 
 		Map<String, Map<String, Resource>> resourceMaps = jar.getDirectories();
 
@@ -199,7 +198,7 @@ public class JspAnalyzerPlugin implements AnalyzerPlugin {
 		}
 
 		if (content.endsWith("*")) {
-			for (Entry<String, Resource> entry : resourceMap.entrySet()) {
+			for (Map.Entry<String, Resource> entry : resourceMap.entrySet()) {
 				String key = entry.getKey();
 
 				if (!key.endsWith(".class")) {
@@ -235,8 +234,8 @@ public class JspAnalyzerPlugin implements AnalyzerPlugin {
 
 				Parameters parameters = domain.getExportPackage();
 
-				for (Entry<String, Attrs> entry : parameters.entrySet()) {
-					PackageRef packageRef = analyzer.getPackageRef(
+				for (Map.Entry<String, Attrs> entry : parameters.entrySet()) {
+					Descriptors.PackageRef packageRef = analyzer.getPackageRef(
 						entry.getKey());
 
 					Attrs attrs = packages.get(packageRef);
@@ -257,7 +256,8 @@ public class JspAnalyzerPlugin implements AnalyzerPlugin {
 		Packages packages = analyzer.getReferred();
 
 		for (String packageName : packageNames) {
-			PackageRef packageRef = analyzer.getPackageRef(packageName);
+			Descriptors.PackageRef packageRef = analyzer.getPackageRef(
+				packageName);
 
 			Matcher matcher = _packagePattern.matcher(packageRef.getFQN());
 
@@ -288,9 +288,9 @@ public class JspAnalyzerPlugin implements AnalyzerPlugin {
 			return;
 		}
 
-		Set<PackageRef> packageRefs = clazz.getAPIUses();
+		Set<Descriptors.PackageRef> packageRefs = clazz.getAPIUses();
 
-		for (PackageRef packageRef : packageRefs) {
+		for (Descriptors.PackageRef packageRef : packageRefs) {
 			Packages packages = analyzer.getReferred();
 
 			packages.put(packageRef, new Attrs());
@@ -349,8 +349,8 @@ public class JspAnalyzerPlugin implements AnalyzerPlugin {
 		if (value != null) {
 			Parameters parameters = OSGiHeader.parseHeader(value);
 
-			for (Entry<String, Attrs> entry : parameters.entrySet()) {
-				String key = Header.removeDuplicateMarker(entry.getKey());
+			for (Map.Entry<String, Attrs> entry : parameters.entrySet()) {
+				String key = Processor.removeDuplicateMarker(entry.getKey());
 
 				StringBuilder sb = new StringBuilder(key);
 
@@ -389,7 +389,7 @@ public class JspAnalyzerPlugin implements AnalyzerPlugin {
 			return false;
 		}
 
-		for (Entry<String, Resource> entry : resourceMap.entrySet()) {
+		for (Map.Entry<String, Resource> entry : resourceMap.entrySet()) {
 			String path = entry.getKey();
 			Resource resource = entry.getValue();
 
@@ -448,7 +448,6 @@ public class JspAnalyzerPlugin implements AnalyzerPlugin {
 				}
 			}
 			catch (Exception e) {
-				continue;
 			}
 		}
 
@@ -456,7 +455,7 @@ public class JspAnalyzerPlugin implements AnalyzerPlugin {
 	}
 
 	protected Set<String> getTaglibURIs(String originalContent) {
-		String content = originalContent.replaceAll("<%--[\\s\\S]*?--%>", "");
+		String content = _removeComments(originalContent);
 
 		int contentX = -1;
 		int contentY = content.length();
@@ -520,6 +519,12 @@ public class JspAnalyzerPlugin implements AnalyzerPlugin {
 		return false;
 	}
 
+	private static String _removeComments(String content) {
+		Matcher matcher = _commentPattern.matcher(content);
+
+		return matcher.replaceAll("");
+	}
+
 	private static final String[] _JSTL_CORE_URIS = {
 		"http://java.sun.com/jsp/jstl/core", "http://java.sun.com/jsp/jstl/fmt",
 		"http://java.sun.com/jsp/jstl/functions",
@@ -529,9 +534,12 @@ public class JspAnalyzerPlugin implements AnalyzerPlugin {
 	private static final String _LOAD_EXTERNAL_DTD =
 		"http://apache.org/xml/features/nonvalidating/load-external-dtd";
 
-	private static final String[] _REQUIRED_PACKAGE_NAMES =
-		{"javax.servlet", "javax.servlet.http"};
+	private static final String[] _REQUIRED_PACKAGE_NAMES = {
+		"javax.servlet", "javax.servlet.http"
+	};
 
+	private static final Pattern _commentPattern = Pattern.compile(
+		"<%--[\\s\\S]*?--%>");
 	private static final Pattern _packagePattern = Pattern.compile(
 		"[_A-Za-z$][_A-Za-z0-9$]*(\\.[_A-Za-z$][_A-Za-z0-9$]*)*");
 	private static final Pattern _staticImportPattern = Pattern.compile(
@@ -570,9 +578,7 @@ public class JspAnalyzerPlugin implements AnalyzerPlugin {
 				return;
 			}
 
-			String value = new String(chars, start, length);
-
-			_hasURI = _uri.equals(value.replaceAll("^\\s*(.*)\\s*$", "$1"));
+			_hasURI = _uri.equals(_trim(chars, start, length));
 
 			_inURI = false;
 		}
@@ -590,6 +596,30 @@ public class JspAnalyzerPlugin implements AnalyzerPlugin {
 			if (qName.equals("uri")) {
 				_inURI = true;
 			}
+		}
+
+		private String _trim(char[] chars, int start, int length) {
+			int end = start + length;
+
+			for (int i = start; i < end; i++) {
+				if (Character.isWhitespace(chars[i])) {
+					start++;
+				}
+				else {
+					break;
+				}
+			}
+
+			for (int i = end - 1; i >= start; i--) {
+				if (Character.isWhitespace(chars[i])) {
+					end--;
+				}
+				else {
+					break;
+				}
+			}
+
+			return new String(chars, start, end - start);
 		}
 
 		private boolean _hasURI;

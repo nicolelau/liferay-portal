@@ -14,6 +14,7 @@
 
 package com.liferay.portal.linkback;
 
+import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.io.unsync.UnsyncStringReader;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
@@ -23,7 +24,6 @@ import com.liferay.portal.kernel.util.HtmlUtil;
 import com.liferay.portal.kernel.util.Http;
 import com.liferay.portal.kernel.util.HttpUtil;
 import com.liferay.portal.kernel.util.ReleaseInfo;
-import com.liferay.portal.kernel.util.StringBundler;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Tuple;
 import com.liferay.portal.kernel.util.Validator;
@@ -74,7 +74,6 @@ public class LinkbackProducerUtil {
 			if (time.before(expiration)) {
 				_pingbackQueue.remove(0);
 
-				String sourceUri = (String)tuple.getObject(1);
 				String targetUri = (String)tuple.getObject(2);
 
 				String serverUri = _discoverPingbackServer(targetUri);
@@ -82,6 +81,8 @@ public class LinkbackProducerUtil {
 				if (Validator.isNull(serverUri)) {
 					continue;
 				}
+
+				String sourceUri = (String)tuple.getObject(1);
 
 				if (_log.isInfoEnabled()) {
 					_log.info(
@@ -248,7 +249,7 @@ public class LinkbackProducerUtil {
 
 	private static final boolean _HTTP_HEADER_VERSION_VERBOSITY_DEFAULT =
 		StringUtil.equalsIgnoreCase(
-			PropsValues.HTTP_HEADER_VERSION_VERBOSITY, ReleaseInfo.getName());
+			PropsValues.HTTP_HEADER_VERSION_VERBOSITY, "off");
 
 	private static final boolean _HTTP_HEADER_VERSION_VERBOSITY_PARTIAL =
 		StringUtil.equalsIgnoreCase(

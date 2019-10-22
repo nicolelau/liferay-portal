@@ -57,18 +57,16 @@ public class PropertiesDocBuilder {
 	public PropertiesDocBuilder(Map<String, String> arguments)
 		throws IOException {
 
-		String propertiesDestDirName = GetterUtil.getString(
-			arguments.get("properties.dest.dir"));
 		String propertiesFileName = GetterUtil.getString(
 			arguments.get("properties.file"));
-		String title = GetterUtil.getString(arguments.get("properties.title"));
-		boolean toc = GetterUtil.getBoolean(arguments.get("properties.toc"));
 
 		System.out.println("Converting " + propertiesFileName + " to HTML");
 
 		File propertiesFile = new File(propertiesFileName);
 
 		Map<String, Object> context = new HashMap<>();
+
+		String title = GetterUtil.getString(arguments.get("properties.title"));
 
 		context.put("pageTitle", title);
 
@@ -89,12 +87,18 @@ public class PropertiesDocBuilder {
 
 		context.put("sections", propertiesSections);
 
+		boolean toc = GetterUtil.getBoolean(arguments.get("properties.toc"));
+
 		context.put("toc", toc);
 
 		try {
 			StringBundler sb = new StringBundler(4);
 
+			String propertiesDestDirName = GetterUtil.getString(
+				arguments.get("properties.dest.dir"));
+
 			sb.append(propertiesDestDirName);
+
 			sb.append(StringPool.SLASH);
 			sb.append(propertiesFileName);
 			sb.append(".html");
@@ -334,7 +338,7 @@ public class PropertiesDocBuilder {
 	protected List<PropertiesSection> getPropertiesSections(File propertiesFile)
 		throws IOException {
 
-		String content = _fileUtil.read(propertiesFile);
+		String content = _fileImpl.read(propertiesFile);
 
 		String[] sections = content.split("\n\n");
 
@@ -399,6 +403,6 @@ public class PropertiesDocBuilder {
 
 	protected static final String INDENT = StringPool.FOUR_SPACES;
 
-	private static final FileImpl _fileUtil = FileImpl.getInstance();
+	private static final FileImpl _fileImpl = FileImpl.getInstance();
 
 }

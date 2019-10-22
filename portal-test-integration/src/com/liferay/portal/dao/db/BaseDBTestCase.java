@@ -14,9 +14,9 @@
 
 package com.liferay.portal.dao.db;
 
+import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.dao.db.DB;
-import com.liferay.portal.kernel.util.StringBundler;
 
 import java.io.IOException;
 
@@ -26,7 +26,10 @@ import org.junit.Test;
 /**
  * @author Miguel Pastor
  * @author László Csontos
+ * @deprecated As of Mueller (7.2.x), replaced by {@link
+ *             com.liferay.portal.kernel.dao.db.BaseDBTestCase}
  */
+@Deprecated
 public abstract class BaseDBTestCase {
 
 	@Test

@@ -1,0 +1,87 @@
+@component-name = "portal-locale"
+definition {
+
+	property portal.release = "true";
+	property portal.upstream = "true";
+	property testray.main.component.name = "Locale";
+
+	setUp {
+		TestCase.setUpPortalInstance();
+	}
+
+	tearDown {
+		var testPortalInstance = PropsUtil.get("test.portal.instance");
+
+		if ("${testPortalInstance}" == "true") {
+			PortalInstances.tearDownCP();
+		}
+		else {
+			Site.tearDownCP();
+		}
+	}
+
+	@priority = "4"
+	test RestrictDefaultLanguage {
+		property custom.properties = "company.default.locale=es_ES";
+
+		User.firstLoginPG(
+			localization = "ES",
+			localizedAgree = "Acepto",
+			localizedAnswer = "Respuesta",
+			localizedSaveButton = "Guardar");
+
+		ProductMenu.gotoPortlet(
+			category = "Configuración",
+			panel = "Control Panel",
+			portlet = "Configuración de instancia");
+
+		PortalSettings.viewCurrentDefaultPortalLanguageCP(
+			defaultPortalLanguage = "español (España)",
+			localizationTranslation = "Localización");
+
+		ProductMenu.gotoPortlet(
+			category = "Contenido",
+			panel = "Site Administration",
+			portlet = "Contenido Web");
+
+		LexiconEntry.gotoAddMenuItem(menuItem = "Contenido web básico");
+
+		PortletEntry.viewLocale(locale = "es-ES");
+	}
+
+	@priority = "4"
+	test ViewSiteLanguageWithoutUserPreferredLanguages {
+		User.firstLoginPG();
+
+		ProductMenu.gotoPortlet(
+			category = "Sites",
+			panel = "Control Panel",
+			portlet = "Sites");
+
+		Site.addBlankCP(siteName = "Site Name");
+
+		ProductMenu.gotoPortlet(
+			category = "Site Builder",
+			panel = "Site Administration",
+			portlet = "Pages");
+
+		SitePages.addPublicPage(pageName = "Test Page");
+
+		ProductMenu.gotoPortlet(
+			category = "Configuration",
+			panel = "Site Administration",
+			portlet = "Settings");
+
+		Site.configureCurrentLanguagesCP(
+			currentSiteLanguages = "Spanish (Spain)",
+			defaultSiteLanguage = "Spanish (Spain)",
+			displaySettings = "Display Settings");
+
+		User.logoutPG();
+
+		Navigator.openSiteURL(siteName = "Site Name");
+
+		User.viewUserLocale(localizedSignIn = "Acceder");
+	}
+
+}

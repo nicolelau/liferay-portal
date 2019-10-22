@@ -24,20 +24,22 @@ import com.liferay.portal.kernel.util.Accessor;
  *
  * @author Brian Wing Shun Chan
  * @see BigDecimalEntryModel
- * @see com.liferay.portal.tools.service.builder.test.model.impl.BigDecimalEntryImpl
- * @see com.liferay.portal.tools.service.builder.test.model.impl.BigDecimalEntryModelImpl
  * @generated
  */
-@ImplementationClassName("com.liferay.portal.tools.service.builder.test.model.impl.BigDecimalEntryImpl")
+@ImplementationClassName(
+	"com.liferay.portal.tools.service.builder.test.model.impl.BigDecimalEntryImpl"
+)
 @ProviderType
 public interface BigDecimalEntry extends BigDecimalEntryModel {
-	/*
+
+	/**
 	 * NOTE FOR DEVELOPERS:
 	 *
-	 * Never modify this interface directly. Add methods to {@link com.liferay.portal.tools.service.builder.test.model.impl.BigDecimalEntryImpl} and rerun ServiceBuilder to automatically copy the method declarations to this interface.
+	 * Never modify this interface directly. Add methods to <code>com.liferay.portal.tools.service.builder.test.model.impl.BigDecimalEntryImpl</code> and rerun ServiceBuilder to automatically copy the method declarations to this interface.
 	 */
-	public static final Accessor<BigDecimalEntry, Long> BIG_DECIMAL_ENTRY_ID_ACCESSOR =
-		new Accessor<BigDecimalEntry, Long>() {
+	public static final Accessor<BigDecimalEntry, Long>
+		BIG_DECIMAL_ENTRY_ID_ACCESSOR = new Accessor<BigDecimalEntry, Long>() {
+
 			@Override
 			public Long get(BigDecimalEntry bigDecimalEntry) {
 				return bigDecimalEntry.getBigDecimalEntryId();
@@ -52,5 +54,7 @@ public interface BigDecimalEntry extends BigDecimalEntryModel {
 			public Class<BigDecimalEntry> getTypeClass() {
 				return BigDecimalEntry.class;
 			}
+
 		};
+
 }

@@ -14,6 +14,7 @@
 
 package com.liferay.portal.kernel.portlet;
 
+import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
@@ -25,7 +26,6 @@ import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.PortalUtil;
 import com.liferay.portal.kernel.util.PropsUtil;
 import com.liferay.portal.kernel.util.StreamUtil;
-import com.liferay.portal.kernel.util.StringBundler;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.URLCodec;
 import com.liferay.portal.kernel.util.Validator;
@@ -42,8 +42,6 @@ import java.nio.channels.FileChannel;
 import javax.portlet.MimeResponse;
 import javax.portlet.PortletRequest;
 import javax.portlet.ResourceResponse;
-
-import javax.servlet.http.HttpServletRequest;
 
 /**
  * @author Brian Wing Shun Chan
@@ -233,13 +231,10 @@ public class PortletResponseUtil {
 			return;
 		}
 
-		if (contentLength > 0) {
-			if (mimeResponse instanceof ResourceResponse) {
-				ResourceResponse resourceResponse =
-					(ResourceResponse)mimeResponse;
+		if ((contentLength > 0) && (mimeResponse instanceof ResourceResponse)) {
+			ResourceResponse resourceResponse = (ResourceResponse)mimeResponse;
 
-				resourceResponse.setContentLength(contentLength);
-			}
+			resourceResponse.setContentLength(contentLength);
 		}
 
 		StreamUtil.transfer(inputStream, mimeResponse.getPortletOutputStream());
@@ -298,10 +293,9 @@ public class PortletResponseUtil {
 			if (!ascii) {
 				String encodedFileName = URLCodec.encodeURL(fileName, true);
 
-				HttpServletRequest request = PortalUtil.getHttpServletRequest(
-					portletRequest);
+				if (BrowserSnifferUtil.isIe(
+						PortalUtil.getHttpServletRequest(portletRequest))) {
 
-				if (BrowserSnifferUtil.isIe(request)) {
 					contentDispositionFileName =
 						"filename=\"" + encodedFileName + "\"";
 				}
@@ -313,7 +307,7 @@ public class PortletResponseUtil {
 		}
 		catch (Exception e) {
 			if (_log.isWarnEnabled()) {
-				_log.warn(e);
+				_log.warn(e, e);
 			}
 		}
 

@@ -14,12 +14,10 @@
 
 package com.liferay.portal.service.persistence.impl;
 
-import aQute.bnd.annotation.ProviderType;
-
+import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.bean.BeanReference;
 import com.liferay.portal.kernel.dao.orm.EntityCache;
 import com.liferay.portal.kernel.dao.orm.EntityCacheUtil;
-import com.liferay.portal.kernel.dao.orm.FinderCache;
 import com.liferay.portal.kernel.dao.orm.FinderCacheUtil;
 import com.liferay.portal.kernel.dao.orm.FinderPath;
 import com.liferay.portal.kernel.dao.orm.Query;
@@ -31,11 +29,10 @@ import com.liferay.portal.kernel.exception.NoSuchUserGroupException;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.model.UserGroup;
+import com.liferay.portal.kernel.security.auth.CompanyThreadLocal;
 import com.liferay.portal.kernel.security.permission.InlineSQLHelperUtil;
 import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.service.ServiceContextThreadLocal;
-import com.liferay.portal.kernel.service.persistence.CompanyProvider;
-import com.liferay.portal.kernel.service.persistence.CompanyProviderWrapper;
 import com.liferay.portal.kernel.service.persistence.GroupPersistence;
 import com.liferay.portal.kernel.service.persistence.TeamPersistence;
 import com.liferay.portal.kernel.service.persistence.UserGroupPersistence;
@@ -46,8 +43,8 @@ import com.liferay.portal.kernel.service.persistence.impl.TableMapperFactory;
 import com.liferay.portal.kernel.util.ArrayUtil;
 import com.liferay.portal.kernel.util.ListUtil;
 import com.liferay.portal.kernel.util.OrderByComparator;
+import com.liferay.portal.kernel.util.ProxyUtil;
 import com.liferay.portal.kernel.util.SetUtil;
-import com.liferay.portal.kernel.util.StringBundler;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.kernel.uuid.PortalUUIDUtil;
@@ -56,13 +53,12 @@ import com.liferay.portal.model.impl.UserGroupModelImpl;
 
 import java.io.Serializable;
 
-import java.lang.reflect.Field;
+import java.lang.reflect.InvocationHandler;
 
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -76,51 +72,31 @@ import java.util.Set;
  * </p>
  *
  * @author Brian Wing Shun Chan
- * @see UserGroupPersistence
- * @see com.liferay.portal.kernel.service.persistence.UserGroupUtil
  * @generated
  */
-@ProviderType
-public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
-	implements UserGroupPersistence {
-	/*
+public class UserGroupPersistenceImpl
+	extends BasePersistenceImpl<UserGroup> implements UserGroupPersistence {
+
+	/**
 	 * NOTE FOR DEVELOPERS:
 	 *
-	 * Never modify or reference this class directly. Always use {@link UserGroupUtil} to access the user group persistence. Modify <code>service.xml</code> and rerun ServiceBuilder to regenerate this class.
+	 * Never modify or reference this class directly. Always use <code>UserGroupUtil</code> to access the user group persistence. Modify <code>service.xml</code> and rerun ServiceBuilder to regenerate this class.
 	 */
-	public static final String FINDER_CLASS_NAME_ENTITY = UserGroupImpl.class.getName();
-	public static final String FINDER_CLASS_NAME_LIST_WITH_PAGINATION = FINDER_CLASS_NAME_ENTITY +
-		".List1";
-	public static final String FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION = FINDER_CLASS_NAME_ENTITY +
-		".List2";
-	public static final FinderPath FINDER_PATH_WITH_PAGINATION_FIND_ALL = new FinderPath(UserGroupModelImpl.ENTITY_CACHE_ENABLED,
-			UserGroupModelImpl.FINDER_CACHE_ENABLED, UserGroupImpl.class,
-			FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findAll", new String[0]);
-	public static final FinderPath FINDER_PATH_WITHOUT_PAGINATION_FIND_ALL = new FinderPath(UserGroupModelImpl.ENTITY_CACHE_ENABLED,
-			UserGroupModelImpl.FINDER_CACHE_ENABLED, UserGroupImpl.class,
-			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findAll", new String[0]);
-	public static final FinderPath FINDER_PATH_COUNT_ALL = new FinderPath(UserGroupModelImpl.ENTITY_CACHE_ENABLED,
-			UserGroupModelImpl.FINDER_CACHE_ENABLED, Long.class,
-			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countAll", new String[0]);
-	public static final FinderPath FINDER_PATH_WITH_PAGINATION_FIND_BY_UUID = new FinderPath(UserGroupModelImpl.ENTITY_CACHE_ENABLED,
-			UserGroupModelImpl.FINDER_CACHE_ENABLED, UserGroupImpl.class,
-			FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByUuid",
-			new String[] {
-				String.class.getName(),
-				
-			Integer.class.getName(), Integer.class.getName(),
-				OrderByComparator.class.getName()
-			});
-	public static final FinderPath FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_UUID = new FinderPath(UserGroupModelImpl.ENTITY_CACHE_ENABLED,
-			UserGroupModelImpl.FINDER_CACHE_ENABLED, UserGroupImpl.class,
-			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findByUuid",
-			new String[] { String.class.getName() },
-			UserGroupModelImpl.UUID_COLUMN_BITMASK |
-			UserGroupModelImpl.NAME_COLUMN_BITMASK);
-	public static final FinderPath FINDER_PATH_COUNT_BY_UUID = new FinderPath(UserGroupModelImpl.ENTITY_CACHE_ENABLED,
-			UserGroupModelImpl.FINDER_CACHE_ENABLED, Long.class,
-			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByUuid",
-			new String[] { String.class.getName() });
+	public static final String FINDER_CLASS_NAME_ENTITY =
+		UserGroupImpl.class.getName();
+
+	public static final String FINDER_CLASS_NAME_LIST_WITH_PAGINATION =
+		FINDER_CLASS_NAME_ENTITY + ".List1";
+
+	public static final String FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION =
+		FINDER_CLASS_NAME_ENTITY + ".List2";
+
+	private FinderPath _finderPathWithPaginationFindAll;
+	private FinderPath _finderPathWithoutPaginationFindAll;
+	private FinderPath _finderPathCountAll;
+	private FinderPath _finderPathWithPaginationFindByUuid;
+	private FinderPath _finderPathWithoutPaginationFindByUuid;
+	private FinderPath _finderPathCountByUuid;
 
 	/**
 	 * Returns all the user groups where uuid = &#63;.
@@ -137,7 +113,7 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * Returns a range of all the user groups where uuid = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link UserGroupModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>UserGroupModelImpl</code>.
 	 * </p>
 	 *
 	 * @param uuid the uuid
@@ -154,7 +130,7 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * Returns an ordered range of all the user groups where uuid = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link UserGroupModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>UserGroupModelImpl</code>.
 	 * </p>
 	 *
 	 * @param uuid the uuid
@@ -164,8 +140,10 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * @return the ordered range of matching user groups
 	 */
 	@Override
-	public List<UserGroup> findByUuid(String uuid, int start, int end,
+	public List<UserGroup> findByUuid(
+		String uuid, int start, int end,
 		OrderByComparator<UserGroup> orderByComparator) {
+
 		return findByUuid(uuid, start, end, orderByComparator, true);
 	}
 
@@ -173,44 +151,49 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * Returns an ordered range of all the user groups where uuid = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link UserGroupModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>UserGroupModelImpl</code>.
 	 * </p>
 	 *
 	 * @param uuid the uuid
 	 * @param start the lower bound of the range of user groups
 	 * @param end the upper bound of the range of user groups (not inclusive)
 	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
-	 * @param retrieveFromCache whether to retrieve from the finder cache
+	 * @param useFinderCache whether to use the finder cache
 	 * @return the ordered range of matching user groups
 	 */
 	@Override
-	public List<UserGroup> findByUuid(String uuid, int start, int end,
+	public List<UserGroup> findByUuid(
+		String uuid, int start, int end,
 		OrderByComparator<UserGroup> orderByComparator,
-		boolean retrieveFromCache) {
-		boolean pagination = true;
+		boolean useFinderCache) {
+
+		uuid = Objects.toString(uuid, "");
+
 		FinderPath finderPath = null;
 		Object[] finderArgs = null;
 
 		if ((start == QueryUtil.ALL_POS) && (end == QueryUtil.ALL_POS) &&
-				(orderByComparator == null)) {
-			pagination = false;
-			finderPath = FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_UUID;
-			finderArgs = new Object[] { uuid };
+			(orderByComparator == null)) {
+
+			if (useFinderCache) {
+				finderPath = _finderPathWithoutPaginationFindByUuid;
+				finderArgs = new Object[] {uuid};
+			}
 		}
-		else {
-			finderPath = FINDER_PATH_WITH_PAGINATION_FIND_BY_UUID;
-			finderArgs = new Object[] { uuid, start, end, orderByComparator };
+		else if (useFinderCache) {
+			finderPath = _finderPathWithPaginationFindByUuid;
+			finderArgs = new Object[] {uuid, start, end, orderByComparator};
 		}
 
 		List<UserGroup> list = null;
 
-		if (retrieveFromCache) {
-			list = (List<UserGroup>)finderCache.getResult(finderPath,
-					finderArgs, this);
+		if (useFinderCache) {
+			list = (List<UserGroup>)FinderCacheUtil.getResult(
+				finderPath, finderArgs, this);
 
 			if ((list != null) && !list.isEmpty()) {
 				for (UserGroup userGroup : list) {
-					if (!Objects.equals(uuid, userGroup.getUuid())) {
+					if (!uuid.equals(userGroup.getUuid())) {
 						list = null;
 
 						break;
@@ -223,8 +206,8 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 			StringBundler query = null;
 
 			if (orderByComparator != null) {
-				query = new StringBundler(3 +
-						(orderByComparator.getOrderByFields().length * 2));
+				query = new StringBundler(
+					3 + (orderByComparator.getOrderByFields().length * 2));
 			}
 			else {
 				query = new StringBundler(3);
@@ -234,10 +217,7 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 
 			boolean bindUuid = false;
 
-			if (uuid == null) {
-				query.append(_FINDER_COLUMN_UUID_UUID_1);
-			}
-			else if (uuid.equals("")) {
+			if (uuid.isEmpty()) {
 				query.append(_FINDER_COLUMN_UUID_UUID_3);
 			}
 			else {
@@ -247,11 +227,10 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 			}
 
 			if (orderByComparator != null) {
-				appendOrderByComparator(query, _ORDER_BY_ENTITY_ALIAS,
-					orderByComparator);
+				appendOrderByComparator(
+					query, _ORDER_BY_ENTITY_ALIAS, orderByComparator);
 			}
-			else
-			 if (pagination) {
+			else {
 				query.append(UserGroupModelImpl.ORDER_BY_JPQL);
 			}
 
@@ -270,25 +249,19 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 					qPos.add(uuid);
 				}
 
-				if (!pagination) {
-					list = (List<UserGroup>)QueryUtil.list(q, getDialect(),
-							start, end, false);
-
-					Collections.sort(list);
-
-					list = Collections.unmodifiableList(list);
-				}
-				else {
-					list = (List<UserGroup>)QueryUtil.list(q, getDialect(),
-							start, end);
-				}
+				list = (List<UserGroup>)QueryUtil.list(
+					q, getDialect(), start, end);
 
 				cacheResult(list);
 
-				finderCache.putResult(finderPath, finderArgs, list);
+				if (useFinderCache) {
+					FinderCacheUtil.putResult(finderPath, finderArgs, list);
+				}
 			}
 			catch (Exception e) {
-				finderCache.removeResult(finderPath, finderArgs);
+				if (useFinderCache) {
+					FinderCacheUtil.removeResult(finderPath, finderArgs);
+				}
 
 				throw processException(e);
 			}
@@ -309,9 +282,10 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * @throws NoSuchUserGroupException if a matching user group could not be found
 	 */
 	@Override
-	public UserGroup findByUuid_First(String uuid,
-		OrderByComparator<UserGroup> orderByComparator)
+	public UserGroup findByUuid_First(
+			String uuid, OrderByComparator<UserGroup> orderByComparator)
 		throws NoSuchUserGroupException {
+
 		UserGroup userGroup = fetchByUuid_First(uuid, orderByComparator);
 
 		if (userGroup != null) {
@@ -338,8 +312,9 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * @return the first matching user group, or <code>null</code> if a matching user group could not be found
 	 */
 	@Override
-	public UserGroup fetchByUuid_First(String uuid,
-		OrderByComparator<UserGroup> orderByComparator) {
+	public UserGroup fetchByUuid_First(
+		String uuid, OrderByComparator<UserGroup> orderByComparator) {
+
 		List<UserGroup> list = findByUuid(uuid, 0, 1, orderByComparator);
 
 		if (!list.isEmpty()) {
@@ -358,9 +333,10 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * @throws NoSuchUserGroupException if a matching user group could not be found
 	 */
 	@Override
-	public UserGroup findByUuid_Last(String uuid,
-		OrderByComparator<UserGroup> orderByComparator)
+	public UserGroup findByUuid_Last(
+			String uuid, OrderByComparator<UserGroup> orderByComparator)
 		throws NoSuchUserGroupException {
+
 		UserGroup userGroup = fetchByUuid_Last(uuid, orderByComparator);
 
 		if (userGroup != null) {
@@ -387,16 +363,17 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * @return the last matching user group, or <code>null</code> if a matching user group could not be found
 	 */
 	@Override
-	public UserGroup fetchByUuid_Last(String uuid,
-		OrderByComparator<UserGroup> orderByComparator) {
+	public UserGroup fetchByUuid_Last(
+		String uuid, OrderByComparator<UserGroup> orderByComparator) {
+
 		int count = countByUuid(uuid);
 
 		if (count == 0) {
 			return null;
 		}
 
-		List<UserGroup> list = findByUuid(uuid, count - 1, count,
-				orderByComparator);
+		List<UserGroup> list = findByUuid(
+			uuid, count - 1, count, orderByComparator);
 
 		if (!list.isEmpty()) {
 			return list.get(0);
@@ -415,9 +392,13 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * @throws NoSuchUserGroupException if a user group with the primary key could not be found
 	 */
 	@Override
-	public UserGroup[] findByUuid_PrevAndNext(long userGroupId, String uuid,
-		OrderByComparator<UserGroup> orderByComparator)
+	public UserGroup[] findByUuid_PrevAndNext(
+			long userGroupId, String uuid,
+			OrderByComparator<UserGroup> orderByComparator)
 		throws NoSuchUserGroupException {
+
+		uuid = Objects.toString(uuid, "");
+
 		UserGroup userGroup = findByPrimaryKey(userGroupId);
 
 		Session session = null;
@@ -427,13 +408,13 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 
 			UserGroup[] array = new UserGroupImpl[3];
 
-			array[0] = getByUuid_PrevAndNext(session, userGroup, uuid,
-					orderByComparator, true);
+			array[0] = getByUuid_PrevAndNext(
+				session, userGroup, uuid, orderByComparator, true);
 
 			array[1] = userGroup;
 
-			array[2] = getByUuid_PrevAndNext(session, userGroup, uuid,
-					orderByComparator, false);
+			array[2] = getByUuid_PrevAndNext(
+				session, userGroup, uuid, orderByComparator, false);
 
 			return array;
 		}
@@ -445,14 +426,15 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 		}
 	}
 
-	protected UserGroup getByUuid_PrevAndNext(Session session,
-		UserGroup userGroup, String uuid,
+	protected UserGroup getByUuid_PrevAndNext(
+		Session session, UserGroup userGroup, String uuid,
 		OrderByComparator<UserGroup> orderByComparator, boolean previous) {
+
 		StringBundler query = null;
 
 		if (orderByComparator != null) {
-			query = new StringBundler(4 +
-					(orderByComparator.getOrderByConditionFields().length * 3) +
+			query = new StringBundler(
+				4 + (orderByComparator.getOrderByConditionFields().length * 3) +
 					(orderByComparator.getOrderByFields().length * 3));
 		}
 		else {
@@ -463,10 +445,7 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 
 		boolean bindUuid = false;
 
-		if (uuid == null) {
-			query.append(_FINDER_COLUMN_UUID_UUID_1);
-		}
-		else if (uuid.equals("")) {
+		if (uuid.isEmpty()) {
 			query.append(_FINDER_COLUMN_UUID_UUID_3);
 		}
 		else {
@@ -476,7 +455,8 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 		}
 
 		if (orderByComparator != null) {
-			String[] orderByConditionFields = orderByComparator.getOrderByConditionFields();
+			String[] orderByConditionFields =
+				orderByComparator.getOrderByConditionFields();
 
 			if (orderByConditionFields.length > 0) {
 				query.append(WHERE_AND);
@@ -548,10 +528,10 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 		}
 
 		if (orderByComparator != null) {
-			Object[] values = orderByComparator.getOrderByConditionValues(userGroup);
+			for (Object orderByConditionValue :
+					orderByComparator.getOrderByConditionValues(userGroup)) {
 
-			for (Object value : values) {
-				qPos.add(value);
+				qPos.add(orderByConditionValue);
 			}
 		}
 
@@ -573,14 +553,15 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 */
 	@Override
 	public List<UserGroup> filterFindByUuid(String uuid) {
-		return filterFindByUuid(uuid, QueryUtil.ALL_POS, QueryUtil.ALL_POS, null);
+		return filterFindByUuid(
+			uuid, QueryUtil.ALL_POS, QueryUtil.ALL_POS, null);
 	}
 
 	/**
 	 * Returns a range of all the user groups that the user has permission to view where uuid = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link UserGroupModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>UserGroupModelImpl</code>.
 	 * </p>
 	 *
 	 * @param uuid the uuid
@@ -597,7 +578,7 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * Returns an ordered range of all the user groups that the user has permissions to view where uuid = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link UserGroupModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>UserGroupModelImpl</code>.
 	 * </p>
 	 *
 	 * @param uuid the uuid
@@ -607,17 +588,21 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * @return the ordered range of matching user groups that the user has permission to view
 	 */
 	@Override
-	public List<UserGroup> filterFindByUuid(String uuid, int start, int end,
+	public List<UserGroup> filterFindByUuid(
+		String uuid, int start, int end,
 		OrderByComparator<UserGroup> orderByComparator) {
+
 		if (!InlineSQLHelperUtil.isEnabled()) {
 			return findByUuid(uuid, start, end, orderByComparator);
 		}
 
+		uuid = Objects.toString(uuid, "");
+
 		StringBundler query = null;
 
 		if (orderByComparator != null) {
-			query = new StringBundler(3 +
-					(orderByComparator.getOrderByFields().length * 2));
+			query = new StringBundler(
+				3 + (orderByComparator.getOrderByFields().length * 2));
 		}
 		else {
 			query = new StringBundler(4);
@@ -627,15 +612,13 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 			query.append(_FILTER_SQL_SELECT_USERGROUP_WHERE);
 		}
 		else {
-			query.append(_FILTER_SQL_SELECT_USERGROUP_NO_INLINE_DISTINCT_WHERE_1);
+			query.append(
+				_FILTER_SQL_SELECT_USERGROUP_NO_INLINE_DISTINCT_WHERE_1);
 		}
 
 		boolean bindUuid = false;
 
-		if (uuid == null) {
-			query.append(_FINDER_COLUMN_UUID_UUID_1_SQL);
-		}
-		else if (uuid.equals("")) {
+		if (uuid.isEmpty()) {
 			query.append(_FINDER_COLUMN_UUID_UUID_3_SQL);
 		}
 		else {
@@ -645,17 +628,18 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 		}
 
 		if (!getDB().isSupportsInlineDistinct()) {
-			query.append(_FILTER_SQL_SELECT_USERGROUP_NO_INLINE_DISTINCT_WHERE_2);
+			query.append(
+				_FILTER_SQL_SELECT_USERGROUP_NO_INLINE_DISTINCT_WHERE_2);
 		}
 
 		if (orderByComparator != null) {
 			if (getDB().isSupportsInlineDistinct()) {
-				appendOrderByComparator(query, _ORDER_BY_ENTITY_ALIAS,
-					orderByComparator, true);
+				appendOrderByComparator(
+					query, _ORDER_BY_ENTITY_ALIAS, orderByComparator, true);
 			}
 			else {
-				appendOrderByComparator(query, _ORDER_BY_ENTITY_TABLE,
-					orderByComparator, true);
+				appendOrderByComparator(
+					query, _ORDER_BY_ENTITY_TABLE, orderByComparator, true);
 			}
 		}
 		else {
@@ -667,8 +651,9 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 			}
 		}
 
-		String sql = InlineSQLHelperUtil.replacePermissionCheck(query.toString(),
-				UserGroup.class.getName(), _FILTER_ENTITY_TABLE_FILTER_PK_COLUMN);
+		String sql = InlineSQLHelperUtil.replacePermissionCheck(
+			query.toString(), UserGroup.class.getName(),
+			_FILTER_ENTITY_TABLE_FILTER_PK_COLUMN);
 
 		Session session = null;
 
@@ -710,12 +695,16 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * @throws NoSuchUserGroupException if a user group with the primary key could not be found
 	 */
 	@Override
-	public UserGroup[] filterFindByUuid_PrevAndNext(long userGroupId,
-		String uuid, OrderByComparator<UserGroup> orderByComparator)
+	public UserGroup[] filterFindByUuid_PrevAndNext(
+			long userGroupId, String uuid,
+			OrderByComparator<UserGroup> orderByComparator)
 		throws NoSuchUserGroupException {
+
 		if (!InlineSQLHelperUtil.isEnabled()) {
 			return findByUuid_PrevAndNext(userGroupId, uuid, orderByComparator);
 		}
+
+		uuid = Objects.toString(uuid, "");
 
 		UserGroup userGroup = findByPrimaryKey(userGroupId);
 
@@ -726,13 +715,13 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 
 			UserGroup[] array = new UserGroupImpl[3];
 
-			array[0] = filterGetByUuid_PrevAndNext(session, userGroup, uuid,
-					orderByComparator, true);
+			array[0] = filterGetByUuid_PrevAndNext(
+				session, userGroup, uuid, orderByComparator, true);
 
 			array[1] = userGroup;
 
-			array[2] = filterGetByUuid_PrevAndNext(session, userGroup, uuid,
-					orderByComparator, false);
+			array[2] = filterGetByUuid_PrevAndNext(
+				session, userGroup, uuid, orderByComparator, false);
 
 			return array;
 		}
@@ -744,14 +733,15 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 		}
 	}
 
-	protected UserGroup filterGetByUuid_PrevAndNext(Session session,
-		UserGroup userGroup, String uuid,
+	protected UserGroup filterGetByUuid_PrevAndNext(
+		Session session, UserGroup userGroup, String uuid,
 		OrderByComparator<UserGroup> orderByComparator, boolean previous) {
+
 		StringBundler query = null;
 
 		if (orderByComparator != null) {
-			query = new StringBundler(5 +
-					(orderByComparator.getOrderByConditionFields().length * 3) +
+			query = new StringBundler(
+				5 + (orderByComparator.getOrderByConditionFields().length * 3) +
 					(orderByComparator.getOrderByFields().length * 3));
 		}
 		else {
@@ -762,15 +752,13 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 			query.append(_FILTER_SQL_SELECT_USERGROUP_WHERE);
 		}
 		else {
-			query.append(_FILTER_SQL_SELECT_USERGROUP_NO_INLINE_DISTINCT_WHERE_1);
+			query.append(
+				_FILTER_SQL_SELECT_USERGROUP_NO_INLINE_DISTINCT_WHERE_1);
 		}
 
 		boolean bindUuid = false;
 
-		if (uuid == null) {
-			query.append(_FINDER_COLUMN_UUID_UUID_1_SQL);
-		}
-		else if (uuid.equals("")) {
+		if (uuid.isEmpty()) {
 			query.append(_FINDER_COLUMN_UUID_UUID_3_SQL);
 		}
 		else {
@@ -780,11 +768,13 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 		}
 
 		if (!getDB().isSupportsInlineDistinct()) {
-			query.append(_FILTER_SQL_SELECT_USERGROUP_NO_INLINE_DISTINCT_WHERE_2);
+			query.append(
+				_FILTER_SQL_SELECT_USERGROUP_NO_INLINE_DISTINCT_WHERE_2);
 		}
 
 		if (orderByComparator != null) {
-			String[] orderByConditionFields = orderByComparator.getOrderByConditionFields();
+			String[] orderByConditionFields =
+				orderByComparator.getOrderByConditionFields();
 
 			if (orderByConditionFields.length > 0) {
 				query.append(WHERE_AND);
@@ -792,13 +782,17 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 
 			for (int i = 0; i < orderByConditionFields.length; i++) {
 				if (getDB().isSupportsInlineDistinct()) {
-					query.append(_ORDER_BY_ENTITY_ALIAS);
+					query.append(
+						getColumnName(
+							_ORDER_BY_ENTITY_ALIAS, orderByConditionFields[i],
+							true));
 				}
 				else {
-					query.append(_ORDER_BY_ENTITY_TABLE);
+					query.append(
+						getColumnName(
+							_ORDER_BY_ENTITY_TABLE, orderByConditionFields[i],
+							true));
 				}
-
-				query.append(orderByConditionFields[i]);
 
 				if ((i + 1) < orderByConditionFields.length) {
 					if (orderByComparator.isAscending() ^ previous) {
@@ -824,13 +818,15 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 
 			for (int i = 0; i < orderByFields.length; i++) {
 				if (getDB().isSupportsInlineDistinct()) {
-					query.append(_ORDER_BY_ENTITY_ALIAS);
+					query.append(
+						getColumnName(
+							_ORDER_BY_ENTITY_ALIAS, orderByFields[i], true));
 				}
 				else {
-					query.append(_ORDER_BY_ENTITY_TABLE);
+					query.append(
+						getColumnName(
+							_ORDER_BY_ENTITY_TABLE, orderByFields[i], true));
 				}
-
-				query.append(orderByFields[i]);
 
 				if ((i + 1) < orderByFields.length) {
 					if (orderByComparator.isAscending() ^ previous) {
@@ -859,8 +855,9 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 			}
 		}
 
-		String sql = InlineSQLHelperUtil.replacePermissionCheck(query.toString(),
-				UserGroup.class.getName(), _FILTER_ENTITY_TABLE_FILTER_PK_COLUMN);
+		String sql = InlineSQLHelperUtil.replacePermissionCheck(
+			query.toString(), UserGroup.class.getName(),
+			_FILTER_ENTITY_TABLE_FILTER_PK_COLUMN);
 
 		SQLQuery q = session.createSynchronizedSQLQuery(sql);
 
@@ -881,10 +878,10 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 		}
 
 		if (orderByComparator != null) {
-			Object[] values = orderByComparator.getOrderByConditionValues(userGroup);
+			for (Object orderByConditionValue :
+					orderByComparator.getOrderByConditionValues(userGroup)) {
 
-			for (Object value : values) {
-				qPos.add(value);
+				qPos.add(orderByConditionValue);
 			}
 		}
 
@@ -905,8 +902,9 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 */
 	@Override
 	public void removeByUuid(String uuid) {
-		for (UserGroup userGroup : findByUuid(uuid, QueryUtil.ALL_POS,
-				QueryUtil.ALL_POS, null)) {
+		for (UserGroup userGroup :
+				findByUuid(uuid, QueryUtil.ALL_POS, QueryUtil.ALL_POS, null)) {
+
 			remove(userGroup);
 		}
 	}
@@ -919,11 +917,14 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 */
 	@Override
 	public int countByUuid(String uuid) {
-		FinderPath finderPath = FINDER_PATH_COUNT_BY_UUID;
+		uuid = Objects.toString(uuid, "");
 
-		Object[] finderArgs = new Object[] { uuid };
+		FinderPath finderPath = _finderPathCountByUuid;
 
-		Long count = (Long)finderCache.getResult(finderPath, finderArgs, this);
+		Object[] finderArgs = new Object[] {uuid};
+
+		Long count = (Long)FinderCacheUtil.getResult(
+			finderPath, finderArgs, this);
 
 		if (count == null) {
 			StringBundler query = new StringBundler(2);
@@ -932,10 +933,7 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 
 			boolean bindUuid = false;
 
-			if (uuid == null) {
-				query.append(_FINDER_COLUMN_UUID_UUID_1);
-			}
-			else if (uuid.equals("")) {
+			if (uuid.isEmpty()) {
 				query.append(_FINDER_COLUMN_UUID_UUID_3);
 			}
 			else {
@@ -961,10 +959,10 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 
 				count = (Long)q.uniqueResult();
 
-				finderCache.putResult(finderPath, finderArgs, count);
+				FinderCacheUtil.putResult(finderPath, finderArgs, count);
 			}
 			catch (Exception e) {
-				finderCache.removeResult(finderPath, finderArgs);
+				FinderCacheUtil.removeResult(finderPath, finderArgs);
 
 				throw processException(e);
 			}
@@ -988,16 +986,15 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 			return countByUuid(uuid);
 		}
 
+		uuid = Objects.toString(uuid, "");
+
 		StringBundler query = new StringBundler(2);
 
 		query.append(_FILTER_SQL_COUNT_USERGROUP_WHERE);
 
 		boolean bindUuid = false;
 
-		if (uuid == null) {
-			query.append(_FINDER_COLUMN_UUID_UUID_1_SQL);
-		}
-		else if (uuid.equals("")) {
+		if (uuid.isEmpty()) {
 			query.append(_FINDER_COLUMN_UUID_UUID_3_SQL);
 		}
 		else {
@@ -1006,8 +1003,9 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 			query.append(_FINDER_COLUMN_UUID_UUID_2_SQL);
 		}
 
-		String sql = InlineSQLHelperUtil.replacePermissionCheck(query.toString(),
-				UserGroup.class.getName(), _FILTER_ENTITY_TABLE_FILTER_PK_COLUMN);
+		String sql = InlineSQLHelperUtil.replacePermissionCheck(
+			query.toString(), UserGroup.class.getName(),
+			_FILTER_ENTITY_TABLE_FILTER_PK_COLUMN);
 
 		Session session = null;
 
@@ -1016,8 +1014,8 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 
 			SQLQuery q = session.createSynchronizedSQLQuery(sql);
 
-			q.addScalar(COUNT_COLUMN_NAME,
-				com.liferay.portal.kernel.dao.orm.Type.LONG);
+			q.addScalar(
+				COUNT_COLUMN_NAME, com.liferay.portal.kernel.dao.orm.Type.LONG);
 
 			QueryPos qPos = QueryPos.getInstance(q);
 
@@ -1037,33 +1035,21 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 		}
 	}
 
-	private static final String _FINDER_COLUMN_UUID_UUID_1 = "userGroup.uuid IS NULL";
-	private static final String _FINDER_COLUMN_UUID_UUID_2 = "userGroup.uuid = ?";
-	private static final String _FINDER_COLUMN_UUID_UUID_3 = "(userGroup.uuid IS NULL OR userGroup.uuid = '')";
-	private static final String _FINDER_COLUMN_UUID_UUID_1_SQL = "userGroup.uuid_ IS NULL";
-	private static final String _FINDER_COLUMN_UUID_UUID_2_SQL = "userGroup.uuid_ = ?";
-	private static final String _FINDER_COLUMN_UUID_UUID_3_SQL = "(userGroup.uuid_ IS NULL OR userGroup.uuid_ = '')";
-	public static final FinderPath FINDER_PATH_WITH_PAGINATION_FIND_BY_UUID_C = new FinderPath(UserGroupModelImpl.ENTITY_CACHE_ENABLED,
-			UserGroupModelImpl.FINDER_CACHE_ENABLED, UserGroupImpl.class,
-			FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByUuid_C",
-			new String[] {
-				String.class.getName(), Long.class.getName(),
-				
-			Integer.class.getName(), Integer.class.getName(),
-				OrderByComparator.class.getName()
-			});
-	public static final FinderPath FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_UUID_C =
-		new FinderPath(UserGroupModelImpl.ENTITY_CACHE_ENABLED,
-			UserGroupModelImpl.FINDER_CACHE_ENABLED, UserGroupImpl.class,
-			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findByUuid_C",
-			new String[] { String.class.getName(), Long.class.getName() },
-			UserGroupModelImpl.UUID_COLUMN_BITMASK |
-			UserGroupModelImpl.COMPANYID_COLUMN_BITMASK |
-			UserGroupModelImpl.NAME_COLUMN_BITMASK);
-	public static final FinderPath FINDER_PATH_COUNT_BY_UUID_C = new FinderPath(UserGroupModelImpl.ENTITY_CACHE_ENABLED,
-			UserGroupModelImpl.FINDER_CACHE_ENABLED, Long.class,
-			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByUuid_C",
-			new String[] { String.class.getName(), Long.class.getName() });
+	private static final String _FINDER_COLUMN_UUID_UUID_2 =
+		"userGroup.uuid = ?";
+
+	private static final String _FINDER_COLUMN_UUID_UUID_3 =
+		"(userGroup.uuid IS NULL OR userGroup.uuid = '')";
+
+	private static final String _FINDER_COLUMN_UUID_UUID_2_SQL =
+		"userGroup.uuid_ = ?";
+
+	private static final String _FINDER_COLUMN_UUID_UUID_3_SQL =
+		"(userGroup.uuid_ IS NULL OR userGroup.uuid_ = '')";
+
+	private FinderPath _finderPathWithPaginationFindByUuid_C;
+	private FinderPath _finderPathWithoutPaginationFindByUuid_C;
+	private FinderPath _finderPathCountByUuid_C;
 
 	/**
 	 * Returns all the user groups where uuid = &#63; and companyId = &#63;.
@@ -1074,15 +1060,15 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 */
 	@Override
 	public List<UserGroup> findByUuid_C(String uuid, long companyId) {
-		return findByUuid_C(uuid, companyId, QueryUtil.ALL_POS,
-			QueryUtil.ALL_POS, null);
+		return findByUuid_C(
+			uuid, companyId, QueryUtil.ALL_POS, QueryUtil.ALL_POS, null);
 	}
 
 	/**
 	 * Returns a range of all the user groups where uuid = &#63; and companyId = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link UserGroupModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>UserGroupModelImpl</code>.
 	 * </p>
 	 *
 	 * @param uuid the uuid
@@ -1092,8 +1078,9 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * @return the range of matching user groups
 	 */
 	@Override
-	public List<UserGroup> findByUuid_C(String uuid, long companyId, int start,
-		int end) {
+	public List<UserGroup> findByUuid_C(
+		String uuid, long companyId, int start, int end) {
+
 		return findByUuid_C(uuid, companyId, start, end, null);
 	}
 
@@ -1101,7 +1088,7 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * Returns an ordered range of all the user groups where uuid = &#63; and companyId = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link UserGroupModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>UserGroupModelImpl</code>.
 	 * </p>
 	 *
 	 * @param uuid the uuid
@@ -1112,16 +1099,19 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * @return the ordered range of matching user groups
 	 */
 	@Override
-	public List<UserGroup> findByUuid_C(String uuid, long companyId, int start,
-		int end, OrderByComparator<UserGroup> orderByComparator) {
-		return findByUuid_C(uuid, companyId, start, end, orderByComparator, true);
+	public List<UserGroup> findByUuid_C(
+		String uuid, long companyId, int start, int end,
+		OrderByComparator<UserGroup> orderByComparator) {
+
+		return findByUuid_C(
+			uuid, companyId, start, end, orderByComparator, true);
 	}
 
 	/**
 	 * Returns an ordered range of all the user groups where uuid = &#63; and companyId = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link UserGroupModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>UserGroupModelImpl</code>.
 	 * </p>
 	 *
 	 * @param uuid the uuid
@@ -1129,42 +1119,46 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * @param start the lower bound of the range of user groups
 	 * @param end the upper bound of the range of user groups (not inclusive)
 	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
-	 * @param retrieveFromCache whether to retrieve from the finder cache
+	 * @param useFinderCache whether to use the finder cache
 	 * @return the ordered range of matching user groups
 	 */
 	@Override
-	public List<UserGroup> findByUuid_C(String uuid, long companyId, int start,
-		int end, OrderByComparator<UserGroup> orderByComparator,
-		boolean retrieveFromCache) {
-		boolean pagination = true;
+	public List<UserGroup> findByUuid_C(
+		String uuid, long companyId, int start, int end,
+		OrderByComparator<UserGroup> orderByComparator,
+		boolean useFinderCache) {
+
+		uuid = Objects.toString(uuid, "");
+
 		FinderPath finderPath = null;
 		Object[] finderArgs = null;
 
 		if ((start == QueryUtil.ALL_POS) && (end == QueryUtil.ALL_POS) &&
-				(orderByComparator == null)) {
-			pagination = false;
-			finderPath = FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_UUID_C;
-			finderArgs = new Object[] { uuid, companyId };
+			(orderByComparator == null)) {
+
+			if (useFinderCache) {
+				finderPath = _finderPathWithoutPaginationFindByUuid_C;
+				finderArgs = new Object[] {uuid, companyId};
+			}
 		}
-		else {
-			finderPath = FINDER_PATH_WITH_PAGINATION_FIND_BY_UUID_C;
+		else if (useFinderCache) {
+			finderPath = _finderPathWithPaginationFindByUuid_C;
 			finderArgs = new Object[] {
-					uuid, companyId,
-					
-					start, end, orderByComparator
-				};
+				uuid, companyId, start, end, orderByComparator
+			};
 		}
 
 		List<UserGroup> list = null;
 
-		if (retrieveFromCache) {
-			list = (List<UserGroup>)finderCache.getResult(finderPath,
-					finderArgs, this);
+		if (useFinderCache) {
+			list = (List<UserGroup>)FinderCacheUtil.getResult(
+				finderPath, finderArgs, this);
 
 			if ((list != null) && !list.isEmpty()) {
 				for (UserGroup userGroup : list) {
-					if (!Objects.equals(uuid, userGroup.getUuid()) ||
-							(companyId != userGroup.getCompanyId())) {
+					if (!uuid.equals(userGroup.getUuid()) ||
+						(companyId != userGroup.getCompanyId())) {
+
 						list = null;
 
 						break;
@@ -1177,8 +1171,8 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 			StringBundler query = null;
 
 			if (orderByComparator != null) {
-				query = new StringBundler(4 +
-						(orderByComparator.getOrderByFields().length * 2));
+				query = new StringBundler(
+					4 + (orderByComparator.getOrderByFields().length * 2));
 			}
 			else {
 				query = new StringBundler(4);
@@ -1188,10 +1182,7 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 
 			boolean bindUuid = false;
 
-			if (uuid == null) {
-				query.append(_FINDER_COLUMN_UUID_C_UUID_1);
-			}
-			else if (uuid.equals("")) {
+			if (uuid.isEmpty()) {
 				query.append(_FINDER_COLUMN_UUID_C_UUID_3);
 			}
 			else {
@@ -1203,11 +1194,10 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 			query.append(_FINDER_COLUMN_UUID_C_COMPANYID_2);
 
 			if (orderByComparator != null) {
-				appendOrderByComparator(query, _ORDER_BY_ENTITY_ALIAS,
-					orderByComparator);
+				appendOrderByComparator(
+					query, _ORDER_BY_ENTITY_ALIAS, orderByComparator);
 			}
-			else
-			 if (pagination) {
+			else {
 				query.append(UserGroupModelImpl.ORDER_BY_JPQL);
 			}
 
@@ -1228,25 +1218,19 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 
 				qPos.add(companyId);
 
-				if (!pagination) {
-					list = (List<UserGroup>)QueryUtil.list(q, getDialect(),
-							start, end, false);
-
-					Collections.sort(list);
-
-					list = Collections.unmodifiableList(list);
-				}
-				else {
-					list = (List<UserGroup>)QueryUtil.list(q, getDialect(),
-							start, end);
-				}
+				list = (List<UserGroup>)QueryUtil.list(
+					q, getDialect(), start, end);
 
 				cacheResult(list);
 
-				finderCache.putResult(finderPath, finderArgs, list);
+				if (useFinderCache) {
+					FinderCacheUtil.putResult(finderPath, finderArgs, list);
+				}
 			}
 			catch (Exception e) {
-				finderCache.removeResult(finderPath, finderArgs);
+				if (useFinderCache) {
+					FinderCacheUtil.removeResult(finderPath, finderArgs);
+				}
 
 				throw processException(e);
 			}
@@ -1268,11 +1252,13 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * @throws NoSuchUserGroupException if a matching user group could not be found
 	 */
 	@Override
-	public UserGroup findByUuid_C_First(String uuid, long companyId,
-		OrderByComparator<UserGroup> orderByComparator)
+	public UserGroup findByUuid_C_First(
+			String uuid, long companyId,
+			OrderByComparator<UserGroup> orderByComparator)
 		throws NoSuchUserGroupException {
-		UserGroup userGroup = fetchByUuid_C_First(uuid, companyId,
-				orderByComparator);
+
+		UserGroup userGroup = fetchByUuid_C_First(
+			uuid, companyId, orderByComparator);
 
 		if (userGroup != null) {
 			return userGroup;
@@ -1302,10 +1288,12 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * @return the first matching user group, or <code>null</code> if a matching user group could not be found
 	 */
 	@Override
-	public UserGroup fetchByUuid_C_First(String uuid, long companyId,
+	public UserGroup fetchByUuid_C_First(
+		String uuid, long companyId,
 		OrderByComparator<UserGroup> orderByComparator) {
-		List<UserGroup> list = findByUuid_C(uuid, companyId, 0, 1,
-				orderByComparator);
+
+		List<UserGroup> list = findByUuid_C(
+			uuid, companyId, 0, 1, orderByComparator);
 
 		if (!list.isEmpty()) {
 			return list.get(0);
@@ -1324,11 +1312,13 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * @throws NoSuchUserGroupException if a matching user group could not be found
 	 */
 	@Override
-	public UserGroup findByUuid_C_Last(String uuid, long companyId,
-		OrderByComparator<UserGroup> orderByComparator)
+	public UserGroup findByUuid_C_Last(
+			String uuid, long companyId,
+			OrderByComparator<UserGroup> orderByComparator)
 		throws NoSuchUserGroupException {
-		UserGroup userGroup = fetchByUuid_C_Last(uuid, companyId,
-				orderByComparator);
+
+		UserGroup userGroup = fetchByUuid_C_Last(
+			uuid, companyId, orderByComparator);
 
 		if (userGroup != null) {
 			return userGroup;
@@ -1358,16 +1348,18 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * @return the last matching user group, or <code>null</code> if a matching user group could not be found
 	 */
 	@Override
-	public UserGroup fetchByUuid_C_Last(String uuid, long companyId,
+	public UserGroup fetchByUuid_C_Last(
+		String uuid, long companyId,
 		OrderByComparator<UserGroup> orderByComparator) {
+
 		int count = countByUuid_C(uuid, companyId);
 
 		if (count == 0) {
 			return null;
 		}
 
-		List<UserGroup> list = findByUuid_C(uuid, companyId, count - 1, count,
-				orderByComparator);
+		List<UserGroup> list = findByUuid_C(
+			uuid, companyId, count - 1, count, orderByComparator);
 
 		if (!list.isEmpty()) {
 			return list.get(0);
@@ -1387,9 +1379,13 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * @throws NoSuchUserGroupException if a user group with the primary key could not be found
 	 */
 	@Override
-	public UserGroup[] findByUuid_C_PrevAndNext(long userGroupId, String uuid,
-		long companyId, OrderByComparator<UserGroup> orderByComparator)
+	public UserGroup[] findByUuid_C_PrevAndNext(
+			long userGroupId, String uuid, long companyId,
+			OrderByComparator<UserGroup> orderByComparator)
 		throws NoSuchUserGroupException {
+
+		uuid = Objects.toString(uuid, "");
+
 		UserGroup userGroup = findByPrimaryKey(userGroupId);
 
 		Session session = null;
@@ -1399,13 +1395,13 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 
 			UserGroup[] array = new UserGroupImpl[3];
 
-			array[0] = getByUuid_C_PrevAndNext(session, userGroup, uuid,
-					companyId, orderByComparator, true);
+			array[0] = getByUuid_C_PrevAndNext(
+				session, userGroup, uuid, companyId, orderByComparator, true);
 
 			array[1] = userGroup;
 
-			array[2] = getByUuid_C_PrevAndNext(session, userGroup, uuid,
-					companyId, orderByComparator, false);
+			array[2] = getByUuid_C_PrevAndNext(
+				session, userGroup, uuid, companyId, orderByComparator, false);
 
 			return array;
 		}
@@ -1417,14 +1413,15 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 		}
 	}
 
-	protected UserGroup getByUuid_C_PrevAndNext(Session session,
-		UserGroup userGroup, String uuid, long companyId,
+	protected UserGroup getByUuid_C_PrevAndNext(
+		Session session, UserGroup userGroup, String uuid, long companyId,
 		OrderByComparator<UserGroup> orderByComparator, boolean previous) {
+
 		StringBundler query = null;
 
 		if (orderByComparator != null) {
-			query = new StringBundler(5 +
-					(orderByComparator.getOrderByConditionFields().length * 3) +
+			query = new StringBundler(
+				5 + (orderByComparator.getOrderByConditionFields().length * 3) +
 					(orderByComparator.getOrderByFields().length * 3));
 		}
 		else {
@@ -1435,10 +1432,7 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 
 		boolean bindUuid = false;
 
-		if (uuid == null) {
-			query.append(_FINDER_COLUMN_UUID_C_UUID_1);
-		}
-		else if (uuid.equals("")) {
+		if (uuid.isEmpty()) {
 			query.append(_FINDER_COLUMN_UUID_C_UUID_3);
 		}
 		else {
@@ -1450,7 +1444,8 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 		query.append(_FINDER_COLUMN_UUID_C_COMPANYID_2);
 
 		if (orderByComparator != null) {
-			String[] orderByConditionFields = orderByComparator.getOrderByConditionFields();
+			String[] orderByConditionFields =
+				orderByComparator.getOrderByConditionFields();
 
 			if (orderByConditionFields.length > 0) {
 				query.append(WHERE_AND);
@@ -1524,10 +1519,10 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 		qPos.add(companyId);
 
 		if (orderByComparator != null) {
-			Object[] values = orderByComparator.getOrderByConditionValues(userGroup);
+			for (Object orderByConditionValue :
+					orderByComparator.getOrderByConditionValues(userGroup)) {
 
-			for (Object value : values) {
-				qPos.add(value);
+				qPos.add(orderByConditionValue);
 			}
 		}
 
@@ -1550,15 +1545,15 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 */
 	@Override
 	public List<UserGroup> filterFindByUuid_C(String uuid, long companyId) {
-		return filterFindByUuid_C(uuid, companyId, QueryUtil.ALL_POS,
-			QueryUtil.ALL_POS, null);
+		return filterFindByUuid_C(
+			uuid, companyId, QueryUtil.ALL_POS, QueryUtil.ALL_POS, null);
 	}
 
 	/**
 	 * Returns a range of all the user groups that the user has permission to view where uuid = &#63; and companyId = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link UserGroupModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>UserGroupModelImpl</code>.
 	 * </p>
 	 *
 	 * @param uuid the uuid
@@ -1568,8 +1563,9 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * @return the range of matching user groups that the user has permission to view
 	 */
 	@Override
-	public List<UserGroup> filterFindByUuid_C(String uuid, long companyId,
-		int start, int end) {
+	public List<UserGroup> filterFindByUuid_C(
+		String uuid, long companyId, int start, int end) {
+
 		return filterFindByUuid_C(uuid, companyId, start, end, null);
 	}
 
@@ -1577,7 +1573,7 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * Returns an ordered range of all the user groups that the user has permissions to view where uuid = &#63; and companyId = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link UserGroupModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>UserGroupModelImpl</code>.
 	 * </p>
 	 *
 	 * @param uuid the uuid
@@ -1588,17 +1584,21 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * @return the ordered range of matching user groups that the user has permission to view
 	 */
 	@Override
-	public List<UserGroup> filterFindByUuid_C(String uuid, long companyId,
-		int start, int end, OrderByComparator<UserGroup> orderByComparator) {
+	public List<UserGroup> filterFindByUuid_C(
+		String uuid, long companyId, int start, int end,
+		OrderByComparator<UserGroup> orderByComparator) {
+
 		if (!InlineSQLHelperUtil.isEnabled(companyId, 0)) {
 			return findByUuid_C(uuid, companyId, start, end, orderByComparator);
 		}
 
+		uuid = Objects.toString(uuid, "");
+
 		StringBundler query = null;
 
 		if (orderByComparator != null) {
-			query = new StringBundler(4 +
-					(orderByComparator.getOrderByFields().length * 2));
+			query = new StringBundler(
+				4 + (orderByComparator.getOrderByFields().length * 2));
 		}
 		else {
 			query = new StringBundler(5);
@@ -1608,15 +1608,13 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 			query.append(_FILTER_SQL_SELECT_USERGROUP_WHERE);
 		}
 		else {
-			query.append(_FILTER_SQL_SELECT_USERGROUP_NO_INLINE_DISTINCT_WHERE_1);
+			query.append(
+				_FILTER_SQL_SELECT_USERGROUP_NO_INLINE_DISTINCT_WHERE_1);
 		}
 
 		boolean bindUuid = false;
 
-		if (uuid == null) {
-			query.append(_FINDER_COLUMN_UUID_C_UUID_1_SQL);
-		}
-		else if (uuid.equals("")) {
+		if (uuid.isEmpty()) {
 			query.append(_FINDER_COLUMN_UUID_C_UUID_3_SQL);
 		}
 		else {
@@ -1628,17 +1626,18 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 		query.append(_FINDER_COLUMN_UUID_C_COMPANYID_2);
 
 		if (!getDB().isSupportsInlineDistinct()) {
-			query.append(_FILTER_SQL_SELECT_USERGROUP_NO_INLINE_DISTINCT_WHERE_2);
+			query.append(
+				_FILTER_SQL_SELECT_USERGROUP_NO_INLINE_DISTINCT_WHERE_2);
 		}
 
 		if (orderByComparator != null) {
 			if (getDB().isSupportsInlineDistinct()) {
-				appendOrderByComparator(query, _ORDER_BY_ENTITY_ALIAS,
-					orderByComparator, true);
+				appendOrderByComparator(
+					query, _ORDER_BY_ENTITY_ALIAS, orderByComparator, true);
 			}
 			else {
-				appendOrderByComparator(query, _ORDER_BY_ENTITY_TABLE,
-					orderByComparator, true);
+				appendOrderByComparator(
+					query, _ORDER_BY_ENTITY_TABLE, orderByComparator, true);
 			}
 		}
 		else {
@@ -1650,8 +1649,9 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 			}
 		}
 
-		String sql = InlineSQLHelperUtil.replacePermissionCheck(query.toString(),
-				UserGroup.class.getName(), _FILTER_ENTITY_TABLE_FILTER_PK_COLUMN);
+		String sql = InlineSQLHelperUtil.replacePermissionCheck(
+			query.toString(), UserGroup.class.getName(),
+			_FILTER_ENTITY_TABLE_FILTER_PK_COLUMN);
 
 		Session session = null;
 
@@ -1696,14 +1696,17 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * @throws NoSuchUserGroupException if a user group with the primary key could not be found
 	 */
 	@Override
-	public UserGroup[] filterFindByUuid_C_PrevAndNext(long userGroupId,
-		String uuid, long companyId,
-		OrderByComparator<UserGroup> orderByComparator)
+	public UserGroup[] filterFindByUuid_C_PrevAndNext(
+			long userGroupId, String uuid, long companyId,
+			OrderByComparator<UserGroup> orderByComparator)
 		throws NoSuchUserGroupException {
+
 		if (!InlineSQLHelperUtil.isEnabled(companyId, 0)) {
-			return findByUuid_C_PrevAndNext(userGroupId, uuid, companyId,
-				orderByComparator);
+			return findByUuid_C_PrevAndNext(
+				userGroupId, uuid, companyId, orderByComparator);
 		}
+
+		uuid = Objects.toString(uuid, "");
 
 		UserGroup userGroup = findByPrimaryKey(userGroupId);
 
@@ -1714,13 +1717,13 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 
 			UserGroup[] array = new UserGroupImpl[3];
 
-			array[0] = filterGetByUuid_C_PrevAndNext(session, userGroup, uuid,
-					companyId, orderByComparator, true);
+			array[0] = filterGetByUuid_C_PrevAndNext(
+				session, userGroup, uuid, companyId, orderByComparator, true);
 
 			array[1] = userGroup;
 
-			array[2] = filterGetByUuid_C_PrevAndNext(session, userGroup, uuid,
-					companyId, orderByComparator, false);
+			array[2] = filterGetByUuid_C_PrevAndNext(
+				session, userGroup, uuid, companyId, orderByComparator, false);
 
 			return array;
 		}
@@ -1732,14 +1735,15 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 		}
 	}
 
-	protected UserGroup filterGetByUuid_C_PrevAndNext(Session session,
-		UserGroup userGroup, String uuid, long companyId,
+	protected UserGroup filterGetByUuid_C_PrevAndNext(
+		Session session, UserGroup userGroup, String uuid, long companyId,
 		OrderByComparator<UserGroup> orderByComparator, boolean previous) {
+
 		StringBundler query = null;
 
 		if (orderByComparator != null) {
-			query = new StringBundler(6 +
-					(orderByComparator.getOrderByConditionFields().length * 3) +
+			query = new StringBundler(
+				6 + (orderByComparator.getOrderByConditionFields().length * 3) +
 					(orderByComparator.getOrderByFields().length * 3));
 		}
 		else {
@@ -1750,15 +1754,13 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 			query.append(_FILTER_SQL_SELECT_USERGROUP_WHERE);
 		}
 		else {
-			query.append(_FILTER_SQL_SELECT_USERGROUP_NO_INLINE_DISTINCT_WHERE_1);
+			query.append(
+				_FILTER_SQL_SELECT_USERGROUP_NO_INLINE_DISTINCT_WHERE_1);
 		}
 
 		boolean bindUuid = false;
 
-		if (uuid == null) {
-			query.append(_FINDER_COLUMN_UUID_C_UUID_1_SQL);
-		}
-		else if (uuid.equals("")) {
+		if (uuid.isEmpty()) {
 			query.append(_FINDER_COLUMN_UUID_C_UUID_3_SQL);
 		}
 		else {
@@ -1770,11 +1772,13 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 		query.append(_FINDER_COLUMN_UUID_C_COMPANYID_2);
 
 		if (!getDB().isSupportsInlineDistinct()) {
-			query.append(_FILTER_SQL_SELECT_USERGROUP_NO_INLINE_DISTINCT_WHERE_2);
+			query.append(
+				_FILTER_SQL_SELECT_USERGROUP_NO_INLINE_DISTINCT_WHERE_2);
 		}
 
 		if (orderByComparator != null) {
-			String[] orderByConditionFields = orderByComparator.getOrderByConditionFields();
+			String[] orderByConditionFields =
+				orderByComparator.getOrderByConditionFields();
 
 			if (orderByConditionFields.length > 0) {
 				query.append(WHERE_AND);
@@ -1782,13 +1786,17 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 
 			for (int i = 0; i < orderByConditionFields.length; i++) {
 				if (getDB().isSupportsInlineDistinct()) {
-					query.append(_ORDER_BY_ENTITY_ALIAS);
+					query.append(
+						getColumnName(
+							_ORDER_BY_ENTITY_ALIAS, orderByConditionFields[i],
+							true));
 				}
 				else {
-					query.append(_ORDER_BY_ENTITY_TABLE);
+					query.append(
+						getColumnName(
+							_ORDER_BY_ENTITY_TABLE, orderByConditionFields[i],
+							true));
 				}
-
-				query.append(orderByConditionFields[i]);
 
 				if ((i + 1) < orderByConditionFields.length) {
 					if (orderByComparator.isAscending() ^ previous) {
@@ -1814,13 +1822,15 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 
 			for (int i = 0; i < orderByFields.length; i++) {
 				if (getDB().isSupportsInlineDistinct()) {
-					query.append(_ORDER_BY_ENTITY_ALIAS);
+					query.append(
+						getColumnName(
+							_ORDER_BY_ENTITY_ALIAS, orderByFields[i], true));
 				}
 				else {
-					query.append(_ORDER_BY_ENTITY_TABLE);
+					query.append(
+						getColumnName(
+							_ORDER_BY_ENTITY_TABLE, orderByFields[i], true));
 				}
-
-				query.append(orderByFields[i]);
 
 				if ((i + 1) < orderByFields.length) {
 					if (orderByComparator.isAscending() ^ previous) {
@@ -1849,8 +1859,9 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 			}
 		}
 
-		String sql = InlineSQLHelperUtil.replacePermissionCheck(query.toString(),
-				UserGroup.class.getName(), _FILTER_ENTITY_TABLE_FILTER_PK_COLUMN);
+		String sql = InlineSQLHelperUtil.replacePermissionCheck(
+			query.toString(), UserGroup.class.getName(),
+			_FILTER_ENTITY_TABLE_FILTER_PK_COLUMN);
 
 		SQLQuery q = session.createSynchronizedSQLQuery(sql);
 
@@ -1873,10 +1884,10 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 		qPos.add(companyId);
 
 		if (orderByComparator != null) {
-			Object[] values = orderByComparator.getOrderByConditionValues(userGroup);
+			for (Object orderByConditionValue :
+					orderByComparator.getOrderByConditionValues(userGroup)) {
 
-			for (Object value : values) {
-				qPos.add(value);
+				qPos.add(orderByConditionValue);
 			}
 		}
 
@@ -1898,8 +1909,11 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 */
 	@Override
 	public void removeByUuid_C(String uuid, long companyId) {
-		for (UserGroup userGroup : findByUuid_C(uuid, companyId,
-				QueryUtil.ALL_POS, QueryUtil.ALL_POS, null)) {
+		for (UserGroup userGroup :
+				findByUuid_C(
+					uuid, companyId, QueryUtil.ALL_POS, QueryUtil.ALL_POS,
+					null)) {
+
 			remove(userGroup);
 		}
 	}
@@ -1913,11 +1927,14 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 */
 	@Override
 	public int countByUuid_C(String uuid, long companyId) {
-		FinderPath finderPath = FINDER_PATH_COUNT_BY_UUID_C;
+		uuid = Objects.toString(uuid, "");
 
-		Object[] finderArgs = new Object[] { uuid, companyId };
+		FinderPath finderPath = _finderPathCountByUuid_C;
 
-		Long count = (Long)finderCache.getResult(finderPath, finderArgs, this);
+		Object[] finderArgs = new Object[] {uuid, companyId};
+
+		Long count = (Long)FinderCacheUtil.getResult(
+			finderPath, finderArgs, this);
 
 		if (count == null) {
 			StringBundler query = new StringBundler(3);
@@ -1926,10 +1943,7 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 
 			boolean bindUuid = false;
 
-			if (uuid == null) {
-				query.append(_FINDER_COLUMN_UUID_C_UUID_1);
-			}
-			else if (uuid.equals("")) {
+			if (uuid.isEmpty()) {
 				query.append(_FINDER_COLUMN_UUID_C_UUID_3);
 			}
 			else {
@@ -1959,10 +1973,10 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 
 				count = (Long)q.uniqueResult();
 
-				finderCache.putResult(finderPath, finderArgs, count);
+				FinderCacheUtil.putResult(finderPath, finderArgs, count);
 			}
 			catch (Exception e) {
-				finderCache.removeResult(finderPath, finderArgs);
+				FinderCacheUtil.removeResult(finderPath, finderArgs);
 
 				throw processException(e);
 			}
@@ -1987,16 +2001,15 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 			return countByUuid_C(uuid, companyId);
 		}
 
+		uuid = Objects.toString(uuid, "");
+
 		StringBundler query = new StringBundler(3);
 
 		query.append(_FILTER_SQL_COUNT_USERGROUP_WHERE);
 
 		boolean bindUuid = false;
 
-		if (uuid == null) {
-			query.append(_FINDER_COLUMN_UUID_C_UUID_1_SQL);
-		}
-		else if (uuid.equals("")) {
+		if (uuid.isEmpty()) {
 			query.append(_FINDER_COLUMN_UUID_C_UUID_3_SQL);
 		}
 		else {
@@ -2007,8 +2020,9 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 
 		query.append(_FINDER_COLUMN_UUID_C_COMPANYID_2);
 
-		String sql = InlineSQLHelperUtil.replacePermissionCheck(query.toString(),
-				UserGroup.class.getName(), _FILTER_ENTITY_TABLE_FILTER_PK_COLUMN);
+		String sql = InlineSQLHelperUtil.replacePermissionCheck(
+			query.toString(), UserGroup.class.getName(),
+			_FILTER_ENTITY_TABLE_FILTER_PK_COLUMN);
 
 		Session session = null;
 
@@ -2017,8 +2031,8 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 
 			SQLQuery q = session.createSynchronizedSQLQuery(sql);
 
-			q.addScalar(COUNT_COLUMN_NAME,
-				com.liferay.portal.kernel.dao.orm.Type.LONG);
+			q.addScalar(
+				COUNT_COLUMN_NAME, com.liferay.portal.kernel.dao.orm.Type.LONG);
 
 			QueryPos qPos = QueryPos.getInstance(q);
 
@@ -2040,34 +2054,24 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 		}
 	}
 
-	private static final String _FINDER_COLUMN_UUID_C_UUID_1 = "userGroup.uuid IS NULL AND ";
-	private static final String _FINDER_COLUMN_UUID_C_UUID_2 = "userGroup.uuid = ? AND ";
-	private static final String _FINDER_COLUMN_UUID_C_UUID_3 = "(userGroup.uuid IS NULL OR userGroup.uuid = '') AND ";
-	private static final String _FINDER_COLUMN_UUID_C_UUID_1_SQL = "userGroup.uuid_ IS NULL AND ";
-	private static final String _FINDER_COLUMN_UUID_C_UUID_2_SQL = "userGroup.uuid_ = ? AND ";
-	private static final String _FINDER_COLUMN_UUID_C_UUID_3_SQL = "(userGroup.uuid_ IS NULL OR userGroup.uuid_ = '') AND ";
-	private static final String _FINDER_COLUMN_UUID_C_COMPANYID_2 = "userGroup.companyId = ?";
-	public static final FinderPath FINDER_PATH_WITH_PAGINATION_FIND_BY_COMPANYID =
-		new FinderPath(UserGroupModelImpl.ENTITY_CACHE_ENABLED,
-			UserGroupModelImpl.FINDER_CACHE_ENABLED, UserGroupImpl.class,
-			FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByCompanyId",
-			new String[] {
-				Long.class.getName(),
-				
-			Integer.class.getName(), Integer.class.getName(),
-				OrderByComparator.class.getName()
-			});
-	public static final FinderPath FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_COMPANYID =
-		new FinderPath(UserGroupModelImpl.ENTITY_CACHE_ENABLED,
-			UserGroupModelImpl.FINDER_CACHE_ENABLED, UserGroupImpl.class,
-			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findByCompanyId",
-			new String[] { Long.class.getName() },
-			UserGroupModelImpl.COMPANYID_COLUMN_BITMASK |
-			UserGroupModelImpl.NAME_COLUMN_BITMASK);
-	public static final FinderPath FINDER_PATH_COUNT_BY_COMPANYID = new FinderPath(UserGroupModelImpl.ENTITY_CACHE_ENABLED,
-			UserGroupModelImpl.FINDER_CACHE_ENABLED, Long.class,
-			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByCompanyId",
-			new String[] { Long.class.getName() });
+	private static final String _FINDER_COLUMN_UUID_C_UUID_2 =
+		"userGroup.uuid = ? AND ";
+
+	private static final String _FINDER_COLUMN_UUID_C_UUID_3 =
+		"(userGroup.uuid IS NULL OR userGroup.uuid = '') AND ";
+
+	private static final String _FINDER_COLUMN_UUID_C_UUID_2_SQL =
+		"userGroup.uuid_ = ? AND ";
+
+	private static final String _FINDER_COLUMN_UUID_C_UUID_3_SQL =
+		"(userGroup.uuid_ IS NULL OR userGroup.uuid_ = '') AND ";
+
+	private static final String _FINDER_COLUMN_UUID_C_COMPANYID_2 =
+		"userGroup.companyId = ?";
+
+	private FinderPath _finderPathWithPaginationFindByCompanyId;
+	private FinderPath _finderPathWithoutPaginationFindByCompanyId;
+	private FinderPath _finderPathCountByCompanyId;
 
 	/**
 	 * Returns all the user groups where companyId = &#63;.
@@ -2077,15 +2081,15 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 */
 	@Override
 	public List<UserGroup> findByCompanyId(long companyId) {
-		return findByCompanyId(companyId, QueryUtil.ALL_POS, QueryUtil.ALL_POS,
-			null);
+		return findByCompanyId(
+			companyId, QueryUtil.ALL_POS, QueryUtil.ALL_POS, null);
 	}
 
 	/**
 	 * Returns a range of all the user groups where companyId = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link UserGroupModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>UserGroupModelImpl</code>.
 	 * </p>
 	 *
 	 * @param companyId the company ID
@@ -2102,7 +2106,7 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * Returns an ordered range of all the user groups where companyId = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link UserGroupModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>UserGroupModelImpl</code>.
 	 * </p>
 	 *
 	 * @param companyId the company ID
@@ -2112,8 +2116,10 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * @return the ordered range of matching user groups
 	 */
 	@Override
-	public List<UserGroup> findByCompanyId(long companyId, int start, int end,
+	public List<UserGroup> findByCompanyId(
+		long companyId, int start, int end,
 		OrderByComparator<UserGroup> orderByComparator) {
+
 		return findByCompanyId(companyId, start, end, orderByComparator, true);
 	}
 
@@ -2121,44 +2127,49 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * Returns an ordered range of all the user groups where companyId = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link UserGroupModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>UserGroupModelImpl</code>.
 	 * </p>
 	 *
 	 * @param companyId the company ID
 	 * @param start the lower bound of the range of user groups
 	 * @param end the upper bound of the range of user groups (not inclusive)
 	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
-	 * @param retrieveFromCache whether to retrieve from the finder cache
+	 * @param useFinderCache whether to use the finder cache
 	 * @return the ordered range of matching user groups
 	 */
 	@Override
-	public List<UserGroup> findByCompanyId(long companyId, int start, int end,
+	public List<UserGroup> findByCompanyId(
+		long companyId, int start, int end,
 		OrderByComparator<UserGroup> orderByComparator,
-		boolean retrieveFromCache) {
-		boolean pagination = true;
+		boolean useFinderCache) {
+
 		FinderPath finderPath = null;
 		Object[] finderArgs = null;
 
 		if ((start == QueryUtil.ALL_POS) && (end == QueryUtil.ALL_POS) &&
-				(orderByComparator == null)) {
-			pagination = false;
-			finderPath = FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_COMPANYID;
-			finderArgs = new Object[] { companyId };
+			(orderByComparator == null)) {
+
+			if (useFinderCache) {
+				finderPath = _finderPathWithoutPaginationFindByCompanyId;
+				finderArgs = new Object[] {companyId};
+			}
 		}
-		else {
-			finderPath = FINDER_PATH_WITH_PAGINATION_FIND_BY_COMPANYID;
-			finderArgs = new Object[] { companyId, start, end, orderByComparator };
+		else if (useFinderCache) {
+			finderPath = _finderPathWithPaginationFindByCompanyId;
+			finderArgs = new Object[] {
+				companyId, start, end, orderByComparator
+			};
 		}
 
 		List<UserGroup> list = null;
 
-		if (retrieveFromCache) {
-			list = (List<UserGroup>)finderCache.getResult(finderPath,
-					finderArgs, this);
+		if (useFinderCache) {
+			list = (List<UserGroup>)FinderCacheUtil.getResult(
+				finderPath, finderArgs, this);
 
 			if ((list != null) && !list.isEmpty()) {
 				for (UserGroup userGroup : list) {
-					if ((companyId != userGroup.getCompanyId())) {
+					if (companyId != userGroup.getCompanyId()) {
 						list = null;
 
 						break;
@@ -2171,8 +2182,8 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 			StringBundler query = null;
 
 			if (orderByComparator != null) {
-				query = new StringBundler(3 +
-						(orderByComparator.getOrderByFields().length * 2));
+				query = new StringBundler(
+					3 + (orderByComparator.getOrderByFields().length * 2));
 			}
 			else {
 				query = new StringBundler(3);
@@ -2183,11 +2194,10 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 			query.append(_FINDER_COLUMN_COMPANYID_COMPANYID_2);
 
 			if (orderByComparator != null) {
-				appendOrderByComparator(query, _ORDER_BY_ENTITY_ALIAS,
-					orderByComparator);
+				appendOrderByComparator(
+					query, _ORDER_BY_ENTITY_ALIAS, orderByComparator);
 			}
-			else
-			 if (pagination) {
+			else {
 				query.append(UserGroupModelImpl.ORDER_BY_JPQL);
 			}
 
@@ -2204,25 +2214,19 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 
 				qPos.add(companyId);
 
-				if (!pagination) {
-					list = (List<UserGroup>)QueryUtil.list(q, getDialect(),
-							start, end, false);
-
-					Collections.sort(list);
-
-					list = Collections.unmodifiableList(list);
-				}
-				else {
-					list = (List<UserGroup>)QueryUtil.list(q, getDialect(),
-							start, end);
-				}
+				list = (List<UserGroup>)QueryUtil.list(
+					q, getDialect(), start, end);
 
 				cacheResult(list);
 
-				finderCache.putResult(finderPath, finderArgs, list);
+				if (useFinderCache) {
+					FinderCacheUtil.putResult(finderPath, finderArgs, list);
+				}
 			}
 			catch (Exception e) {
-				finderCache.removeResult(finderPath, finderArgs);
+				if (useFinderCache) {
+					FinderCacheUtil.removeResult(finderPath, finderArgs);
+				}
 
 				throw processException(e);
 			}
@@ -2243,11 +2247,12 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * @throws NoSuchUserGroupException if a matching user group could not be found
 	 */
 	@Override
-	public UserGroup findByCompanyId_First(long companyId,
-		OrderByComparator<UserGroup> orderByComparator)
+	public UserGroup findByCompanyId_First(
+			long companyId, OrderByComparator<UserGroup> orderByComparator)
 		throws NoSuchUserGroupException {
-		UserGroup userGroup = fetchByCompanyId_First(companyId,
-				orderByComparator);
+
+		UserGroup userGroup = fetchByCompanyId_First(
+			companyId, orderByComparator);
 
 		if (userGroup != null) {
 			return userGroup;
@@ -2273,10 +2278,11 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * @return the first matching user group, or <code>null</code> if a matching user group could not be found
 	 */
 	@Override
-	public UserGroup fetchByCompanyId_First(long companyId,
-		OrderByComparator<UserGroup> orderByComparator) {
-		List<UserGroup> list = findByCompanyId(companyId, 0, 1,
-				orderByComparator);
+	public UserGroup fetchByCompanyId_First(
+		long companyId, OrderByComparator<UserGroup> orderByComparator) {
+
+		List<UserGroup> list = findByCompanyId(
+			companyId, 0, 1, orderByComparator);
 
 		if (!list.isEmpty()) {
 			return list.get(0);
@@ -2294,10 +2300,12 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * @throws NoSuchUserGroupException if a matching user group could not be found
 	 */
 	@Override
-	public UserGroup findByCompanyId_Last(long companyId,
-		OrderByComparator<UserGroup> orderByComparator)
+	public UserGroup findByCompanyId_Last(
+			long companyId, OrderByComparator<UserGroup> orderByComparator)
 		throws NoSuchUserGroupException {
-		UserGroup userGroup = fetchByCompanyId_Last(companyId, orderByComparator);
+
+		UserGroup userGroup = fetchByCompanyId_Last(
+			companyId, orderByComparator);
 
 		if (userGroup != null) {
 			return userGroup;
@@ -2323,16 +2331,17 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * @return the last matching user group, or <code>null</code> if a matching user group could not be found
 	 */
 	@Override
-	public UserGroup fetchByCompanyId_Last(long companyId,
-		OrderByComparator<UserGroup> orderByComparator) {
+	public UserGroup fetchByCompanyId_Last(
+		long companyId, OrderByComparator<UserGroup> orderByComparator) {
+
 		int count = countByCompanyId(companyId);
 
 		if (count == 0) {
 			return null;
 		}
 
-		List<UserGroup> list = findByCompanyId(companyId, count - 1, count,
-				orderByComparator);
+		List<UserGroup> list = findByCompanyId(
+			companyId, count - 1, count, orderByComparator);
 
 		if (!list.isEmpty()) {
 			return list.get(0);
@@ -2351,9 +2360,11 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * @throws NoSuchUserGroupException if a user group with the primary key could not be found
 	 */
 	@Override
-	public UserGroup[] findByCompanyId_PrevAndNext(long userGroupId,
-		long companyId, OrderByComparator<UserGroup> orderByComparator)
+	public UserGroup[] findByCompanyId_PrevAndNext(
+			long userGroupId, long companyId,
+			OrderByComparator<UserGroup> orderByComparator)
 		throws NoSuchUserGroupException {
+
 		UserGroup userGroup = findByPrimaryKey(userGroupId);
 
 		Session session = null;
@@ -2363,13 +2374,13 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 
 			UserGroup[] array = new UserGroupImpl[3];
 
-			array[0] = getByCompanyId_PrevAndNext(session, userGroup,
-					companyId, orderByComparator, true);
+			array[0] = getByCompanyId_PrevAndNext(
+				session, userGroup, companyId, orderByComparator, true);
 
 			array[1] = userGroup;
 
-			array[2] = getByCompanyId_PrevAndNext(session, userGroup,
-					companyId, orderByComparator, false);
+			array[2] = getByCompanyId_PrevAndNext(
+				session, userGroup, companyId, orderByComparator, false);
 
 			return array;
 		}
@@ -2381,14 +2392,15 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 		}
 	}
 
-	protected UserGroup getByCompanyId_PrevAndNext(Session session,
-		UserGroup userGroup, long companyId,
+	protected UserGroup getByCompanyId_PrevAndNext(
+		Session session, UserGroup userGroup, long companyId,
 		OrderByComparator<UserGroup> orderByComparator, boolean previous) {
+
 		StringBundler query = null;
 
 		if (orderByComparator != null) {
-			query = new StringBundler(4 +
-					(orderByComparator.getOrderByConditionFields().length * 3) +
+			query = new StringBundler(
+				4 + (orderByComparator.getOrderByConditionFields().length * 3) +
 					(orderByComparator.getOrderByFields().length * 3));
 		}
 		else {
@@ -2400,7 +2412,8 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 		query.append(_FINDER_COLUMN_COMPANYID_COMPANYID_2);
 
 		if (orderByComparator != null) {
-			String[] orderByConditionFields = orderByComparator.getOrderByConditionFields();
+			String[] orderByConditionFields =
+				orderByComparator.getOrderByConditionFields();
 
 			if (orderByConditionFields.length > 0) {
 				query.append(WHERE_AND);
@@ -2470,10 +2483,10 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 		qPos.add(companyId);
 
 		if (orderByComparator != null) {
-			Object[] values = orderByComparator.getOrderByConditionValues(userGroup);
+			for (Object orderByConditionValue :
+					orderByComparator.getOrderByConditionValues(userGroup)) {
 
-			for (Object value : values) {
-				qPos.add(value);
+				qPos.add(orderByConditionValue);
 			}
 		}
 
@@ -2495,15 +2508,15 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 */
 	@Override
 	public List<UserGroup> filterFindByCompanyId(long companyId) {
-		return filterFindByCompanyId(companyId, QueryUtil.ALL_POS,
-			QueryUtil.ALL_POS, null);
+		return filterFindByCompanyId(
+			companyId, QueryUtil.ALL_POS, QueryUtil.ALL_POS, null);
 	}
 
 	/**
 	 * Returns a range of all the user groups that the user has permission to view where companyId = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link UserGroupModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>UserGroupModelImpl</code>.
 	 * </p>
 	 *
 	 * @param companyId the company ID
@@ -2512,8 +2525,9 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * @return the range of matching user groups that the user has permission to view
 	 */
 	@Override
-	public List<UserGroup> filterFindByCompanyId(long companyId, int start,
-		int end) {
+	public List<UserGroup> filterFindByCompanyId(
+		long companyId, int start, int end) {
+
 		return filterFindByCompanyId(companyId, start, end, null);
 	}
 
@@ -2521,7 +2535,7 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * Returns an ordered range of all the user groups that the user has permissions to view where companyId = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link UserGroupModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>UserGroupModelImpl</code>.
 	 * </p>
 	 *
 	 * @param companyId the company ID
@@ -2531,8 +2545,10 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * @return the ordered range of matching user groups that the user has permission to view
 	 */
 	@Override
-	public List<UserGroup> filterFindByCompanyId(long companyId, int start,
-		int end, OrderByComparator<UserGroup> orderByComparator) {
+	public List<UserGroup> filterFindByCompanyId(
+		long companyId, int start, int end,
+		OrderByComparator<UserGroup> orderByComparator) {
+
 		if (!InlineSQLHelperUtil.isEnabled(companyId, 0)) {
 			return findByCompanyId(companyId, start, end, orderByComparator);
 		}
@@ -2540,8 +2556,8 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 		StringBundler query = null;
 
 		if (orderByComparator != null) {
-			query = new StringBundler(3 +
-					(orderByComparator.getOrderByFields().length * 2));
+			query = new StringBundler(
+				3 + (orderByComparator.getOrderByFields().length * 2));
 		}
 		else {
 			query = new StringBundler(4);
@@ -2551,23 +2567,25 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 			query.append(_FILTER_SQL_SELECT_USERGROUP_WHERE);
 		}
 		else {
-			query.append(_FILTER_SQL_SELECT_USERGROUP_NO_INLINE_DISTINCT_WHERE_1);
+			query.append(
+				_FILTER_SQL_SELECT_USERGROUP_NO_INLINE_DISTINCT_WHERE_1);
 		}
 
 		query.append(_FINDER_COLUMN_COMPANYID_COMPANYID_2);
 
 		if (!getDB().isSupportsInlineDistinct()) {
-			query.append(_FILTER_SQL_SELECT_USERGROUP_NO_INLINE_DISTINCT_WHERE_2);
+			query.append(
+				_FILTER_SQL_SELECT_USERGROUP_NO_INLINE_DISTINCT_WHERE_2);
 		}
 
 		if (orderByComparator != null) {
 			if (getDB().isSupportsInlineDistinct()) {
-				appendOrderByComparator(query, _ORDER_BY_ENTITY_ALIAS,
-					orderByComparator, true);
+				appendOrderByComparator(
+					query, _ORDER_BY_ENTITY_ALIAS, orderByComparator, true);
 			}
 			else {
-				appendOrderByComparator(query, _ORDER_BY_ENTITY_TABLE,
-					orderByComparator, true);
+				appendOrderByComparator(
+					query, _ORDER_BY_ENTITY_TABLE, orderByComparator, true);
 			}
 		}
 		else {
@@ -2579,8 +2597,9 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 			}
 		}
 
-		String sql = InlineSQLHelperUtil.replacePermissionCheck(query.toString(),
-				UserGroup.class.getName(), _FILTER_ENTITY_TABLE_FILTER_PK_COLUMN);
+		String sql = InlineSQLHelperUtil.replacePermissionCheck(
+			query.toString(), UserGroup.class.getName(),
+			_FILTER_ENTITY_TABLE_FILTER_PK_COLUMN);
 
 		Session session = null;
 
@@ -2620,12 +2639,14 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * @throws NoSuchUserGroupException if a user group with the primary key could not be found
 	 */
 	@Override
-	public UserGroup[] filterFindByCompanyId_PrevAndNext(long userGroupId,
-		long companyId, OrderByComparator<UserGroup> orderByComparator)
+	public UserGroup[] filterFindByCompanyId_PrevAndNext(
+			long userGroupId, long companyId,
+			OrderByComparator<UserGroup> orderByComparator)
 		throws NoSuchUserGroupException {
+
 		if (!InlineSQLHelperUtil.isEnabled(companyId, 0)) {
-			return findByCompanyId_PrevAndNext(userGroupId, companyId,
-				orderByComparator);
+			return findByCompanyId_PrevAndNext(
+				userGroupId, companyId, orderByComparator);
 		}
 
 		UserGroup userGroup = findByPrimaryKey(userGroupId);
@@ -2637,13 +2658,13 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 
 			UserGroup[] array = new UserGroupImpl[3];
 
-			array[0] = filterGetByCompanyId_PrevAndNext(session, userGroup,
-					companyId, orderByComparator, true);
+			array[0] = filterGetByCompanyId_PrevAndNext(
+				session, userGroup, companyId, orderByComparator, true);
 
 			array[1] = userGroup;
 
-			array[2] = filterGetByCompanyId_PrevAndNext(session, userGroup,
-					companyId, orderByComparator, false);
+			array[2] = filterGetByCompanyId_PrevAndNext(
+				session, userGroup, companyId, orderByComparator, false);
 
 			return array;
 		}
@@ -2655,14 +2676,15 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 		}
 	}
 
-	protected UserGroup filterGetByCompanyId_PrevAndNext(Session session,
-		UserGroup userGroup, long companyId,
+	protected UserGroup filterGetByCompanyId_PrevAndNext(
+		Session session, UserGroup userGroup, long companyId,
 		OrderByComparator<UserGroup> orderByComparator, boolean previous) {
+
 		StringBundler query = null;
 
 		if (orderByComparator != null) {
-			query = new StringBundler(5 +
-					(orderByComparator.getOrderByConditionFields().length * 3) +
+			query = new StringBundler(
+				5 + (orderByComparator.getOrderByConditionFields().length * 3) +
 					(orderByComparator.getOrderByFields().length * 3));
 		}
 		else {
@@ -2673,17 +2695,20 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 			query.append(_FILTER_SQL_SELECT_USERGROUP_WHERE);
 		}
 		else {
-			query.append(_FILTER_SQL_SELECT_USERGROUP_NO_INLINE_DISTINCT_WHERE_1);
+			query.append(
+				_FILTER_SQL_SELECT_USERGROUP_NO_INLINE_DISTINCT_WHERE_1);
 		}
 
 		query.append(_FINDER_COLUMN_COMPANYID_COMPANYID_2);
 
 		if (!getDB().isSupportsInlineDistinct()) {
-			query.append(_FILTER_SQL_SELECT_USERGROUP_NO_INLINE_DISTINCT_WHERE_2);
+			query.append(
+				_FILTER_SQL_SELECT_USERGROUP_NO_INLINE_DISTINCT_WHERE_2);
 		}
 
 		if (orderByComparator != null) {
-			String[] orderByConditionFields = orderByComparator.getOrderByConditionFields();
+			String[] orderByConditionFields =
+				orderByComparator.getOrderByConditionFields();
 
 			if (orderByConditionFields.length > 0) {
 				query.append(WHERE_AND);
@@ -2691,13 +2716,17 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 
 			for (int i = 0; i < orderByConditionFields.length; i++) {
 				if (getDB().isSupportsInlineDistinct()) {
-					query.append(_ORDER_BY_ENTITY_ALIAS);
+					query.append(
+						getColumnName(
+							_ORDER_BY_ENTITY_ALIAS, orderByConditionFields[i],
+							true));
 				}
 				else {
-					query.append(_ORDER_BY_ENTITY_TABLE);
+					query.append(
+						getColumnName(
+							_ORDER_BY_ENTITY_TABLE, orderByConditionFields[i],
+							true));
 				}
-
-				query.append(orderByConditionFields[i]);
 
 				if ((i + 1) < orderByConditionFields.length) {
 					if (orderByComparator.isAscending() ^ previous) {
@@ -2723,13 +2752,15 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 
 			for (int i = 0; i < orderByFields.length; i++) {
 				if (getDB().isSupportsInlineDistinct()) {
-					query.append(_ORDER_BY_ENTITY_ALIAS);
+					query.append(
+						getColumnName(
+							_ORDER_BY_ENTITY_ALIAS, orderByFields[i], true));
 				}
 				else {
-					query.append(_ORDER_BY_ENTITY_TABLE);
+					query.append(
+						getColumnName(
+							_ORDER_BY_ENTITY_TABLE, orderByFields[i], true));
 				}
-
-				query.append(orderByFields[i]);
 
 				if ((i + 1) < orderByFields.length) {
 					if (orderByComparator.isAscending() ^ previous) {
@@ -2758,8 +2789,9 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 			}
 		}
 
-		String sql = InlineSQLHelperUtil.replacePermissionCheck(query.toString(),
-				UserGroup.class.getName(), _FILTER_ENTITY_TABLE_FILTER_PK_COLUMN);
+		String sql = InlineSQLHelperUtil.replacePermissionCheck(
+			query.toString(), UserGroup.class.getName(),
+			_FILTER_ENTITY_TABLE_FILTER_PK_COLUMN);
 
 		SQLQuery q = session.createSynchronizedSQLQuery(sql);
 
@@ -2778,10 +2810,10 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 		qPos.add(companyId);
 
 		if (orderByComparator != null) {
-			Object[] values = orderByComparator.getOrderByConditionValues(userGroup);
+			for (Object orderByConditionValue :
+					orderByComparator.getOrderByConditionValues(userGroup)) {
 
-			for (Object value : values) {
-				qPos.add(value);
+				qPos.add(orderByConditionValue);
 			}
 		}
 
@@ -2802,8 +2834,10 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 */
 	@Override
 	public void removeByCompanyId(long companyId) {
-		for (UserGroup userGroup : findByCompanyId(companyId,
-				QueryUtil.ALL_POS, QueryUtil.ALL_POS, null)) {
+		for (UserGroup userGroup :
+				findByCompanyId(
+					companyId, QueryUtil.ALL_POS, QueryUtil.ALL_POS, null)) {
+
 			remove(userGroup);
 		}
 	}
@@ -2816,11 +2850,12 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 */
 	@Override
 	public int countByCompanyId(long companyId) {
-		FinderPath finderPath = FINDER_PATH_COUNT_BY_COMPANYID;
+		FinderPath finderPath = _finderPathCountByCompanyId;
 
-		Object[] finderArgs = new Object[] { companyId };
+		Object[] finderArgs = new Object[] {companyId};
 
-		Long count = (Long)finderCache.getResult(finderPath, finderArgs, this);
+		Long count = (Long)FinderCacheUtil.getResult(
+			finderPath, finderArgs, this);
 
 		if (count == null) {
 			StringBundler query = new StringBundler(2);
@@ -2844,10 +2879,10 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 
 				count = (Long)q.uniqueResult();
 
-				finderCache.putResult(finderPath, finderArgs, count);
+				FinderCacheUtil.putResult(finderPath, finderArgs, count);
 			}
 			catch (Exception e) {
-				finderCache.removeResult(finderPath, finderArgs);
+				FinderCacheUtil.removeResult(finderPath, finderArgs);
 
 				throw processException(e);
 			}
@@ -2877,8 +2912,9 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 
 		query.append(_FINDER_COLUMN_COMPANYID_COMPANYID_2);
 
-		String sql = InlineSQLHelperUtil.replacePermissionCheck(query.toString(),
-				UserGroup.class.getName(), _FILTER_ENTITY_TABLE_FILTER_PK_COLUMN);
+		String sql = InlineSQLHelperUtil.replacePermissionCheck(
+			query.toString(), UserGroup.class.getName(),
+			_FILTER_ENTITY_TABLE_FILTER_PK_COLUMN);
 
 		Session session = null;
 
@@ -2887,8 +2923,8 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 
 			SQLQuery q = session.createSynchronizedSQLQuery(sql);
 
-			q.addScalar(COUNT_COLUMN_NAME,
-				com.liferay.portal.kernel.dao.orm.Type.LONG);
+			q.addScalar(
+				COUNT_COLUMN_NAME, com.liferay.portal.kernel.dao.orm.Type.LONG);
 
 			QueryPos qPos = QueryPos.getInstance(q);
 
@@ -2906,27 +2942,12 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 		}
 	}
 
-	private static final String _FINDER_COLUMN_COMPANYID_COMPANYID_2 = "userGroup.companyId = ?";
-	public static final FinderPath FINDER_PATH_WITH_PAGINATION_FIND_BY_C_P = new FinderPath(UserGroupModelImpl.ENTITY_CACHE_ENABLED,
-			UserGroupModelImpl.FINDER_CACHE_ENABLED, UserGroupImpl.class,
-			FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByC_P",
-			new String[] {
-				Long.class.getName(), Long.class.getName(),
-				
-			Integer.class.getName(), Integer.class.getName(),
-				OrderByComparator.class.getName()
-			});
-	public static final FinderPath FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_C_P = new FinderPath(UserGroupModelImpl.ENTITY_CACHE_ENABLED,
-			UserGroupModelImpl.FINDER_CACHE_ENABLED, UserGroupImpl.class,
-			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findByC_P",
-			new String[] { Long.class.getName(), Long.class.getName() },
-			UserGroupModelImpl.COMPANYID_COLUMN_BITMASK |
-			UserGroupModelImpl.PARENTUSERGROUPID_COLUMN_BITMASK |
-			UserGroupModelImpl.NAME_COLUMN_BITMASK);
-	public static final FinderPath FINDER_PATH_COUNT_BY_C_P = new FinderPath(UserGroupModelImpl.ENTITY_CACHE_ENABLED,
-			UserGroupModelImpl.FINDER_CACHE_ENABLED, Long.class,
-			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByC_P",
-			new String[] { Long.class.getName(), Long.class.getName() });
+	private static final String _FINDER_COLUMN_COMPANYID_COMPANYID_2 =
+		"userGroup.companyId = ?";
+
+	private FinderPath _finderPathWithPaginationFindByC_P;
+	private FinderPath _finderPathWithoutPaginationFindByC_P;
+	private FinderPath _finderPathCountByC_P;
 
 	/**
 	 * Returns all the user groups where companyId = &#63; and parentUserGroupId = &#63;.
@@ -2937,15 +2958,16 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 */
 	@Override
 	public List<UserGroup> findByC_P(long companyId, long parentUserGroupId) {
-		return findByC_P(companyId, parentUserGroupId, QueryUtil.ALL_POS,
-			QueryUtil.ALL_POS, null);
+		return findByC_P(
+			companyId, parentUserGroupId, QueryUtil.ALL_POS, QueryUtil.ALL_POS,
+			null);
 	}
 
 	/**
 	 * Returns a range of all the user groups where companyId = &#63; and parentUserGroupId = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link UserGroupModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>UserGroupModelImpl</code>.
 	 * </p>
 	 *
 	 * @param companyId the company ID
@@ -2955,8 +2977,9 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * @return the range of matching user groups
 	 */
 	@Override
-	public List<UserGroup> findByC_P(long companyId, long parentUserGroupId,
-		int start, int end) {
+	public List<UserGroup> findByC_P(
+		long companyId, long parentUserGroupId, int start, int end) {
+
 		return findByC_P(companyId, parentUserGroupId, start, end, null);
 	}
 
@@ -2964,7 +2987,7 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * Returns an ordered range of all the user groups where companyId = &#63; and parentUserGroupId = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link UserGroupModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>UserGroupModelImpl</code>.
 	 * </p>
 	 *
 	 * @param companyId the company ID
@@ -2975,17 +2998,19 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * @return the ordered range of matching user groups
 	 */
 	@Override
-	public List<UserGroup> findByC_P(long companyId, long parentUserGroupId,
-		int start, int end, OrderByComparator<UserGroup> orderByComparator) {
-		return findByC_P(companyId, parentUserGroupId, start, end,
-			orderByComparator, true);
+	public List<UserGroup> findByC_P(
+		long companyId, long parentUserGroupId, int start, int end,
+		OrderByComparator<UserGroup> orderByComparator) {
+
+		return findByC_P(
+			companyId, parentUserGroupId, start, end, orderByComparator, true);
 	}
 
 	/**
 	 * Returns an ordered range of all the user groups where companyId = &#63; and parentUserGroupId = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link UserGroupModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>UserGroupModelImpl</code>.
 	 * </p>
 	 *
 	 * @param companyId the company ID
@@ -2993,42 +3018,45 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * @param start the lower bound of the range of user groups
 	 * @param end the upper bound of the range of user groups (not inclusive)
 	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
-	 * @param retrieveFromCache whether to retrieve from the finder cache
+	 * @param useFinderCache whether to use the finder cache
 	 * @return the ordered range of matching user groups
 	 */
 	@Override
-	public List<UserGroup> findByC_P(long companyId, long parentUserGroupId,
-		int start, int end, OrderByComparator<UserGroup> orderByComparator,
-		boolean retrieveFromCache) {
-		boolean pagination = true;
+	public List<UserGroup> findByC_P(
+		long companyId, long parentUserGroupId, int start, int end,
+		OrderByComparator<UserGroup> orderByComparator,
+		boolean useFinderCache) {
+
 		FinderPath finderPath = null;
 		Object[] finderArgs = null;
 
 		if ((start == QueryUtil.ALL_POS) && (end == QueryUtil.ALL_POS) &&
-				(orderByComparator == null)) {
-			pagination = false;
-			finderPath = FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_C_P;
-			finderArgs = new Object[] { companyId, parentUserGroupId };
+			(orderByComparator == null)) {
+
+			if (useFinderCache) {
+				finderPath = _finderPathWithoutPaginationFindByC_P;
+				finderArgs = new Object[] {companyId, parentUserGroupId};
+			}
 		}
-		else {
-			finderPath = FINDER_PATH_WITH_PAGINATION_FIND_BY_C_P;
+		else if (useFinderCache) {
+			finderPath = _finderPathWithPaginationFindByC_P;
 			finderArgs = new Object[] {
-					companyId, parentUserGroupId,
-					
-					start, end, orderByComparator
-				};
+				companyId, parentUserGroupId, start, end, orderByComparator
+			};
 		}
 
 		List<UserGroup> list = null;
 
-		if (retrieveFromCache) {
-			list = (List<UserGroup>)finderCache.getResult(finderPath,
-					finderArgs, this);
+		if (useFinderCache) {
+			list = (List<UserGroup>)FinderCacheUtil.getResult(
+				finderPath, finderArgs, this);
 
 			if ((list != null) && !list.isEmpty()) {
 				for (UserGroup userGroup : list) {
 					if ((companyId != userGroup.getCompanyId()) ||
-							(parentUserGroupId != userGroup.getParentUserGroupId())) {
+						(parentUserGroupId !=
+							userGroup.getParentUserGroupId())) {
+
 						list = null;
 
 						break;
@@ -3041,8 +3069,8 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 			StringBundler query = null;
 
 			if (orderByComparator != null) {
-				query = new StringBundler(4 +
-						(orderByComparator.getOrderByFields().length * 2));
+				query = new StringBundler(
+					4 + (orderByComparator.getOrderByFields().length * 2));
 			}
 			else {
 				query = new StringBundler(4);
@@ -3055,11 +3083,10 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 			query.append(_FINDER_COLUMN_C_P_PARENTUSERGROUPID_2);
 
 			if (orderByComparator != null) {
-				appendOrderByComparator(query, _ORDER_BY_ENTITY_ALIAS,
-					orderByComparator);
+				appendOrderByComparator(
+					query, _ORDER_BY_ENTITY_ALIAS, orderByComparator);
 			}
-			else
-			 if (pagination) {
+			else {
 				query.append(UserGroupModelImpl.ORDER_BY_JPQL);
 			}
 
@@ -3078,25 +3105,19 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 
 				qPos.add(parentUserGroupId);
 
-				if (!pagination) {
-					list = (List<UserGroup>)QueryUtil.list(q, getDialect(),
-							start, end, false);
-
-					Collections.sort(list);
-
-					list = Collections.unmodifiableList(list);
-				}
-				else {
-					list = (List<UserGroup>)QueryUtil.list(q, getDialect(),
-							start, end);
-				}
+				list = (List<UserGroup>)QueryUtil.list(
+					q, getDialect(), start, end);
 
 				cacheResult(list);
 
-				finderCache.putResult(finderPath, finderArgs, list);
+				if (useFinderCache) {
+					FinderCacheUtil.putResult(finderPath, finderArgs, list);
+				}
 			}
 			catch (Exception e) {
-				finderCache.removeResult(finderPath, finderArgs);
+				if (useFinderCache) {
+					FinderCacheUtil.removeResult(finderPath, finderArgs);
+				}
 
 				throw processException(e);
 			}
@@ -3118,11 +3139,13 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * @throws NoSuchUserGroupException if a matching user group could not be found
 	 */
 	@Override
-	public UserGroup findByC_P_First(long companyId, long parentUserGroupId,
-		OrderByComparator<UserGroup> orderByComparator)
+	public UserGroup findByC_P_First(
+			long companyId, long parentUserGroupId,
+			OrderByComparator<UserGroup> orderByComparator)
 		throws NoSuchUserGroupException {
-		UserGroup userGroup = fetchByC_P_First(companyId, parentUserGroupId,
-				orderByComparator);
+
+		UserGroup userGroup = fetchByC_P_First(
+			companyId, parentUserGroupId, orderByComparator);
 
 		if (userGroup != null) {
 			return userGroup;
@@ -3152,10 +3175,12 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * @return the first matching user group, or <code>null</code> if a matching user group could not be found
 	 */
 	@Override
-	public UserGroup fetchByC_P_First(long companyId, long parentUserGroupId,
+	public UserGroup fetchByC_P_First(
+		long companyId, long parentUserGroupId,
 		OrderByComparator<UserGroup> orderByComparator) {
-		List<UserGroup> list = findByC_P(companyId, parentUserGroupId, 0, 1,
-				orderByComparator);
+
+		List<UserGroup> list = findByC_P(
+			companyId, parentUserGroupId, 0, 1, orderByComparator);
 
 		if (!list.isEmpty()) {
 			return list.get(0);
@@ -3174,11 +3199,13 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * @throws NoSuchUserGroupException if a matching user group could not be found
 	 */
 	@Override
-	public UserGroup findByC_P_Last(long companyId, long parentUserGroupId,
-		OrderByComparator<UserGroup> orderByComparator)
+	public UserGroup findByC_P_Last(
+			long companyId, long parentUserGroupId,
+			OrderByComparator<UserGroup> orderByComparator)
 		throws NoSuchUserGroupException {
-		UserGroup userGroup = fetchByC_P_Last(companyId, parentUserGroupId,
-				orderByComparator);
+
+		UserGroup userGroup = fetchByC_P_Last(
+			companyId, parentUserGroupId, orderByComparator);
 
 		if (userGroup != null) {
 			return userGroup;
@@ -3208,16 +3235,18 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * @return the last matching user group, or <code>null</code> if a matching user group could not be found
 	 */
 	@Override
-	public UserGroup fetchByC_P_Last(long companyId, long parentUserGroupId,
+	public UserGroup fetchByC_P_Last(
+		long companyId, long parentUserGroupId,
 		OrderByComparator<UserGroup> orderByComparator) {
+
 		int count = countByC_P(companyId, parentUserGroupId);
 
 		if (count == 0) {
 			return null;
 		}
 
-		List<UserGroup> list = findByC_P(companyId, parentUserGroupId,
-				count - 1, count, orderByComparator);
+		List<UserGroup> list = findByC_P(
+			companyId, parentUserGroupId, count - 1, count, orderByComparator);
 
 		if (!list.isEmpty()) {
 			return list.get(0);
@@ -3237,9 +3266,11 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * @throws NoSuchUserGroupException if a user group with the primary key could not be found
 	 */
 	@Override
-	public UserGroup[] findByC_P_PrevAndNext(long userGroupId, long companyId,
-		long parentUserGroupId, OrderByComparator<UserGroup> orderByComparator)
+	public UserGroup[] findByC_P_PrevAndNext(
+			long userGroupId, long companyId, long parentUserGroupId,
+			OrderByComparator<UserGroup> orderByComparator)
 		throws NoSuchUserGroupException {
+
 		UserGroup userGroup = findByPrimaryKey(userGroupId);
 
 		Session session = null;
@@ -3249,13 +3280,15 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 
 			UserGroup[] array = new UserGroupImpl[3];
 
-			array[0] = getByC_P_PrevAndNext(session, userGroup, companyId,
-					parentUserGroupId, orderByComparator, true);
+			array[0] = getByC_P_PrevAndNext(
+				session, userGroup, companyId, parentUserGroupId,
+				orderByComparator, true);
 
 			array[1] = userGroup;
 
-			array[2] = getByC_P_PrevAndNext(session, userGroup, companyId,
-					parentUserGroupId, orderByComparator, false);
+			array[2] = getByC_P_PrevAndNext(
+				session, userGroup, companyId, parentUserGroupId,
+				orderByComparator, false);
 
 			return array;
 		}
@@ -3267,14 +3300,16 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 		}
 	}
 
-	protected UserGroup getByC_P_PrevAndNext(Session session,
-		UserGroup userGroup, long companyId, long parentUserGroupId,
-		OrderByComparator<UserGroup> orderByComparator, boolean previous) {
+	protected UserGroup getByC_P_PrevAndNext(
+		Session session, UserGroup userGroup, long companyId,
+		long parentUserGroupId, OrderByComparator<UserGroup> orderByComparator,
+		boolean previous) {
+
 		StringBundler query = null;
 
 		if (orderByComparator != null) {
-			query = new StringBundler(5 +
-					(orderByComparator.getOrderByConditionFields().length * 3) +
+			query = new StringBundler(
+				5 + (orderByComparator.getOrderByConditionFields().length * 3) +
 					(orderByComparator.getOrderByFields().length * 3));
 		}
 		else {
@@ -3288,7 +3323,8 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 		query.append(_FINDER_COLUMN_C_P_PARENTUSERGROUPID_2);
 
 		if (orderByComparator != null) {
-			String[] orderByConditionFields = orderByComparator.getOrderByConditionFields();
+			String[] orderByConditionFields =
+				orderByComparator.getOrderByConditionFields();
 
 			if (orderByConditionFields.length > 0) {
 				query.append(WHERE_AND);
@@ -3360,10 +3396,10 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 		qPos.add(parentUserGroupId);
 
 		if (orderByComparator != null) {
-			Object[] values = orderByComparator.getOrderByConditionValues(userGroup);
+			for (Object orderByConditionValue :
+					orderByComparator.getOrderByConditionValues(userGroup)) {
 
-			for (Object value : values) {
-				qPos.add(value);
+				qPos.add(orderByConditionValue);
 			}
 		}
 
@@ -3385,17 +3421,19 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * @return the matching user groups that the user has permission to view
 	 */
 	@Override
-	public List<UserGroup> filterFindByC_P(long companyId,
-		long parentUserGroupId) {
-		return filterFindByC_P(companyId, parentUserGroupId, QueryUtil.ALL_POS,
-			QueryUtil.ALL_POS, null);
+	public List<UserGroup> filterFindByC_P(
+		long companyId, long parentUserGroupId) {
+
+		return filterFindByC_P(
+			companyId, parentUserGroupId, QueryUtil.ALL_POS, QueryUtil.ALL_POS,
+			null);
 	}
 
 	/**
 	 * Returns a range of all the user groups that the user has permission to view where companyId = &#63; and parentUserGroupId = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link UserGroupModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>UserGroupModelImpl</code>.
 	 * </p>
 	 *
 	 * @param companyId the company ID
@@ -3405,8 +3443,9 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * @return the range of matching user groups that the user has permission to view
 	 */
 	@Override
-	public List<UserGroup> filterFindByC_P(long companyId,
-		long parentUserGroupId, int start, int end) {
+	public List<UserGroup> filterFindByC_P(
+		long companyId, long parentUserGroupId, int start, int end) {
+
 		return filterFindByC_P(companyId, parentUserGroupId, start, end, null);
 	}
 
@@ -3414,7 +3453,7 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * Returns an ordered range of all the user groups that the user has permissions to view where companyId = &#63; and parentUserGroupId = &#63;.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link UserGroupModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>UserGroupModelImpl</code>.
 	 * </p>
 	 *
 	 * @param companyId the company ID
@@ -3425,19 +3464,20 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * @return the ordered range of matching user groups that the user has permission to view
 	 */
 	@Override
-	public List<UserGroup> filterFindByC_P(long companyId,
-		long parentUserGroupId, int start, int end,
+	public List<UserGroup> filterFindByC_P(
+		long companyId, long parentUserGroupId, int start, int end,
 		OrderByComparator<UserGroup> orderByComparator) {
+
 		if (!InlineSQLHelperUtil.isEnabled(companyId, 0)) {
-			return findByC_P(companyId, parentUserGroupId, start, end,
-				orderByComparator);
+			return findByC_P(
+				companyId, parentUserGroupId, start, end, orderByComparator);
 		}
 
 		StringBundler query = null;
 
 		if (orderByComparator != null) {
-			query = new StringBundler(4 +
-					(orderByComparator.getOrderByFields().length * 2));
+			query = new StringBundler(
+				4 + (orderByComparator.getOrderByFields().length * 2));
 		}
 		else {
 			query = new StringBundler(5);
@@ -3447,7 +3487,8 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 			query.append(_FILTER_SQL_SELECT_USERGROUP_WHERE);
 		}
 		else {
-			query.append(_FILTER_SQL_SELECT_USERGROUP_NO_INLINE_DISTINCT_WHERE_1);
+			query.append(
+				_FILTER_SQL_SELECT_USERGROUP_NO_INLINE_DISTINCT_WHERE_1);
 		}
 
 		query.append(_FINDER_COLUMN_C_P_COMPANYID_2);
@@ -3455,17 +3496,18 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 		query.append(_FINDER_COLUMN_C_P_PARENTUSERGROUPID_2);
 
 		if (!getDB().isSupportsInlineDistinct()) {
-			query.append(_FILTER_SQL_SELECT_USERGROUP_NO_INLINE_DISTINCT_WHERE_2);
+			query.append(
+				_FILTER_SQL_SELECT_USERGROUP_NO_INLINE_DISTINCT_WHERE_2);
 		}
 
 		if (orderByComparator != null) {
 			if (getDB().isSupportsInlineDistinct()) {
-				appendOrderByComparator(query, _ORDER_BY_ENTITY_ALIAS,
-					orderByComparator, true);
+				appendOrderByComparator(
+					query, _ORDER_BY_ENTITY_ALIAS, orderByComparator, true);
 			}
 			else {
-				appendOrderByComparator(query, _ORDER_BY_ENTITY_TABLE,
-					orderByComparator, true);
+				appendOrderByComparator(
+					query, _ORDER_BY_ENTITY_TABLE, orderByComparator, true);
 			}
 		}
 		else {
@@ -3477,8 +3519,9 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 			}
 		}
 
-		String sql = InlineSQLHelperUtil.replacePermissionCheck(query.toString(),
-				UserGroup.class.getName(), _FILTER_ENTITY_TABLE_FILTER_PK_COLUMN);
+		String sql = InlineSQLHelperUtil.replacePermissionCheck(
+			query.toString(), UserGroup.class.getName(),
+			_FILTER_ENTITY_TABLE_FILTER_PK_COLUMN);
 
 		Session session = null;
 
@@ -3521,13 +3564,14 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * @throws NoSuchUserGroupException if a user group with the primary key could not be found
 	 */
 	@Override
-	public UserGroup[] filterFindByC_P_PrevAndNext(long userGroupId,
-		long companyId, long parentUserGroupId,
-		OrderByComparator<UserGroup> orderByComparator)
+	public UserGroup[] filterFindByC_P_PrevAndNext(
+			long userGroupId, long companyId, long parentUserGroupId,
+			OrderByComparator<UserGroup> orderByComparator)
 		throws NoSuchUserGroupException {
+
 		if (!InlineSQLHelperUtil.isEnabled(companyId, 0)) {
-			return findByC_P_PrevAndNext(userGroupId, companyId,
-				parentUserGroupId, orderByComparator);
+			return findByC_P_PrevAndNext(
+				userGroupId, companyId, parentUserGroupId, orderByComparator);
 		}
 
 		UserGroup userGroup = findByPrimaryKey(userGroupId);
@@ -3539,13 +3583,15 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 
 			UserGroup[] array = new UserGroupImpl[3];
 
-			array[0] = filterGetByC_P_PrevAndNext(session, userGroup,
-					companyId, parentUserGroupId, orderByComparator, true);
+			array[0] = filterGetByC_P_PrevAndNext(
+				session, userGroup, companyId, parentUserGroupId,
+				orderByComparator, true);
 
 			array[1] = userGroup;
 
-			array[2] = filterGetByC_P_PrevAndNext(session, userGroup,
-					companyId, parentUserGroupId, orderByComparator, false);
+			array[2] = filterGetByC_P_PrevAndNext(
+				session, userGroup, companyId, parentUserGroupId,
+				orderByComparator, false);
 
 			return array;
 		}
@@ -3557,14 +3603,16 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 		}
 	}
 
-	protected UserGroup filterGetByC_P_PrevAndNext(Session session,
-		UserGroup userGroup, long companyId, long parentUserGroupId,
-		OrderByComparator<UserGroup> orderByComparator, boolean previous) {
+	protected UserGroup filterGetByC_P_PrevAndNext(
+		Session session, UserGroup userGroup, long companyId,
+		long parentUserGroupId, OrderByComparator<UserGroup> orderByComparator,
+		boolean previous) {
+
 		StringBundler query = null;
 
 		if (orderByComparator != null) {
-			query = new StringBundler(6 +
-					(orderByComparator.getOrderByConditionFields().length * 3) +
+			query = new StringBundler(
+				6 + (orderByComparator.getOrderByConditionFields().length * 3) +
 					(orderByComparator.getOrderByFields().length * 3));
 		}
 		else {
@@ -3575,7 +3623,8 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 			query.append(_FILTER_SQL_SELECT_USERGROUP_WHERE);
 		}
 		else {
-			query.append(_FILTER_SQL_SELECT_USERGROUP_NO_INLINE_DISTINCT_WHERE_1);
+			query.append(
+				_FILTER_SQL_SELECT_USERGROUP_NO_INLINE_DISTINCT_WHERE_1);
 		}
 
 		query.append(_FINDER_COLUMN_C_P_COMPANYID_2);
@@ -3583,11 +3632,13 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 		query.append(_FINDER_COLUMN_C_P_PARENTUSERGROUPID_2);
 
 		if (!getDB().isSupportsInlineDistinct()) {
-			query.append(_FILTER_SQL_SELECT_USERGROUP_NO_INLINE_DISTINCT_WHERE_2);
+			query.append(
+				_FILTER_SQL_SELECT_USERGROUP_NO_INLINE_DISTINCT_WHERE_2);
 		}
 
 		if (orderByComparator != null) {
-			String[] orderByConditionFields = orderByComparator.getOrderByConditionFields();
+			String[] orderByConditionFields =
+				orderByComparator.getOrderByConditionFields();
 
 			if (orderByConditionFields.length > 0) {
 				query.append(WHERE_AND);
@@ -3595,13 +3646,17 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 
 			for (int i = 0; i < orderByConditionFields.length; i++) {
 				if (getDB().isSupportsInlineDistinct()) {
-					query.append(_ORDER_BY_ENTITY_ALIAS);
+					query.append(
+						getColumnName(
+							_ORDER_BY_ENTITY_ALIAS, orderByConditionFields[i],
+							true));
 				}
 				else {
-					query.append(_ORDER_BY_ENTITY_TABLE);
+					query.append(
+						getColumnName(
+							_ORDER_BY_ENTITY_TABLE, orderByConditionFields[i],
+							true));
 				}
-
-				query.append(orderByConditionFields[i]);
 
 				if ((i + 1) < orderByConditionFields.length) {
 					if (orderByComparator.isAscending() ^ previous) {
@@ -3627,13 +3682,15 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 
 			for (int i = 0; i < orderByFields.length; i++) {
 				if (getDB().isSupportsInlineDistinct()) {
-					query.append(_ORDER_BY_ENTITY_ALIAS);
+					query.append(
+						getColumnName(
+							_ORDER_BY_ENTITY_ALIAS, orderByFields[i], true));
 				}
 				else {
-					query.append(_ORDER_BY_ENTITY_TABLE);
+					query.append(
+						getColumnName(
+							_ORDER_BY_ENTITY_TABLE, orderByFields[i], true));
 				}
-
-				query.append(orderByFields[i]);
 
 				if ((i + 1) < orderByFields.length) {
 					if (orderByComparator.isAscending() ^ previous) {
@@ -3662,8 +3719,9 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 			}
 		}
 
-		String sql = InlineSQLHelperUtil.replacePermissionCheck(query.toString(),
-				UserGroup.class.getName(), _FILTER_ENTITY_TABLE_FILTER_PK_COLUMN);
+		String sql = InlineSQLHelperUtil.replacePermissionCheck(
+			query.toString(), UserGroup.class.getName(),
+			_FILTER_ENTITY_TABLE_FILTER_PK_COLUMN);
 
 		SQLQuery q = session.createSynchronizedSQLQuery(sql);
 
@@ -3684,10 +3742,10 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 		qPos.add(parentUserGroupId);
 
 		if (orderByComparator != null) {
-			Object[] values = orderByComparator.getOrderByConditionValues(userGroup);
+			for (Object orderByConditionValue :
+					orderByComparator.getOrderByConditionValues(userGroup)) {
 
-			for (Object value : values) {
-				qPos.add(value);
+				qPos.add(orderByConditionValue);
 			}
 		}
 
@@ -3709,8 +3767,11 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 */
 	@Override
 	public void removeByC_P(long companyId, long parentUserGroupId) {
-		for (UserGroup userGroup : findByC_P(companyId, parentUserGroupId,
-				QueryUtil.ALL_POS, QueryUtil.ALL_POS, null)) {
+		for (UserGroup userGroup :
+				findByC_P(
+					companyId, parentUserGroupId, QueryUtil.ALL_POS,
+					QueryUtil.ALL_POS, null)) {
+
 			remove(userGroup);
 		}
 	}
@@ -3724,11 +3785,12 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 */
 	@Override
 	public int countByC_P(long companyId, long parentUserGroupId) {
-		FinderPath finderPath = FINDER_PATH_COUNT_BY_C_P;
+		FinderPath finderPath = _finderPathCountByC_P;
 
-		Object[] finderArgs = new Object[] { companyId, parentUserGroupId };
+		Object[] finderArgs = new Object[] {companyId, parentUserGroupId};
 
-		Long count = (Long)finderCache.getResult(finderPath, finderArgs, this);
+		Long count = (Long)FinderCacheUtil.getResult(
+			finderPath, finderArgs, this);
 
 		if (count == null) {
 			StringBundler query = new StringBundler(3);
@@ -3756,10 +3818,10 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 
 				count = (Long)q.uniqueResult();
 
-				finderCache.putResult(finderPath, finderArgs, count);
+				FinderCacheUtil.putResult(finderPath, finderArgs, count);
 			}
 			catch (Exception e) {
-				finderCache.removeResult(finderPath, finderArgs);
+				FinderCacheUtil.removeResult(finderPath, finderArgs);
 
 				throw processException(e);
 			}
@@ -3792,8 +3854,9 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 
 		query.append(_FINDER_COLUMN_C_P_PARENTUSERGROUPID_2);
 
-		String sql = InlineSQLHelperUtil.replacePermissionCheck(query.toString(),
-				UserGroup.class.getName(), _FILTER_ENTITY_TABLE_FILTER_PK_COLUMN);
+		String sql = InlineSQLHelperUtil.replacePermissionCheck(
+			query.toString(), UserGroup.class.getName(),
+			_FILTER_ENTITY_TABLE_FILTER_PK_COLUMN);
 
 		Session session = null;
 
@@ -3802,8 +3865,8 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 
 			SQLQuery q = session.createSynchronizedSQLQuery(sql);
 
-			q.addScalar(COUNT_COLUMN_NAME,
-				com.liferay.portal.kernel.dao.orm.Type.LONG);
+			q.addScalar(
+				COUNT_COLUMN_NAME, com.liferay.portal.kernel.dao.orm.Type.LONG);
 
 			QueryPos qPos = QueryPos.getInstance(q);
 
@@ -3823,21 +3886,17 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 		}
 	}
 
-	private static final String _FINDER_COLUMN_C_P_COMPANYID_2 = "userGroup.companyId = ? AND ";
-	private static final String _FINDER_COLUMN_C_P_PARENTUSERGROUPID_2 = "userGroup.parentUserGroupId = ?";
-	public static final FinderPath FINDER_PATH_FETCH_BY_C_N = new FinderPath(UserGroupModelImpl.ENTITY_CACHE_ENABLED,
-			UserGroupModelImpl.FINDER_CACHE_ENABLED, UserGroupImpl.class,
-			FINDER_CLASS_NAME_ENTITY, "fetchByC_N",
-			new String[] { Long.class.getName(), String.class.getName() },
-			UserGroupModelImpl.COMPANYID_COLUMN_BITMASK |
-			UserGroupModelImpl.NAME_COLUMN_BITMASK);
-	public static final FinderPath FINDER_PATH_COUNT_BY_C_N = new FinderPath(UserGroupModelImpl.ENTITY_CACHE_ENABLED,
-			UserGroupModelImpl.FINDER_CACHE_ENABLED, Long.class,
-			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByC_N",
-			new String[] { Long.class.getName(), String.class.getName() });
+	private static final String _FINDER_COLUMN_C_P_COMPANYID_2 =
+		"userGroup.companyId = ? AND ";
+
+	private static final String _FINDER_COLUMN_C_P_PARENTUSERGROUPID_2 =
+		"userGroup.parentUserGroupId = ?";
+
+	private FinderPath _finderPathFetchByC_N;
+	private FinderPath _finderPathCountByC_N;
 
 	/**
-	 * Returns the user group where companyId = &#63; and name = &#63; or throws a {@link NoSuchUserGroupException} if it could not be found.
+	 * Returns the user group where companyId = &#63; and name = &#63; or throws a <code>NoSuchUserGroupException</code> if it could not be found.
 	 *
 	 * @param companyId the company ID
 	 * @param name the name
@@ -3847,6 +3906,7 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	@Override
 	public UserGroup findByC_N(long companyId, String name)
 		throws NoSuchUserGroupException {
+
 		UserGroup userGroup = fetchByC_N(companyId, name);
 
 		if (userGroup == null) {
@@ -3889,26 +3949,34 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 *
 	 * @param companyId the company ID
 	 * @param name the name
-	 * @param retrieveFromCache whether to retrieve from the finder cache
+	 * @param useFinderCache whether to use the finder cache
 	 * @return the matching user group, or <code>null</code> if a matching user group could not be found
 	 */
 	@Override
-	public UserGroup fetchByC_N(long companyId, String name,
-		boolean retrieveFromCache) {
-		Object[] finderArgs = new Object[] { companyId, name };
+	public UserGroup fetchByC_N(
+		long companyId, String name, boolean useFinderCache) {
+
+		name = Objects.toString(name, "");
+
+		Object[] finderArgs = null;
+
+		if (useFinderCache) {
+			finderArgs = new Object[] {companyId, name};
+		}
 
 		Object result = null;
 
-		if (retrieveFromCache) {
-			result = finderCache.getResult(FINDER_PATH_FETCH_BY_C_N,
-					finderArgs, this);
+		if (useFinderCache) {
+			result = FinderCacheUtil.getResult(
+				_finderPathFetchByC_N, finderArgs, this);
 		}
 
 		if (result instanceof UserGroup) {
 			UserGroup userGroup = (UserGroup)result;
 
 			if ((companyId != userGroup.getCompanyId()) ||
-					!Objects.equals(name, userGroup.getName())) {
+				!Objects.equals(name, userGroup.getName())) {
+
 				result = null;
 			}
 		}
@@ -3922,10 +3990,7 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 
 			boolean bindName = false;
 
-			if (name == null) {
-				query.append(_FINDER_COLUMN_C_N_NAME_1);
-			}
-			else if (name.equals("")) {
+			if (name.isEmpty()) {
 				query.append(_FINDER_COLUMN_C_N_NAME_3);
 			}
 			else {
@@ -3954,8 +4019,10 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 				List<UserGroup> list = q.list();
 
 				if (list.isEmpty()) {
-					finderCache.putResult(FINDER_PATH_FETCH_BY_C_N, finderArgs,
-						list);
+					if (useFinderCache) {
+						FinderCacheUtil.putResult(
+							_finderPathFetchByC_N, finderArgs, list);
+					}
 				}
 				else {
 					UserGroup userGroup = list.get(0);
@@ -3963,17 +4030,13 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 					result = userGroup;
 
 					cacheResult(userGroup);
-
-					if ((userGroup.getCompanyId() != companyId) ||
-							(userGroup.getName() == null) ||
-							!userGroup.getName().equals(name)) {
-						finderCache.putResult(FINDER_PATH_FETCH_BY_C_N,
-							finderArgs, userGroup);
-					}
 				}
 			}
 			catch (Exception e) {
-				finderCache.removeResult(FINDER_PATH_FETCH_BY_C_N, finderArgs);
+				if (useFinderCache) {
+					FinderCacheUtil.removeResult(
+						_finderPathFetchByC_N, finderArgs);
+				}
 
 				throw processException(e);
 			}
@@ -4000,6 +4063,7 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	@Override
 	public UserGroup removeByC_N(long companyId, String name)
 		throws NoSuchUserGroupException {
+
 		UserGroup userGroup = findByC_N(companyId, name);
 
 		return remove(userGroup);
@@ -4014,11 +4078,14 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 */
 	@Override
 	public int countByC_N(long companyId, String name) {
-		FinderPath finderPath = FINDER_PATH_COUNT_BY_C_N;
+		name = Objects.toString(name, "");
 
-		Object[] finderArgs = new Object[] { companyId, name };
+		FinderPath finderPath = _finderPathCountByC_N;
 
-		Long count = (Long)finderCache.getResult(finderPath, finderArgs, this);
+		Object[] finderArgs = new Object[] {companyId, name};
+
+		Long count = (Long)FinderCacheUtil.getResult(
+			finderPath, finderArgs, this);
 
 		if (count == null) {
 			StringBundler query = new StringBundler(3);
@@ -4029,10 +4096,7 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 
 			boolean bindName = false;
 
-			if (name == null) {
-				query.append(_FINDER_COLUMN_C_N_NAME_1);
-			}
-			else if (name.equals("")) {
+			if (name.isEmpty()) {
 				query.append(_FINDER_COLUMN_C_N_NAME_3);
 			}
 			else {
@@ -4060,10 +4124,10 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 
 				count = (Long)q.uniqueResult();
 
-				finderCache.putResult(finderPath, finderArgs, count);
+				FinderCacheUtil.putResult(finderPath, finderArgs, count);
 			}
 			catch (Exception e) {
-				finderCache.removeResult(finderPath, finderArgs);
+				FinderCacheUtil.removeResult(finderPath, finderArgs);
 
 				throw processException(e);
 			}
@@ -4075,31 +4139,1942 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 		return count.intValue();
 	}
 
-	private static final String _FINDER_COLUMN_C_N_COMPANYID_2 = "userGroup.companyId = ? AND ";
-	private static final String _FINDER_COLUMN_C_N_NAME_1 = "userGroup.name IS NULL";
-	private static final String _FINDER_COLUMN_C_N_NAME_2 = "lower(userGroup.name) = ?";
-	private static final String _FINDER_COLUMN_C_N_NAME_3 = "(userGroup.name IS NULL OR userGroup.name = '')";
+	private static final String _FINDER_COLUMN_C_N_COMPANYID_2 =
+		"userGroup.companyId = ? AND ";
+
+	private static final String _FINDER_COLUMN_C_N_NAME_2 =
+		"lower(userGroup.name) = ?";
+
+	private static final String _FINDER_COLUMN_C_N_NAME_3 =
+		"(userGroup.name IS NULL OR userGroup.name = '')";
+
+	private FinderPath _finderPathWithPaginationFindByC_LikeN;
+	private FinderPath _finderPathWithPaginationCountByC_LikeN;
+
+	/**
+	 * Returns all the user groups where companyId = &#63; and name LIKE &#63;.
+	 *
+	 * @param companyId the company ID
+	 * @param name the name
+	 * @return the matching user groups
+	 */
+	@Override
+	public List<UserGroup> findByC_LikeN(long companyId, String name) {
+		return findByC_LikeN(
+			companyId, name, QueryUtil.ALL_POS, QueryUtil.ALL_POS, null);
+	}
+
+	/**
+	 * Returns a range of all the user groups where companyId = &#63; and name LIKE &#63;.
+	 *
+	 * <p>
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>UserGroupModelImpl</code>.
+	 * </p>
+	 *
+	 * @param companyId the company ID
+	 * @param name the name
+	 * @param start the lower bound of the range of user groups
+	 * @param end the upper bound of the range of user groups (not inclusive)
+	 * @return the range of matching user groups
+	 */
+	@Override
+	public List<UserGroup> findByC_LikeN(
+		long companyId, String name, int start, int end) {
+
+		return findByC_LikeN(companyId, name, start, end, null);
+	}
+
+	/**
+	 * Returns an ordered range of all the user groups where companyId = &#63; and name LIKE &#63;.
+	 *
+	 * <p>
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>UserGroupModelImpl</code>.
+	 * </p>
+	 *
+	 * @param companyId the company ID
+	 * @param name the name
+	 * @param start the lower bound of the range of user groups
+	 * @param end the upper bound of the range of user groups (not inclusive)
+	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
+	 * @return the ordered range of matching user groups
+	 */
+	@Override
+	public List<UserGroup> findByC_LikeN(
+		long companyId, String name, int start, int end,
+		OrderByComparator<UserGroup> orderByComparator) {
+
+		return findByC_LikeN(
+			companyId, name, start, end, orderByComparator, true);
+	}
+
+	/**
+	 * Returns an ordered range of all the user groups where companyId = &#63; and name LIKE &#63;.
+	 *
+	 * <p>
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>UserGroupModelImpl</code>.
+	 * </p>
+	 *
+	 * @param companyId the company ID
+	 * @param name the name
+	 * @param start the lower bound of the range of user groups
+	 * @param end the upper bound of the range of user groups (not inclusive)
+	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
+	 * @param useFinderCache whether to use the finder cache
+	 * @return the ordered range of matching user groups
+	 */
+	@Override
+	public List<UserGroup> findByC_LikeN(
+		long companyId, String name, int start, int end,
+		OrderByComparator<UserGroup> orderByComparator,
+		boolean useFinderCache) {
+
+		name = Objects.toString(name, "");
+
+		FinderPath finderPath = null;
+		Object[] finderArgs = null;
+
+		finderPath = _finderPathWithPaginationFindByC_LikeN;
+		finderArgs = new Object[] {
+			companyId, name, start, end, orderByComparator
+		};
+
+		List<UserGroup> list = null;
+
+		if (useFinderCache) {
+			list = (List<UserGroup>)FinderCacheUtil.getResult(
+				finderPath, finderArgs, this);
+
+			if ((list != null) && !list.isEmpty()) {
+				for (UserGroup userGroup : list) {
+					if ((companyId != userGroup.getCompanyId()) ||
+						!StringUtil.wildcardMatches(
+							userGroup.getName(), name, '_', '%', '\\', false)) {
+
+						list = null;
+
+						break;
+					}
+				}
+			}
+		}
+
+		if (list == null) {
+			StringBundler query = null;
+
+			if (orderByComparator != null) {
+				query = new StringBundler(
+					4 + (orderByComparator.getOrderByFields().length * 2));
+			}
+			else {
+				query = new StringBundler(4);
+			}
+
+			query.append(_SQL_SELECT_USERGROUP_WHERE);
+
+			query.append(_FINDER_COLUMN_C_LIKEN_COMPANYID_2);
+
+			boolean bindName = false;
+
+			if (name.isEmpty()) {
+				query.append(_FINDER_COLUMN_C_LIKEN_NAME_3);
+			}
+			else {
+				bindName = true;
+
+				query.append(_FINDER_COLUMN_C_LIKEN_NAME_2);
+			}
+
+			if (orderByComparator != null) {
+				appendOrderByComparator(
+					query, _ORDER_BY_ENTITY_ALIAS, orderByComparator);
+			}
+			else {
+				query.append(UserGroupModelImpl.ORDER_BY_JPQL);
+			}
+
+			String sql = query.toString();
+
+			Session session = null;
+
+			try {
+				session = openSession();
+
+				Query q = session.createQuery(sql);
+
+				QueryPos qPos = QueryPos.getInstance(q);
+
+				qPos.add(companyId);
+
+				if (bindName) {
+					qPos.add(StringUtil.toLowerCase(name));
+				}
+
+				list = (List<UserGroup>)QueryUtil.list(
+					q, getDialect(), start, end);
+
+				cacheResult(list);
+
+				if (useFinderCache) {
+					FinderCacheUtil.putResult(finderPath, finderArgs, list);
+				}
+			}
+			catch (Exception e) {
+				if (useFinderCache) {
+					FinderCacheUtil.removeResult(finderPath, finderArgs);
+				}
+
+				throw processException(e);
+			}
+			finally {
+				closeSession(session);
+			}
+		}
+
+		return list;
+	}
+
+	/**
+	 * Returns the first user group in the ordered set where companyId = &#63; and name LIKE &#63;.
+	 *
+	 * @param companyId the company ID
+	 * @param name the name
+	 * @param orderByComparator the comparator to order the set by (optionally <code>null</code>)
+	 * @return the first matching user group
+	 * @throws NoSuchUserGroupException if a matching user group could not be found
+	 */
+	@Override
+	public UserGroup findByC_LikeN_First(
+			long companyId, String name,
+			OrderByComparator<UserGroup> orderByComparator)
+		throws NoSuchUserGroupException {
+
+		UserGroup userGroup = fetchByC_LikeN_First(
+			companyId, name, orderByComparator);
+
+		if (userGroup != null) {
+			return userGroup;
+		}
+
+		StringBundler msg = new StringBundler(6);
+
+		msg.append(_NO_SUCH_ENTITY_WITH_KEY);
+
+		msg.append("companyId=");
+		msg.append(companyId);
+
+		msg.append(", nameLIKE");
+		msg.append(name);
+
+		msg.append("}");
+
+		throw new NoSuchUserGroupException(msg.toString());
+	}
+
+	/**
+	 * Returns the first user group in the ordered set where companyId = &#63; and name LIKE &#63;.
+	 *
+	 * @param companyId the company ID
+	 * @param name the name
+	 * @param orderByComparator the comparator to order the set by (optionally <code>null</code>)
+	 * @return the first matching user group, or <code>null</code> if a matching user group could not be found
+	 */
+	@Override
+	public UserGroup fetchByC_LikeN_First(
+		long companyId, String name,
+		OrderByComparator<UserGroup> orderByComparator) {
+
+		List<UserGroup> list = findByC_LikeN(
+			companyId, name, 0, 1, orderByComparator);
+
+		if (!list.isEmpty()) {
+			return list.get(0);
+		}
+
+		return null;
+	}
+
+	/**
+	 * Returns the last user group in the ordered set where companyId = &#63; and name LIKE &#63;.
+	 *
+	 * @param companyId the company ID
+	 * @param name the name
+	 * @param orderByComparator the comparator to order the set by (optionally <code>null</code>)
+	 * @return the last matching user group
+	 * @throws NoSuchUserGroupException if a matching user group could not be found
+	 */
+	@Override
+	public UserGroup findByC_LikeN_Last(
+			long companyId, String name,
+			OrderByComparator<UserGroup> orderByComparator)
+		throws NoSuchUserGroupException {
+
+		UserGroup userGroup = fetchByC_LikeN_Last(
+			companyId, name, orderByComparator);
+
+		if (userGroup != null) {
+			return userGroup;
+		}
+
+		StringBundler msg = new StringBundler(6);
+
+		msg.append(_NO_SUCH_ENTITY_WITH_KEY);
+
+		msg.append("companyId=");
+		msg.append(companyId);
+
+		msg.append(", nameLIKE");
+		msg.append(name);
+
+		msg.append("}");
+
+		throw new NoSuchUserGroupException(msg.toString());
+	}
+
+	/**
+	 * Returns the last user group in the ordered set where companyId = &#63; and name LIKE &#63;.
+	 *
+	 * @param companyId the company ID
+	 * @param name the name
+	 * @param orderByComparator the comparator to order the set by (optionally <code>null</code>)
+	 * @return the last matching user group, or <code>null</code> if a matching user group could not be found
+	 */
+	@Override
+	public UserGroup fetchByC_LikeN_Last(
+		long companyId, String name,
+		OrderByComparator<UserGroup> orderByComparator) {
+
+		int count = countByC_LikeN(companyId, name);
+
+		if (count == 0) {
+			return null;
+		}
+
+		List<UserGroup> list = findByC_LikeN(
+			companyId, name, count - 1, count, orderByComparator);
+
+		if (!list.isEmpty()) {
+			return list.get(0);
+		}
+
+		return null;
+	}
+
+	/**
+	 * Returns the user groups before and after the current user group in the ordered set where companyId = &#63; and name LIKE &#63;.
+	 *
+	 * @param userGroupId the primary key of the current user group
+	 * @param companyId the company ID
+	 * @param name the name
+	 * @param orderByComparator the comparator to order the set by (optionally <code>null</code>)
+	 * @return the previous, current, and next user group
+	 * @throws NoSuchUserGroupException if a user group with the primary key could not be found
+	 */
+	@Override
+	public UserGroup[] findByC_LikeN_PrevAndNext(
+			long userGroupId, long companyId, String name,
+			OrderByComparator<UserGroup> orderByComparator)
+		throws NoSuchUserGroupException {
+
+		name = Objects.toString(name, "");
+
+		UserGroup userGroup = findByPrimaryKey(userGroupId);
+
+		Session session = null;
+
+		try {
+			session = openSession();
+
+			UserGroup[] array = new UserGroupImpl[3];
+
+			array[0] = getByC_LikeN_PrevAndNext(
+				session, userGroup, companyId, name, orderByComparator, true);
+
+			array[1] = userGroup;
+
+			array[2] = getByC_LikeN_PrevAndNext(
+				session, userGroup, companyId, name, orderByComparator, false);
+
+			return array;
+		}
+		catch (Exception e) {
+			throw processException(e);
+		}
+		finally {
+			closeSession(session);
+		}
+	}
+
+	protected UserGroup getByC_LikeN_PrevAndNext(
+		Session session, UserGroup userGroup, long companyId, String name,
+		OrderByComparator<UserGroup> orderByComparator, boolean previous) {
+
+		StringBundler query = null;
+
+		if (orderByComparator != null) {
+			query = new StringBundler(
+				5 + (orderByComparator.getOrderByConditionFields().length * 3) +
+					(orderByComparator.getOrderByFields().length * 3));
+		}
+		else {
+			query = new StringBundler(4);
+		}
+
+		query.append(_SQL_SELECT_USERGROUP_WHERE);
+
+		query.append(_FINDER_COLUMN_C_LIKEN_COMPANYID_2);
+
+		boolean bindName = false;
+
+		if (name.isEmpty()) {
+			query.append(_FINDER_COLUMN_C_LIKEN_NAME_3);
+		}
+		else {
+			bindName = true;
+
+			query.append(_FINDER_COLUMN_C_LIKEN_NAME_2);
+		}
+
+		if (orderByComparator != null) {
+			String[] orderByConditionFields =
+				orderByComparator.getOrderByConditionFields();
+
+			if (orderByConditionFields.length > 0) {
+				query.append(WHERE_AND);
+			}
+
+			for (int i = 0; i < orderByConditionFields.length; i++) {
+				query.append(_ORDER_BY_ENTITY_ALIAS);
+				query.append(orderByConditionFields[i]);
+
+				if ((i + 1) < orderByConditionFields.length) {
+					if (orderByComparator.isAscending() ^ previous) {
+						query.append(WHERE_GREATER_THAN_HAS_NEXT);
+					}
+					else {
+						query.append(WHERE_LESSER_THAN_HAS_NEXT);
+					}
+				}
+				else {
+					if (orderByComparator.isAscending() ^ previous) {
+						query.append(WHERE_GREATER_THAN);
+					}
+					else {
+						query.append(WHERE_LESSER_THAN);
+					}
+				}
+			}
+
+			query.append(ORDER_BY_CLAUSE);
+
+			String[] orderByFields = orderByComparator.getOrderByFields();
+
+			for (int i = 0; i < orderByFields.length; i++) {
+				query.append(_ORDER_BY_ENTITY_ALIAS);
+				query.append(orderByFields[i]);
+
+				if ((i + 1) < orderByFields.length) {
+					if (orderByComparator.isAscending() ^ previous) {
+						query.append(ORDER_BY_ASC_HAS_NEXT);
+					}
+					else {
+						query.append(ORDER_BY_DESC_HAS_NEXT);
+					}
+				}
+				else {
+					if (orderByComparator.isAscending() ^ previous) {
+						query.append(ORDER_BY_ASC);
+					}
+					else {
+						query.append(ORDER_BY_DESC);
+					}
+				}
+			}
+		}
+		else {
+			query.append(UserGroupModelImpl.ORDER_BY_JPQL);
+		}
+
+		String sql = query.toString();
+
+		Query q = session.createQuery(sql);
+
+		q.setFirstResult(0);
+		q.setMaxResults(2);
+
+		QueryPos qPos = QueryPos.getInstance(q);
+
+		qPos.add(companyId);
+
+		if (bindName) {
+			qPos.add(StringUtil.toLowerCase(name));
+		}
+
+		if (orderByComparator != null) {
+			for (Object orderByConditionValue :
+					orderByComparator.getOrderByConditionValues(userGroup)) {
+
+				qPos.add(orderByConditionValue);
+			}
+		}
+
+		List<UserGroup> list = q.list();
+
+		if (list.size() == 2) {
+			return list.get(1);
+		}
+		else {
+			return null;
+		}
+	}
+
+	/**
+	 * Returns all the user groups that the user has permission to view where companyId = &#63; and name LIKE &#63;.
+	 *
+	 * @param companyId the company ID
+	 * @param name the name
+	 * @return the matching user groups that the user has permission to view
+	 */
+	@Override
+	public List<UserGroup> filterFindByC_LikeN(long companyId, String name) {
+		return filterFindByC_LikeN(
+			companyId, name, QueryUtil.ALL_POS, QueryUtil.ALL_POS, null);
+	}
+
+	/**
+	 * Returns a range of all the user groups that the user has permission to view where companyId = &#63; and name LIKE &#63;.
+	 *
+	 * <p>
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>UserGroupModelImpl</code>.
+	 * </p>
+	 *
+	 * @param companyId the company ID
+	 * @param name the name
+	 * @param start the lower bound of the range of user groups
+	 * @param end the upper bound of the range of user groups (not inclusive)
+	 * @return the range of matching user groups that the user has permission to view
+	 */
+	@Override
+	public List<UserGroup> filterFindByC_LikeN(
+		long companyId, String name, int start, int end) {
+
+		return filterFindByC_LikeN(companyId, name, start, end, null);
+	}
+
+	/**
+	 * Returns an ordered range of all the user groups that the user has permissions to view where companyId = &#63; and name LIKE &#63;.
+	 *
+	 * <p>
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>UserGroupModelImpl</code>.
+	 * </p>
+	 *
+	 * @param companyId the company ID
+	 * @param name the name
+	 * @param start the lower bound of the range of user groups
+	 * @param end the upper bound of the range of user groups (not inclusive)
+	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
+	 * @return the ordered range of matching user groups that the user has permission to view
+	 */
+	@Override
+	public List<UserGroup> filterFindByC_LikeN(
+		long companyId, String name, int start, int end,
+		OrderByComparator<UserGroup> orderByComparator) {
+
+		if (!InlineSQLHelperUtil.isEnabled(companyId, 0)) {
+			return findByC_LikeN(
+				companyId, name, start, end, orderByComparator);
+		}
+
+		name = Objects.toString(name, "");
+
+		StringBundler query = null;
+
+		if (orderByComparator != null) {
+			query = new StringBundler(
+				4 + (orderByComparator.getOrderByFields().length * 2));
+		}
+		else {
+			query = new StringBundler(5);
+		}
+
+		if (getDB().isSupportsInlineDistinct()) {
+			query.append(_FILTER_SQL_SELECT_USERGROUP_WHERE);
+		}
+		else {
+			query.append(
+				_FILTER_SQL_SELECT_USERGROUP_NO_INLINE_DISTINCT_WHERE_1);
+		}
+
+		query.append(_FINDER_COLUMN_C_LIKEN_COMPANYID_2);
+
+		boolean bindName = false;
+
+		if (name.isEmpty()) {
+			query.append(_FINDER_COLUMN_C_LIKEN_NAME_3);
+		}
+		else {
+			bindName = true;
+
+			query.append(_FINDER_COLUMN_C_LIKEN_NAME_2);
+		}
+
+		if (!getDB().isSupportsInlineDistinct()) {
+			query.append(
+				_FILTER_SQL_SELECT_USERGROUP_NO_INLINE_DISTINCT_WHERE_2);
+		}
+
+		if (orderByComparator != null) {
+			if (getDB().isSupportsInlineDistinct()) {
+				appendOrderByComparator(
+					query, _ORDER_BY_ENTITY_ALIAS, orderByComparator, true);
+			}
+			else {
+				appendOrderByComparator(
+					query, _ORDER_BY_ENTITY_TABLE, orderByComparator, true);
+			}
+		}
+		else {
+			if (getDB().isSupportsInlineDistinct()) {
+				query.append(UserGroupModelImpl.ORDER_BY_JPQL);
+			}
+			else {
+				query.append(UserGroupModelImpl.ORDER_BY_SQL);
+			}
+		}
+
+		String sql = InlineSQLHelperUtil.replacePermissionCheck(
+			query.toString(), UserGroup.class.getName(),
+			_FILTER_ENTITY_TABLE_FILTER_PK_COLUMN);
+
+		Session session = null;
+
+		try {
+			session = openSession();
+
+			SQLQuery q = session.createSynchronizedSQLQuery(sql);
+
+			if (getDB().isSupportsInlineDistinct()) {
+				q.addEntity(_FILTER_ENTITY_ALIAS, UserGroupImpl.class);
+			}
+			else {
+				q.addEntity(_FILTER_ENTITY_TABLE, UserGroupImpl.class);
+			}
+
+			QueryPos qPos = QueryPos.getInstance(q);
+
+			qPos.add(companyId);
+
+			if (bindName) {
+				qPos.add(StringUtil.toLowerCase(name));
+			}
+
+			return (List<UserGroup>)QueryUtil.list(q, getDialect(), start, end);
+		}
+		catch (Exception e) {
+			throw processException(e);
+		}
+		finally {
+			closeSession(session);
+		}
+	}
+
+	/**
+	 * Returns the user groups before and after the current user group in the ordered set of user groups that the user has permission to view where companyId = &#63; and name LIKE &#63;.
+	 *
+	 * @param userGroupId the primary key of the current user group
+	 * @param companyId the company ID
+	 * @param name the name
+	 * @param orderByComparator the comparator to order the set by (optionally <code>null</code>)
+	 * @return the previous, current, and next user group
+	 * @throws NoSuchUserGroupException if a user group with the primary key could not be found
+	 */
+	@Override
+	public UserGroup[] filterFindByC_LikeN_PrevAndNext(
+			long userGroupId, long companyId, String name,
+			OrderByComparator<UserGroup> orderByComparator)
+		throws NoSuchUserGroupException {
+
+		if (!InlineSQLHelperUtil.isEnabled(companyId, 0)) {
+			return findByC_LikeN_PrevAndNext(
+				userGroupId, companyId, name, orderByComparator);
+		}
+
+		name = Objects.toString(name, "");
+
+		UserGroup userGroup = findByPrimaryKey(userGroupId);
+
+		Session session = null;
+
+		try {
+			session = openSession();
+
+			UserGroup[] array = new UserGroupImpl[3];
+
+			array[0] = filterGetByC_LikeN_PrevAndNext(
+				session, userGroup, companyId, name, orderByComparator, true);
+
+			array[1] = userGroup;
+
+			array[2] = filterGetByC_LikeN_PrevAndNext(
+				session, userGroup, companyId, name, orderByComparator, false);
+
+			return array;
+		}
+		catch (Exception e) {
+			throw processException(e);
+		}
+		finally {
+			closeSession(session);
+		}
+	}
+
+	protected UserGroup filterGetByC_LikeN_PrevAndNext(
+		Session session, UserGroup userGroup, long companyId, String name,
+		OrderByComparator<UserGroup> orderByComparator, boolean previous) {
+
+		StringBundler query = null;
+
+		if (orderByComparator != null) {
+			query = new StringBundler(
+				6 + (orderByComparator.getOrderByConditionFields().length * 3) +
+					(orderByComparator.getOrderByFields().length * 3));
+		}
+		else {
+			query = new StringBundler(5);
+		}
+
+		if (getDB().isSupportsInlineDistinct()) {
+			query.append(_FILTER_SQL_SELECT_USERGROUP_WHERE);
+		}
+		else {
+			query.append(
+				_FILTER_SQL_SELECT_USERGROUP_NO_INLINE_DISTINCT_WHERE_1);
+		}
+
+		query.append(_FINDER_COLUMN_C_LIKEN_COMPANYID_2);
+
+		boolean bindName = false;
+
+		if (name.isEmpty()) {
+			query.append(_FINDER_COLUMN_C_LIKEN_NAME_3);
+		}
+		else {
+			bindName = true;
+
+			query.append(_FINDER_COLUMN_C_LIKEN_NAME_2);
+		}
+
+		if (!getDB().isSupportsInlineDistinct()) {
+			query.append(
+				_FILTER_SQL_SELECT_USERGROUP_NO_INLINE_DISTINCT_WHERE_2);
+		}
+
+		if (orderByComparator != null) {
+			String[] orderByConditionFields =
+				orderByComparator.getOrderByConditionFields();
+
+			if (orderByConditionFields.length > 0) {
+				query.append(WHERE_AND);
+			}
+
+			for (int i = 0; i < orderByConditionFields.length; i++) {
+				if (getDB().isSupportsInlineDistinct()) {
+					query.append(
+						getColumnName(
+							_ORDER_BY_ENTITY_ALIAS, orderByConditionFields[i],
+							true));
+				}
+				else {
+					query.append(
+						getColumnName(
+							_ORDER_BY_ENTITY_TABLE, orderByConditionFields[i],
+							true));
+				}
+
+				if ((i + 1) < orderByConditionFields.length) {
+					if (orderByComparator.isAscending() ^ previous) {
+						query.append(WHERE_GREATER_THAN_HAS_NEXT);
+					}
+					else {
+						query.append(WHERE_LESSER_THAN_HAS_NEXT);
+					}
+				}
+				else {
+					if (orderByComparator.isAscending() ^ previous) {
+						query.append(WHERE_GREATER_THAN);
+					}
+					else {
+						query.append(WHERE_LESSER_THAN);
+					}
+				}
+			}
+
+			query.append(ORDER_BY_CLAUSE);
+
+			String[] orderByFields = orderByComparator.getOrderByFields();
+
+			for (int i = 0; i < orderByFields.length; i++) {
+				if (getDB().isSupportsInlineDistinct()) {
+					query.append(
+						getColumnName(
+							_ORDER_BY_ENTITY_ALIAS, orderByFields[i], true));
+				}
+				else {
+					query.append(
+						getColumnName(
+							_ORDER_BY_ENTITY_TABLE, orderByFields[i], true));
+				}
+
+				if ((i + 1) < orderByFields.length) {
+					if (orderByComparator.isAscending() ^ previous) {
+						query.append(ORDER_BY_ASC_HAS_NEXT);
+					}
+					else {
+						query.append(ORDER_BY_DESC_HAS_NEXT);
+					}
+				}
+				else {
+					if (orderByComparator.isAscending() ^ previous) {
+						query.append(ORDER_BY_ASC);
+					}
+					else {
+						query.append(ORDER_BY_DESC);
+					}
+				}
+			}
+		}
+		else {
+			if (getDB().isSupportsInlineDistinct()) {
+				query.append(UserGroupModelImpl.ORDER_BY_JPQL);
+			}
+			else {
+				query.append(UserGroupModelImpl.ORDER_BY_SQL);
+			}
+		}
+
+		String sql = InlineSQLHelperUtil.replacePermissionCheck(
+			query.toString(), UserGroup.class.getName(),
+			_FILTER_ENTITY_TABLE_FILTER_PK_COLUMN);
+
+		SQLQuery q = session.createSynchronizedSQLQuery(sql);
+
+		q.setFirstResult(0);
+		q.setMaxResults(2);
+
+		if (getDB().isSupportsInlineDistinct()) {
+			q.addEntity(_FILTER_ENTITY_ALIAS, UserGroupImpl.class);
+		}
+		else {
+			q.addEntity(_FILTER_ENTITY_TABLE, UserGroupImpl.class);
+		}
+
+		QueryPos qPos = QueryPos.getInstance(q);
+
+		qPos.add(companyId);
+
+		if (bindName) {
+			qPos.add(StringUtil.toLowerCase(name));
+		}
+
+		if (orderByComparator != null) {
+			for (Object orderByConditionValue :
+					orderByComparator.getOrderByConditionValues(userGroup)) {
+
+				qPos.add(orderByConditionValue);
+			}
+		}
+
+		List<UserGroup> list = q.list();
+
+		if (list.size() == 2) {
+			return list.get(1);
+		}
+		else {
+			return null;
+		}
+	}
+
+	/**
+	 * Removes all the user groups where companyId = &#63; and name LIKE &#63; from the database.
+	 *
+	 * @param companyId the company ID
+	 * @param name the name
+	 */
+	@Override
+	public void removeByC_LikeN(long companyId, String name) {
+		for (UserGroup userGroup :
+				findByC_LikeN(
+					companyId, name, QueryUtil.ALL_POS, QueryUtil.ALL_POS,
+					null)) {
+
+			remove(userGroup);
+		}
+	}
+
+	/**
+	 * Returns the number of user groups where companyId = &#63; and name LIKE &#63;.
+	 *
+	 * @param companyId the company ID
+	 * @param name the name
+	 * @return the number of matching user groups
+	 */
+	@Override
+	public int countByC_LikeN(long companyId, String name) {
+		name = Objects.toString(name, "");
+
+		FinderPath finderPath = _finderPathWithPaginationCountByC_LikeN;
+
+		Object[] finderArgs = new Object[] {companyId, name};
+
+		Long count = (Long)FinderCacheUtil.getResult(
+			finderPath, finderArgs, this);
+
+		if (count == null) {
+			StringBundler query = new StringBundler(3);
+
+			query.append(_SQL_COUNT_USERGROUP_WHERE);
+
+			query.append(_FINDER_COLUMN_C_LIKEN_COMPANYID_2);
+
+			boolean bindName = false;
+
+			if (name.isEmpty()) {
+				query.append(_FINDER_COLUMN_C_LIKEN_NAME_3);
+			}
+			else {
+				bindName = true;
+
+				query.append(_FINDER_COLUMN_C_LIKEN_NAME_2);
+			}
+
+			String sql = query.toString();
+
+			Session session = null;
+
+			try {
+				session = openSession();
+
+				Query q = session.createQuery(sql);
+
+				QueryPos qPos = QueryPos.getInstance(q);
+
+				qPos.add(companyId);
+
+				if (bindName) {
+					qPos.add(StringUtil.toLowerCase(name));
+				}
+
+				count = (Long)q.uniqueResult();
+
+				FinderCacheUtil.putResult(finderPath, finderArgs, count);
+			}
+			catch (Exception e) {
+				FinderCacheUtil.removeResult(finderPath, finderArgs);
+
+				throw processException(e);
+			}
+			finally {
+				closeSession(session);
+			}
+		}
+
+		return count.intValue();
+	}
+
+	/**
+	 * Returns the number of user groups that the user has permission to view where companyId = &#63; and name LIKE &#63;.
+	 *
+	 * @param companyId the company ID
+	 * @param name the name
+	 * @return the number of matching user groups that the user has permission to view
+	 */
+	@Override
+	public int filterCountByC_LikeN(long companyId, String name) {
+		if (!InlineSQLHelperUtil.isEnabled(companyId, 0)) {
+			return countByC_LikeN(companyId, name);
+		}
+
+		name = Objects.toString(name, "");
+
+		StringBundler query = new StringBundler(3);
+
+		query.append(_FILTER_SQL_COUNT_USERGROUP_WHERE);
+
+		query.append(_FINDER_COLUMN_C_LIKEN_COMPANYID_2);
+
+		boolean bindName = false;
+
+		if (name.isEmpty()) {
+			query.append(_FINDER_COLUMN_C_LIKEN_NAME_3);
+		}
+		else {
+			bindName = true;
+
+			query.append(_FINDER_COLUMN_C_LIKEN_NAME_2);
+		}
+
+		String sql = InlineSQLHelperUtil.replacePermissionCheck(
+			query.toString(), UserGroup.class.getName(),
+			_FILTER_ENTITY_TABLE_FILTER_PK_COLUMN);
+
+		Session session = null;
+
+		try {
+			session = openSession();
+
+			SQLQuery q = session.createSynchronizedSQLQuery(sql);
+
+			q.addScalar(
+				COUNT_COLUMN_NAME, com.liferay.portal.kernel.dao.orm.Type.LONG);
+
+			QueryPos qPos = QueryPos.getInstance(q);
+
+			qPos.add(companyId);
+
+			if (bindName) {
+				qPos.add(StringUtil.toLowerCase(name));
+			}
+
+			Long count = (Long)q.uniqueResult();
+
+			return count.intValue();
+		}
+		catch (Exception e) {
+			throw processException(e);
+		}
+		finally {
+			closeSession(session);
+		}
+	}
+
+	private static final String _FINDER_COLUMN_C_LIKEN_COMPANYID_2 =
+		"userGroup.companyId = ? AND ";
+
+	private static final String _FINDER_COLUMN_C_LIKEN_NAME_2 =
+		"lower(userGroup.name) LIKE ?";
+
+	private static final String _FINDER_COLUMN_C_LIKEN_NAME_3 =
+		"(userGroup.name IS NULL OR userGroup.name LIKE '')";
+
+	private FinderPath _finderPathWithPaginationFindByU_C_P;
+	private FinderPath _finderPathWithPaginationCountByU_C_P;
+
+	/**
+	 * Returns all the user groups where userGroupId &gt; &#63; and companyId = &#63; and parentUserGroupId = &#63;.
+	 *
+	 * @param userGroupId the user group ID
+	 * @param companyId the company ID
+	 * @param parentUserGroupId the parent user group ID
+	 * @return the matching user groups
+	 */
+	@Override
+	public List<UserGroup> findByU_C_P(
+		long userGroupId, long companyId, long parentUserGroupId) {
+
+		return findByU_C_P(
+			userGroupId, companyId, parentUserGroupId, QueryUtil.ALL_POS,
+			QueryUtil.ALL_POS, null);
+	}
+
+	/**
+	 * Returns a range of all the user groups where userGroupId &gt; &#63; and companyId = &#63; and parentUserGroupId = &#63;.
+	 *
+	 * <p>
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>UserGroupModelImpl</code>.
+	 * </p>
+	 *
+	 * @param userGroupId the user group ID
+	 * @param companyId the company ID
+	 * @param parentUserGroupId the parent user group ID
+	 * @param start the lower bound of the range of user groups
+	 * @param end the upper bound of the range of user groups (not inclusive)
+	 * @return the range of matching user groups
+	 */
+	@Override
+	public List<UserGroup> findByU_C_P(
+		long userGroupId, long companyId, long parentUserGroupId, int start,
+		int end) {
+
+		return findByU_C_P(
+			userGroupId, companyId, parentUserGroupId, start, end, null);
+	}
+
+	/**
+	 * Returns an ordered range of all the user groups where userGroupId &gt; &#63; and companyId = &#63; and parentUserGroupId = &#63;.
+	 *
+	 * <p>
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>UserGroupModelImpl</code>.
+	 * </p>
+	 *
+	 * @param userGroupId the user group ID
+	 * @param companyId the company ID
+	 * @param parentUserGroupId the parent user group ID
+	 * @param start the lower bound of the range of user groups
+	 * @param end the upper bound of the range of user groups (not inclusive)
+	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
+	 * @return the ordered range of matching user groups
+	 */
+	@Override
+	public List<UserGroup> findByU_C_P(
+		long userGroupId, long companyId, long parentUserGroupId, int start,
+		int end, OrderByComparator<UserGroup> orderByComparator) {
+
+		return findByU_C_P(
+			userGroupId, companyId, parentUserGroupId, start, end,
+			orderByComparator, true);
+	}
+
+	/**
+	 * Returns an ordered range of all the user groups where userGroupId &gt; &#63; and companyId = &#63; and parentUserGroupId = &#63;.
+	 *
+	 * <p>
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>UserGroupModelImpl</code>.
+	 * </p>
+	 *
+	 * @param userGroupId the user group ID
+	 * @param companyId the company ID
+	 * @param parentUserGroupId the parent user group ID
+	 * @param start the lower bound of the range of user groups
+	 * @param end the upper bound of the range of user groups (not inclusive)
+	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
+	 * @param useFinderCache whether to use the finder cache
+	 * @return the ordered range of matching user groups
+	 */
+	@Override
+	public List<UserGroup> findByU_C_P(
+		long userGroupId, long companyId, long parentUserGroupId, int start,
+		int end, OrderByComparator<UserGroup> orderByComparator,
+		boolean useFinderCache) {
+
+		FinderPath finderPath = null;
+		Object[] finderArgs = null;
+
+		finderPath = _finderPathWithPaginationFindByU_C_P;
+		finderArgs = new Object[] {
+			userGroupId, companyId, parentUserGroupId, start, end,
+			orderByComparator
+		};
+
+		List<UserGroup> list = null;
+
+		if (useFinderCache) {
+			list = (List<UserGroup>)FinderCacheUtil.getResult(
+				finderPath, finderArgs, this);
+
+			if ((list != null) && !list.isEmpty()) {
+				for (UserGroup userGroup : list) {
+					if ((userGroupId >= userGroup.getUserGroupId()) ||
+						(companyId != userGroup.getCompanyId()) ||
+						(parentUserGroupId !=
+							userGroup.getParentUserGroupId())) {
+
+						list = null;
+
+						break;
+					}
+				}
+			}
+		}
+
+		if (list == null) {
+			StringBundler query = null;
+
+			if (orderByComparator != null) {
+				query = new StringBundler(
+					5 + (orderByComparator.getOrderByFields().length * 2));
+			}
+			else {
+				query = new StringBundler(5);
+			}
+
+			query.append(_SQL_SELECT_USERGROUP_WHERE);
+
+			query.append(_FINDER_COLUMN_U_C_P_USERGROUPID_2);
+
+			query.append(_FINDER_COLUMN_U_C_P_COMPANYID_2);
+
+			query.append(_FINDER_COLUMN_U_C_P_PARENTUSERGROUPID_2);
+
+			if (orderByComparator != null) {
+				appendOrderByComparator(
+					query, _ORDER_BY_ENTITY_ALIAS, orderByComparator);
+			}
+			else {
+				query.append(UserGroupModelImpl.ORDER_BY_JPQL);
+			}
+
+			String sql = query.toString();
+
+			Session session = null;
+
+			try {
+				session = openSession();
+
+				Query q = session.createQuery(sql);
+
+				QueryPos qPos = QueryPos.getInstance(q);
+
+				qPos.add(userGroupId);
+
+				qPos.add(companyId);
+
+				qPos.add(parentUserGroupId);
+
+				list = (List<UserGroup>)QueryUtil.list(
+					q, getDialect(), start, end);
+
+				cacheResult(list);
+
+				if (useFinderCache) {
+					FinderCacheUtil.putResult(finderPath, finderArgs, list);
+				}
+			}
+			catch (Exception e) {
+				if (useFinderCache) {
+					FinderCacheUtil.removeResult(finderPath, finderArgs);
+				}
+
+				throw processException(e);
+			}
+			finally {
+				closeSession(session);
+			}
+		}
+
+		return list;
+	}
+
+	/**
+	 * Returns the first user group in the ordered set where userGroupId &gt; &#63; and companyId = &#63; and parentUserGroupId = &#63;.
+	 *
+	 * @param userGroupId the user group ID
+	 * @param companyId the company ID
+	 * @param parentUserGroupId the parent user group ID
+	 * @param orderByComparator the comparator to order the set by (optionally <code>null</code>)
+	 * @return the first matching user group
+	 * @throws NoSuchUserGroupException if a matching user group could not be found
+	 */
+	@Override
+	public UserGroup findByU_C_P_First(
+			long userGroupId, long companyId, long parentUserGroupId,
+			OrderByComparator<UserGroup> orderByComparator)
+		throws NoSuchUserGroupException {
+
+		UserGroup userGroup = fetchByU_C_P_First(
+			userGroupId, companyId, parentUserGroupId, orderByComparator);
+
+		if (userGroup != null) {
+			return userGroup;
+		}
+
+		StringBundler msg = new StringBundler(8);
+
+		msg.append(_NO_SUCH_ENTITY_WITH_KEY);
+
+		msg.append("userGroupId>");
+		msg.append(userGroupId);
+
+		msg.append(", companyId=");
+		msg.append(companyId);
+
+		msg.append(", parentUserGroupId=");
+		msg.append(parentUserGroupId);
+
+		msg.append("}");
+
+		throw new NoSuchUserGroupException(msg.toString());
+	}
+
+	/**
+	 * Returns the first user group in the ordered set where userGroupId &gt; &#63; and companyId = &#63; and parentUserGroupId = &#63;.
+	 *
+	 * @param userGroupId the user group ID
+	 * @param companyId the company ID
+	 * @param parentUserGroupId the parent user group ID
+	 * @param orderByComparator the comparator to order the set by (optionally <code>null</code>)
+	 * @return the first matching user group, or <code>null</code> if a matching user group could not be found
+	 */
+	@Override
+	public UserGroup fetchByU_C_P_First(
+		long userGroupId, long companyId, long parentUserGroupId,
+		OrderByComparator<UserGroup> orderByComparator) {
+
+		List<UserGroup> list = findByU_C_P(
+			userGroupId, companyId, parentUserGroupId, 0, 1, orderByComparator);
+
+		if (!list.isEmpty()) {
+			return list.get(0);
+		}
+
+		return null;
+	}
+
+	/**
+	 * Returns the last user group in the ordered set where userGroupId &gt; &#63; and companyId = &#63; and parentUserGroupId = &#63;.
+	 *
+	 * @param userGroupId the user group ID
+	 * @param companyId the company ID
+	 * @param parentUserGroupId the parent user group ID
+	 * @param orderByComparator the comparator to order the set by (optionally <code>null</code>)
+	 * @return the last matching user group
+	 * @throws NoSuchUserGroupException if a matching user group could not be found
+	 */
+	@Override
+	public UserGroup findByU_C_P_Last(
+			long userGroupId, long companyId, long parentUserGroupId,
+			OrderByComparator<UserGroup> orderByComparator)
+		throws NoSuchUserGroupException {
+
+		UserGroup userGroup = fetchByU_C_P_Last(
+			userGroupId, companyId, parentUserGroupId, orderByComparator);
+
+		if (userGroup != null) {
+			return userGroup;
+		}
+
+		StringBundler msg = new StringBundler(8);
+
+		msg.append(_NO_SUCH_ENTITY_WITH_KEY);
+
+		msg.append("userGroupId>");
+		msg.append(userGroupId);
+
+		msg.append(", companyId=");
+		msg.append(companyId);
+
+		msg.append(", parentUserGroupId=");
+		msg.append(parentUserGroupId);
+
+		msg.append("}");
+
+		throw new NoSuchUserGroupException(msg.toString());
+	}
+
+	/**
+	 * Returns the last user group in the ordered set where userGroupId &gt; &#63; and companyId = &#63; and parentUserGroupId = &#63;.
+	 *
+	 * @param userGroupId the user group ID
+	 * @param companyId the company ID
+	 * @param parentUserGroupId the parent user group ID
+	 * @param orderByComparator the comparator to order the set by (optionally <code>null</code>)
+	 * @return the last matching user group, or <code>null</code> if a matching user group could not be found
+	 */
+	@Override
+	public UserGroup fetchByU_C_P_Last(
+		long userGroupId, long companyId, long parentUserGroupId,
+		OrderByComparator<UserGroup> orderByComparator) {
+
+		int count = countByU_C_P(userGroupId, companyId, parentUserGroupId);
+
+		if (count == 0) {
+			return null;
+		}
+
+		List<UserGroup> list = findByU_C_P(
+			userGroupId, companyId, parentUserGroupId, count - 1, count,
+			orderByComparator);
+
+		if (!list.isEmpty()) {
+			return list.get(0);
+		}
+
+		return null;
+	}
+
+	/**
+	 * Returns all the user groups that the user has permission to view where userGroupId &gt; &#63; and companyId = &#63; and parentUserGroupId = &#63;.
+	 *
+	 * @param userGroupId the user group ID
+	 * @param companyId the company ID
+	 * @param parentUserGroupId the parent user group ID
+	 * @return the matching user groups that the user has permission to view
+	 */
+	@Override
+	public List<UserGroup> filterFindByU_C_P(
+		long userGroupId, long companyId, long parentUserGroupId) {
+
+		return filterFindByU_C_P(
+			userGroupId, companyId, parentUserGroupId, QueryUtil.ALL_POS,
+			QueryUtil.ALL_POS, null);
+	}
+
+	/**
+	 * Returns a range of all the user groups that the user has permission to view where userGroupId &gt; &#63; and companyId = &#63; and parentUserGroupId = &#63;.
+	 *
+	 * <p>
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>UserGroupModelImpl</code>.
+	 * </p>
+	 *
+	 * @param userGroupId the user group ID
+	 * @param companyId the company ID
+	 * @param parentUserGroupId the parent user group ID
+	 * @param start the lower bound of the range of user groups
+	 * @param end the upper bound of the range of user groups (not inclusive)
+	 * @return the range of matching user groups that the user has permission to view
+	 */
+	@Override
+	public List<UserGroup> filterFindByU_C_P(
+		long userGroupId, long companyId, long parentUserGroupId, int start,
+		int end) {
+
+		return filterFindByU_C_P(
+			userGroupId, companyId, parentUserGroupId, start, end, null);
+	}
+
+	/**
+	 * Returns an ordered range of all the user groups that the user has permissions to view where userGroupId &gt; &#63; and companyId = &#63; and parentUserGroupId = &#63;.
+	 *
+	 * <p>
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>UserGroupModelImpl</code>.
+	 * </p>
+	 *
+	 * @param userGroupId the user group ID
+	 * @param companyId the company ID
+	 * @param parentUserGroupId the parent user group ID
+	 * @param start the lower bound of the range of user groups
+	 * @param end the upper bound of the range of user groups (not inclusive)
+	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
+	 * @return the ordered range of matching user groups that the user has permission to view
+	 */
+	@Override
+	public List<UserGroup> filterFindByU_C_P(
+		long userGroupId, long companyId, long parentUserGroupId, int start,
+		int end, OrderByComparator<UserGroup> orderByComparator) {
+
+		if (!InlineSQLHelperUtil.isEnabled(companyId, 0)) {
+			return findByU_C_P(
+				userGroupId, companyId, parentUserGroupId, start, end,
+				orderByComparator);
+		}
+
+		StringBundler query = null;
+
+		if (orderByComparator != null) {
+			query = new StringBundler(
+				5 + (orderByComparator.getOrderByFields().length * 2));
+		}
+		else {
+			query = new StringBundler(6);
+		}
+
+		if (getDB().isSupportsInlineDistinct()) {
+			query.append(_FILTER_SQL_SELECT_USERGROUP_WHERE);
+		}
+		else {
+			query.append(
+				_FILTER_SQL_SELECT_USERGROUP_NO_INLINE_DISTINCT_WHERE_1);
+		}
+
+		query.append(_FINDER_COLUMN_U_C_P_USERGROUPID_2);
+
+		query.append(_FINDER_COLUMN_U_C_P_COMPANYID_2);
+
+		query.append(_FINDER_COLUMN_U_C_P_PARENTUSERGROUPID_2);
+
+		if (!getDB().isSupportsInlineDistinct()) {
+			query.append(
+				_FILTER_SQL_SELECT_USERGROUP_NO_INLINE_DISTINCT_WHERE_2);
+		}
+
+		if (orderByComparator != null) {
+			if (getDB().isSupportsInlineDistinct()) {
+				appendOrderByComparator(
+					query, _ORDER_BY_ENTITY_ALIAS, orderByComparator, true);
+			}
+			else {
+				appendOrderByComparator(
+					query, _ORDER_BY_ENTITY_TABLE, orderByComparator, true);
+			}
+		}
+		else {
+			if (getDB().isSupportsInlineDistinct()) {
+				query.append(UserGroupModelImpl.ORDER_BY_JPQL);
+			}
+			else {
+				query.append(UserGroupModelImpl.ORDER_BY_SQL);
+			}
+		}
+
+		String sql = InlineSQLHelperUtil.replacePermissionCheck(
+			query.toString(), UserGroup.class.getName(),
+			_FILTER_ENTITY_TABLE_FILTER_PK_COLUMN);
+
+		Session session = null;
+
+		try {
+			session = openSession();
+
+			SQLQuery q = session.createSynchronizedSQLQuery(sql);
+
+			if (getDB().isSupportsInlineDistinct()) {
+				q.addEntity(_FILTER_ENTITY_ALIAS, UserGroupImpl.class);
+			}
+			else {
+				q.addEntity(_FILTER_ENTITY_TABLE, UserGroupImpl.class);
+			}
+
+			QueryPos qPos = QueryPos.getInstance(q);
+
+			qPos.add(userGroupId);
+
+			qPos.add(companyId);
+
+			qPos.add(parentUserGroupId);
+
+			return (List<UserGroup>)QueryUtil.list(q, getDialect(), start, end);
+		}
+		catch (Exception e) {
+			throw processException(e);
+		}
+		finally {
+			closeSession(session);
+		}
+	}
+
+	/**
+	 * Removes all the user groups where userGroupId &gt; &#63; and companyId = &#63; and parentUserGroupId = &#63; from the database.
+	 *
+	 * @param userGroupId the user group ID
+	 * @param companyId the company ID
+	 * @param parentUserGroupId the parent user group ID
+	 */
+	@Override
+	public void removeByU_C_P(
+		long userGroupId, long companyId, long parentUserGroupId) {
+
+		for (UserGroup userGroup :
+				findByU_C_P(
+					userGroupId, companyId, parentUserGroupId,
+					QueryUtil.ALL_POS, QueryUtil.ALL_POS, null)) {
+
+			remove(userGroup);
+		}
+	}
+
+	/**
+	 * Returns the number of user groups where userGroupId &gt; &#63; and companyId = &#63; and parentUserGroupId = &#63;.
+	 *
+	 * @param userGroupId the user group ID
+	 * @param companyId the company ID
+	 * @param parentUserGroupId the parent user group ID
+	 * @return the number of matching user groups
+	 */
+	@Override
+	public int countByU_C_P(
+		long userGroupId, long companyId, long parentUserGroupId) {
+
+		FinderPath finderPath = _finderPathWithPaginationCountByU_C_P;
+
+		Object[] finderArgs = new Object[] {
+			userGroupId, companyId, parentUserGroupId
+		};
+
+		Long count = (Long)FinderCacheUtil.getResult(
+			finderPath, finderArgs, this);
+
+		if (count == null) {
+			StringBundler query = new StringBundler(4);
+
+			query.append(_SQL_COUNT_USERGROUP_WHERE);
+
+			query.append(_FINDER_COLUMN_U_C_P_USERGROUPID_2);
+
+			query.append(_FINDER_COLUMN_U_C_P_COMPANYID_2);
+
+			query.append(_FINDER_COLUMN_U_C_P_PARENTUSERGROUPID_2);
+
+			String sql = query.toString();
+
+			Session session = null;
+
+			try {
+				session = openSession();
+
+				Query q = session.createQuery(sql);
+
+				QueryPos qPos = QueryPos.getInstance(q);
+
+				qPos.add(userGroupId);
+
+				qPos.add(companyId);
+
+				qPos.add(parentUserGroupId);
+
+				count = (Long)q.uniqueResult();
+
+				FinderCacheUtil.putResult(finderPath, finderArgs, count);
+			}
+			catch (Exception e) {
+				FinderCacheUtil.removeResult(finderPath, finderArgs);
+
+				throw processException(e);
+			}
+			finally {
+				closeSession(session);
+			}
+		}
+
+		return count.intValue();
+	}
+
+	/**
+	 * Returns the number of user groups that the user has permission to view where userGroupId &gt; &#63; and companyId = &#63; and parentUserGroupId = &#63;.
+	 *
+	 * @param userGroupId the user group ID
+	 * @param companyId the company ID
+	 * @param parentUserGroupId the parent user group ID
+	 * @return the number of matching user groups that the user has permission to view
+	 */
+	@Override
+	public int filterCountByU_C_P(
+		long userGroupId, long companyId, long parentUserGroupId) {
+
+		if (!InlineSQLHelperUtil.isEnabled(companyId, 0)) {
+			return countByU_C_P(userGroupId, companyId, parentUserGroupId);
+		}
+
+		StringBundler query = new StringBundler(4);
+
+		query.append(_FILTER_SQL_COUNT_USERGROUP_WHERE);
+
+		query.append(_FINDER_COLUMN_U_C_P_USERGROUPID_2);
+
+		query.append(_FINDER_COLUMN_U_C_P_COMPANYID_2);
+
+		query.append(_FINDER_COLUMN_U_C_P_PARENTUSERGROUPID_2);
+
+		String sql = InlineSQLHelperUtil.replacePermissionCheck(
+			query.toString(), UserGroup.class.getName(),
+			_FILTER_ENTITY_TABLE_FILTER_PK_COLUMN);
+
+		Session session = null;
+
+		try {
+			session = openSession();
+
+			SQLQuery q = session.createSynchronizedSQLQuery(sql);
+
+			q.addScalar(
+				COUNT_COLUMN_NAME, com.liferay.portal.kernel.dao.orm.Type.LONG);
+
+			QueryPos qPos = QueryPos.getInstance(q);
+
+			qPos.add(userGroupId);
+
+			qPos.add(companyId);
+
+			qPos.add(parentUserGroupId);
+
+			Long count = (Long)q.uniqueResult();
+
+			return count.intValue();
+		}
+		catch (Exception e) {
+			throw processException(e);
+		}
+		finally {
+			closeSession(session);
+		}
+	}
+
+	private static final String _FINDER_COLUMN_U_C_P_USERGROUPID_2 =
+		"userGroup.userGroupId > ? AND ";
+
+	private static final String _FINDER_COLUMN_U_C_P_COMPANYID_2 =
+		"userGroup.companyId = ? AND ";
+
+	private static final String _FINDER_COLUMN_U_C_P_PARENTUSERGROUPID_2 =
+		"userGroup.parentUserGroupId = ?";
+
+	private FinderPath _finderPathFetchByC_ERC;
+	private FinderPath _finderPathCountByC_ERC;
+
+	/**
+	 * Returns the user group where companyId = &#63; and externalReferenceCode = &#63; or throws a <code>NoSuchUserGroupException</code> if it could not be found.
+	 *
+	 * @param companyId the company ID
+	 * @param externalReferenceCode the external reference code
+	 * @return the matching user group
+	 * @throws NoSuchUserGroupException if a matching user group could not be found
+	 */
+	@Override
+	public UserGroup findByC_ERC(long companyId, String externalReferenceCode)
+		throws NoSuchUserGroupException {
+
+		UserGroup userGroup = fetchByC_ERC(companyId, externalReferenceCode);
+
+		if (userGroup == null) {
+			StringBundler msg = new StringBundler(6);
+
+			msg.append(_NO_SUCH_ENTITY_WITH_KEY);
+
+			msg.append("companyId=");
+			msg.append(companyId);
+
+			msg.append(", externalReferenceCode=");
+			msg.append(externalReferenceCode);
+
+			msg.append("}");
+
+			if (_log.isDebugEnabled()) {
+				_log.debug(msg.toString());
+			}
+
+			throw new NoSuchUserGroupException(msg.toString());
+		}
+
+		return userGroup;
+	}
+
+	/**
+	 * Returns the user group where companyId = &#63; and externalReferenceCode = &#63; or returns <code>null</code> if it could not be found. Uses the finder cache.
+	 *
+	 * @param companyId the company ID
+	 * @param externalReferenceCode the external reference code
+	 * @return the matching user group, or <code>null</code> if a matching user group could not be found
+	 */
+	@Override
+	public UserGroup fetchByC_ERC(
+		long companyId, String externalReferenceCode) {
+
+		return fetchByC_ERC(companyId, externalReferenceCode, true);
+	}
+
+	/**
+	 * Returns the user group where companyId = &#63; and externalReferenceCode = &#63; or returns <code>null</code> if it could not be found, optionally using the finder cache.
+	 *
+	 * @param companyId the company ID
+	 * @param externalReferenceCode the external reference code
+	 * @param useFinderCache whether to use the finder cache
+	 * @return the matching user group, or <code>null</code> if a matching user group could not be found
+	 */
+	@Override
+	public UserGroup fetchByC_ERC(
+		long companyId, String externalReferenceCode, boolean useFinderCache) {
+
+		externalReferenceCode = Objects.toString(externalReferenceCode, "");
+
+		Object[] finderArgs = null;
+
+		if (useFinderCache) {
+			finderArgs = new Object[] {companyId, externalReferenceCode};
+		}
+
+		Object result = null;
+
+		if (useFinderCache) {
+			result = FinderCacheUtil.getResult(
+				_finderPathFetchByC_ERC, finderArgs, this);
+		}
+
+		if (result instanceof UserGroup) {
+			UserGroup userGroup = (UserGroup)result;
+
+			if ((companyId != userGroup.getCompanyId()) ||
+				!Objects.equals(
+					externalReferenceCode,
+					userGroup.getExternalReferenceCode())) {
+
+				result = null;
+			}
+		}
+
+		if (result == null) {
+			StringBundler query = new StringBundler(4);
+
+			query.append(_SQL_SELECT_USERGROUP_WHERE);
+
+			query.append(_FINDER_COLUMN_C_ERC_COMPANYID_2);
+
+			boolean bindExternalReferenceCode = false;
+
+			if (externalReferenceCode.isEmpty()) {
+				query.append(_FINDER_COLUMN_C_ERC_EXTERNALREFERENCECODE_3);
+			}
+			else {
+				bindExternalReferenceCode = true;
+
+				query.append(_FINDER_COLUMN_C_ERC_EXTERNALREFERENCECODE_2);
+			}
+
+			String sql = query.toString();
+
+			Session session = null;
+
+			try {
+				session = openSession();
+
+				Query q = session.createQuery(sql);
+
+				QueryPos qPos = QueryPos.getInstance(q);
+
+				qPos.add(companyId);
+
+				if (bindExternalReferenceCode) {
+					qPos.add(externalReferenceCode);
+				}
+
+				List<UserGroup> list = q.list();
+
+				if (list.isEmpty()) {
+					if (useFinderCache) {
+						FinderCacheUtil.putResult(
+							_finderPathFetchByC_ERC, finderArgs, list);
+					}
+				}
+				else {
+					if (list.size() > 1) {
+						Collections.sort(list, Collections.reverseOrder());
+
+						if (_log.isWarnEnabled()) {
+							if (!useFinderCache) {
+								finderArgs = new Object[] {
+									companyId, externalReferenceCode
+								};
+							}
+
+							_log.warn(
+								"UserGroupPersistenceImpl.fetchByC_ERC(long, String, boolean) with parameters (" +
+									StringUtil.merge(finderArgs) +
+										") yields a result set with more than 1 result. This violates the logical unique restriction. There is no order guarantee on which result is returned by this finder.");
+						}
+					}
+
+					UserGroup userGroup = list.get(0);
+
+					result = userGroup;
+
+					cacheResult(userGroup);
+				}
+			}
+			catch (Exception e) {
+				if (useFinderCache) {
+					FinderCacheUtil.removeResult(
+						_finderPathFetchByC_ERC, finderArgs);
+				}
+
+				throw processException(e);
+			}
+			finally {
+				closeSession(session);
+			}
+		}
+
+		if (result instanceof List<?>) {
+			return null;
+		}
+		else {
+			return (UserGroup)result;
+		}
+	}
+
+	/**
+	 * Removes the user group where companyId = &#63; and externalReferenceCode = &#63; from the database.
+	 *
+	 * @param companyId the company ID
+	 * @param externalReferenceCode the external reference code
+	 * @return the user group that was removed
+	 */
+	@Override
+	public UserGroup removeByC_ERC(long companyId, String externalReferenceCode)
+		throws NoSuchUserGroupException {
+
+		UserGroup userGroup = findByC_ERC(companyId, externalReferenceCode);
+
+		return remove(userGroup);
+	}
+
+	/**
+	 * Returns the number of user groups where companyId = &#63; and externalReferenceCode = &#63;.
+	 *
+	 * @param companyId the company ID
+	 * @param externalReferenceCode the external reference code
+	 * @return the number of matching user groups
+	 */
+	@Override
+	public int countByC_ERC(long companyId, String externalReferenceCode) {
+		externalReferenceCode = Objects.toString(externalReferenceCode, "");
+
+		FinderPath finderPath = _finderPathCountByC_ERC;
+
+		Object[] finderArgs = new Object[] {companyId, externalReferenceCode};
+
+		Long count = (Long)FinderCacheUtil.getResult(
+			finderPath, finderArgs, this);
+
+		if (count == null) {
+			StringBundler query = new StringBundler(3);
+
+			query.append(_SQL_COUNT_USERGROUP_WHERE);
+
+			query.append(_FINDER_COLUMN_C_ERC_COMPANYID_2);
+
+			boolean bindExternalReferenceCode = false;
+
+			if (externalReferenceCode.isEmpty()) {
+				query.append(_FINDER_COLUMN_C_ERC_EXTERNALREFERENCECODE_3);
+			}
+			else {
+				bindExternalReferenceCode = true;
+
+				query.append(_FINDER_COLUMN_C_ERC_EXTERNALREFERENCECODE_2);
+			}
+
+			String sql = query.toString();
+
+			Session session = null;
+
+			try {
+				session = openSession();
+
+				Query q = session.createQuery(sql);
+
+				QueryPos qPos = QueryPos.getInstance(q);
+
+				qPos.add(companyId);
+
+				if (bindExternalReferenceCode) {
+					qPos.add(externalReferenceCode);
+				}
+
+				count = (Long)q.uniqueResult();
+
+				FinderCacheUtil.putResult(finderPath, finderArgs, count);
+			}
+			catch (Exception e) {
+				FinderCacheUtil.removeResult(finderPath, finderArgs);
+
+				throw processException(e);
+			}
+			finally {
+				closeSession(session);
+			}
+		}
+
+		return count.intValue();
+	}
+
+	private static final String _FINDER_COLUMN_C_ERC_COMPANYID_2 =
+		"userGroup.companyId = ? AND ";
+
+	private static final String _FINDER_COLUMN_C_ERC_EXTERNALREFERENCECODE_2 =
+		"userGroup.externalReferenceCode = ?";
+
+	private static final String _FINDER_COLUMN_C_ERC_EXTERNALREFERENCECODE_3 =
+		"(userGroup.externalReferenceCode IS NULL OR userGroup.externalReferenceCode = '')";
 
 	public UserGroupPersistenceImpl() {
 		setModelClass(UserGroup.class);
 
-		try {
-			Field field = BasePersistenceImpl.class.getDeclaredField(
-					"_dbColumnNames");
+		setModelImplClass(UserGroupImpl.class);
+		setModelPKClass(long.class);
+		setEntityCacheEnabled(UserGroupModelImpl.ENTITY_CACHE_ENABLED);
 
-			field.setAccessible(true);
+		Map<String, String> dbColumnNames = new HashMap<String, String>();
 
-			Map<String, String> dbColumnNames = new HashMap<String, String>();
+		dbColumnNames.put("uuid", "uuid_");
+		dbColumnNames.put("groups", "groups_");
 
-			dbColumnNames.put("uuid", "uuid_");
-
-			field.set(this, dbColumnNames);
-		}
-		catch (Exception e) {
-			if (_log.isDebugEnabled()) {
-				_log.debug(e, e);
-			}
-		}
+		setDBColumnNames(dbColumnNames);
 	}
 
 	/**
@@ -4109,11 +6084,20 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 */
 	@Override
 	public void cacheResult(UserGroup userGroup) {
-		entityCache.putResult(UserGroupModelImpl.ENTITY_CACHE_ENABLED,
-			UserGroupImpl.class, userGroup.getPrimaryKey(), userGroup);
+		EntityCacheUtil.putResult(
+			UserGroupModelImpl.ENTITY_CACHE_ENABLED, UserGroupImpl.class,
+			userGroup.getPrimaryKey(), userGroup);
 
-		finderCache.putResult(FINDER_PATH_FETCH_BY_C_N,
-			new Object[] { userGroup.getCompanyId(), userGroup.getName() },
+		FinderCacheUtil.putResult(
+			_finderPathFetchByC_N,
+			new Object[] {userGroup.getCompanyId(), userGroup.getName()},
+			userGroup);
+
+		FinderCacheUtil.putResult(
+			_finderPathFetchByC_ERC,
+			new Object[] {
+				userGroup.getCompanyId(), userGroup.getExternalReferenceCode()
+			},
 			userGroup);
 
 		userGroup.resetOriginalValues();
@@ -4127,8 +6111,10 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	@Override
 	public void cacheResult(List<UserGroup> userGroups) {
 		for (UserGroup userGroup : userGroups) {
-			if (entityCache.getResult(UserGroupModelImpl.ENTITY_CACHE_ENABLED,
-						UserGroupImpl.class, userGroup.getPrimaryKey()) == null) {
+			if (EntityCacheUtil.getResult(
+					UserGroupModelImpl.ENTITY_CACHE_ENABLED,
+					UserGroupImpl.class, userGroup.getPrimaryKey()) == null) {
+
 				cacheResult(userGroup);
 			}
 			else {
@@ -4141,44 +6127,46 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * Clears the cache for all user groups.
 	 *
 	 * <p>
-	 * The {@link EntityCache} and {@link FinderCache} are both cleared by this method.
+	 * The <code>EntityCache</code> and <code>com.liferay.portal.kernel.dao.orm.FinderCache</code> are both cleared by this method.
 	 * </p>
 	 */
 	@Override
 	public void clearCache() {
-		entityCache.clearCache(UserGroupImpl.class);
+		EntityCacheUtil.clearCache(UserGroupImpl.class);
 
-		finderCache.clearCache(FINDER_CLASS_NAME_ENTITY);
-		finderCache.clearCache(FINDER_CLASS_NAME_LIST_WITH_PAGINATION);
-		finderCache.clearCache(FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION);
+		FinderCacheUtil.clearCache(FINDER_CLASS_NAME_ENTITY);
+		FinderCacheUtil.clearCache(FINDER_CLASS_NAME_LIST_WITH_PAGINATION);
+		FinderCacheUtil.clearCache(FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION);
 	}
 
 	/**
 	 * Clears the cache for the user group.
 	 *
 	 * <p>
-	 * The {@link EntityCache} and {@link FinderCache} are both cleared by this method.
+	 * The <code>EntityCache</code> and <code>com.liferay.portal.kernel.dao.orm.FinderCache</code> are both cleared by this method.
 	 * </p>
 	 */
 	@Override
 	public void clearCache(UserGroup userGroup) {
-		entityCache.removeResult(UserGroupModelImpl.ENTITY_CACHE_ENABLED,
-			UserGroupImpl.class, userGroup.getPrimaryKey());
+		EntityCacheUtil.removeResult(
+			UserGroupModelImpl.ENTITY_CACHE_ENABLED, UserGroupImpl.class,
+			userGroup.getPrimaryKey());
 
-		finderCache.clearCache(FINDER_CLASS_NAME_LIST_WITH_PAGINATION);
-		finderCache.clearCache(FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION);
+		FinderCacheUtil.clearCache(FINDER_CLASS_NAME_LIST_WITH_PAGINATION);
+		FinderCacheUtil.clearCache(FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION);
 
 		clearUniqueFindersCache((UserGroupModelImpl)userGroup, true);
 	}
 
 	@Override
 	public void clearCache(List<UserGroup> userGroups) {
-		finderCache.clearCache(FINDER_CLASS_NAME_LIST_WITH_PAGINATION);
-		finderCache.clearCache(FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION);
+		FinderCacheUtil.clearCache(FINDER_CLASS_NAME_LIST_WITH_PAGINATION);
+		FinderCacheUtil.clearCache(FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION);
 
 		for (UserGroup userGroup : userGroups) {
-			entityCache.removeResult(UserGroupModelImpl.ENTITY_CACHE_ENABLED,
-				UserGroupImpl.class, userGroup.getPrimaryKey());
+			EntityCacheUtil.removeResult(
+				UserGroupModelImpl.ENTITY_CACHE_ENABLED, UserGroupImpl.class,
+				userGroup.getPrimaryKey());
 
 			clearUniqueFindersCache((UserGroupModelImpl)userGroup, true);
 		}
@@ -4186,37 +6174,71 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 
 	protected void cacheUniqueFindersCache(
 		UserGroupModelImpl userGroupModelImpl) {
-		Object[] args = new Object[] {
-				userGroupModelImpl.getCompanyId(), userGroupModelImpl.getName()
-			};
 
-		finderCache.putResult(FINDER_PATH_COUNT_BY_C_N, args, Long.valueOf(1),
-			false);
-		finderCache.putResult(FINDER_PATH_FETCH_BY_C_N, args,
-			userGroupModelImpl, false);
+		Object[] args = new Object[] {
+			userGroupModelImpl.getCompanyId(), userGroupModelImpl.getName()
+		};
+
+		FinderCacheUtil.putResult(
+			_finderPathCountByC_N, args, Long.valueOf(1), false);
+		FinderCacheUtil.putResult(
+			_finderPathFetchByC_N, args, userGroupModelImpl, false);
+
+		args = new Object[] {
+			userGroupModelImpl.getCompanyId(),
+			userGroupModelImpl.getExternalReferenceCode()
+		};
+
+		FinderCacheUtil.putResult(
+			_finderPathCountByC_ERC, args, Long.valueOf(1), false);
+		FinderCacheUtil.putResult(
+			_finderPathFetchByC_ERC, args, userGroupModelImpl, false);
 	}
 
 	protected void clearUniqueFindersCache(
 		UserGroupModelImpl userGroupModelImpl, boolean clearCurrent) {
+
 		if (clearCurrent) {
 			Object[] args = new Object[] {
-					userGroupModelImpl.getCompanyId(),
-					userGroupModelImpl.getName()
-				};
+				userGroupModelImpl.getCompanyId(), userGroupModelImpl.getName()
+			};
 
-			finderCache.removeResult(FINDER_PATH_COUNT_BY_C_N, args);
-			finderCache.removeResult(FINDER_PATH_FETCH_BY_C_N, args);
+			FinderCacheUtil.removeResult(_finderPathCountByC_N, args);
+			FinderCacheUtil.removeResult(_finderPathFetchByC_N, args);
 		}
 
 		if ((userGroupModelImpl.getColumnBitmask() &
-				FINDER_PATH_FETCH_BY_C_N.getColumnBitmask()) != 0) {
-			Object[] args = new Object[] {
-					userGroupModelImpl.getOriginalCompanyId(),
-					userGroupModelImpl.getOriginalName()
-				};
+			 _finderPathFetchByC_N.getColumnBitmask()) != 0) {
 
-			finderCache.removeResult(FINDER_PATH_COUNT_BY_C_N, args);
-			finderCache.removeResult(FINDER_PATH_FETCH_BY_C_N, args);
+			Object[] args = new Object[] {
+				userGroupModelImpl.getOriginalCompanyId(),
+				userGroupModelImpl.getOriginalName()
+			};
+
+			FinderCacheUtil.removeResult(_finderPathCountByC_N, args);
+			FinderCacheUtil.removeResult(_finderPathFetchByC_N, args);
+		}
+
+		if (clearCurrent) {
+			Object[] args = new Object[] {
+				userGroupModelImpl.getCompanyId(),
+				userGroupModelImpl.getExternalReferenceCode()
+			};
+
+			FinderCacheUtil.removeResult(_finderPathCountByC_ERC, args);
+			FinderCacheUtil.removeResult(_finderPathFetchByC_ERC, args);
+		}
+
+		if ((userGroupModelImpl.getColumnBitmask() &
+			 _finderPathFetchByC_ERC.getColumnBitmask()) != 0) {
+
+			Object[] args = new Object[] {
+				userGroupModelImpl.getOriginalCompanyId(),
+				userGroupModelImpl.getOriginalExternalReferenceCode()
+			};
+
+			FinderCacheUtil.removeResult(_finderPathCountByC_ERC, args);
+			FinderCacheUtil.removeResult(_finderPathFetchByC_ERC, args);
 		}
 	}
 
@@ -4237,7 +6259,7 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 
 		userGroup.setUuid(uuid);
 
-		userGroup.setCompanyId(companyProvider.getCompanyId());
+		userGroup.setCompanyId(CompanyThreadLocal.getCompanyId());
 
 		return userGroup;
 	}
@@ -4264,21 +6286,22 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	@Override
 	public UserGroup remove(Serializable primaryKey)
 		throws NoSuchUserGroupException {
+
 		Session session = null;
 
 		try {
 			session = openSession();
 
-			UserGroup userGroup = (UserGroup)session.get(UserGroupImpl.class,
-					primaryKey);
+			UserGroup userGroup = (UserGroup)session.get(
+				UserGroupImpl.class, primaryKey);
 
 			if (userGroup == null) {
 				if (_log.isDebugEnabled()) {
 					_log.debug(_NO_SUCH_ENTITY_WITH_PRIMARY_KEY + primaryKey);
 				}
 
-				throw new NoSuchUserGroupException(_NO_SUCH_ENTITY_WITH_PRIMARY_KEY +
-					primaryKey);
+				throw new NoSuchUserGroupException(
+					_NO_SUCH_ENTITY_WITH_PRIMARY_KEY + primaryKey);
 			}
 
 			return remove(userGroup);
@@ -4296,13 +6319,14 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 
 	@Override
 	protected UserGroup removeImpl(UserGroup userGroup) {
-		userGroup = toUnwrappedModel(userGroup);
+		userGroupToGroupTableMapper.deleteLeftPrimaryKeyTableMappings(
+			userGroup.getPrimaryKey());
 
-		userGroupToGroupTableMapper.deleteLeftPrimaryKeyTableMappings(userGroup.getPrimaryKey());
+		userGroupToTeamTableMapper.deleteLeftPrimaryKeyTableMappings(
+			userGroup.getPrimaryKey());
 
-		userGroupToTeamTableMapper.deleteLeftPrimaryKeyTableMappings(userGroup.getPrimaryKey());
-
-		userGroupToUserTableMapper.deleteLeftPrimaryKeyTableMappings(userGroup.getPrimaryKey());
+		userGroupToUserTableMapper.deleteLeftPrimaryKeyTableMappings(
+			userGroup.getPrimaryKey());
 
 		Session session = null;
 
@@ -4310,8 +6334,8 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 			session = openSession();
 
 			if (!session.contains(userGroup)) {
-				userGroup = (UserGroup)session.get(UserGroupImpl.class,
-						userGroup.getPrimaryKeyObj());
+				userGroup = (UserGroup)session.get(
+					UserGroupImpl.class, userGroup.getPrimaryKeyObj());
 			}
 
 			if (userGroup != null) {
@@ -4334,9 +6358,23 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 
 	@Override
 	public UserGroup updateImpl(UserGroup userGroup) {
-		userGroup = toUnwrappedModel(userGroup);
-
 		boolean isNew = userGroup.isNew();
+
+		if (!(userGroup instanceof UserGroupModelImpl)) {
+			InvocationHandler invocationHandler = null;
+
+			if (ProxyUtil.isProxyClass(userGroup.getClass())) {
+				invocationHandler = ProxyUtil.getInvocationHandler(userGroup);
+
+				throw new IllegalArgumentException(
+					"Implement ModelWrapper in userGroup proxy " +
+						invocationHandler.getClass());
+			}
+
+			throw new IllegalArgumentException(
+				"Implement ModelWrapper in custom UserGroup implementation " +
+					userGroup.getClass());
+		}
 
 		UserGroupModelImpl userGroupModelImpl = (UserGroupModelImpl)userGroup;
 
@@ -4346,7 +6384,8 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 			userGroup.setUuid(uuid);
 		}
 
-		ServiceContext serviceContext = ServiceContextThreadLocal.getServiceContext();
+		ServiceContext serviceContext =
+			ServiceContextThreadLocal.getServiceContext();
 
 		Date now = new Date();
 
@@ -4389,128 +6428,136 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 			closeSession(session);
 		}
 
-		finderCache.clearCache(FINDER_CLASS_NAME_LIST_WITH_PAGINATION);
+		FinderCacheUtil.clearCache(FINDER_CLASS_NAME_LIST_WITH_PAGINATION);
 
 		if (!UserGroupModelImpl.COLUMN_BITMASK_ENABLED) {
-			finderCache.clearCache(FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION);
+			FinderCacheUtil.clearCache(
+				FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION);
 		}
-		else
-		 if (isNew) {
-			Object[] args = new Object[] { userGroupModelImpl.getUuid() };
+		else if (isNew) {
+			Object[] args = new Object[] {userGroupModelImpl.getUuid()};
 
-			finderCache.removeResult(FINDER_PATH_COUNT_BY_UUID, args);
-			finderCache.removeResult(FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_UUID,
-				args);
+			FinderCacheUtil.removeResult(_finderPathCountByUuid, args);
+			FinderCacheUtil.removeResult(
+				_finderPathWithoutPaginationFindByUuid, args);
 
 			args = new Object[] {
+				userGroupModelImpl.getUuid(), userGroupModelImpl.getCompanyId()
+			};
+
+			FinderCacheUtil.removeResult(_finderPathCountByUuid_C, args);
+			FinderCacheUtil.removeResult(
+				_finderPathWithoutPaginationFindByUuid_C, args);
+
+			args = new Object[] {userGroupModelImpl.getCompanyId()};
+
+			FinderCacheUtil.removeResult(_finderPathCountByCompanyId, args);
+			FinderCacheUtil.removeResult(
+				_finderPathWithoutPaginationFindByCompanyId, args);
+
+			args = new Object[] {
+				userGroupModelImpl.getCompanyId(),
+				userGroupModelImpl.getParentUserGroupId()
+			};
+
+			FinderCacheUtil.removeResult(_finderPathCountByC_P, args);
+			FinderCacheUtil.removeResult(
+				_finderPathWithoutPaginationFindByC_P, args);
+
+			FinderCacheUtil.removeResult(
+				_finderPathCountAll, FINDER_ARGS_EMPTY);
+			FinderCacheUtil.removeResult(
+				_finderPathWithoutPaginationFindAll, FINDER_ARGS_EMPTY);
+		}
+		else {
+			if ((userGroupModelImpl.getColumnBitmask() &
+				 _finderPathWithoutPaginationFindByUuid.getColumnBitmask()) !=
+					 0) {
+
+				Object[] args = new Object[] {
+					userGroupModelImpl.getOriginalUuid()
+				};
+
+				FinderCacheUtil.removeResult(_finderPathCountByUuid, args);
+				FinderCacheUtil.removeResult(
+					_finderPathWithoutPaginationFindByUuid, args);
+
+				args = new Object[] {userGroupModelImpl.getUuid()};
+
+				FinderCacheUtil.removeResult(_finderPathCountByUuid, args);
+				FinderCacheUtil.removeResult(
+					_finderPathWithoutPaginationFindByUuid, args);
+			}
+
+			if ((userGroupModelImpl.getColumnBitmask() &
+				 _finderPathWithoutPaginationFindByUuid_C.getColumnBitmask()) !=
+					 0) {
+
+				Object[] args = new Object[] {
+					userGroupModelImpl.getOriginalUuid(),
+					userGroupModelImpl.getOriginalCompanyId()
+				};
+
+				FinderCacheUtil.removeResult(_finderPathCountByUuid_C, args);
+				FinderCacheUtil.removeResult(
+					_finderPathWithoutPaginationFindByUuid_C, args);
+
+				args = new Object[] {
 					userGroupModelImpl.getUuid(),
 					userGroupModelImpl.getCompanyId()
 				};
 
-			finderCache.removeResult(FINDER_PATH_COUNT_BY_UUID_C, args);
-			finderCache.removeResult(FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_UUID_C,
-				args);
+				FinderCacheUtil.removeResult(_finderPathCountByUuid_C, args);
+				FinderCacheUtil.removeResult(
+					_finderPathWithoutPaginationFindByUuid_C, args);
+			}
 
-			args = new Object[] { userGroupModelImpl.getCompanyId() };
+			if ((userGroupModelImpl.getColumnBitmask() &
+				 _finderPathWithoutPaginationFindByCompanyId.
+					 getColumnBitmask()) != 0) {
 
-			finderCache.removeResult(FINDER_PATH_COUNT_BY_COMPANYID, args);
-			finderCache.removeResult(FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_COMPANYID,
-				args);
+				Object[] args = new Object[] {
+					userGroupModelImpl.getOriginalCompanyId()
+				};
 
-			args = new Object[] {
+				FinderCacheUtil.removeResult(_finderPathCountByCompanyId, args);
+				FinderCacheUtil.removeResult(
+					_finderPathWithoutPaginationFindByCompanyId, args);
+
+				args = new Object[] {userGroupModelImpl.getCompanyId()};
+
+				FinderCacheUtil.removeResult(_finderPathCountByCompanyId, args);
+				FinderCacheUtil.removeResult(
+					_finderPathWithoutPaginationFindByCompanyId, args);
+			}
+
+			if ((userGroupModelImpl.getColumnBitmask() &
+				 _finderPathWithoutPaginationFindByC_P.getColumnBitmask()) !=
+					 0) {
+
+				Object[] args = new Object[] {
+					userGroupModelImpl.getOriginalCompanyId(),
+					userGroupModelImpl.getOriginalParentUserGroupId()
+				};
+
+				FinderCacheUtil.removeResult(_finderPathCountByC_P, args);
+				FinderCacheUtil.removeResult(
+					_finderPathWithoutPaginationFindByC_P, args);
+
+				args = new Object[] {
 					userGroupModelImpl.getCompanyId(),
 					userGroupModelImpl.getParentUserGroupId()
 				};
 
-			finderCache.removeResult(FINDER_PATH_COUNT_BY_C_P, args);
-			finderCache.removeResult(FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_C_P,
-				args);
-
-			finderCache.removeResult(FINDER_PATH_COUNT_ALL, FINDER_ARGS_EMPTY);
-			finderCache.removeResult(FINDER_PATH_WITHOUT_PAGINATION_FIND_ALL,
-				FINDER_ARGS_EMPTY);
-		}
-
-		else {
-			if ((userGroupModelImpl.getColumnBitmask() &
-					FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_UUID.getColumnBitmask()) != 0) {
-				Object[] args = new Object[] {
-						userGroupModelImpl.getOriginalUuid()
-					};
-
-				finderCache.removeResult(FINDER_PATH_COUNT_BY_UUID, args);
-				finderCache.removeResult(FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_UUID,
-					args);
-
-				args = new Object[] { userGroupModelImpl.getUuid() };
-
-				finderCache.removeResult(FINDER_PATH_COUNT_BY_UUID, args);
-				finderCache.removeResult(FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_UUID,
-					args);
-			}
-
-			if ((userGroupModelImpl.getColumnBitmask() &
-					FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_UUID_C.getColumnBitmask()) != 0) {
-				Object[] args = new Object[] {
-						userGroupModelImpl.getOriginalUuid(),
-						userGroupModelImpl.getOriginalCompanyId()
-					};
-
-				finderCache.removeResult(FINDER_PATH_COUNT_BY_UUID_C, args);
-				finderCache.removeResult(FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_UUID_C,
-					args);
-
-				args = new Object[] {
-						userGroupModelImpl.getUuid(),
-						userGroupModelImpl.getCompanyId()
-					};
-
-				finderCache.removeResult(FINDER_PATH_COUNT_BY_UUID_C, args);
-				finderCache.removeResult(FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_UUID_C,
-					args);
-			}
-
-			if ((userGroupModelImpl.getColumnBitmask() &
-					FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_COMPANYID.getColumnBitmask()) != 0) {
-				Object[] args = new Object[] {
-						userGroupModelImpl.getOriginalCompanyId()
-					};
-
-				finderCache.removeResult(FINDER_PATH_COUNT_BY_COMPANYID, args);
-				finderCache.removeResult(FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_COMPANYID,
-					args);
-
-				args = new Object[] { userGroupModelImpl.getCompanyId() };
-
-				finderCache.removeResult(FINDER_PATH_COUNT_BY_COMPANYID, args);
-				finderCache.removeResult(FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_COMPANYID,
-					args);
-			}
-
-			if ((userGroupModelImpl.getColumnBitmask() &
-					FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_C_P.getColumnBitmask()) != 0) {
-				Object[] args = new Object[] {
-						userGroupModelImpl.getOriginalCompanyId(),
-						userGroupModelImpl.getOriginalParentUserGroupId()
-					};
-
-				finderCache.removeResult(FINDER_PATH_COUNT_BY_C_P, args);
-				finderCache.removeResult(FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_C_P,
-					args);
-
-				args = new Object[] {
-						userGroupModelImpl.getCompanyId(),
-						userGroupModelImpl.getParentUserGroupId()
-					};
-
-				finderCache.removeResult(FINDER_PATH_COUNT_BY_C_P, args);
-				finderCache.removeResult(FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_C_P,
-					args);
+				FinderCacheUtil.removeResult(_finderPathCountByC_P, args);
+				FinderCacheUtil.removeResult(
+					_finderPathWithoutPaginationFindByC_P, args);
 			}
 		}
 
-		entityCache.putResult(UserGroupModelImpl.ENTITY_CACHE_ENABLED,
-			UserGroupImpl.class, userGroup.getPrimaryKey(), userGroup, false);
+		EntityCacheUtil.putResult(
+			UserGroupModelImpl.ENTITY_CACHE_ENABLED, UserGroupImpl.class,
+			userGroup.getPrimaryKey(), userGroup, false);
 
 		clearUniqueFindersCache(userGroupModelImpl, false);
 		cacheUniqueFindersCache(userGroupModelImpl);
@@ -4520,34 +6567,8 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 		return userGroup;
 	}
 
-	protected UserGroup toUnwrappedModel(UserGroup userGroup) {
-		if (userGroup instanceof UserGroupImpl) {
-			return userGroup;
-		}
-
-		UserGroupImpl userGroupImpl = new UserGroupImpl();
-
-		userGroupImpl.setNew(userGroup.isNew());
-		userGroupImpl.setPrimaryKey(userGroup.getPrimaryKey());
-
-		userGroupImpl.setMvccVersion(userGroup.getMvccVersion());
-		userGroupImpl.setUuid(userGroup.getUuid());
-		userGroupImpl.setUserGroupId(userGroup.getUserGroupId());
-		userGroupImpl.setCompanyId(userGroup.getCompanyId());
-		userGroupImpl.setUserId(userGroup.getUserId());
-		userGroupImpl.setUserName(userGroup.getUserName());
-		userGroupImpl.setCreateDate(userGroup.getCreateDate());
-		userGroupImpl.setModifiedDate(userGroup.getModifiedDate());
-		userGroupImpl.setParentUserGroupId(userGroup.getParentUserGroupId());
-		userGroupImpl.setName(userGroup.getName());
-		userGroupImpl.setDescription(userGroup.getDescription());
-		userGroupImpl.setAddedByLDAPImport(userGroup.isAddedByLDAPImport());
-
-		return userGroupImpl;
-	}
-
 	/**
-	 * Returns the user group with the primary key or throws a {@link com.liferay.portal.kernel.exception.NoSuchModelException} if it could not be found.
+	 * Returns the user group with the primary key or throws a <code>com.liferay.portal.kernel.exception.NoSuchModelException</code> if it could not be found.
 	 *
 	 * @param primaryKey the primary key of the user group
 	 * @return the user group
@@ -4556,6 +6577,7 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	@Override
 	public UserGroup findByPrimaryKey(Serializable primaryKey)
 		throws NoSuchUserGroupException {
+
 		UserGroup userGroup = fetchByPrimaryKey(primaryKey);
 
 		if (userGroup == null) {
@@ -4563,15 +6585,15 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 				_log.debug(_NO_SUCH_ENTITY_WITH_PRIMARY_KEY + primaryKey);
 			}
 
-			throw new NoSuchUserGroupException(_NO_SUCH_ENTITY_WITH_PRIMARY_KEY +
-				primaryKey);
+			throw new NoSuchUserGroupException(
+				_NO_SUCH_ENTITY_WITH_PRIMARY_KEY + primaryKey);
 		}
 
 		return userGroup;
 	}
 
 	/**
-	 * Returns the user group with the primary key or throws a {@link NoSuchUserGroupException} if it could not be found.
+	 * Returns the user group with the primary key or throws a <code>NoSuchUserGroupException</code> if it could not be found.
 	 *
 	 * @param userGroupId the primary key of the user group
 	 * @return the user group
@@ -4580,55 +6602,8 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	@Override
 	public UserGroup findByPrimaryKey(long userGroupId)
 		throws NoSuchUserGroupException {
+
 		return findByPrimaryKey((Serializable)userGroupId);
-	}
-
-	/**
-	 * Returns the user group with the primary key or returns <code>null</code> if it could not be found.
-	 *
-	 * @param primaryKey the primary key of the user group
-	 * @return the user group, or <code>null</code> if a user group with the primary key could not be found
-	 */
-	@Override
-	public UserGroup fetchByPrimaryKey(Serializable primaryKey) {
-		Serializable serializable = entityCache.getResult(UserGroupModelImpl.ENTITY_CACHE_ENABLED,
-				UserGroupImpl.class, primaryKey);
-
-		if (serializable == nullModel) {
-			return null;
-		}
-
-		UserGroup userGroup = (UserGroup)serializable;
-
-		if (userGroup == null) {
-			Session session = null;
-
-			try {
-				session = openSession();
-
-				userGroup = (UserGroup)session.get(UserGroupImpl.class,
-						primaryKey);
-
-				if (userGroup != null) {
-					cacheResult(userGroup);
-				}
-				else {
-					entityCache.putResult(UserGroupModelImpl.ENTITY_CACHE_ENABLED,
-						UserGroupImpl.class, primaryKey, nullModel);
-				}
-			}
-			catch (Exception e) {
-				entityCache.removeResult(UserGroupModelImpl.ENTITY_CACHE_ENABLED,
-					UserGroupImpl.class, primaryKey);
-
-				throw processException(e);
-			}
-			finally {
-				closeSession(session);
-			}
-		}
-
-		return userGroup;
 	}
 
 	/**
@@ -4640,100 +6615,6 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	@Override
 	public UserGroup fetchByPrimaryKey(long userGroupId) {
 		return fetchByPrimaryKey((Serializable)userGroupId);
-	}
-
-	@Override
-	public Map<Serializable, UserGroup> fetchByPrimaryKeys(
-		Set<Serializable> primaryKeys) {
-		if (primaryKeys.isEmpty()) {
-			return Collections.emptyMap();
-		}
-
-		Map<Serializable, UserGroup> map = new HashMap<Serializable, UserGroup>();
-
-		if (primaryKeys.size() == 1) {
-			Iterator<Serializable> iterator = primaryKeys.iterator();
-
-			Serializable primaryKey = iterator.next();
-
-			UserGroup userGroup = fetchByPrimaryKey(primaryKey);
-
-			if (userGroup != null) {
-				map.put(primaryKey, userGroup);
-			}
-
-			return map;
-		}
-
-		Set<Serializable> uncachedPrimaryKeys = null;
-
-		for (Serializable primaryKey : primaryKeys) {
-			Serializable serializable = entityCache.getResult(UserGroupModelImpl.ENTITY_CACHE_ENABLED,
-					UserGroupImpl.class, primaryKey);
-
-			if (serializable != nullModel) {
-				if (serializable == null) {
-					if (uncachedPrimaryKeys == null) {
-						uncachedPrimaryKeys = new HashSet<Serializable>();
-					}
-
-					uncachedPrimaryKeys.add(primaryKey);
-				}
-				else {
-					map.put(primaryKey, (UserGroup)serializable);
-				}
-			}
-		}
-
-		if (uncachedPrimaryKeys == null) {
-			return map;
-		}
-
-		StringBundler query = new StringBundler((uncachedPrimaryKeys.size() * 2) +
-				1);
-
-		query.append(_SQL_SELECT_USERGROUP_WHERE_PKS_IN);
-
-		for (Serializable primaryKey : uncachedPrimaryKeys) {
-			query.append((long)primaryKey);
-
-			query.append(",");
-		}
-
-		query.setIndex(query.index() - 1);
-
-		query.append(")");
-
-		String sql = query.toString();
-
-		Session session = null;
-
-		try {
-			session = openSession();
-
-			Query q = session.createQuery(sql);
-
-			for (UserGroup userGroup : (List<UserGroup>)q.list()) {
-				map.put(userGroup.getPrimaryKeyObj(), userGroup);
-
-				cacheResult(userGroup);
-
-				uncachedPrimaryKeys.remove(userGroup.getPrimaryKeyObj());
-			}
-
-			for (Serializable primaryKey : uncachedPrimaryKeys) {
-				entityCache.putResult(UserGroupModelImpl.ENTITY_CACHE_ENABLED,
-					UserGroupImpl.class, primaryKey, nullModel);
-			}
-		}
-		catch (Exception e) {
-			throw processException(e);
-		}
-		finally {
-			closeSession(session);
-		}
-
-		return map;
 	}
 
 	/**
@@ -4750,7 +6631,7 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * Returns a range of all the user groups.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link UserGroupModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>UserGroupModelImpl</code>.
 	 * </p>
 	 *
 	 * @param start the lower bound of the range of user groups
@@ -4766,7 +6647,7 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * Returns an ordered range of all the user groups.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link UserGroupModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>UserGroupModelImpl</code>.
 	 * </p>
 	 *
 	 * @param start the lower bound of the range of user groups
@@ -4775,8 +6656,9 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * @return the ordered range of user groups
 	 */
 	@Override
-	public List<UserGroup> findAll(int start, int end,
-		OrderByComparator<UserGroup> orderByComparator) {
+	public List<UserGroup> findAll(
+		int start, int end, OrderByComparator<UserGroup> orderByComparator) {
+
 		return findAll(start, end, orderByComparator, true);
 	}
 
@@ -4784,39 +6666,41 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * Returns an ordered range of all the user groups.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link UserGroupModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>UserGroupModelImpl</code>.
 	 * </p>
 	 *
 	 * @param start the lower bound of the range of user groups
 	 * @param end the upper bound of the range of user groups (not inclusive)
 	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
-	 * @param retrieveFromCache whether to retrieve from the finder cache
+	 * @param useFinderCache whether to use the finder cache
 	 * @return the ordered range of user groups
 	 */
 	@Override
-	public List<UserGroup> findAll(int start, int end,
-		OrderByComparator<UserGroup> orderByComparator,
-		boolean retrieveFromCache) {
-		boolean pagination = true;
+	public List<UserGroup> findAll(
+		int start, int end, OrderByComparator<UserGroup> orderByComparator,
+		boolean useFinderCache) {
+
 		FinderPath finderPath = null;
 		Object[] finderArgs = null;
 
 		if ((start == QueryUtil.ALL_POS) && (end == QueryUtil.ALL_POS) &&
-				(orderByComparator == null)) {
-			pagination = false;
-			finderPath = FINDER_PATH_WITHOUT_PAGINATION_FIND_ALL;
-			finderArgs = FINDER_ARGS_EMPTY;
+			(orderByComparator == null)) {
+
+			if (useFinderCache) {
+				finderPath = _finderPathWithoutPaginationFindAll;
+				finderArgs = FINDER_ARGS_EMPTY;
+			}
 		}
-		else {
-			finderPath = FINDER_PATH_WITH_PAGINATION_FIND_ALL;
-			finderArgs = new Object[] { start, end, orderByComparator };
+		else if (useFinderCache) {
+			finderPath = _finderPathWithPaginationFindAll;
+			finderArgs = new Object[] {start, end, orderByComparator};
 		}
 
 		List<UserGroup> list = null;
 
-		if (retrieveFromCache) {
-			list = (List<UserGroup>)finderCache.getResult(finderPath,
-					finderArgs, this);
+		if (useFinderCache) {
+			list = (List<UserGroup>)FinderCacheUtil.getResult(
+				finderPath, finderArgs, this);
 		}
 
 		if (list == null) {
@@ -4824,22 +6708,20 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 			String sql = null;
 
 			if (orderByComparator != null) {
-				query = new StringBundler(2 +
-						(orderByComparator.getOrderByFields().length * 2));
+				query = new StringBundler(
+					2 + (orderByComparator.getOrderByFields().length * 2));
 
 				query.append(_SQL_SELECT_USERGROUP);
 
-				appendOrderByComparator(query, _ORDER_BY_ENTITY_ALIAS,
-					orderByComparator);
+				appendOrderByComparator(
+					query, _ORDER_BY_ENTITY_ALIAS, orderByComparator);
 
 				sql = query.toString();
 			}
 			else {
 				sql = _SQL_SELECT_USERGROUP;
 
-				if (pagination) {
-					sql = sql.concat(UserGroupModelImpl.ORDER_BY_JPQL);
-				}
+				sql = sql.concat(UserGroupModelImpl.ORDER_BY_JPQL);
 			}
 
 			Session session = null;
@@ -4849,25 +6731,19 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 
 				Query q = session.createQuery(sql);
 
-				if (!pagination) {
-					list = (List<UserGroup>)QueryUtil.list(q, getDialect(),
-							start, end, false);
-
-					Collections.sort(list);
-
-					list = Collections.unmodifiableList(list);
-				}
-				else {
-					list = (List<UserGroup>)QueryUtil.list(q, getDialect(),
-							start, end);
-				}
+				list = (List<UserGroup>)QueryUtil.list(
+					q, getDialect(), start, end);
 
 				cacheResult(list);
 
-				finderCache.putResult(finderPath, finderArgs, list);
+				if (useFinderCache) {
+					FinderCacheUtil.putResult(finderPath, finderArgs, list);
+				}
 			}
 			catch (Exception e) {
-				finderCache.removeResult(finderPath, finderArgs);
+				if (useFinderCache) {
+					FinderCacheUtil.removeResult(finderPath, finderArgs);
+				}
 
 				throw processException(e);
 			}
@@ -4897,8 +6773,8 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 */
 	@Override
 	public int countAll() {
-		Long count = (Long)finderCache.getResult(FINDER_PATH_COUNT_ALL,
-				FINDER_ARGS_EMPTY, this);
+		Long count = (Long)FinderCacheUtil.getResult(
+			_finderPathCountAll, FINDER_ARGS_EMPTY, this);
 
 		if (count == null) {
 			Session session = null;
@@ -4910,12 +6786,12 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 
 				count = (Long)q.uniqueResult();
 
-				finderCache.putResult(FINDER_PATH_COUNT_ALL, FINDER_ARGS_EMPTY,
-					count);
+				FinderCacheUtil.putResult(
+					_finderPathCountAll, FINDER_ARGS_EMPTY, count);
 			}
 			catch (Exception e) {
-				finderCache.removeResult(FINDER_PATH_COUNT_ALL,
-					FINDER_ARGS_EMPTY);
+				FinderCacheUtil.removeResult(
+					_finderPathCountAll, FINDER_ARGS_EMPTY);
 
 				throw processException(e);
 			}
@@ -4955,7 +6831,7 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * Returns a range of all the groups associated with the user group.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link UserGroupModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>UserGroupModelImpl</code>.
 	 * </p>
 	 *
 	 * @param pk the primary key of the user group
@@ -4964,8 +6840,9 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * @return the range of groups associated with the user group
 	 */
 	@Override
-	public List<com.liferay.portal.kernel.model.Group> getGroups(long pk,
-		int start, int end) {
+	public List<com.liferay.portal.kernel.model.Group> getGroups(
+		long pk, int start, int end) {
+
 		return getGroups(pk, start, end, null);
 	}
 
@@ -4973,7 +6850,7 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * Returns an ordered range of all the groups associated with the user group.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link UserGroupModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>UserGroupModelImpl</code>.
 	 * </p>
 	 *
 	 * @param pk the primary key of the user group
@@ -4983,11 +6860,13 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * @return the ordered range of groups associated with the user group
 	 */
 	@Override
-	public List<com.liferay.portal.kernel.model.Group> getGroups(long pk,
-		int start, int end,
-		OrderByComparator<com.liferay.portal.kernel.model.Group> orderByComparator) {
-		return userGroupToGroupTableMapper.getRightBaseModels(pk, start, end,
-			orderByComparator);
+	public List<com.liferay.portal.kernel.model.Group> getGroups(
+		long pk, int start, int end,
+		OrderByComparator<com.liferay.portal.kernel.model.Group>
+			orderByComparator) {
+
+		return userGroupToGroupTableMapper.getRightBaseModels(
+			pk, start, end, orderByComparator);
 	}
 
 	/**
@@ -5042,12 +6921,12 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 		UserGroup userGroup = fetchByPrimaryKey(pk);
 
 		if (userGroup == null) {
-			userGroupToGroupTableMapper.addTableMapping(companyProvider.getCompanyId(),
-				pk, groupPK);
+			userGroupToGroupTableMapper.addTableMapping(
+				CompanyThreadLocal.getCompanyId(), pk, groupPK);
 		}
 		else {
-			userGroupToGroupTableMapper.addTableMapping(userGroup.getCompanyId(),
-				pk, groupPK);
+			userGroupToGroupTableMapper.addTableMapping(
+				userGroup.getCompanyId(), pk, groupPK);
 		}
 	}
 
@@ -5062,12 +6941,12 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 		UserGroup userGroup = fetchByPrimaryKey(pk);
 
 		if (userGroup == null) {
-			userGroupToGroupTableMapper.addTableMapping(companyProvider.getCompanyId(),
-				pk, group.getPrimaryKey());
+			userGroupToGroupTableMapper.addTableMapping(
+				CompanyThreadLocal.getCompanyId(), pk, group.getPrimaryKey());
 		}
 		else {
-			userGroupToGroupTableMapper.addTableMapping(userGroup.getCompanyId(),
-				pk, group.getPrimaryKey());
+			userGroupToGroupTableMapper.addTableMapping(
+				userGroup.getCompanyId(), pk, group.getPrimaryKey());
 		}
 	}
 
@@ -5084,7 +6963,7 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 		UserGroup userGroup = fetchByPrimaryKey(pk);
 
 		if (userGroup == null) {
-			companyId = companyProvider.getCompanyId();
+			companyId = CompanyThreadLocal.getCompanyId();
 		}
 		else {
 			companyId = userGroup.getCompanyId();
@@ -5100,10 +6979,13 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * @param groups the groups
 	 */
 	@Override
-	public void addGroups(long pk,
-		List<com.liferay.portal.kernel.model.Group> groups) {
-		addGroups(pk,
-			ListUtil.toLongArray(groups,
+	public void addGroups(
+		long pk, List<com.liferay.portal.kernel.model.Group> groups) {
+
+		addGroups(
+			pk,
+			ListUtil.toLongArray(
+				groups,
 				com.liferay.portal.kernel.model.Group.GROUP_ID_ACCESSOR));
 	}
 
@@ -5135,8 +7017,11 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * @param group the group
 	 */
 	@Override
-	public void removeGroup(long pk, com.liferay.portal.kernel.model.Group group) {
-		userGroupToGroupTableMapper.deleteTableMapping(pk, group.getPrimaryKey());
+	public void removeGroup(
+		long pk, com.liferay.portal.kernel.model.Group group) {
+
+		userGroupToGroupTableMapper.deleteTableMapping(
+			pk, group.getPrimaryKey());
 	}
 
 	/**
@@ -5157,10 +7042,13 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * @param groups the groups
 	 */
 	@Override
-	public void removeGroups(long pk,
-		List<com.liferay.portal.kernel.model.Group> groups) {
-		removeGroups(pk,
-			ListUtil.toLongArray(groups,
+	public void removeGroups(
+		long pk, List<com.liferay.portal.kernel.model.Group> groups) {
+
+		removeGroups(
+			pk,
+			ListUtil.toLongArray(
+				groups,
 				com.liferay.portal.kernel.model.Group.GROUP_ID_ACCESSOR));
 	}
 
@@ -5173,15 +7061,15 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	@Override
 	public void setGroups(long pk, long[] groupPKs) {
 		Set<Long> newGroupPKsSet = SetUtil.fromArray(groupPKs);
-		Set<Long> oldGroupPKsSet = SetUtil.fromArray(userGroupToGroupTableMapper.getRightPrimaryKeys(
-					pk));
+		Set<Long> oldGroupPKsSet = SetUtil.fromArray(
+			userGroupToGroupTableMapper.getRightPrimaryKeys(pk));
 
 		Set<Long> removeGroupPKsSet = new HashSet<Long>(oldGroupPKsSet);
 
 		removeGroupPKsSet.removeAll(newGroupPKsSet);
 
-		userGroupToGroupTableMapper.deleteTableMappings(pk,
-			ArrayUtil.toLongArray(removeGroupPKsSet));
+		userGroupToGroupTableMapper.deleteTableMappings(
+			pk, ArrayUtil.toLongArray(removeGroupPKsSet));
 
 		newGroupPKsSet.removeAll(oldGroupPKsSet);
 
@@ -5190,14 +7078,14 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 		UserGroup userGroup = fetchByPrimaryKey(pk);
 
 		if (userGroup == null) {
-			companyId = companyProvider.getCompanyId();
+			companyId = CompanyThreadLocal.getCompanyId();
 		}
 		else {
 			companyId = userGroup.getCompanyId();
 		}
 
-		userGroupToGroupTableMapper.addTableMappings(companyId, pk,
-			ArrayUtil.toLongArray(newGroupPKsSet));
+		userGroupToGroupTableMapper.addTableMappings(
+			companyId, pk, ArrayUtil.toLongArray(newGroupPKsSet));
 	}
 
 	/**
@@ -5207,8 +7095,9 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * @param groups the groups to be associated with the user group
 	 */
 	@Override
-	public void setGroups(long pk,
-		List<com.liferay.portal.kernel.model.Group> groups) {
+	public void setGroups(
+		long pk, List<com.liferay.portal.kernel.model.Group> groups) {
+
 		try {
 			long[] groupPKs = new long[groups.size()];
 
@@ -5253,7 +7142,7 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * Returns a range of all the teams associated with the user group.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link UserGroupModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>UserGroupModelImpl</code>.
 	 * </p>
 	 *
 	 * @param pk the primary key of the user group
@@ -5262,8 +7151,9 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * @return the range of teams associated with the user group
 	 */
 	@Override
-	public List<com.liferay.portal.kernel.model.Team> getTeams(long pk,
-		int start, int end) {
+	public List<com.liferay.portal.kernel.model.Team> getTeams(
+		long pk, int start, int end) {
+
 		return getTeams(pk, start, end, null);
 	}
 
@@ -5271,7 +7161,7 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * Returns an ordered range of all the teams associated with the user group.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link UserGroupModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>UserGroupModelImpl</code>.
 	 * </p>
 	 *
 	 * @param pk the primary key of the user group
@@ -5281,11 +7171,13 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * @return the ordered range of teams associated with the user group
 	 */
 	@Override
-	public List<com.liferay.portal.kernel.model.Team> getTeams(long pk,
-		int start, int end,
-		OrderByComparator<com.liferay.portal.kernel.model.Team> orderByComparator) {
-		return userGroupToTeamTableMapper.getRightBaseModels(pk, start, end,
-			orderByComparator);
+	public List<com.liferay.portal.kernel.model.Team> getTeams(
+		long pk, int start, int end,
+		OrderByComparator<com.liferay.portal.kernel.model.Team>
+			orderByComparator) {
+
+		return userGroupToTeamTableMapper.getRightBaseModels(
+			pk, start, end, orderByComparator);
 	}
 
 	/**
@@ -5340,12 +7232,12 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 		UserGroup userGroup = fetchByPrimaryKey(pk);
 
 		if (userGroup == null) {
-			userGroupToTeamTableMapper.addTableMapping(companyProvider.getCompanyId(),
-				pk, teamPK);
+			userGroupToTeamTableMapper.addTableMapping(
+				CompanyThreadLocal.getCompanyId(), pk, teamPK);
 		}
 		else {
-			userGroupToTeamTableMapper.addTableMapping(userGroup.getCompanyId(),
-				pk, teamPK);
+			userGroupToTeamTableMapper.addTableMapping(
+				userGroup.getCompanyId(), pk, teamPK);
 		}
 	}
 
@@ -5360,12 +7252,12 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 		UserGroup userGroup = fetchByPrimaryKey(pk);
 
 		if (userGroup == null) {
-			userGroupToTeamTableMapper.addTableMapping(companyProvider.getCompanyId(),
-				pk, team.getPrimaryKey());
+			userGroupToTeamTableMapper.addTableMapping(
+				CompanyThreadLocal.getCompanyId(), pk, team.getPrimaryKey());
 		}
 		else {
-			userGroupToTeamTableMapper.addTableMapping(userGroup.getCompanyId(),
-				pk, team.getPrimaryKey());
+			userGroupToTeamTableMapper.addTableMapping(
+				userGroup.getCompanyId(), pk, team.getPrimaryKey());
 		}
 	}
 
@@ -5382,7 +7274,7 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 		UserGroup userGroup = fetchByPrimaryKey(pk);
 
 		if (userGroup == null) {
-			companyId = companyProvider.getCompanyId();
+			companyId = CompanyThreadLocal.getCompanyId();
 		}
 		else {
 			companyId = userGroup.getCompanyId();
@@ -5398,11 +7290,13 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * @param teams the teams
 	 */
 	@Override
-	public void addTeams(long pk,
-		List<com.liferay.portal.kernel.model.Team> teams) {
-		addTeams(pk,
-			ListUtil.toLongArray(teams,
-				com.liferay.portal.kernel.model.Team.TEAM_ID_ACCESSOR));
+	public void addTeams(
+		long pk, List<com.liferay.portal.kernel.model.Team> teams) {
+
+		addTeams(
+			pk,
+			ListUtil.toLongArray(
+				teams, com.liferay.portal.kernel.model.Team.TEAM_ID_ACCESSOR));
 	}
 
 	/**
@@ -5455,11 +7349,13 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * @param teams the teams
 	 */
 	@Override
-	public void removeTeams(long pk,
-		List<com.liferay.portal.kernel.model.Team> teams) {
-		removeTeams(pk,
-			ListUtil.toLongArray(teams,
-				com.liferay.portal.kernel.model.Team.TEAM_ID_ACCESSOR));
+	public void removeTeams(
+		long pk, List<com.liferay.portal.kernel.model.Team> teams) {
+
+		removeTeams(
+			pk,
+			ListUtil.toLongArray(
+				teams, com.liferay.portal.kernel.model.Team.TEAM_ID_ACCESSOR));
 	}
 
 	/**
@@ -5471,15 +7367,15 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	@Override
 	public void setTeams(long pk, long[] teamPKs) {
 		Set<Long> newTeamPKsSet = SetUtil.fromArray(teamPKs);
-		Set<Long> oldTeamPKsSet = SetUtil.fromArray(userGroupToTeamTableMapper.getRightPrimaryKeys(
-					pk));
+		Set<Long> oldTeamPKsSet = SetUtil.fromArray(
+			userGroupToTeamTableMapper.getRightPrimaryKeys(pk));
 
 		Set<Long> removeTeamPKsSet = new HashSet<Long>(oldTeamPKsSet);
 
 		removeTeamPKsSet.removeAll(newTeamPKsSet);
 
-		userGroupToTeamTableMapper.deleteTableMappings(pk,
-			ArrayUtil.toLongArray(removeTeamPKsSet));
+		userGroupToTeamTableMapper.deleteTableMappings(
+			pk, ArrayUtil.toLongArray(removeTeamPKsSet));
 
 		newTeamPKsSet.removeAll(oldTeamPKsSet);
 
@@ -5488,14 +7384,14 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 		UserGroup userGroup = fetchByPrimaryKey(pk);
 
 		if (userGroup == null) {
-			companyId = companyProvider.getCompanyId();
+			companyId = CompanyThreadLocal.getCompanyId();
 		}
 		else {
 			companyId = userGroup.getCompanyId();
 		}
 
-		userGroupToTeamTableMapper.addTableMappings(companyId, pk,
-			ArrayUtil.toLongArray(newTeamPKsSet));
+		userGroupToTeamTableMapper.addTableMappings(
+			companyId, pk, ArrayUtil.toLongArray(newTeamPKsSet));
 	}
 
 	/**
@@ -5505,8 +7401,9 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * @param teams the teams to be associated with the user group
 	 */
 	@Override
-	public void setTeams(long pk,
-		List<com.liferay.portal.kernel.model.Team> teams) {
+	public void setTeams(
+		long pk, List<com.liferay.portal.kernel.model.Team> teams) {
+
 		try {
 			long[] teamPKs = new long[teams.size()];
 
@@ -5551,7 +7448,7 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * Returns a range of all the users associated with the user group.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link UserGroupModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>UserGroupModelImpl</code>.
 	 * </p>
 	 *
 	 * @param pk the primary key of the user group
@@ -5560,8 +7457,9 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * @return the range of users associated with the user group
 	 */
 	@Override
-	public List<com.liferay.portal.kernel.model.User> getUsers(long pk,
-		int start, int end) {
+	public List<com.liferay.portal.kernel.model.User> getUsers(
+		long pk, int start, int end) {
+
 		return getUsers(pk, start, end, null);
 	}
 
@@ -5569,7 +7467,7 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * Returns an ordered range of all the users associated with the user group.
 	 *
 	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent and pagination is required (<code>start</code> and <code>end</code> are not {@link QueryUtil#ALL_POS}), then the query will include the default ORDER BY logic from {@link UserGroupModelImpl}. If both <code>orderByComparator</code> and pagination are absent, for performance reasons, the query will not have an ORDER BY clause and the returned result set will be sorted on by the primary key in an ascending order.
+	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>UserGroupModelImpl</code>.
 	 * </p>
 	 *
 	 * @param pk the primary key of the user group
@@ -5579,11 +7477,13 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * @return the ordered range of users associated with the user group
 	 */
 	@Override
-	public List<com.liferay.portal.kernel.model.User> getUsers(long pk,
-		int start, int end,
-		OrderByComparator<com.liferay.portal.kernel.model.User> orderByComparator) {
-		return userGroupToUserTableMapper.getRightBaseModels(pk, start, end,
-			orderByComparator);
+	public List<com.liferay.portal.kernel.model.User> getUsers(
+		long pk, int start, int end,
+		OrderByComparator<com.liferay.portal.kernel.model.User>
+			orderByComparator) {
+
+		return userGroupToUserTableMapper.getRightBaseModels(
+			pk, start, end, orderByComparator);
 	}
 
 	/**
@@ -5638,12 +7538,12 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 		UserGroup userGroup = fetchByPrimaryKey(pk);
 
 		if (userGroup == null) {
-			userGroupToUserTableMapper.addTableMapping(companyProvider.getCompanyId(),
-				pk, userPK);
+			userGroupToUserTableMapper.addTableMapping(
+				CompanyThreadLocal.getCompanyId(), pk, userPK);
 		}
 		else {
-			userGroupToUserTableMapper.addTableMapping(userGroup.getCompanyId(),
-				pk, userPK);
+			userGroupToUserTableMapper.addTableMapping(
+				userGroup.getCompanyId(), pk, userPK);
 		}
 	}
 
@@ -5658,12 +7558,12 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 		UserGroup userGroup = fetchByPrimaryKey(pk);
 
 		if (userGroup == null) {
-			userGroupToUserTableMapper.addTableMapping(companyProvider.getCompanyId(),
-				pk, user.getPrimaryKey());
+			userGroupToUserTableMapper.addTableMapping(
+				CompanyThreadLocal.getCompanyId(), pk, user.getPrimaryKey());
 		}
 		else {
-			userGroupToUserTableMapper.addTableMapping(userGroup.getCompanyId(),
-				pk, user.getPrimaryKey());
+			userGroupToUserTableMapper.addTableMapping(
+				userGroup.getCompanyId(), pk, user.getPrimaryKey());
 		}
 	}
 
@@ -5680,7 +7580,7 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 		UserGroup userGroup = fetchByPrimaryKey(pk);
 
 		if (userGroup == null) {
-			companyId = companyProvider.getCompanyId();
+			companyId = CompanyThreadLocal.getCompanyId();
 		}
 		else {
 			companyId = userGroup.getCompanyId();
@@ -5696,11 +7596,13 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * @param users the users
 	 */
 	@Override
-	public void addUsers(long pk,
-		List<com.liferay.portal.kernel.model.User> users) {
-		addUsers(pk,
-			ListUtil.toLongArray(users,
-				com.liferay.portal.kernel.model.User.USER_ID_ACCESSOR));
+	public void addUsers(
+		long pk, List<com.liferay.portal.kernel.model.User> users) {
+
+		addUsers(
+			pk,
+			ListUtil.toLongArray(
+				users, com.liferay.portal.kernel.model.User.USER_ID_ACCESSOR));
 	}
 
 	/**
@@ -5753,11 +7655,13 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * @param users the users
 	 */
 	@Override
-	public void removeUsers(long pk,
-		List<com.liferay.portal.kernel.model.User> users) {
-		removeUsers(pk,
-			ListUtil.toLongArray(users,
-				com.liferay.portal.kernel.model.User.USER_ID_ACCESSOR));
+	public void removeUsers(
+		long pk, List<com.liferay.portal.kernel.model.User> users) {
+
+		removeUsers(
+			pk,
+			ListUtil.toLongArray(
+				users, com.liferay.portal.kernel.model.User.USER_ID_ACCESSOR));
 	}
 
 	/**
@@ -5769,15 +7673,15 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	@Override
 	public void setUsers(long pk, long[] userPKs) {
 		Set<Long> newUserPKsSet = SetUtil.fromArray(userPKs);
-		Set<Long> oldUserPKsSet = SetUtil.fromArray(userGroupToUserTableMapper.getRightPrimaryKeys(
-					pk));
+		Set<Long> oldUserPKsSet = SetUtil.fromArray(
+			userGroupToUserTableMapper.getRightPrimaryKeys(pk));
 
 		Set<Long> removeUserPKsSet = new HashSet<Long>(oldUserPKsSet);
 
 		removeUserPKsSet.removeAll(newUserPKsSet);
 
-		userGroupToUserTableMapper.deleteTableMappings(pk,
-			ArrayUtil.toLongArray(removeUserPKsSet));
+		userGroupToUserTableMapper.deleteTableMappings(
+			pk, ArrayUtil.toLongArray(removeUserPKsSet));
 
 		newUserPKsSet.removeAll(oldUserPKsSet);
 
@@ -5786,14 +7690,14 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 		UserGroup userGroup = fetchByPrimaryKey(pk);
 
 		if (userGroup == null) {
-			companyId = companyProvider.getCompanyId();
+			companyId = CompanyThreadLocal.getCompanyId();
 		}
 		else {
 			companyId = userGroup.getCompanyId();
 		}
 
-		userGroupToUserTableMapper.addTableMappings(companyId, pk,
-			ArrayUtil.toLongArray(newUserPKsSet));
+		userGroupToUserTableMapper.addTableMappings(
+			companyId, pk, ArrayUtil.toLongArray(newUserPKsSet));
 	}
 
 	/**
@@ -5803,8 +7707,9 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * @param users the users to be associated with the user group
 	 */
 	@Override
-	public void setUsers(long pk,
-		List<com.liferay.portal.kernel.model.User> users) {
+	public void setUsers(
+		long pk, List<com.liferay.portal.kernel.model.User> users) {
+
 		try {
 			long[] userPKs = new long[users.size()];
 
@@ -5827,6 +7732,21 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	}
 
 	@Override
+	protected EntityCache getEntityCache() {
+		return EntityCacheUtil.getEntityCache();
+	}
+
+	@Override
+	protected String getPKDBName() {
+		return "userGroupId";
+	}
+
+	@Override
+	protected String getSelectSQL() {
+		return _SQL_SELECT_USERGROUP;
+	}
+
+	@Override
 	protected Map<String, Integer> getTableColumnsMap() {
 		return UserGroupModelImpl.TABLE_COLUMNS_MAP;
 	}
@@ -5835,60 +7755,270 @@ public class UserGroupPersistenceImpl extends BasePersistenceImpl<UserGroup>
 	 * Initializes the user group persistence.
 	 */
 	public void afterPropertiesSet() {
-		userGroupToGroupTableMapper = TableMapperFactory.getTableMapper("Groups_UserGroups",
-				"companyId", "userGroupId", "groupId", this, groupPersistence);
+		userGroupToGroupTableMapper = TableMapperFactory.getTableMapper(
+			"Groups_UserGroups", "companyId", "userGroupId", "groupId", this,
+			groupPersistence);
 
-		userGroupToTeamTableMapper = TableMapperFactory.getTableMapper("UserGroups_Teams",
-				"companyId", "userGroupId", "teamId", this, teamPersistence);
+		userGroupToTeamTableMapper = TableMapperFactory.getTableMapper(
+			"UserGroups_Teams", "companyId", "userGroupId", "teamId", this,
+			teamPersistence);
 
-		userGroupToUserTableMapper = TableMapperFactory.getTableMapper("Users_UserGroups",
-				"companyId", "userGroupId", "userId", this, userPersistence);
+		userGroupToUserTableMapper = TableMapperFactory.getTableMapper(
+			"Users_UserGroups", "companyId", "userGroupId", "userId", this,
+			userPersistence);
+
+		_finderPathWithPaginationFindAll = new FinderPath(
+			UserGroupModelImpl.ENTITY_CACHE_ENABLED,
+			UserGroupModelImpl.FINDER_CACHE_ENABLED, UserGroupImpl.class,
+			FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findAll", new String[0]);
+
+		_finderPathWithoutPaginationFindAll = new FinderPath(
+			UserGroupModelImpl.ENTITY_CACHE_ENABLED,
+			UserGroupModelImpl.FINDER_CACHE_ENABLED, UserGroupImpl.class,
+			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findAll",
+			new String[0]);
+
+		_finderPathCountAll = new FinderPath(
+			UserGroupModelImpl.ENTITY_CACHE_ENABLED,
+			UserGroupModelImpl.FINDER_CACHE_ENABLED, Long.class,
+			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countAll",
+			new String[0]);
+
+		_finderPathWithPaginationFindByUuid = new FinderPath(
+			UserGroupModelImpl.ENTITY_CACHE_ENABLED,
+			UserGroupModelImpl.FINDER_CACHE_ENABLED, UserGroupImpl.class,
+			FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByUuid",
+			new String[] {
+				String.class.getName(), Integer.class.getName(),
+				Integer.class.getName(), OrderByComparator.class.getName()
+			});
+
+		_finderPathWithoutPaginationFindByUuid = new FinderPath(
+			UserGroupModelImpl.ENTITY_CACHE_ENABLED,
+			UserGroupModelImpl.FINDER_CACHE_ENABLED, UserGroupImpl.class,
+			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findByUuid",
+			new String[] {String.class.getName()},
+			UserGroupModelImpl.UUID_COLUMN_BITMASK |
+			UserGroupModelImpl.NAME_COLUMN_BITMASK);
+
+		_finderPathCountByUuid = new FinderPath(
+			UserGroupModelImpl.ENTITY_CACHE_ENABLED,
+			UserGroupModelImpl.FINDER_CACHE_ENABLED, Long.class,
+			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByUuid",
+			new String[] {String.class.getName()});
+
+		_finderPathWithPaginationFindByUuid_C = new FinderPath(
+			UserGroupModelImpl.ENTITY_CACHE_ENABLED,
+			UserGroupModelImpl.FINDER_CACHE_ENABLED, UserGroupImpl.class,
+			FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByUuid_C",
+			new String[] {
+				String.class.getName(), Long.class.getName(),
+				Integer.class.getName(), Integer.class.getName(),
+				OrderByComparator.class.getName()
+			});
+
+		_finderPathWithoutPaginationFindByUuid_C = new FinderPath(
+			UserGroupModelImpl.ENTITY_CACHE_ENABLED,
+			UserGroupModelImpl.FINDER_CACHE_ENABLED, UserGroupImpl.class,
+			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findByUuid_C",
+			new String[] {String.class.getName(), Long.class.getName()},
+			UserGroupModelImpl.UUID_COLUMN_BITMASK |
+			UserGroupModelImpl.COMPANYID_COLUMN_BITMASK |
+			UserGroupModelImpl.NAME_COLUMN_BITMASK);
+
+		_finderPathCountByUuid_C = new FinderPath(
+			UserGroupModelImpl.ENTITY_CACHE_ENABLED,
+			UserGroupModelImpl.FINDER_CACHE_ENABLED, Long.class,
+			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByUuid_C",
+			new String[] {String.class.getName(), Long.class.getName()});
+
+		_finderPathWithPaginationFindByCompanyId = new FinderPath(
+			UserGroupModelImpl.ENTITY_CACHE_ENABLED,
+			UserGroupModelImpl.FINDER_CACHE_ENABLED, UserGroupImpl.class,
+			FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByCompanyId",
+			new String[] {
+				Long.class.getName(), Integer.class.getName(),
+				Integer.class.getName(), OrderByComparator.class.getName()
+			});
+
+		_finderPathWithoutPaginationFindByCompanyId = new FinderPath(
+			UserGroupModelImpl.ENTITY_CACHE_ENABLED,
+			UserGroupModelImpl.FINDER_CACHE_ENABLED, UserGroupImpl.class,
+			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findByCompanyId",
+			new String[] {Long.class.getName()},
+			UserGroupModelImpl.COMPANYID_COLUMN_BITMASK |
+			UserGroupModelImpl.NAME_COLUMN_BITMASK);
+
+		_finderPathCountByCompanyId = new FinderPath(
+			UserGroupModelImpl.ENTITY_CACHE_ENABLED,
+			UserGroupModelImpl.FINDER_CACHE_ENABLED, Long.class,
+			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByCompanyId",
+			new String[] {Long.class.getName()});
+
+		_finderPathWithPaginationFindByC_P = new FinderPath(
+			UserGroupModelImpl.ENTITY_CACHE_ENABLED,
+			UserGroupModelImpl.FINDER_CACHE_ENABLED, UserGroupImpl.class,
+			FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByC_P",
+			new String[] {
+				Long.class.getName(), Long.class.getName(),
+				Integer.class.getName(), Integer.class.getName(),
+				OrderByComparator.class.getName()
+			});
+
+		_finderPathWithoutPaginationFindByC_P = new FinderPath(
+			UserGroupModelImpl.ENTITY_CACHE_ENABLED,
+			UserGroupModelImpl.FINDER_CACHE_ENABLED, UserGroupImpl.class,
+			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findByC_P",
+			new String[] {Long.class.getName(), Long.class.getName()},
+			UserGroupModelImpl.COMPANYID_COLUMN_BITMASK |
+			UserGroupModelImpl.PARENTUSERGROUPID_COLUMN_BITMASK |
+			UserGroupModelImpl.NAME_COLUMN_BITMASK);
+
+		_finderPathCountByC_P = new FinderPath(
+			UserGroupModelImpl.ENTITY_CACHE_ENABLED,
+			UserGroupModelImpl.FINDER_CACHE_ENABLED, Long.class,
+			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByC_P",
+			new String[] {Long.class.getName(), Long.class.getName()});
+
+		_finderPathFetchByC_N = new FinderPath(
+			UserGroupModelImpl.ENTITY_CACHE_ENABLED,
+			UserGroupModelImpl.FINDER_CACHE_ENABLED, UserGroupImpl.class,
+			FINDER_CLASS_NAME_ENTITY, "fetchByC_N",
+			new String[] {Long.class.getName(), String.class.getName()},
+			UserGroupModelImpl.COMPANYID_COLUMN_BITMASK |
+			UserGroupModelImpl.NAME_COLUMN_BITMASK);
+
+		_finderPathCountByC_N = new FinderPath(
+			UserGroupModelImpl.ENTITY_CACHE_ENABLED,
+			UserGroupModelImpl.FINDER_CACHE_ENABLED, Long.class,
+			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByC_N",
+			new String[] {Long.class.getName(), String.class.getName()});
+
+		_finderPathWithPaginationFindByC_LikeN = new FinderPath(
+			UserGroupModelImpl.ENTITY_CACHE_ENABLED,
+			UserGroupModelImpl.FINDER_CACHE_ENABLED, UserGroupImpl.class,
+			FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByC_LikeN",
+			new String[] {
+				Long.class.getName(), String.class.getName(),
+				Integer.class.getName(), Integer.class.getName(),
+				OrderByComparator.class.getName()
+			});
+
+		_finderPathWithPaginationCountByC_LikeN = new FinderPath(
+			UserGroupModelImpl.ENTITY_CACHE_ENABLED,
+			UserGroupModelImpl.FINDER_CACHE_ENABLED, Long.class,
+			FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "countByC_LikeN",
+			new String[] {Long.class.getName(), String.class.getName()});
+
+		_finderPathWithPaginationFindByU_C_P = new FinderPath(
+			UserGroupModelImpl.ENTITY_CACHE_ENABLED,
+			UserGroupModelImpl.FINDER_CACHE_ENABLED, UserGroupImpl.class,
+			FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByU_C_P",
+			new String[] {
+				Long.class.getName(), Long.class.getName(),
+				Long.class.getName(), Integer.class.getName(),
+				Integer.class.getName(), OrderByComparator.class.getName()
+			});
+
+		_finderPathWithPaginationCountByU_C_P = new FinderPath(
+			UserGroupModelImpl.ENTITY_CACHE_ENABLED,
+			UserGroupModelImpl.FINDER_CACHE_ENABLED, Long.class,
+			FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "countByU_C_P",
+			new String[] {
+				Long.class.getName(), Long.class.getName(), Long.class.getName()
+			});
+
+		_finderPathFetchByC_ERC = new FinderPath(
+			UserGroupModelImpl.ENTITY_CACHE_ENABLED,
+			UserGroupModelImpl.FINDER_CACHE_ENABLED, UserGroupImpl.class,
+			FINDER_CLASS_NAME_ENTITY, "fetchByC_ERC",
+			new String[] {Long.class.getName(), String.class.getName()},
+			UserGroupModelImpl.COMPANYID_COLUMN_BITMASK |
+			UserGroupModelImpl.EXTERNALREFERENCECODE_COLUMN_BITMASK);
+
+		_finderPathCountByC_ERC = new FinderPath(
+			UserGroupModelImpl.ENTITY_CACHE_ENABLED,
+			UserGroupModelImpl.FINDER_CACHE_ENABLED, Long.class,
+			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByC_ERC",
+			new String[] {Long.class.getName(), String.class.getName()});
 	}
 
 	public void destroy() {
-		entityCache.removeCache(UserGroupImpl.class.getName());
-		finderCache.removeCache(FINDER_CLASS_NAME_ENTITY);
-		finderCache.removeCache(FINDER_CLASS_NAME_LIST_WITH_PAGINATION);
-		finderCache.removeCache(FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION);
+		EntityCacheUtil.removeCache(UserGroupImpl.class.getName());
+		FinderCacheUtil.removeCache(FINDER_CLASS_NAME_ENTITY);
+		FinderCacheUtil.removeCache(FINDER_CLASS_NAME_LIST_WITH_PAGINATION);
+		FinderCacheUtil.removeCache(FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION);
 
 		TableMapperFactory.removeTableMapper("Groups_UserGroups");
 		TableMapperFactory.removeTableMapper("UserGroups_Teams");
 		TableMapperFactory.removeTableMapper("Users_UserGroups");
 	}
 
-	@BeanReference(type = CompanyProviderWrapper.class)
-	protected CompanyProvider companyProvider;
-	protected EntityCache entityCache = EntityCacheUtil.getEntityCache();
-	protected FinderCache finderCache = FinderCacheUtil.getFinderCache();
 	@BeanReference(type = GroupPersistence.class)
 	protected GroupPersistence groupPersistence;
-	protected TableMapper<UserGroup, com.liferay.portal.kernel.model.Group> userGroupToGroupTableMapper;
+
+	protected TableMapper<UserGroup, com.liferay.portal.kernel.model.Group>
+		userGroupToGroupTableMapper;
+
 	@BeanReference(type = TeamPersistence.class)
 	protected TeamPersistence teamPersistence;
-	protected TableMapper<UserGroup, com.liferay.portal.kernel.model.Team> userGroupToTeamTableMapper;
+
+	protected TableMapper<UserGroup, com.liferay.portal.kernel.model.Team>
+		userGroupToTeamTableMapper;
+
 	@BeanReference(type = UserPersistence.class)
 	protected UserPersistence userPersistence;
-	protected TableMapper<UserGroup, com.liferay.portal.kernel.model.User> userGroupToUserTableMapper;
-	private static final String _SQL_SELECT_USERGROUP = "SELECT userGroup FROM UserGroup userGroup";
-	private static final String _SQL_SELECT_USERGROUP_WHERE_PKS_IN = "SELECT userGroup FROM UserGroup userGroup WHERE userGroupId IN (";
-	private static final String _SQL_SELECT_USERGROUP_WHERE = "SELECT userGroup FROM UserGroup userGroup WHERE ";
-	private static final String _SQL_COUNT_USERGROUP = "SELECT COUNT(userGroup) FROM UserGroup userGroup";
-	private static final String _SQL_COUNT_USERGROUP_WHERE = "SELECT COUNT(userGroup) FROM UserGroup userGroup WHERE ";
-	private static final String _FILTER_ENTITY_TABLE_FILTER_PK_COLUMN = "userGroup.userGroupId";
-	private static final String _FILTER_SQL_SELECT_USERGROUP_WHERE = "SELECT DISTINCT {userGroup.*} FROM UserGroup userGroup WHERE ";
-	private static final String _FILTER_SQL_SELECT_USERGROUP_NO_INLINE_DISTINCT_WHERE_1 =
-		"SELECT {UserGroup.*} FROM (SELECT DISTINCT userGroup.userGroupId FROM UserGroup userGroup WHERE ";
-	private static final String _FILTER_SQL_SELECT_USERGROUP_NO_INLINE_DISTINCT_WHERE_2 =
-		") TEMP_TABLE INNER JOIN UserGroup ON TEMP_TABLE.userGroupId = UserGroup.userGroupId";
-	private static final String _FILTER_SQL_COUNT_USERGROUP_WHERE = "SELECT COUNT(DISTINCT userGroup.userGroupId) AS COUNT_VALUE FROM UserGroup userGroup WHERE ";
+
+	protected TableMapper<UserGroup, com.liferay.portal.kernel.model.User>
+		userGroupToUserTableMapper;
+
+	private static final String _SQL_SELECT_USERGROUP =
+		"SELECT userGroup FROM UserGroup userGroup";
+
+	private static final String _SQL_SELECT_USERGROUP_WHERE =
+		"SELECT userGroup FROM UserGroup userGroup WHERE ";
+
+	private static final String _SQL_COUNT_USERGROUP =
+		"SELECT COUNT(userGroup) FROM UserGroup userGroup";
+
+	private static final String _SQL_COUNT_USERGROUP_WHERE =
+		"SELECT COUNT(userGroup) FROM UserGroup userGroup WHERE ";
+
+	private static final String _FILTER_ENTITY_TABLE_FILTER_PK_COLUMN =
+		"userGroup.userGroupId";
+
+	private static final String _FILTER_SQL_SELECT_USERGROUP_WHERE =
+		"SELECT DISTINCT {userGroup.*} FROM UserGroup userGroup WHERE ";
+
+	private static final String
+		_FILTER_SQL_SELECT_USERGROUP_NO_INLINE_DISTINCT_WHERE_1 =
+			"SELECT {UserGroup.*} FROM (SELECT DISTINCT userGroup.userGroupId FROM UserGroup userGroup WHERE ";
+
+	private static final String
+		_FILTER_SQL_SELECT_USERGROUP_NO_INLINE_DISTINCT_WHERE_2 =
+			") TEMP_TABLE INNER JOIN UserGroup ON TEMP_TABLE.userGroupId = UserGroup.userGroupId";
+
+	private static final String _FILTER_SQL_COUNT_USERGROUP_WHERE =
+		"SELECT COUNT(DISTINCT userGroup.userGroupId) AS COUNT_VALUE FROM UserGroup userGroup WHERE ";
+
 	private static final String _FILTER_ENTITY_ALIAS = "userGroup";
+
 	private static final String _FILTER_ENTITY_TABLE = "UserGroup";
+
 	private static final String _ORDER_BY_ENTITY_ALIAS = "userGroup.";
+
 	private static final String _ORDER_BY_ENTITY_TABLE = "UserGroup.";
-	private static final String _NO_SUCH_ENTITY_WITH_PRIMARY_KEY = "No UserGroup exists with the primary key ";
-	private static final String _NO_SUCH_ENTITY_WITH_KEY = "No UserGroup exists with the key {";
-	private static final Log _log = LogFactoryUtil.getLog(UserGroupPersistenceImpl.class);
-	private static final Set<String> _badColumnNames = SetUtil.fromArray(new String[] {
-				"uuid"
-			});
+
+	private static final String _NO_SUCH_ENTITY_WITH_PRIMARY_KEY =
+		"No UserGroup exists with the primary key ";
+
+	private static final String _NO_SUCH_ENTITY_WITH_KEY =
+		"No UserGroup exists with the key {";
+
+	private static final Log _log = LogFactoryUtil.getLog(
+		UserGroupPersistenceImpl.class);
+
+	private static final Set<String> _badColumnNames = SetUtil.fromArray(
+		new String[] {"uuid", "groups"});
+
 }

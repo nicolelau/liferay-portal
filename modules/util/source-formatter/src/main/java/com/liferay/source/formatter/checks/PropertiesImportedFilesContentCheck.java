@@ -14,14 +14,15 @@
 
 package com.liferay.source.formatter.checks;
 
+import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.io.unsync.UnsyncBufferedReader;
-import com.liferay.portal.kernel.util.StringBundler;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
 
 import java.io.File;
 import java.io.FileReader;
+import java.io.IOException;
 
 import java.util.Map;
 import java.util.Objects;
@@ -37,7 +38,7 @@ public class PropertiesImportedFilesContentCheck extends BaseFileCheck {
 	@Override
 	protected String doProcess(
 			String fileName, String absolutePath, String content)
-		throws Exception {
+		throws IOException {
 
 		if (!fileName.endsWith("/imported-files.properties")) {
 			return content;
@@ -47,7 +48,7 @@ public class PropertiesImportedFilesContentCheck extends BaseFileCheck {
 	}
 
 	private String _checkClasses(String absolutePath, String content)
-		throws Exception {
+		throws IOException {
 
 		Map<String, Set<String>> map = new TreeMap<>();
 

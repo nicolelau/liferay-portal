@@ -29,7 +29,8 @@ import org.osgi.service.component.annotations.Reference;
 	property = {
 		"model.class.name=com.liferay.journal.model.JournalArticle",
 		"service.ranking:Integer=100"
-	}
+	},
+	service = ExportImportContentProcessor.class
 )
 public class AMJournalArticleExportImportContentProcessor
 	implements ExportImportContentProcessor<String> {
@@ -49,10 +50,11 @@ public class AMJournalArticleExportImportContentProcessor
 
 		return _amJournalArticleContentHTMLReplacer.replace(
 			replacedContent,
-			html -> _htmlExportImportContentProcessor.
-				replaceExportContentReferences(
-					portletDataContext, stagedModel, html,
-					exportReferencedContent, escapeContent));
+			html ->
+				_htmlExportImportContentProcessor.
+					replaceExportContentReferences(
+						portletDataContext, stagedModel, html,
+						exportReferencedContent, escapeContent));
 	}
 
 	@Override
@@ -68,9 +70,10 @@ public class AMJournalArticleExportImportContentProcessor
 
 		return _amJournalArticleContentHTMLReplacer.replace(
 			replacedContent,
-			html -> _htmlExportImportContentProcessor.
-				replaceImportContentReferences(
-					portletDataContext, stagedModel, html));
+			html ->
+				_htmlExportImportContentProcessor.
+					replaceImportContentReferences(
+						portletDataContext, stagedModel, html));
 	}
 
 	@Override
@@ -95,38 +98,17 @@ public class AMJournalArticleExportImportContentProcessor
 		}
 	}
 
-	@Reference(unbind = "-")
-	protected void setAMJournalArticleContentHTMLReplacer(
-		AMJournalArticleContentHTMLReplacer
-			amJournalArticleContentHTMLReplacer) {
-
-		_amJournalArticleContentHTMLReplacer =
-			amJournalArticleContentHTMLReplacer;
-	}
-
-	@Reference(target = "(adaptive.media.format=html)", unbind = "-")
-	protected void setHTMLExportImportContentProcessor(
-		ExportImportContentProcessor<String> htmlExportImportContentProcessor) {
-
-		_htmlExportImportContentProcessor = htmlExportImportContentProcessor;
-	}
-
-	@Reference(
-		target = "(&(model.class.name=com.liferay.journal.model.JournalArticle)(!(component.name=com.liferay.adaptive.media.journal.web.internal.exportimport.content.processor.AMJournalArticleExportImportContentProcessor)))",
-		unbind = "-"
-	)
-	protected void setJournalArticleExportImportContentProcessor(
-		ExportImportContentProcessor<String>
-			journalArticleExportImportContentProcessor) {
-
-		_journalArticleExportImportContentProcessor =
-			journalArticleExportImportContentProcessor;
-	}
-
+	@Reference
 	private AMJournalArticleContentHTMLReplacer
 		_amJournalArticleContentHTMLReplacer;
+
+	@Reference(target = "(adaptive.media.format=html)")
 	private ExportImportContentProcessor<String>
 		_htmlExportImportContentProcessor;
+
+	@Reference(
+		target = "(&(model.class.name=com.liferay.journal.model.JournalArticle)(!(component.name=com.liferay.adaptive.media.journal.web.internal.exportimport.content.processor.AMJournalArticleExportImportContentProcessor)))"
+	)
 	private ExportImportContentProcessor<String>
 		_journalArticleExportImportContentProcessor;
 

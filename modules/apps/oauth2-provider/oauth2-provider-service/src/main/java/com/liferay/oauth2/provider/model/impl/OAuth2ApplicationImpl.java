@@ -14,10 +14,8 @@
 
 package com.liferay.oauth2.provider.model.impl;
 
-import aQute.bnd.annotation.ProviderType;
-
 import com.liferay.oauth2.provider.constants.GrantType;
-import com.liferay.portal.kernel.util.StringPool;
+import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.util.StringUtil;
 
 import java.util.Arrays;
@@ -28,7 +26,6 @@ import java.util.stream.Stream;
 /**
  * @author Brian Wing Shun Chan
  */
-@ProviderType
 public class OAuth2ApplicationImpl extends OAuth2ApplicationBaseImpl {
 
 	@Override
@@ -36,13 +33,11 @@ public class OAuth2ApplicationImpl extends OAuth2ApplicationBaseImpl {
 		Stream<String> stream = Arrays.stream(
 			StringUtil.split(getAllowedGrantTypes()));
 
-		List<GrantType> grantTypes = stream.map(
+		return stream.map(
 			GrantType::valueOf
 		).collect(
 			Collectors.toList()
 		);
-
-		return grantTypes;
 	}
 
 	@Override

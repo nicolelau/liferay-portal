@@ -32,7 +32,10 @@ import org.junit.Before;
 public class BuildTest extends Test {
 
 	@Before
+	@Override
 	public void setUp() throws Exception {
+		super.setUp();
+
 		JenkinsResultsParserUtil.setBuildProperties(
 			JenkinsResultsParserUtil.getBuildProperties());
 
@@ -45,7 +48,8 @@ public class BuildTest extends Test {
 
 	@After
 	public void tearDown() {
-		JenkinsResultsParserUtil.setBuildProperties((Hashtable<?, ?>)null);
+		JenkinsResultsParserUtil.setBuildProperties(
+			(Hashtable<Object, Object>)null);
 	}
 
 	@Override

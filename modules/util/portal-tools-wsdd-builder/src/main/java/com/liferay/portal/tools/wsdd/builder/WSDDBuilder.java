@@ -72,10 +72,8 @@ public class WSDDBuilder {
 		if (!serverConfigFile.exists()) {
 			Class<?> clazz = getClass();
 
-			ClassLoader classLoader = clazz.getClassLoader();
-
 			String serverConfigContent = StringUtil.read(
-				classLoader,
+				clazz.getClassLoader(),
 				"com/liferay/portal/tools/wsdd/builder/dependencies" +
 					"/server-config.wsdd");
 
@@ -84,21 +82,21 @@ public class WSDDBuilder {
 
 		SAXReader saxReader = _getSAXReader();
 
-		String content = ToolsUtil.getContent(_fileName);
-
-		Document document = saxReader.read(new XMLSafeReader(content));
+		Document document = saxReader.read(
+			new XMLSafeReader(ToolsUtil.getContent(_fileName)));
 
 		Element rootElement = document.getRootElement();
 
 		String packagePath = rootElement.attributeValue("package-path");
 
 		Element portletElement = rootElement.element("portlet");
-		Element namespaceElement = rootElement.element("namespace");
 
 		if (portletElement != null) {
 			_portletShortName = portletElement.attributeValue("short-name");
 		}
 		else {
+			Element namespaceElement = rootElement.element("namespace");
+
 			_portletShortName = namespaceElement.getText();
 		}
 

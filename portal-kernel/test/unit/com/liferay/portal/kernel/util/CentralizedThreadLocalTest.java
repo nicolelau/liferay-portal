@@ -28,8 +28,11 @@ import org.junit.ClassRule;
 import org.junit.Test;
 
 /**
- * @author Shuyang Zhou
+ * @author     Shuyang Zhou
+ * @deprecated As of Judson (7.1.x), replaced by {@link
+ *             com.liferay.petra.lang.CentralizedThreadLocalTest}
  */
+@Deprecated
 public class CentralizedThreadLocalTest {
 
 	@ClassRule
@@ -206,7 +209,7 @@ public class CentralizedThreadLocalTest {
 	}
 
 	@Test
-	public void testTheadLocalManagement() {
+	public void testThreadLocalManagement() {
 
 		// Initial clean up
 
@@ -319,10 +322,7 @@ public class CentralizedThreadLocalTest {
 		CentralizedThreadLocal<String> centralizedThreadLocal =
 			new CentralizedThreadLocal<>(false);
 
-		FutureTask<?> poisonFutureTask = new FutureTask<>(
-			() -> {
-				return null;
-			});
+		FutureTask<?> poisonFutureTask = new FutureTask<>(() -> null);
 
 		BlockingQueue<FutureTask<?>> blockingQueue = new SynchronousQueue<>();
 
@@ -330,8 +330,8 @@ public class CentralizedThreadLocalTest {
 			() -> {
 				FutureTask<?> futureTask = null;
 
-				while ((futureTask =
-							blockingQueue.take()) != poisonFutureTask) {
+				while ((futureTask = blockingQueue.take()) !=
+							poisonFutureTask) {
 
 					futureTask.run();
 				}

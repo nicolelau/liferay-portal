@@ -51,10 +51,10 @@ public class NodeImpl implements Node {
 
 	@Override
 	public Node asXPathResult(Element parent) {
-		ElementImpl parentImpl = (ElementImpl)parent;
+		ElementImpl parentElementImpl = (ElementImpl)parent;
 
 		org.dom4j.Node node = _node.asXPathResult(
-			parentImpl.getWrappedElement());
+			parentElementImpl.getWrappedElement());
 
 		if (node == null) {
 			return null;
@@ -63,9 +63,8 @@ public class NodeImpl implements Node {
 		if (node instanceof org.dom4j.Element) {
 			return new ElementImpl((org.dom4j.Element)node);
 		}
-		else {
-			return new NodeImpl(node);
-		}
+
+		return new NodeImpl(node);
 	}
 
 	@Override
@@ -94,9 +93,8 @@ public class NodeImpl implements Node {
 		if (node instanceof org.dom4j.Element) {
 			return new ElementImpl((org.dom4j.Element)node);
 		}
-		else {
-			return new NodeImpl(node);
-		}
+
+		return new NodeImpl(node);
 	}
 
 	@Override
@@ -109,7 +107,9 @@ public class NodeImpl implements Node {
 			return false;
 		}
 
-		org.dom4j.Node node = ((NodeImpl)obj).getWrappedNode();
+		NodeImpl nodeImpl = (NodeImpl)obj;
+
+		org.dom4j.Node node = nodeImpl.getWrappedNode();
 
 		return _node.equals(node);
 	}
@@ -146,9 +146,8 @@ public class NodeImpl implements Node {
 		if (document == null) {
 			return null;
 		}
-		else {
-			return new DocumentImpl(document);
-		}
+
+		return new DocumentImpl(document);
 	}
 
 	@Override
@@ -163,9 +162,8 @@ public class NodeImpl implements Node {
 		if (element == null) {
 			return null;
 		}
-		else {
-			return new ElementImpl(element);
-		}
+
+		return new ElementImpl(element);
 	}
 
 	@Override
@@ -175,9 +173,9 @@ public class NodeImpl implements Node {
 
 	@Override
 	public String getPath(Element context) {
-		ElementImpl contextImpl = (ElementImpl)context;
+		ElementImpl contextElementImpl = (ElementImpl)context;
 
-		return _node.getPath(contextImpl.getWrappedElement());
+		return _node.getPath(contextElementImpl.getWrappedElement());
 	}
 
 	@Override
@@ -197,9 +195,9 @@ public class NodeImpl implements Node {
 
 	@Override
 	public String getUniquePath(Element context) {
-		ElementImpl contextImpl = (ElementImpl)context;
+		ElementImpl contextElementImpl = (ElementImpl)context;
 
-		return _node.getUniquePath(contextImpl.getWrappedElement());
+		return _node.getUniquePath(contextElementImpl.getWrappedElement());
 	}
 
 	public org.dom4j.Node getWrappedNode() {
@@ -264,9 +262,8 @@ public class NodeImpl implements Node {
 		else if (obj instanceof List<?>) {
 			return SAXReaderImpl.toNewNodes((List<org.dom4j.Node>)obj);
 		}
-		else {
-			return obj;
-		}
+
+		return obj;
 	}
 
 	@Override
@@ -280,9 +277,8 @@ public class NodeImpl implements Node {
 		if (node instanceof org.dom4j.Element) {
 			return new ElementImpl((org.dom4j.Element)node);
 		}
-		else {
-			return new NodeImpl(node);
-		}
+
+		return new NodeImpl(node);
 	}
 
 	@Override

@@ -20,6 +20,7 @@ import com.liferay.portal.kernel.json.JSONFactoryUtil;
 import com.liferay.portal.kernel.json.JSONObject;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
+import com.liferay.portal.kernel.messaging.MessageBus;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.push.notifications.constants.PushNotificationsConstants;
 import com.liferay.push.notifications.exception.PushNotificationsException;
@@ -45,6 +46,7 @@ import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.service.component.annotations.Modified;
+import org.osgi.service.component.annotations.Reference;
 
 /**
  * @author Silvio Santos
@@ -53,7 +55,8 @@ import org.osgi.service.component.annotations.Modified;
 @Component(
 	configurationPid = "com.liferay.push.notifications.sender.apple.internal.configuration.ApplePushNotificationsSenderConfiguration",
 	immediate = true,
-	property = "platform=" + ApplePushNotificationsSender.PLATFORM
+	property = "platform=" + ApplePushNotificationsSender.PLATFORM,
+	service = PushNotificationsSender.class
 )
 public class ApplePushNotificationsSender implements PushNotificationsSender {
 
@@ -97,8 +100,8 @@ public class ApplePushNotificationsSender implements PushNotificationsSender {
 
 		ApnsServiceBuilder appleServiceBuilder = APNS.newService();
 
-		try (InputStream inputStream =
-				_getCertificateInputStream(certificatePath)) {
+		try (InputStream inputStream = _getCertificateInputStream(
+				certificatePath)) {
 
 			if (inputStream == null) {
 				throw new IllegalArgumentException(
@@ -113,7 +116,7 @@ public class ApplePushNotificationsSender implements PushNotificationsSender {
 			}
 		}
 
-		appleServiceBuilder.withDelegate(new AppleDelegate());
+		appleServiceBuilder.withDelegate(new AppleDelegate(_messageBus));
 
 		if (applePushNotificationsSenderConfiguration.sandbox()) {
 			appleServiceBuilder.withSandboxDestination();
@@ -127,6 +130,13 @@ public class ApplePushNotificationsSender implements PushNotificationsSender {
 
 	protected String buildPayload(JSONObject payloadJSONObject) {
 		PayloadBuilder builder = PayloadBuilder.newPayload();
+
+		String title = payloadJSONObject.getString(
+			PushNotificationsConstants.KEY_TITLE);
+
+		if (Validator.isNotNull(title)) {
+			builder.alertTitle(title);
+		}
 
 		if (payloadJSONObject.has(PushNotificationsConstants.KEY_BADGE)) {
 			builder.badge(
@@ -176,6 +186,30 @@ public class ApplePushNotificationsSender implements PushNotificationsSender {
 			builder.sound(sound);
 		}
 
+		JSONArray titleLocalizedArgumentsJSONArray =
+			payloadJSONObject.getJSONArray(
+				PushNotificationsConstants.KEY_TITLE_LOCALIZED_ARGUMENTS);
+
+		if (titleLocalizedArgumentsJSONArray != null) {
+			List<String> localizedArguments = new ArrayList<>();
+
+			for (int i = 0; i < titleLocalizedArgumentsJSONArray.length();
+				 i++) {
+
+				localizedArguments.add(
+					titleLocalizedArgumentsJSONArray.getString(i));
+			}
+
+			builder.localizedTitleArguments(localizedArguments);
+		}
+
+		String titleLocalizedKey = payloadJSONObject.getString(
+			PushNotificationsConstants.KEY_TITLE_LOCALIZED);
+
+		if (Validator.isNotNull(titleLocalizedKey)) {
+			builder.localizedTitleKey(titleLocalizedKey);
+		}
+
 		JSONObject newPayloadJSONObject = JSONFactoryUtil.createJSONObject();
 
 		Iterator<String> iterator = payloadJSONObject.keys();
@@ -189,7 +223,11 @@ public class ApplePushNotificationsSender implements PushNotificationsSender {
 				!key.equals(
 					PushNotificationsConstants.KEY_BODY_LOCALIZED_ARGUMENTS) &&
 				!key.equals(PushNotificationsConstants.KEY_SOUND) &&
-				!key.equals(PushNotificationsConstants.KEY_SILENT)) {
+				!key.equals(PushNotificationsConstants.KEY_SILENT) &&
+				!key.equals(PushNotificationsConstants.KEY_TITLE) &&
+				!key.equals(PushNotificationsConstants.KEY_TITLE_LOCALIZED) &&
+				!key.equals(
+					PushNotificationsConstants.KEY_TITLE_LOCALIZED_ARGUMENTS)) {
 
 				newPayloadJSONObject.put(key, payloadJSONObject.get(key));
 			}
@@ -223,5 +261,8 @@ public class ApplePushNotificationsSender implements PushNotificationsSender {
 		ApplePushNotificationsSender.class);
 
 	private volatile ApnsService _apnsService;
+
+	@Reference
+	private MessageBus _messageBus;
 
 }

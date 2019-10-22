@@ -141,6 +141,10 @@ public interface ElasticsearchConfiguration {
 	)
 	public String clientTransportNodesSamplerInterval();
 
+	/**
+	 * @deprecated As of Judson (7.1.x), with no direct replacement
+	 */
+	@Deprecated
 	@Meta.AD(
 		deflt = "true", description = "http-enabled-help",
 		name = "http-enabled", required = false
@@ -189,11 +193,5 @@ public interface ElasticsearchConfiguration {
 		name = "override-type-mappings", required = false
 	)
 	public String overrideTypeMappings();
-
-	@Meta.AD(
-		deflt = "true", description = "sync-search-help", name = "sync-search",
-		required = false
-	)
-	public boolean syncSearch();
 
 }

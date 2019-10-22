@@ -37,6 +37,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
@@ -48,7 +49,7 @@ import org.osgi.service.component.annotations.Reference;
 /**
  * @author Ryan Park
  */
-@Component
+@Component(service = {})
 public class AppDisplayFactoryUtil {
 
 	public static AppDisplay getAppDisplay(List<Bundle> bundles, long appId) {
@@ -57,9 +58,8 @@ public class AppDisplayFactoryUtil {
 
 			bundlesMap.load(bundles);
 
-			App app = _appLocalService.getApp(appId);
-
-			return createMarketplaceAppDisplay(bundlesMap, app);
+			return createMarketplaceAppDisplay(
+				bundlesMap, _appLocalService.getApp(appId));
 		}
 		catch (PortalException pe) {
 
@@ -74,7 +74,7 @@ public class AppDisplayFactoryUtil {
 	}
 
 	public static AppDisplay getAppDisplay(
-		List<Bundle> bundles, String appTitle) {
+		List<Bundle> bundles, String appTitle, Locale locale) {
 
 		AppDisplay appDisplay = null;
 
@@ -83,7 +83,8 @@ public class AppDisplayFactoryUtil {
 		}
 
 		for (Bundle bundle : bundles) {
-			Dictionary<String, String> headers = bundle.getHeaders();
+			Dictionary<String, String> headers = bundle.getHeaders(
+				StringPool.BLANK);
 
 			String curAppTitle = GetterUtil.getString(
 				headers.get(BundleConstants.LIFERAY_RELENG_APP_TITLE));
@@ -93,9 +94,13 @@ public class AppDisplayFactoryUtil {
 			}
 
 			if (appDisplay == null) {
+				Dictionary<String, String> localizedHeaders = bundle.getHeaders(
+					locale.getLanguage());
+
 				String appDescription = GetterUtil.getString(
-					headers.get(
+					localizedHeaders.get(
 						BundleConstants.LIFERAY_RELENG_APP_DESCRIPTION));
+
 				Version appVersion = bundle.getVersion();
 
 				appDisplay = new SimpleAppDisplay(
@@ -115,7 +120,7 @@ public class AppDisplayFactoryUtil {
 	}
 
 	public static List<AppDisplay> getAppDisplays(
-		List<Bundle> bundles, String category, int state) {
+		List<Bundle> bundles, String category, int state, Locale locale) {
 
 		List<AppDisplay> appDisplays = new ArrayList<>();
 
@@ -124,7 +129,8 @@ public class AppDisplayFactoryUtil {
 		bundlesMap.load(bundles);
 
 		appDisplays.addAll(createMarketplaceAppDisplays(bundlesMap, category));
-		appDisplays.addAll(createPortalAppDisplays(bundlesMap, category));
+		appDisplays.addAll(
+			createPortalAppDisplays(bundlesMap, category, locale));
 
 		filterAppDisplays(appDisplays, state);
 
@@ -183,14 +189,15 @@ public class AppDisplayFactoryUtil {
 	}
 
 	protected static List<AppDisplay> createPortalAppDisplays(
-		BundlesMap bundlesMap, String category) {
+		BundlesMap bundlesMap, String category, Locale locale) {
 
 		Map<String, AppDisplay> appDisplaysMap = new HashMap<>();
 
 		Collection<Bundle> bundles = bundlesMap.values();
 
 		for (Bundle bundle : bundles) {
-			Dictionary<String, String> headers = bundle.getHeaders();
+			Dictionary<String, String> headers = bundle.getHeaders(
+				StringPool.BLANK);
 
 			if (Validator.isNotNull(category)) {
 				String[] categories = StringUtil.split(
@@ -207,9 +214,13 @@ public class AppDisplayFactoryUtil {
 			AppDisplay appDisplay = appDisplaysMap.get(appTitle);
 
 			if (appDisplay == null) {
+				Dictionary<String, String> localizedHeaders = bundle.getHeaders(
+					locale.getLanguage());
+
 				String appDescription = GetterUtil.getString(
-					headers.get(
+					localizedHeaders.get(
 						BundleConstants.LIFERAY_RELENG_APP_DESCRIPTION));
+
 				Version appVersion = bundle.getVersion();
 
 				appDisplay = new SimpleAppDisplay(

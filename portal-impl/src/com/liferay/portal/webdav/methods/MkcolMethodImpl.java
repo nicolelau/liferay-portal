@@ -14,10 +14,10 @@
 
 package com.liferay.portal.webdav.methods;
 
+import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.servlet.HttpHeaders;
 import com.liferay.portal.kernel.util.PortalUtil;
-import com.liferay.portal.kernel.util.StringBundler;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.kernel.webdav.Status;
 import com.liferay.portal.kernel.webdav.WebDAVException;
@@ -25,7 +25,6 @@ import com.liferay.portal.kernel.webdav.WebDAVRequest;
 import com.liferay.portal.kernel.webdav.WebDAVStorage;
 import com.liferay.portal.kernel.webdav.methods.Method;
 
-import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 /**
@@ -36,21 +35,24 @@ public class MkcolMethodImpl implements Method {
 
 	@Override
 	public int process(WebDAVRequest webDAVRequest) throws WebDAVException {
-		WebDAVStorage storage = webDAVRequest.getWebDAVStorage();
-		HttpServletRequest request = webDAVRequest.getHttpServletRequest();
-		HttpServletResponse response = webDAVRequest.getHttpServletResponse();
 		long groupId = webDAVRequest.getGroupId();
 
 		if (groupId != 0) {
+			WebDAVStorage storage = webDAVRequest.getWebDAVStorage();
+
 			Status status = storage.makeCollection(webDAVRequest);
 
 			if (Validator.isNotNull(status.getObject())) {
-				response.setHeader(
+				HttpServletResponse httpServletResponse =
+					webDAVRequest.getHttpServletResponse();
+
+				httpServletResponse.setHeader(
 					HttpHeaders.LOCATION,
 					StringBundler.concat(
-						PortalUtil.getPortalURL(request),
+						PortalUtil.getPortalURL(
+							webDAVRequest.getHttpServletRequest()),
 						webDAVRequest.getRootPath(), StringPool.SLASH,
-						String.valueOf(status.getObject())));
+						status.getObject()));
 			}
 
 			return status.getCode();

@@ -16,14 +16,17 @@ package com.liferay.jenkins.results.parser;
 
 import com.liferay.jenkins.results.parser.failure.message.generator.FailureMessageGenerator;
 import com.liferay.jenkins.results.parser.failure.message.generator.GenericFailureMessageGenerator;
+import com.liferay.jenkins.results.parser.failure.message.generator.GradleTaskFailureMessageGenerator;
 import com.liferay.jenkins.results.parser.failure.message.generator.RebaseFailureMessageGenerator;
-import com.liferay.jenkins.results.parser.failure.message.generator.SubrepositorySourceFormatFailureMessageGenerator;
+import com.liferay.jenkins.results.parser.failure.message.generator.SourceFormatFailureMessageGenerator;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import org.apache.commons.lang.StringUtils;
 
 import org.dom4j.Element;
 
@@ -61,10 +64,14 @@ public class ValidationBuild extends BaseBuild {
 			Element taskSummaryListElement = Dom4JUtil.getNewElement(
 				"ul", rootElement);
 
+			List<String> junitTaskNames = new ArrayList<>();
+
 			for (int i = 1; i < consoleSnippets.length; i++) {
 				String consoleSnippet = consoleSnippets[i];
 
 				if (consoleSnippet.contains("merge-test-results:")) {
+					junitTaskNames.add(getTaskName(consoleSnippet));
+
 					continue;
 				}
 
@@ -73,20 +80,39 @@ public class ValidationBuild extends BaseBuild {
 					getTaskSummaryIndexElement(consoleSnippet));
 			}
 
-			Dom4JUtil.addToElement(
-				rootElement,
-				Dom4JUtil.getNewElement(
-					"h5", null, "For full console, click ",
-					Dom4JUtil.getNewAnchorElement(
-						getBuildURL() + "/consoleText", "here"),
-					"."));
+			if (!junitTaskNames.isEmpty()) {
+				List<TestResult> testResults = getTestResults(null);
+
+				String taskResult = "SUCCESSFUL";
+
+				Element messageElement = null;
+
+				for (TestResult testResult : testResults) {
+					if (testResult.isFailing()) {
+						taskResult = "FAILED";
+
+						messageElement = Dom4JUtil.toCodeSnippetElement(
+							"Test failures detected. See below for details.");
+
+						break;
+					}
+				}
+
+				Dom4JUtil.addToElement(
+					taskSummaryListElement,
+					getTaskSummaryIndexElement(
+						StringUtils.join(junitTaskNames, "/"), taskResult,
+						messageElement));
+			}
 
 			Dom4JUtil.addToElement(
-				rootElement, Dom4JUtil.getNewElement("hr"),
-				getTestSummaryElement());
+				rootElement, getFullConsoleClickHereElement(),
+				Dom4JUtil.getNewElement("hr"), getTestSummaryElement());
 		}
 		else {
-			Dom4JUtil.addToElement(rootElement, getFailureMessageElement());
+			Dom4JUtil.addToElement(
+				rootElement, getFailureMessageElement(),
+				getFullConsoleClickHereElement());
 		}
 
 		return rootElement;
@@ -115,39 +141,40 @@ public class ValidationBuild extends BaseBuild {
 	}
 
 	protected Element getBaseBranchDetailsElement() {
-		String baseBranchURL =
-			"https://github.com/liferay/" + getBaseRepositoryName() + "/tree/" +
-				getBranchName();
+		String baseBranchURL = JenkinsResultsParserUtil.combine(
+			"https://github.com/liferay/", getBaseGitRepositoryName(), "/tree/",
+			getBranchName());
 
-		String baseRepositoryName = getBaseRepositoryName();
+		String baseGitRepositoryName = getBaseGitRepositoryName();
 
-		String baseRepositorySHA = null;
+		String baseGitRepositorySHA = null;
 
-		if (!baseRepositoryName.equals("liferay-jenkins-ee") &&
-			baseRepositoryName.endsWith("-ee")) {
+		if (!baseGitRepositoryName.equals("liferay-jenkins-ee") &&
+			baseGitRepositoryName.endsWith("-ee")) {
 
-			baseRepositorySHA = getBaseRepositorySHA(
-				baseRepositoryName.substring(
-					0, baseRepositoryName.length() - 3));
+			baseGitRepositorySHA = getBaseGitRepositorySHA(
+				baseGitRepositoryName.substring(
+					0, baseGitRepositoryName.length() - 3));
 		}
 		else {
-			baseRepositorySHA = getBaseRepositorySHA(baseRepositoryName);
+			baseGitRepositorySHA = getBaseGitRepositorySHA(
+				baseGitRepositoryName);
 		}
 
-		String baseRepositoryCommitURL =
-			"https://github.com/liferay/" + baseRepositoryName + "/commit/" +
-				baseRepositorySHA;
+		String baseGitRepositoryCommitURL =
+			"https://github.com/liferay/" + baseGitRepositoryName + "/commit/" +
+				baseGitRepositorySHA;
 
 		Element baseBranchDetailsElement = Dom4JUtil.getNewElement(
 			"p", null, "Branch Name: ",
 			Dom4JUtil.getNewAnchorElement(baseBranchURL, getBranchName()));
 
-		if (baseRepositorySHA != null) {
+		if (baseGitRepositorySHA != null) {
 			Dom4JUtil.addToElement(
 				baseBranchDetailsElement, Dom4JUtil.getNewElement("br"),
 				"Branch GIT ID: ",
 				Dom4JUtil.getNewAnchorElement(
-					baseRepositoryCommitURL, baseRepositorySHA));
+					baseGitRepositoryCommitURL, baseGitRepositorySHA));
 		}
 
 		return baseBranchDetailsElement;
@@ -170,11 +197,11 @@ public class ValidationBuild extends BaseBuild {
 		return Dom4JUtil.getNewElement(
 			"div", null,
 			Dom4JUtil.getNewElement(
-				"p", null, Integer.toString(successCount),
+				"p", null, String.valueOf(successCount),
 				JenkinsResultsParserUtil.getNounForm(
 					successCount, " Tests", " Test"),
 				" Passed.", Dom4JUtil.getNewElement("br"),
-				Integer.toString(failCount),
+				String.valueOf(failCount),
 				JenkinsResultsParserUtil.getNounForm(
 					failCount, " Tests", " Test"),
 				" Failed."));
@@ -196,20 +223,24 @@ public class ValidationBuild extends BaseBuild {
 		return resultMessageElement;
 	}
 
+	protected String getTaskName(String console) {
+		return console.substring(0, console.indexOf("\n"));
+	}
+
 	protected String getTaskResultIcon(String result) {
 		if (result.equals("FAILED")) {
 			return " :x:";
 		}
 
 		if (result.equals("SUCCESSFUL")) {
-			return " :white_check_mark:";
+			return " :heavy_check_mark:";
 		}
 
 		return "";
 	}
 
 	protected Element getTaskSummaryIndexElement(String console) {
-		String taskName = console.substring(0, console.indexOf("\n"));
+		String taskName = getTaskName(console);
 
 		Matcher matcher = _consoleResultPattern.matcher(console);
 
@@ -219,22 +250,57 @@ public class ValidationBuild extends BaseBuild {
 			taskResult = matcher.group(1);
 		}
 
-		Element taskSummaryIndexElement = Dom4JUtil.getNewElement("li", null);
-
-		Dom4JUtil.addToElement(
-			taskSummaryIndexElement, taskName, " - ",
-			getTaskResultIcon(taskResult));
+		Element taskSummaryIndexFailureMessageElement = null;
 
 		if (taskResult.equals("FAILED")) {
-			GenericFailureMessageGenerator genericFailureMessageGenerator =
-				new GenericFailureMessageGenerator();
-
-			Dom4JUtil.addToElement(
-				taskSummaryIndexElement,
-				genericFailureMessageGenerator.getMessageElement(console));
+			taskSummaryIndexFailureMessageElement =
+				getTaskSummaryIndexFailureMessageElement(console, taskName);
 		}
 
-		return taskSummaryIndexElement;
+		return getTaskSummaryIndexElement(
+			taskName, taskResult, taskSummaryIndexFailureMessageElement);
+	}
+
+	protected Element getTaskSummaryIndexElement(
+		String taskName, String taskResult, Element messageElement) {
+
+		return Dom4JUtil.getNewElement(
+			"li", null, taskName, " - ", getTaskResultIcon(taskResult),
+			messageElement);
+	}
+
+	protected Element getTaskSummaryIndexFailureMessageElement(
+		String console, String taskName) {
+
+		Element messageElement = null;
+
+		if (taskName.contains("subrepository-source-format")) {
+			SourceFormatFailureMessageGenerator
+				sourceFormatFailureMessageGenerator =
+					new SourceFormatFailureMessageGenerator();
+
+			messageElement =
+				sourceFormatFailureMessageGenerator.getMessageElement(console);
+
+			if (messageElement != null) {
+				return messageElement;
+			}
+		}
+
+		GradleTaskFailureMessageGenerator gradleTaskFailureMessageGenerator =
+			new GradleTaskFailureMessageGenerator();
+
+		messageElement = gradleTaskFailureMessageGenerator.getMessageElement(
+			console);
+
+		if (messageElement != null) {
+			return messageElement;
+		}
+
+		GenericFailureMessageGenerator genericFailureMessageGenerator =
+			new GenericFailureMessageGenerator();
+
+		return genericFailureMessageGenerator.getMessageElement(console);
 	}
 
 	protected Element getTestSummaryElement() {
@@ -267,15 +333,9 @@ public class ValidationBuild extends BaseBuild {
 			List<Element> failureElements = new ArrayList<>();
 
 			for (TestResult testResult : getTestResults(null)) {
-				String testStatus = testResult.getStatus();
-
-				if (testStatus.equals("FIXED") || testStatus.equals("PASSED") ||
-					testStatus.equals("SKIPPED")) {
-
-					continue;
+				if (testResult.isFailing()) {
+					failureElements.add(testResult.getGitHubElement());
 				}
-
-				failureElements.add(testResult.getGitHubElement());
 			}
 
 			if (!failureElements.isEmpty()) {
@@ -295,11 +355,13 @@ public class ValidationBuild extends BaseBuild {
 		return testSummaryElement;
 	}
 
+	// Skip JavaParser
+
 	private static final FailureMessageGenerator[] _FAILURE_MESSAGE_GENERATORS =
 		{
 			new RebaseFailureMessageGenerator(),
-			new SubrepositorySourceFormatFailureMessageGenerator(),
-
+			new SourceFormatFailureMessageGenerator(),
+			//
 			new GenericFailureMessageGenerator()
 		};
 

@@ -14,8 +14,6 @@
 
 package com.liferay.powwow.service;
 
-import aQute.bnd.annotation.ProviderType;
-
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.util.PropsUtil;
@@ -27,8 +25,8 @@ import java.lang.reflect.Method;
  * @author Shinn Lok
  * @generated
  */
-@ProviderType
 public class ServletContextUtil {
+
 	public static String getServletContextName() {
 		if (Validator.isNotNull(_servletContextName)) {
 			return _servletContextName;
@@ -40,16 +38,18 @@ public class ServletContextUtil {
 			}
 
 			try {
-				ClassLoader classLoader = ServletContextUtil.class.getClassLoader();
+				ClassLoader classLoader =
+					ServletContextUtil.class.getClassLoader();
 
 				Class<?> portletPropsClass = classLoader.loadClass(
-						"com.liferay.util.portlet.PortletProps");
+					"com.liferay.util.portlet.PortletProps");
 
-				Method getMethod = portletPropsClass.getMethod("get",
-						new Class<?>[] { String.class });
+				Method getMethod = portletPropsClass.getMethod(
+					"get", new Class<?>[] {String.class});
 
-				String portletPropsServletContextName = (String)getMethod.invoke(null,
-						"powwow-portlet-deployment-context");
+				String portletPropsServletContextName =
+					(String)getMethod.invoke(
+						null, "powwow-portlet-deployment-context");
 
 				if (Validator.isNotNull(portletPropsServletContextName)) {
 					_servletContextName = portletPropsServletContextName;
@@ -65,7 +65,7 @@ public class ServletContextUtil {
 			if (Validator.isNull(_servletContextName)) {
 				try {
 					String propsUtilServletContextName = PropsUtil.get(
-							"powwow-portlet-deployment-context");
+						"powwow-portlet-deployment-context");
 
 					if (Validator.isNotNull(propsUtilServletContextName)) {
 						_servletContextName = propsUtilServletContextName;
@@ -88,5 +88,7 @@ public class ServletContextUtil {
 	}
 
 	private static Log _log = LogFactoryUtil.getLog(ServletContextUtil.class);
+
 	private static String _servletContextName;
+
 }

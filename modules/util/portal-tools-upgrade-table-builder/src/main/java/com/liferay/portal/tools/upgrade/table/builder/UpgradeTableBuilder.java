@@ -16,6 +16,7 @@ package com.liferay.portal.tools.upgrade.table.builder;
 
 import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.ReleaseInfo;
+import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.tools.ArgumentsUtil;
 
@@ -75,6 +76,7 @@ public class UpgradeTableBuilder {
 		throws Exception {
 
 		_baseDirName = baseDirName;
+
 		_osgiModule = osgiModule;
 
 		if (_osgiModule) {
@@ -123,12 +125,12 @@ public class UpgradeTableBuilder {
 	private void _buildUpgradeTable(Path path) throws IOException {
 		String pathString = path.toString();
 
-		pathString = pathString.replace('\\', '/');
+		pathString = StringUtil.replace(pathString, '\\', '/');
 
 		String upgradeFileVersion = pathString.replaceFirst(
 			".*/upgrade/v(.+)/util.*", "$1");
 
-		upgradeFileVersion = upgradeFileVersion.replace('_', '.');
+		upgradeFileVersion = StringUtil.replace(upgradeFileVersion, '_', '.');
 
 		if (upgradeFileVersion.contains("to")) {
 			upgradeFileVersion = upgradeFileVersion.replaceFirst(
@@ -145,7 +147,7 @@ public class UpgradeTableBuilder {
 			_upgradeTableDirName, upgradeFileVersion, upgradeFileName);
 
 		if (Files.notExists(upgradeFilePath)) {
-			if (!upgradeFileVersion.equals(_getSchemaVersion())) {
+			if (!_isRelevantUpgradePackage(upgradeFileVersion)) {
 				return;
 			}
 
@@ -159,6 +161,7 @@ public class UpgradeTableBuilder {
 		String content = _read(path);
 
 		String packagePath = _getPackagePath(content);
+
 		String className = fileName.substring(0, fileName.length() - 5);
 
 		String upgradeFileContent = _read(upgradeFilePath);
@@ -235,7 +238,7 @@ public class UpgradeTableBuilder {
 			}
 		}
 
-		return addIndexes.toArray(new String[addIndexes.size()]);
+		return addIndexes.toArray(new String[0]);
 	}
 
 	private String _getAuthor(String content) {
@@ -245,7 +248,7 @@ public class UpgradeTableBuilder {
 			int y = content.indexOf("*", x + 1);
 
 			if (y != -1) {
-				return content.substring(x + 10, y).trim();
+				return StringUtil.trim(content.substring(x + 10, y));
 			}
 		}
 
@@ -273,14 +276,14 @@ public class UpgradeTableBuilder {
 
 		content = content.substring(x, y + 1);
 
-		content = content.replace("\t", "");
-		content = content.replace("{ \"", "{\"");
-		content = content.replace("new Integer(Types.", "Types.");
-		content = content.replace(") }", "}");
-		content = content.replace(" }", "}");
+		content = StringUtil.replace(content, "\t", "");
+		content = StringUtil.replace(content, "{ \"", "{\"");
+		content = StringUtil.replace(content, "new Integer(Types.", "Types.");
+		content = StringUtil.replace(content, ") }", "}");
+		content = StringUtil.replace(content, " }", "}");
 
 		while (content.contains("\n\n")) {
-			content = content.replace("\n\n", "\n");
+			content = StringUtil.replace(content, "\n\n", "\n");
 		}
 
 		StringBuilder sb = new StringBuilder();
@@ -420,10 +423,6 @@ public class UpgradeTableBuilder {
 	}
 
 	private String _getSchemaVersion() throws IOException {
-		if (!_osgiModule) {
-			return _releaseInfoVersion;
-		}
-
 		Properties properties = new Properties();
 
 		Path path = Paths.get(_baseDirName, "bnd.bnd");
@@ -445,10 +444,29 @@ public class UpgradeTableBuilder {
 		return paths.get(0);
 	}
 
+	private boolean _isRelevantUpgradePackage(String upgradeFileVersion)
+		throws IOException {
+
+		String currentVersion = null;
+
+		if (_osgiModule) {
+			currentVersion = _getSchemaVersion();
+		}
+		else {
+			currentVersion = _releaseInfoVersion.substring(0, 3);
+		}
+
+		if (!upgradeFileVersion.startsWith(currentVersion)) {
+			return false;
+		}
+
+		return true;
+	}
+
 	private String _read(Path path) throws IOException {
 		String s = new String(Files.readAllBytes(path), StandardCharsets.UTF_8);
 
-		return s.replace("\r\n", "\n");
+		return StringUtil.replace(s, "\r\n", "\n");
 	}
 
 	private static final String _AUTHOR = "Brian Wing Shun Chan";

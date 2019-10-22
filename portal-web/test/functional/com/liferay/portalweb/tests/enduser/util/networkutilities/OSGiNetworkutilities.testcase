@@ -1,52 +1,43 @@
-<definition component-name="portal-util-misc">
-	<property name="osgi.app.includes" value="network-utilities" />
-	<property name="portal.release" value="true" />
-	<property name="portal.upstream" value="true" />
-	<property name="testray.main.component.name" value="Util" />
+@component-name = "portal-util-misc"
+definition {
 
-	<set-up>
-		<execute macro="TestCase#setUpPortalInstance" />
+	property osgi.app.includes = "network-utilities";
+	property portal.release = "true";
+	property portal.upstream = "true";
+	property testray.main.component.name = "Util";
 
-		<execute macro="User#firstLoginPG" />
+	setUp {
+		TestCase.setUpPortalInstance();
 
-		<execute macro="ProductMenu#gotoPortlet">
-			<var name="category" value="Navigation" />
-			<var name="panel" value="Site Administration" />
-			<var name="portlet" value="Site Pages" />
-		</execute>
+		User.firstLoginPG();
 
-		<execute macro="SitePages#addPublicPage">
-			<var name="pageName" value="Network Utilities Page" />
-		</execute>
+		ProductMenu.gotoPortlet(
+			category = "Site Builder",
+			panel = "Site Administration",
+			portlet = "Pages");
 
-		<execute macro="Navigator#gotoPage">
-			<var name="pageName" value="Network Utilities Page" />
-		</execute>
+		SitePages.addPublicPage(pageName = "Network Utilities Page");
 
-		<execute macro="Portlet#addPG">
-			<var name="portletName" value="Network Utilities" />
-		</execute>
-	</set-up>
+		Navigator.gotoPage(pageName = "Network Utilities Page");
 
-	<tear-down>
-		<var method="TestPropsUtil#get('test.portal.instance')" name="testPortalInstance" />
+		Portlet.addPG(portletName = "Network Utilities");
+	}
 
-		<if>
-			<equals arg1="${testPortalInstance}" arg2="true" />
-			<then>
-				<execute macro="PortalInstances#tearDownCP" />
-			</then>
-		</if>
-	</tear-down>
+	tearDown {
+		var testPortalInstance = PropsUtil.get("test.portal.instance");
 
-	<command name="SearchDNSDomain" priority="2">
-		<execute macro="Navigator#gotoPage">
-			<var name="pageName" value="Network Utilities Page" />
-		</execute>
+		if ("${testPortalInstance}" == "true") {
+			PortalInstances.tearDownCP();
+		}
+	}
 
-		<execute macro="NetworkUtilities#searchPG">
-			<var name="dnsDomain" value="" />
-			<var name="networkDomain" value="localhost" />
-		</execute>
-	</command>
-</definition>
+	@priority = "2"
+	test SearchDNSDomain {
+		Navigator.gotoPage(pageName = "Network Utilities Page");
+
+		NetworkUtilities.searchPG(
+			dnsDomain = "",
+			networkDomain = "localhost");
+	}
+
+}

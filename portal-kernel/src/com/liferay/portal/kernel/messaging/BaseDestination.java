@@ -104,9 +104,8 @@ public abstract class BaseDestination implements Destination {
 		if (getMessageListenerCount() > 0) {
 			return true;
 		}
-		else {
-			return false;
-		}
+
+		return false;
 	}
 
 	@Override
@@ -123,10 +122,10 @@ public abstract class BaseDestination implements Destination {
 
 	@Override
 	public boolean register(
-		MessageListener messageListener, ClassLoader classloader) {
+		MessageListener messageListener, ClassLoader classLoader) {
 
 		InvokerMessageListener invokerMessageListener =
-			new InvokerMessageListener(messageListener, classloader);
+			new InvokerMessageListener(messageListener, classLoader);
 
 		return registerMessageListener(invokerMessageListener);
 	}
@@ -161,10 +160,10 @@ public abstract class BaseDestination implements Destination {
 	}
 
 	public boolean unregister(
-		MessageListener messageListener, ClassLoader classloader) {
+		MessageListener messageListener, ClassLoader classLoader) {
 
 		InvokerMessageListener invokerMessageListener =
-			new InvokerMessageListener(messageListener, classloader);
+			new InvokerMessageListener(messageListener, classLoader);
 
 		return unregisterMessageListener(invokerMessageListener);
 	}

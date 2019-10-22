@@ -15,10 +15,10 @@
 package com.liferay.portal.security.permission;
 
 import com.liferay.exportimport.kernel.lar.ExportImportThreadLocal;
-import com.liferay.petra.string.StringPool;
-import com.liferay.portal.kernel.cache.MultiVMPoolUtil;
+import com.liferay.petra.lang.HashUtil;
 import com.liferay.portal.kernel.cache.PortalCache;
 import com.liferay.portal.kernel.cache.PortalCacheHelperUtil;
+import com.liferay.portal.kernel.cache.PortalCacheManagerNames;
 import com.liferay.portal.kernel.cache.index.IndexEncoder;
 import com.liferay.portal.kernel.cache.index.PortalCacheIndexer;
 import com.liferay.portal.kernel.cluster.ClusterExecutorUtil;
@@ -26,17 +26,18 @@ import com.liferay.portal.kernel.cluster.ClusterInvokeThreadLocal;
 import com.liferay.portal.kernel.cluster.ClusterRequest;
 import com.liferay.portal.kernel.model.ResourceConstants;
 import com.liferay.portal.kernel.model.Role;
+import com.liferay.portal.kernel.security.permission.PermissionChecker;
 import com.liferay.portal.kernel.security.permission.PermissionThreadLocal;
-import com.liferay.portal.kernel.security.permission.ResourceBlockIdsBag;
 import com.liferay.portal.kernel.security.permission.UserBag;
-import com.liferay.portal.kernel.util.HashUtil;
 import com.liferay.portal.kernel.util.MethodHandler;
 import com.liferay.portal.kernel.util.MethodKey;
 import com.liferay.portal.util.PropsValues;
 
 import java.io.Serializable;
 
+import java.util.AbstractMap;
 import java.util.Arrays;
+import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -54,13 +55,6 @@ public class PermissionCacheUtil {
 	public static final String PERMISSION_CHECKER_BAG_CACHE_NAME =
 		PermissionCacheUtil.class.getName() + "_PERMISSION_CHECKER_BAG";
 
-	/**
-	 * @deprecated As of 7.0.0, with no direct replacement
-	 */
-	@Deprecated
-	public static final String RESOURCE_BLOCK_IDS_BAG_CACHE_NAME =
-		PermissionCacheUtil.class.getName() + "_RESOURCE_BLOCK_IDS_BAG";
-
 	public static final String USER_BAG_CACHE_NAME =
 		PermissionCacheUtil.class.getName() + "_USER_BAG";
 
@@ -75,6 +69,8 @@ public class PermissionCacheUtil {
 			return;
 		}
 
+		_clearPermissionChecksMap();
+
 		_userRolePortalCache.removeAll();
 		_userGroupRoleIdsPortalCache.removeAll();
 		_permissionPortalCache.removeAll();
@@ -86,6 +82,8 @@ public class PermissionCacheUtil {
 		if (ExportImportThreadLocal.isImportInProcess()) {
 			return;
 		}
+
+		_clearPermissionChecksMap();
 
 		for (long userId : userIds) {
 			_userBagPortalCache.remove(userId);
@@ -105,22 +103,18 @@ public class PermissionCacheUtil {
 			return;
 		}
 
+		_clearPermissionChecksMap();
+
 		_permissionPortalCache.removeAll();
 		_userPrimaryKeyRolePortalCache.removeAll();
-	}
-
-	/**
-	 * @deprecated As of 7.0.0, with no direct replacement
-	 */
-	@Deprecated
-	public static void clearResourceBlockCache(
-		long companyId, long groupId, String name) {
 	}
 
 	public static void clearResourceCache() {
 		if (!ExportImportThreadLocal.isImportInProcess()) {
 			_permissionPortalCache.removeAll();
 		}
+
+		_clearPermissionChecksMap();
 	}
 
 	public static void clearResourcePermissionCache(
@@ -132,6 +126,8 @@ public class PermissionCacheUtil {
 
 			return;
 		}
+
+		_clearPermissionChecksMap();
 
 		if (scope == ResourceConstants.SCOPE_INDIVIDUAL) {
 			_permissionPortalCacheNamePrimKeyIndexer.removeKeys(
@@ -160,16 +156,6 @@ public class PermissionCacheUtil {
 			groupId, name, primKey, roleIds, actionId);
 
 		return _permissionPortalCache.get(permissionKey);
-	}
-
-	/**
-	 * @deprecated As of 7.0.0, with no direct replacement
-	 */
-	@Deprecated
-	public static ResourceBlockIdsBag getResourceBlockIdsBag(
-		long companyId, long groupId, long userId, String name) {
-
-		return null;
 	}
 
 	public static UserBag getUserBag(long userId) {
@@ -226,11 +212,6 @@ public class PermissionCacheUtil {
 			_permissionPortalCache, permissionKey, value);
 	}
 
-	public static void putResourceBlockIdsBag(
-		long companyId, long groupId, long userId, String name,
-		ResourceBlockIdsBag resourceBlockIdsBag) {
-	}
-
 	public static void putUserBag(long userId, UserBag userBag) {
 		PortalCacheHelperUtil.putWithoutReplicator(
 			_userBagPortalCache, userId, userBag);
@@ -285,14 +266,6 @@ public class PermissionCacheUtil {
 		_permissionPortalCache.remove(permissionKey);
 	}
 
-	/**
-	 * @deprecated As of 7.0.0, with no direct replacement
-	 */
-	@Deprecated
-	public static void removeResourceBlockIdsBag(
-		long companyId, long groupId, long userId, String name) {
-	}
-
 	public static void removeUserBag(long userId) {
 		_userBagPortalCache.remove(userId);
 	}
@@ -311,6 +284,20 @@ public class PermissionCacheUtil {
 			userId, primaryKey, roleName);
 
 		_userPrimaryKeyRolePortalCache.remove(userPrimaryKeyRoleKey);
+	}
+
+	private static void _clearPermissionChecksMap() {
+		PermissionChecker permissionChecker =
+			PermissionThreadLocal.getPermissionChecker();
+
+		if (permissionChecker != null) {
+			Map<Object, Object> permissionChecksMap =
+				permissionChecker.getPermissionChecksMap();
+
+			if (permissionChecksMap != null) {
+				permissionChecksMap.clear();
+			}
+		}
 	}
 
 	private static void _sendClearCacheClusterMessage(
@@ -335,29 +322,32 @@ public class PermissionCacheUtil {
 			PermissionCacheUtil.class, "clearResourcePermissionCache",
 			int.class, String.class, String.class);
 	private static final PortalCache<PermissionKey, Boolean>
-		_permissionPortalCache = MultiVMPoolUtil.getPortalCache(
-			PERMISSION_CACHE_NAME,
+		_permissionPortalCache = PortalCacheHelperUtil.getPortalCache(
+			PortalCacheManagerNames.MULTI_VM, PERMISSION_CACHE_NAME,
 			PropsValues.PERMISSIONS_OBJECT_BLOCKING_CACHE);
 	private static final PortalCacheIndexer<Long, PermissionKey, Boolean>
 		_permissionPortalCacheGroupIdIndexer = new PortalCacheIndexer<>(
 			new PermissionKeyGroupIdIndexEncoder(), _permissionPortalCache);
-	private static final PortalCacheIndexer<String, PermissionKey, Boolean>
-		_permissionPortalCacheNamePrimKeyIndexer = new PortalCacheIndexer<>(
-			new PermissionKeyNamePrimKeyIndexEncoder(), _permissionPortalCache);
+	private static final PortalCacheIndexer
+		<Map.Entry<?, ?>, PermissionKey, Boolean>
+			_permissionPortalCacheNamePrimKeyIndexer = new PortalCacheIndexer<>(
+				new PermissionKeyNamePrimKeyIndexEncoder(),
+				_permissionPortalCache);
 	private static final PortalCache<Long, UserBag> _userBagPortalCache =
-		MultiVMPoolUtil.getPortalCache(
-			USER_BAG_CACHE_NAME, PropsValues.PERMISSIONS_OBJECT_BLOCKING_CACHE);
+		PortalCacheHelperUtil.getPortalCache(
+			PortalCacheManagerNames.MULTI_VM, USER_BAG_CACHE_NAME,
+			PropsValues.PERMISSIONS_OBJECT_BLOCKING_CACHE);
 	private static final PortalCache<UserGroupRoleIdsKey, long[]>
-		_userGroupRoleIdsPortalCache = MultiVMPoolUtil.getPortalCache(
-			PERMISSION_CHECKER_BAG_CACHE_NAME,
+		_userGroupRoleIdsPortalCache = PortalCacheHelperUtil.getPortalCache(
+			PortalCacheManagerNames.MULTI_VM, PERMISSION_CHECKER_BAG_CACHE_NAME,
 			PropsValues.PERMISSIONS_OBJECT_BLOCKING_CACHE);
 	private static final PortalCacheIndexer<Long, UserGroupRoleIdsKey, long[]>
 		_userGroupRoleIdsPortalCacheIndexer = new PortalCacheIndexer<>(
 			new UserGroupRoleIdsKeyIndexEncoder(),
 			_userGroupRoleIdsPortalCache);
 	private static final PortalCache<UserPrimaryKeyRoleKey, Boolean>
-		_userPrimaryKeyRolePortalCache = MultiVMPoolUtil.getPortalCache(
-			USER_PRIMARY_KEY_ROLE_CACHE_NAME,
+		_userPrimaryKeyRolePortalCache = PortalCacheHelperUtil.getPortalCache(
+			PortalCacheManagerNames.MULTI_VM, USER_PRIMARY_KEY_ROLE_CACHE_NAME,
 			PropsValues.PERMISSIONS_OBJECT_BLOCKING_CACHE);
 	private static final PortalCacheIndexer
 		<Long, UserPrimaryKeyRoleKey, Boolean>
@@ -366,8 +356,8 @@ public class PermissionCacheUtil {
 					new UserGroupRoleKeyUserIdEncoder(),
 					_userPrimaryKeyRolePortalCache);
 	private static final PortalCache<UserRoleKey, Boolean>
-		_userRolePortalCache = MultiVMPoolUtil.getPortalCache(
-			USER_ROLE_CACHE_NAME,
+		_userRolePortalCache = PortalCacheHelperUtil.getPortalCache(
+			PortalCacheManagerNames.MULTI_VM, USER_ROLE_CACHE_NAME,
 			PropsValues.PERMISSIONS_OBJECT_BLOCKING_CACHE);
 	private static final PortalCacheIndexer<Long, UserRoleKey, Boolean>
 		_userRolePortalCacheIndexer = new PortalCacheIndexer<>(
@@ -440,14 +430,14 @@ public class PermissionCacheUtil {
 	}
 
 	private static class PermissionKeyNamePrimKeyIndexEncoder
-		implements IndexEncoder<String, PermissionKey> {
+		implements IndexEncoder<Map.Entry<?, ?>, PermissionKey> {
 
-		public static String encode(String name, String primKey) {
-			return name.concat(StringPool.UNDERLINE).concat(primKey);
+		public static Map.Entry<?, ?> encode(String name, String primKey) {
+			return new AbstractMap.SimpleImmutableEntry<>(name, primKey);
 		}
 
 		@Override
-		public String encode(PermissionKey permissionKey) {
+		public Map.Entry<?, ?> encode(PermissionKey permissionKey) {
 			return encode(permissionKey._name, permissionKey._primKey);
 		}
 

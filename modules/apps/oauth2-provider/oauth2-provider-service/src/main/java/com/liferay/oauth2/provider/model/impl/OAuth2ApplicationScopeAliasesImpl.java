@@ -14,33 +14,9 @@
 
 package com.liferay.oauth2.provider.model.impl;
 
-import aQute.bnd.annotation.ProviderType;
-
-import com.liferay.portal.kernel.util.StringPool;
-import com.liferay.portal.kernel.util.StringUtil;
-
-import java.util.Arrays;
-import java.util.List;
-
 /**
  * @author Brian Wing Shun Chan
  */
-@ProviderType
 public class OAuth2ApplicationScopeAliasesImpl
 	extends OAuth2ApplicationScopeAliasesBaseImpl {
-
-	@Override
-	public List<String> getScopeAliasesList() {
-		return Arrays.asList(
-			StringUtil.split(getScopeAliases(), StringPool.SPACE));
-	}
-
-	@Override
-	public void setScopeAliasesList(List<String> scopeAliasesList) {
-		String scopeAliases = StringUtil.merge(
-			scopeAliasesList, StringPool.SPACE);
-
-		setScopeAliases(scopeAliases);
-	}
-
 }

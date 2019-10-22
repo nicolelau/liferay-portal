@@ -16,13 +16,13 @@ package com.liferay.portal.image;
 
 import com.liferay.petra.process.LoggingOutputProcessor;
 import com.liferay.petra.process.ProcessUtil;
+import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.image.Ghostscript;
 import com.liferay.portal.kernel.image.ImageMagickUtil;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.util.OSDetector;
-import com.liferay.portal.kernel.util.StringBundler;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -170,8 +170,9 @@ public class GhostscriptImpl implements Ghostscript {
 
 	private static final String _GHOSTSCRIPT_COMMAND_UNIX = "gs";
 
-	private static final String[] _GHOSTSCRIPT_COMMAND_WINDOWS =
-		{"gswin32c", "gswin64c"};
+	private static final String[] _GHOSTSCRIPT_COMMAND_WINDOWS = {
+		"gswin32c", "gswin64c"
+	};
 
 	private static final Log _log = LogFactoryUtil.getLog(
 		GhostscriptImpl.class);

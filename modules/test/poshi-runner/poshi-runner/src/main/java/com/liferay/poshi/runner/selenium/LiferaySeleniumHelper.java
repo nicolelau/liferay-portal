@@ -14,7 +14,6 @@
 
 package com.liferay.poshi.runner.selenium;
 
-import com.liferay.poshi.runner.PoshiRunnerGetterUtil;
 import com.liferay.poshi.runner.exception.PoshiRunnerWarningException;
 import com.liferay.poshi.runner.util.EmailCommands;
 import com.liferay.poshi.runner.util.FileUtil;
@@ -112,7 +111,9 @@ public class LiferaySeleniumHelper {
 		for (Element eventElement : eventElements) {
 			String level = eventElement.attributeValue("level");
 
-			if (level.equals("ERROR") || level.equals("FATAL")) {
+			if (level.equals("ERROR") || level.equals("FATAL") ||
+				level.equals("WARN")) {
+
 				String timestamp = eventElement.attributeValue("timestamp");
 
 				if (_errorTimestamps.contains(timestamp)) {
@@ -385,7 +386,7 @@ public class LiferaySeleniumHelper {
 		}
 
 		for (String baseDirName : baseDirNames) {
-			String filePath = PoshiRunnerGetterUtil.getCanonicalPath(
+			String filePath = FileUtil.getCanonicalPath(
 				baseDirName + FileUtil.getSeparator() + fileName);
 
 			if (FileUtil.exists(filePath)) {
@@ -482,6 +483,18 @@ public class LiferaySeleniumHelper {
 
 			if (matcher.find()) {
 				return true;
+			}
+
+			Element throwableElement = eventElement.element("throwable");
+
+			if (throwableElement != null) {
+				String throwableText = throwableElement.getText();
+
+				matcher = pattern.matcher(throwableText);
+
+				if (matcher.find()) {
+					return true;
+				}
 			}
 		}
 
@@ -686,9 +699,7 @@ public class LiferaySeleniumHelper {
 		InputStreamReader inputStreamReader = new InputStreamReader(
 			process.getInputStream());
 
-		BufferedReader bufferedReader = new BufferedReader(inputStreamReader);
-
-		return bufferedReader;
+		return new BufferedReader(inputStreamReader);
 	}
 
 	private static final List<String> _errorTimestamps = new ArrayList<>();

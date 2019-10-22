@@ -18,11 +18,10 @@ import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.search.elasticsearch6.internal.util.LogUtil;
 
+import org.elasticsearch.action.ActionResponse;
 import org.elasticsearch.action.admin.indices.settings.put.UpdateSettingsRequestBuilder;
-import org.elasticsearch.action.admin.indices.settings.put.UpdateSettingsResponse;
 import org.elasticsearch.client.IndicesAdminClient;
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.common.settings.Settings.Builder;
 
 /**
  * @author André de Oliveira
@@ -40,17 +39,16 @@ public class ReplicasManagerImpl implements ReplicasManager {
 		UpdateSettingsRequestBuilder updateSettingsRequestBuilder =
 			_indicesAdminClient.prepareUpdateSettings(indices);
 
-		Builder builder = Settings.builder();
+		Settings.Builder builder = Settings.builder();
 
 		builder.put("number_of_replicas", numberOfReplicas);
 
 		updateSettingsRequestBuilder.setSettings(builder);
 
 		try {
-			UpdateSettingsResponse updateSettingsResponse =
-				updateSettingsRequestBuilder.get();
+			ActionResponse actionResponse = updateSettingsRequestBuilder.get();
 
-			LogUtil.logActionResponse(_log, updateSettingsResponse);
+			LogUtil.logActionResponse(_log, actionResponse);
 		}
 		catch (Exception e) {
 			if (_log.isWarnEnabled()) {

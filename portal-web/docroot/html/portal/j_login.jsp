@@ -104,13 +104,14 @@ if (PropsValues.PORTAL_JAAS_ENABLE && (jUserName != null)) {
 			session.invalidate();
 		}
 		catch (Exception e) {
-			e.printStackTrace();
+			_log.error(e, e);
 		}
 		%>
 
 		<html dir="<liferay-ui:message key="lang.dir" />">
 			<head>
 				<title></title>
+
 				<meta content="0; url=<%= themeDisplay.getPathMain() %>" http-equiv="refresh" />
 				<meta content="no-cache" http-equiv="Cache-Control" />
 				<meta content="no-cache" http-equiv="Pragma" />
@@ -124,3 +125,7 @@ if (PropsValues.PORTAL_JAAS_ENABLE && (jUserName != null)) {
 		</html>
 	</c:otherwise>
 </c:choose>
+
+<%!
+	private static Log _log = LogFactoryUtil.getLog("portal_web.docroot.html.portal.j_login_jsp");
+%>

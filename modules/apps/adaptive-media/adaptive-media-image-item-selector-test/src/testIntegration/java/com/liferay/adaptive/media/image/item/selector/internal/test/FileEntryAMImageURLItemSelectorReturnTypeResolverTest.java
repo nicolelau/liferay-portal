@@ -19,8 +19,9 @@ import com.liferay.adaptive.media.image.configuration.AMImageConfigurationHelper
 import com.liferay.arquillian.extension.junit.bridge.junit.Arquillian;
 import com.liferay.document.library.kernel.model.DLFolderConstants;
 import com.liferay.document.library.kernel.service.DLAppLocalService;
-import com.liferay.document.library.kernel.util.DLUtil;
+import com.liferay.document.library.util.DLURLHelper;
 import com.liferay.item.selector.ItemSelectorReturnTypeResolver;
+import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.json.JSONArray;
 import com.liferay.portal.kernel.json.JSONFactoryUtil;
@@ -36,7 +37,6 @@ import com.liferay.portal.kernel.test.util.ServiceContextTestUtil;
 import com.liferay.portal.kernel.test.util.TestPropsValues;
 import com.liferay.portal.kernel.util.ContentTypes;
 import com.liferay.portal.kernel.util.FileUtil;
-import com.liferay.portal.kernel.util.StringBundler;
 import com.liferay.portal.service.test.ServiceTestUtil;
 import com.liferay.portal.test.rule.Inject;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
@@ -44,6 +44,8 @@ import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -120,7 +122,7 @@ public class FileEntryAMImageURLItemSelectorReturnTypeResolverTest {
 		String defaultSource = jsonObject.getString("defaultSource");
 
 		Assert.assertEquals(
-			DLUtil.getPreviewURL(
+			_dlURLHelper.getImagePreviewURL(
 				fileEntry, fileEntry.getFileVersion(), null, StringPool.BLANK,
 				false, false),
 			defaultSource);
@@ -165,7 +167,7 @@ public class FileEntryAMImageURLItemSelectorReturnTypeResolverTest {
 		String defaultSource = jsonObject.getString("defaultSource");
 
 		Assert.assertEquals(
-			DLUtil.getPreviewURL(
+			_dlURLHelper.getImagePreviewURL(
 				fileEntry, fileEntry.getFileVersion(), null, StringPool.BLANK,
 				false, false),
 			defaultSource);
@@ -214,7 +216,7 @@ public class FileEntryAMImageURLItemSelectorReturnTypeResolverTest {
 		String defaultSource = jsonObject.getString("defaultSource");
 
 		Assert.assertEquals(
-			DLUtil.getPreviewURL(
+			_dlURLHelper.getImagePreviewURL(
 				fileEntry, fileEntry.getFileVersion(), null, StringPool.BLANK,
 				false, false),
 			defaultSource);
@@ -255,7 +257,7 @@ public class FileEntryAMImageURLItemSelectorReturnTypeResolverTest {
 		String defaultSource = jsonObject.getString("defaultSource");
 
 		Assert.assertEquals(
-			DLUtil.getPreviewURL(
+			_dlURLHelper.getImagePreviewURL(
 				fileEntry, fileEntry.getFileVersion(), null, StringPool.BLANK,
 				false, false),
 			defaultSource);
@@ -296,7 +298,7 @@ public class FileEntryAMImageURLItemSelectorReturnTypeResolverTest {
 		String defaultSource = jsonObject.getString("defaultSource");
 
 		Assert.assertEquals(
-			DLUtil.getPreviewURL(
+			_dlURLHelper.getImagePreviewURL(
 				fileEntry, fileEntry.getFileVersion(), null, StringPool.BLANK,
 				false, false),
 			defaultSource);
@@ -337,7 +339,7 @@ public class FileEntryAMImageURLItemSelectorReturnTypeResolverTest {
 		String defaultSource = jsonObject.getString("defaultSource");
 
 		Assert.assertEquals(
-			DLUtil.getPreviewURL(
+			_dlURLHelper.getImagePreviewURL(
 				fileEntry, fileEntry.getFileVersion(), null, StringPool.BLANK,
 				false, false),
 			defaultSource);
@@ -378,7 +380,7 @@ public class FileEntryAMImageURLItemSelectorReturnTypeResolverTest {
 		String defaultSource = jsonObject.getString("defaultSource");
 
 		Assert.assertEquals(
-			DLUtil.getPreviewURL(
+			_dlURLHelper.getImagePreviewURL(
 				fileEntry, fileEntry.getFileVersion(), null, StringPool.BLANK,
 				false, false),
 			defaultSource);
@@ -419,7 +421,7 @@ public class FileEntryAMImageURLItemSelectorReturnTypeResolverTest {
 		String defaultSource = jsonObject.getString("defaultSource");
 
 		Assert.assertEquals(
-			DLUtil.getPreviewURL(
+			_dlURLHelper.getImagePreviewURL(
 				fileEntry, fileEntry.getFileVersion(), null, StringPool.BLANK,
 				false, false),
 			defaultSource);
@@ -460,7 +462,7 @@ public class FileEntryAMImageURLItemSelectorReturnTypeResolverTest {
 		String defaultSource = jsonObject.getString("defaultSource");
 
 		Assert.assertEquals(
-			DLUtil.getPreviewURL(
+			_dlURLHelper.getImagePreviewURL(
 				fileEntry, fileEntry.getFileVersion(), null, StringPool.BLANK,
 				false, false),
 			defaultSource);
@@ -501,7 +503,7 @@ public class FileEntryAMImageURLItemSelectorReturnTypeResolverTest {
 		String defaultSource = jsonObject.getString("defaultSource");
 
 		Assert.assertEquals(
-			DLUtil.getPreviewURL(
+			_dlURLHelper.getImagePreviewURL(
 				fileEntry, fileEntry.getFileVersion(), null, StringPool.BLANK,
 				false, false),
 			defaultSource);
@@ -579,12 +581,14 @@ public class FileEntryAMImageURLItemSelectorReturnTypeResolverTest {
 		}
 
 		Assert.assertTrue(
-			"Couldn't find expected max-width of '" + expectedMaxWidth +
-				"' in '" + sourceJSONObject.toString() + "'",
+			StringBundler.concat(
+				"Could not find expected max-width of '", expectedMaxWidth,
+				"' in '", sourceJSONObject.toString(), "'"),
 			(expectedMaxWidth == 0) || assertedMaxWidth);
 		Assert.assertTrue(
-			"Couldn't find expected min-width of '" + expectedMinWidth +
-				"' in '" + sourceJSONObject.toString() + "'",
+			StringBundler.concat(
+				"Could not find expected min-width of '", expectedMinWidth,
+				"' in '", sourceJSONObject.toString(), "'"),
 			(expectedMinWidth == 0) || assertedMinWidth);
 	}
 
@@ -594,6 +598,8 @@ public class FileEntryAMImageURLItemSelectorReturnTypeResolverTest {
 		String title) {
 
 		String srcSource = sourceJSONObject.getString("src");
+
+		Matcher matcher = _pattern.matcher(srcSource);
 
 		StringBundler sb = new StringBundler(13);
 
@@ -611,7 +617,8 @@ public class FileEntryAMImageURLItemSelectorReturnTypeResolverTest {
 		sb.append(title);
 		sb.append(" 2x");
 
-		Assert.assertEquals(sb.toString(), srcSource);
+		Assert.assertEquals(
+			sb.toString(), matcher.replaceAll(StringPool.BLANK));
 	}
 
 	private void _assertSrcSource(
@@ -620,18 +627,22 @@ public class FileEntryAMImageURLItemSelectorReturnTypeResolverTest {
 
 		String srcSource = sourceJSONObject.getString("src");
 
+		Matcher matcher = _pattern.matcher(srcSource);
+
 		Assert.assertEquals(
-			"/o/adaptive-media/image/" + fileEntryId + "/" +
-				configurationEntryUuid + "/" + title,
-			srcSource);
+			StringBundler.concat(
+				"/o/adaptive-media/image/", fileEntryId, "/",
+				configurationEntryUuid, "/", title),
+			matcher.replaceFirst(StringPool.BLANK));
 	}
 
 	private byte[] _getImageBytes() throws Exception {
 		return FileUtil.getBytes(
 			FileEntryAMImageURLItemSelectorReturnTypeResolverTest.class,
-			"/com/liferay/adaptive/media/image/item/selector/internal" +
-				"/resolver/test/dependencies/image.jpg");
+			"image.jpg");
 	}
+
+	private static final Pattern _pattern = Pattern.compile("\\?t=\\d+");
 
 	@Inject
 	private AMImageConfigurationHelper _amImageConfigurationHelper;
@@ -639,11 +650,14 @@ public class FileEntryAMImageURLItemSelectorReturnTypeResolverTest {
 	@Inject
 	private DLAppLocalService _dlAppLocalService;
 
+	@Inject
+	private DLURLHelper _dlURLHelper;
+
 	@DeleteAfterTestRun
 	private Group _group;
 
 	@Inject(
-		filter = "(objectClass=com.liferay.adaptive.media.image.item.selector.internal.FileEntryAMImageURLItemSelectorReturnTypeResolver)"
+		filter = "component.name=*.FileEntryAMImageURLItemSelectorReturnTypeResolver"
 	)
 	private ItemSelectorReturnTypeResolver _itemSelectorReturnTypeResolver;
 

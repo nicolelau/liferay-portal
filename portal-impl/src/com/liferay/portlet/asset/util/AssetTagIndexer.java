@@ -16,7 +16,6 @@ package com.liferay.portlet.asset.util;
 
 import com.liferay.asset.kernel.model.AssetTag;
 import com.liferay.asset.kernel.service.AssetTagLocalServiceUtil;
-import com.liferay.portal.kernel.dao.orm.ActionableDynamicQuery;
 import com.liferay.portal.kernel.dao.orm.IndexableActionableDynamicQuery;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.log.Log;
@@ -41,7 +40,7 @@ import javax.portlet.PortletResponse;
 
 /**
  * @author     Pavel Savinov
- * @deprecated As of 7.0.0, moved to {@link
+ * @deprecated As of Judson (7.1.x), moved to {@link
  *             com.liferay.asset.tags.internal.search.AssetTagIndexer}
  */
 @Deprecated
@@ -111,18 +110,14 @@ public class AssetTagIndexer extends BaseIndexer<AssetTag> {
 
 	@Override
 	protected void doReindex(AssetTag assetTag) throws Exception {
-		Document document = getDocument(assetTag);
-
 		IndexWriterHelperUtil.updateDocument(
-			getSearchEngineId(), assetTag.getCompanyId(), document,
+			getSearchEngineId(), assetTag.getCompanyId(), getDocument(assetTag),
 			isCommitImmediately());
 	}
 
 	@Override
 	protected void doReindex(String className, long classPK) throws Exception {
-		AssetTag tag = AssetTagLocalServiceUtil.getTag(classPK);
-
-		doReindex(tag);
+		doReindex(AssetTagLocalServiceUtil.getTag(classPK));
 	}
 
 	@Override
@@ -138,27 +133,20 @@ public class AssetTagIndexer extends BaseIndexer<AssetTag> {
 
 		indexableActionableDynamicQuery.setCompanyId(companyId);
 		indexableActionableDynamicQuery.setPerformActionMethod(
-			new ActionableDynamicQuery.PerformActionMethod<AssetTag>() {
+			(AssetTag tag) -> {
+				try {
+					Document document = getDocument(tag);
 
-				@Override
-				public void performAction(AssetTag tag) {
-					try {
-						Document document = getDocument(tag);
-
-						if (document != null) {
-							indexableActionableDynamicQuery.addDocuments(
-								document);
-						}
-					}
-					catch (PortalException pe) {
-						if (_log.isWarnEnabled()) {
-							_log.warn(
-								"Unable to index asset tag " + tag.getTagId(),
-								pe);
-						}
+					if (document != null) {
+						indexableActionableDynamicQuery.addDocuments(document);
 					}
 				}
-
+				catch (PortalException pe) {
+					if (_log.isWarnEnabled()) {
+						_log.warn(
+							"Unable to index asset tag " + tag.getTagId(), pe);
+					}
+				}
 			});
 
 		indexableActionableDynamicQuery.setSearchEngineId(getSearchEngineId());

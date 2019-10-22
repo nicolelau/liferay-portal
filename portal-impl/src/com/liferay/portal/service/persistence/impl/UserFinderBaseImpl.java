@@ -21,8 +21,6 @@ import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.service.persistence.UserPersistence;
 import com.liferay.portal.kernel.service.persistence.impl.BasePersistenceImpl;
 
-import java.lang.reflect.Field;
-
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -32,27 +30,17 @@ import java.util.Set;
  * @generated
  */
 public class UserFinderBaseImpl extends BasePersistenceImpl<User> {
+
 	public UserFinderBaseImpl() {
 		setModelClass(User.class);
 
-		try {
-			Field field = BasePersistenceImpl.class.getDeclaredField(
-					"_dbColumnNames");
+		Map<String, String> dbColumnNames = new HashMap<String, String>();
 
-			field.setAccessible(true);
+		dbColumnNames.put("uuid", "uuid_");
+		dbColumnNames.put("password", "password_");
+		dbColumnNames.put("groups", "groups_");
 
-			Map<String, String> dbColumnNames = new HashMap<String, String>();
-
-			dbColumnNames.put("uuid", "uuid_");
-			dbColumnNames.put("password", "password_");
-
-			field.set(this, dbColumnNames);
-		}
-		catch (Exception e) {
-			if (_log.isDebugEnabled()) {
-				_log.debug(e, e);
-			}
-		}
+		setDBColumnNames(dbColumnNames);
 	}
 
 	@Override
@@ -80,5 +68,8 @@ public class UserFinderBaseImpl extends BasePersistenceImpl<User> {
 
 	@BeanReference(type = UserPersistence.class)
 	protected UserPersistence userPersistence;
-	private static final Log _log = LogFactoryUtil.getLog(UserFinderBaseImpl.class);
+
+	private static final Log _log = LogFactoryUtil.getLog(
+		UserFinderBaseImpl.class);
+
 }

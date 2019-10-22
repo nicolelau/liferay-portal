@@ -14,7 +14,7 @@
 
 package com.liferay.oauth2.provider.service.persistence;
 
-import aQute.bnd.annotation.ProviderType;
+import org.osgi.annotation.versioning.ProviderType;
 
 /**
  * @author Brian Wing Shun Chan
@@ -22,7 +22,10 @@ import aQute.bnd.annotation.ProviderType;
  */
 @ProviderType
 public interface OAuth2ScopeGrantFinder {
-	public java.util.Collection<com.liferay.oauth2.provider.model.OAuth2ScopeGrant> findByC_A_B_A(
-		long companyId, java.lang.String applicationName,
-		java.lang.String bundleSymbolicName, java.lang.String accessTokenContent);
+
+	public java.util.Collection
+		<com.liferay.oauth2.provider.model.OAuth2ScopeGrant> findByC_A_B_A(
+			long companyId, String applicationName, String bundleSymbolicName,
+			String accessTokenContent);
+
 }

@@ -14,6 +14,7 @@
 
 package com.liferay.portal.kernel.deploy.auto;
 
+import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.deploy.auto.context.AutoDeploymentContext;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
@@ -21,7 +22,6 @@ import com.liferay.portal.kernel.util.ArrayUtil;
 import com.liferay.portal.kernel.util.FileUtil;
 import com.liferay.portal.kernel.util.PropsKeys;
 import com.liferay.portal.kernel.util.PropsUtil;
-import com.liferay.portal.kernel.util.StringBundler;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.registry.Registry;
 import com.liferay.registry.RegistryUtil;
@@ -53,16 +53,16 @@ public class AutoDeployDir {
 
 		AutoDeployListener autoDeployListener = _serviceTracker.getService();
 
-		if (autoDeployListener != null) {
-			if (autoDeployListener.isDeployable(autoDeploymentContext)) {
-				autoDeployListener.deploy(autoDeploymentContext);
+		if ((autoDeployListener != null) &&
+			autoDeployListener.isDeployable(autoDeploymentContext)) {
 
-				File file = autoDeploymentContext.getFile();
+			autoDeployListener.deploy(autoDeploymentContext);
 
-				file.delete();
+			File file = autoDeploymentContext.getFile();
 
-				return;
-			}
+			file.delete();
+
+			return;
 		}
 
 		String[] dirNames = PropsUtil.getArray(
@@ -181,8 +181,6 @@ public class AutoDeployDir {
 			((_autoDeployScanner == null) || !_autoDeployScanner.isAlive())) {
 
 			try {
-				scanDirectory();
-
 				Thread currentThread = Thread.currentThread();
 
 				_autoDeployScanner = new AutoDeployScanner(
@@ -199,8 +197,6 @@ public class AutoDeployDir {
 				_log.error(e, e);
 
 				stop();
-
-				return;
 			}
 		}
 		else {
@@ -338,7 +334,7 @@ public class AutoDeployDir {
 	private static final ServiceTracker<AutoDeployListener, AutoDeployListener>
 		_serviceTracker;
 	private static final Pattern _versionPattern = Pattern.compile(
-		"-[\\d]+((\\.[\\d]+)+(-SNAPSHOT)?)\\.war$");
+		"-[\\d]+((\\.[\\d]+)+(-.+)*)\\.war$");
 
 	static {
 		Registry registry = RegistryUtil.getRegistry();

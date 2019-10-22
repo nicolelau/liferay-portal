@@ -14,14 +14,11 @@
 
 package com.liferay.exportimport.kernel.lar;
 
-import aQute.bnd.annotation.ProviderType;
-
 import com.liferay.petra.lang.CentralizedThreadLocal;
 
 /**
  * @author Michael C. Han
  */
-@ProviderType
 public class ExportImportThreadLocal {
 
 	public static boolean isDataDeletionImportInProcess() {
@@ -98,11 +95,17 @@ public class ExportImportThreadLocal {
 	}
 
 	public static boolean isStagingInProcess() {
-		if (isLayoutStagingInProcess() || isPortletStagingInProcess()) {
+		if (isLayoutStagingInProcess() || isPortletStagingInProcess() ||
+			isStagingInProcessOnRemoteLive()) {
+
 			return true;
 		}
 
 		return false;
+	}
+
+	public static boolean isStagingInProcessOnRemoteLive() {
+		return _stagingInProcessOnRemoteLive.get();
 	}
 
 	public static void setInitialLayoutStagingInProcess(
@@ -169,6 +172,12 @@ public class ExportImportThreadLocal {
 		_portletValidationInProcess.set(portletValidationInProcess);
 	}
 
+	public static void setStagingInProcessOnRemoteLive(
+		boolean stagingInProcessOnRemoteLive) {
+
+		_stagingInProcessOnRemoteLive.set(stagingInProcessOnRemoteLive);
+	}
+
 	private static final ThreadLocal<Boolean> _initialLayoutStagingInProcess =
 		new CentralizedThreadLocal<>(
 			ExportImportThreadLocal.class + "._initialLayoutStagingInProcess",
@@ -214,6 +223,10 @@ public class ExportImportThreadLocal {
 	private static final ThreadLocal<Boolean> _portletValidationInProcess =
 		new CentralizedThreadLocal<>(
 			ExportImportThreadLocal.class + "._portletValidationInProcess",
+			() -> Boolean.FALSE);
+	private static final ThreadLocal<Boolean> _stagingInProcessOnRemoteLive =
+		new CentralizedThreadLocal<>(
+			ExportImportThreadLocal.class + "._stagingInProcessOnRemoteLive",
 			() -> Boolean.FALSE);
 
 }

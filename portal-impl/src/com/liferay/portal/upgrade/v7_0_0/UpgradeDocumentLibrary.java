@@ -96,6 +96,8 @@ public class UpgradeDocumentLibrary extends UpgradeProcess {
 
 		// DLFileEntry
 
+		_populateEmptyTitles("DLFileEntry");
+
 		updateFileEntryFileNames();
 
 		// DLFileEntryType
@@ -105,6 +107,8 @@ public class UpgradeDocumentLibrary extends UpgradeProcess {
 		updateFileEntryTypeDDMStructureLinks();
 
 		// DLFileVersion
+
+		_populateEmptyTitles("DLFileVersion");
 
 		updateFileVersionFileNames();
 
@@ -148,8 +152,8 @@ public class UpgradeDocumentLibrary extends UpgradeProcess {
 	}
 
 	/**
-	 * @deprecated As of 7.0.0, replaced by {@link #hasFileEntry(long, long,
-	 *             long, String, String)}
+	 * @deprecated As of Wilberforce (7.0.x), replaced by {@link
+	 *             #hasFileEntry(long, long, long, String, String)}
 	 */
 	@Deprecated
 	protected boolean hasFileEntry(long groupId, long folderId, String fileName)
@@ -200,6 +204,13 @@ public class UpgradeDocumentLibrary extends UpgradeProcess {
 
 			runSQL("drop table DLFileEntryTypes_DDMStructures");
 		}
+	}
+
+	/**
+	 * @deprecated As of Judson (7.1.x), with no direct replacement
+	 */
+	@Deprecated
+	protected void updateFileEntryTypeFileEntryTypeKeys() throws Exception {
 	}
 
 	protected void updateFileEntryTypeNamesAndDescriptions() throws Exception {
@@ -393,6 +404,7 @@ public class UpgradeDocumentLibrary extends UpgradeProcess {
 		try (LoggingTimer loggingTimer = new LoggingTimer()) {
 			long liferayRepositoryClassNameId = PortalUtil.getClassNameId(
 				LiferayRepository.class);
+
 			long portletRepositoryClassNameId = PortalUtil.getClassNameId(
 				PortletRepository.class);
 
@@ -544,6 +556,16 @@ public class UpgradeDocumentLibrary extends UpgradeProcess {
 		}
 	}
 
+	private void _populateEmptyTitles(String tableName) throws Exception {
+		try (LoggingTimer loggingTimer = new LoggingTimer()) {
+			runSQL(
+				StringBundler.concat(
+					"update ", tableName, " set title = ",
+					"CONCAT('unknown-title-', CAST_TEXT(fileEntryId)) where ",
+					"title = '' or title is null"));
+		}
+	}
+
 	private void _updateLongFileNames(String tableName) throws Exception {
 		try (PreparedStatement ps1 = connection.prepareStatement(
 				"select fileEntryId, title, extension from " + tableName +
@@ -556,8 +578,9 @@ public class UpgradeDocumentLibrary extends UpgradeProcess {
 
 			while (rs.next()) {
 				long fileEntryId = rs.getLong("fileEntryId");
-				String extension = rs.getString("extension");
-				String title = rs.getString("title");
+				String extension = GetterUtil.getString(
+					rs.getString("extension"));
+				String title = GetterUtil.getString(rs.getString("title"));
 
 				int availableLength = 254 - extension.length();
 

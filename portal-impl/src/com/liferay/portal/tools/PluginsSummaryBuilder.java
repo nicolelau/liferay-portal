@@ -53,9 +53,7 @@ public class PluginsSummaryBuilder {
 	public PluginsSummaryBuilder(File pluginsDir) throws Exception {
 		_pluginsDir = pluginsDir;
 
-		String latestHASH = null;
-
-		latestHASH = _getLatestHASH(pluginsDir);
+		String latestHASH = _getLatestHASH(pluginsDir);
 
 		_latestHASH = latestHASH;
 
@@ -221,7 +219,7 @@ public class PluginsSummaryBuilder {
 
 		System.out.println("## read a " + buildXmlFile);
 
-		String buildXmlContent = _fileUtil.read(buildXmlFile);
+		String buildXmlContent = _fileImpl.read(buildXmlFile);
 
 		int x = buildXmlContent.indexOf("import.shared");
 
@@ -347,14 +345,15 @@ public class PluginsSummaryBuilder {
 
 		String fullScreenshotsDirName =
 			fullWebInfDirName + "releng/screenshots/";
-		String relativeScreenshotsDirName =
-			relativeWebInfDirName + "releng/screenshots/";
 
 		if (FileUtil.exists(fullScreenshotsDirName)) {
 			String[] screenshotsFileNames = FileUtil.listFiles(
 				fullScreenshotsDirName);
 
 			Arrays.sort(screenshotsFileNames);
+
+			String relativeScreenshotsDirName =
+				relativeWebInfDirName + "releng/screenshots/";
 
 			for (String screenshotsFileName : screenshotsFileNames) {
 				if (screenshotsFileName.equals("Thumbs.db") ||
@@ -442,8 +441,6 @@ public class PluginsSummaryBuilder {
 						_latestHASH;
 
 				relengChangeLogEntries.add(range);
-
-				continue;
 			}
 		}
 
@@ -522,7 +519,7 @@ public class PluginsSummaryBuilder {
 			}
 
 			String ticketIdsString = StringUtil.merge(
-				ticketIds.toArray(new String[ticketIds.size()]), " ");
+				ticketIds.toArray(new String[0]), " ");
 
 			changeLogVersion++;
 
@@ -626,10 +623,11 @@ public class PluginsSummaryBuilder {
 		sb.append(value);
 	}
 
-	private static final String[] _TICKET_ID_PREFIXES =
-		{"CLDSVCS", "LPS", "SOS", "SYNC"};
+	private static final String[] _TICKET_ID_PREFIXES = {
+		"CLDSVCS", "LPS", "SOS", "SYNC"
+	};
 
-	private static final FileImpl _fileUtil = FileImpl.getInstance();
+	private static final FileImpl _fileImpl = FileImpl.getInstance();
 
 	private final Set<String> _distinctAuthors = new TreeSet<>();
 	private final Set<String> _distinctLicenses = new TreeSet<>();

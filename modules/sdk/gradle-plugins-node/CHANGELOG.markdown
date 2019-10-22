@@ -211,8 +211,8 @@ don't match, the `node_modules` directory is deleted before running
 ## 4.3.0 - 2018-03-15
 
 ### Added
-- [LPS-78741]: Add property `useNpmCI` to `NpmInstallTask`. If `true`, run
-`npm ci` instead of `npm install`.
+- [LPS-78741]: Add the property `useNpmCI` to the `NpmInstallTask`. If `true`,
+run `npm ci` instead of `npm install`.
 
 ### Fixed
 - [LPS-73472]: Allow single `"bin"` values in the `package.json` files.
@@ -220,21 +220,108 @@ don't match, the `node_modules` directory is deleted before running
 ## 4.3.1 - 2018-03-22
 
 ### Fixed
-- [LPS-78741]: If the `nodeModulesDigestFile` matches the `node_modules`
-directory's digest, do not run `npm install`.
+- [LPS-78741]: Do not run `npm install` if the `nodeModulesDigestFile` matches
+the `node_modules` directory's digest.
 
 ## 4.3.2 - 2018-03-30
 
 ### Changed
-- [LPS-78741]: If the `nodeModulesDigestFile` matches the `node_modules`
-directory's digest, do not run `npm ci`.
+- [LPS-78741]: Do not run `npm ci` if the `nodeModulesDigestFile` matches the
+`node_modules` directory's digest.
 
 ## 4.3.3 - 2018-04-05
 
 ### Fixed
-- [LPS-78741]: Fix execution of task `npmPackageLock` when the property
-`useNpmCI` of task `npmInstall` is set to `true`.
+- [LPS-78741]: Fix the `npmPackageLock` task execution when the `npmInstall`
+task's `useNpmCI` property is set to `true`.
 
+## 4.3.4 - 2018-05-07
+
+### Added
+- [LPS-75530]: Define task inputs and outputs for `NpmInstallTask`.
+
+## 4.3.5 - 2018-06-08
+
+### Fixed
+- [LPS-82130]: Fix the broken `npm` symbolic link.
+
+## 4.4.0 - 2018-06-22
+
+### Added
+- [LPS-82568]: Add the property `environment` to all tasks that extend
+`ExecuteNodeTask`. This provides a way to set environment variables.
+
+## 4.4.1 - 2018-10-03
+
+### Changed
+- [LPS-85959]: Delete the NPM cached data before retrying `npm install`.
+
+## 4.4.2 - 2018-10-09
+
+### Changed
+- [LPS-85959]: Verify the NPM cached data before retrying `npm install`.
+
+## 4.4.3 - 2018-10-22
+
+### Fixed
+- [LPS-86576]: Node.js provides Windows binaries bundled with NPM and Node.js
+beginning from version 6.2.1. Download and install Node.js and NPM separately
+for Node.js versions 5.5.0 - 6.2.0.
+
+## 4.5.0 - 2018-11-16
+
+### Added
+- [LPS-87465]: Add the property `production` to all tasks that extend
+`ExecuteNodeTask`. If `true`, [`devDependencies`](https://docs.npmjs.com/files/package.json#devdependencies)
+are not installed when running `npm install` without any arguments and sets
+`NODE_ENV=production` for lifecycle scripts.
+
+## 4.6.0 - 2019-01-07
+
+### Changed
+- [LPS-87479]: Update the [Liferay Gradle Util] dependency to version 1.0.33.
+- [LPS-87479]: Add inputs and outputs for tasks of type `NpmRunTask` to skip
+rerunning the task if none of the inputs or outputs have changed.
+- [LPS-87479]: Update the inputs for tasks of type `NpmInstallTask` to use the
+`nodeModulesDigestFile` instead of the `node_modules` directory as an input.
+
+## 4.6.1 - 2019-01-09
+
+### Changed
+- [LPS-88909]: The `processResources` task will skip overwriting files ending
+with `.es.js` if the `npmRun.sourceDigestFile` matches the `npmRun.sourceFiles`
+digest to preserve changes made by the `npmRun` task.
+
+## 4.6.2 - 2019-01-09
+
+### Changed
+- [LPS-87479]: Set the up-to-date check for `npmRun` tasks to `true` if the
+classes directory does not exist for Java projects.
+
+## 4.6.3 - 2019-01-14
+
+### Fixed
+- [LPS-89126]: Fix failures in parallel builds by updating the outputs for tasks
+of type `NpmInstallTask` to check the `nodeModulesDir` instead of the
+`nodeModulesDigestFile`.
+
+## 4.6.4 - 2019-01-16
+
+### Fixed
+- [LPS-88909]: If the `npmRun.sourceDigestFile` matches the `npmRun.sourceFiles`
+digest, all files ending with the `js` extension in the classes directory will
+be copied before the `processResources` task runs and then copied back to
+preserve changes made by the `npmRun` task.
+
+## 4.6.5 - 2019-01-24
+
+### Added
+- [LPS-89369]: The `npmRun` task should fail when there are Soy compile errors.
+
+### Changed
+- [LPS-89436]: Add Soy files as inputs for tasks of type `NpmRunTask`.
+
+[Liferay Gradle Util]: https://github.com/liferay/liferay-portal/tree/master/modules/sdk/gradle-util
 [LPS-66906]: https://issues.liferay.com/browse/LPS-66906
 [LPS-67023]: https://issues.liferay.com/browse/LPS-67023
 [LPS-67573]: https://issues.liferay.com/browse/LPS-67573
@@ -256,6 +343,17 @@ directory's digest, do not run `npm ci`.
 [LPS-74904]: https://issues.liferay.com/browse/LPS-74904
 [LPS-74933]: https://issues.liferay.com/browse/LPS-74933
 [LPS-75175]: https://issues.liferay.com/browse/LPS-75175
+[LPS-75530]: https://issues.liferay.com/browse/LPS-75530
 [LPS-75965]: https://issues.liferay.com/browse/LPS-75965
 [LPS-77996]: https://issues.liferay.com/browse/LPS-77996
 [LPS-78741]: https://issues.liferay.com/browse/LPS-78741
+[LPS-82130]: https://issues.liferay.com/browse/LPS-82130
+[LPS-82568]: https://issues.liferay.com/browse/LPS-82568
+[LPS-85959]: https://issues.liferay.com/browse/LPS-85959
+[LPS-86576]: https://issues.liferay.com/browse/LPS-86576
+[LPS-87465]: https://issues.liferay.com/browse/LPS-87465
+[LPS-87479]: https://issues.liferay.com/browse/LPS-87479
+[LPS-88909]: https://issues.liferay.com/browse/LPS-88909
+[LPS-89126]: https://issues.liferay.com/browse/LPS-89126
+[LPS-89369]: https://issues.liferay.com/browse/LPS-89369
+[LPS-89436]: https://issues.liferay.com/browse/LPS-89436

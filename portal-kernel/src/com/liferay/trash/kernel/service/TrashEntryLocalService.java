@@ -14,7 +14,7 @@
 
 package com.liferay.trash.kernel.service;
 
-import aQute.bnd.annotation.ProviderType;
+import org.osgi.annotation.versioning.ProviderType;
 
 import com.liferay.portal.kernel.dao.orm.ActionableDynamicQuery;
 import com.liferay.portal.kernel.dao.orm.DynamicQuery;
@@ -53,7 +53,7 @@ import java.util.List;
  * @see TrashEntryLocalServiceUtil
  * @see com.liferay.portlet.trash.service.base.TrashEntryLocalServiceBaseImpl
  * @see com.liferay.portlet.trash.service.impl.TrashEntryLocalServiceImpl
- * @deprecated As of 7.0.0, replaced by {@link
+ * @deprecated As of Judson (7.1.x), replaced by {@link
            com.liferay.trash.service.impl.TrashEntryLocalServiceImpl}
  * @generated
  */

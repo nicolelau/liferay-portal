@@ -1,54 +1,82 @@
-<definition>
-	<command name="accountSignIn">
-		<var method="TestPropsUtil#get('sharepoint.oauth.user.name')" name="key_userEmail" />
-		<var method="TestPropsUtil#get('sharepoint.oauth.user.password')" name="userPassword" />
+definition {
 
-		<if>
-			<condition function="IsElementPresent#pauseIsElementPresent" locator1="MicrosoftLogin#LOGIN_USER_CHOOSER" />
+	macro accountSignIn {
+		var key_userEmail = PropsUtil.get("sharepoint.oauth.user.name");
+		var key_userPassword = PropsUtil.get("sharepoint.oauth.user.password");
 
-			<then>
-				<execute function="AssertClick" locator1="MicrosoftLogin#LOGIN_USER_CHOOSER" value1="${key_userEmail}" />
+		Pause(locator1 = "10000");
 
-				<execute function="Type" locator1="MicrosoftLogin#LOGIN_PASSWORD_FIELD" value1="${userPassword}" />
+		if (isSet(windowTitle)) {
+			SelectWindow(locator1 = "MicrosoftLogin#LOGIN_PAGE_TITLE");
+		}
 
-				<execute function="AssertClick" locator1="MicrosoftLogin#LOGIN_SIGN_IN_BUTTON" value1="Sign in" />
-			</then>
-			<elseif>
-				<condition function="IsElementPresent#pauseIsElementPresent" locator1="MicrosoftLogin#LOGIN_EMAIL_FIELD" />
+		if (IsElementPresent.pauseIsElementPresent(locator1 = "MicrosoftLogin#LOGIN_USER_CHOOSER")) {
+			AssertClick(
+				locator1 = "MicrosoftLogin#LOGIN_USER_CHOOSER",
+				value1 = "${key_userEmail}");
 
-				<then>
-					<execute function="Type" locator1="MicrosoftLogin#LOGIN_EMAIL_FIELD" value1="${key_userEmail}" />
+			AssertClick(
+				locator1 = "MicrosoftLogin#LOGIN_NEXT_BUTTON",
+				value1 = "Next");
 
-					<execute function="Type" locator1="MicrosoftLogin#LOGIN_PASSWORD_FIELD" value1="${userPassword}" />
+			Type(
+				locator1 = "MicrosoftLogin#LOGIN_PASSWORD_FIELD",
+				value1 = "${key_userPassword}");
 
-					<execute function="AssertClick" locator1="MicrosoftLogin#LOGIN_SIGN_IN_BUTTON" value1="Sign in" />
-				</then>
-			</elseif>
-		</if>
-	</command>
+			AssertClick(
+				locator1 = "MicrosoftLogin#LOGIN_SIGN_IN_BUTTON",
+				value1 = "Sign in");
+		}
+		else if (IsElementPresent.pauseIsElementPresent(locator1 = "MicrosoftLogin#LOGIN_EMAIL_FIELD")) {
+			Type(
+				locator1 = "MicrosoftLogin#LOGIN_EMAIL_FIELD",
+				value1 = "${key_userEmail}");
 
-	<command name="confirmSharepointApp">
-		<execute function="Pause" locator1="3000" />
+			AssertClick(
+				locator1 = "MicrosoftLogin#LOGIN_NEXT_BUTTON",
+				value1 = "Next");
 
-		<var name="app_name" value="Collaboration Test Application" />
+			Type(
+				locator1 = "MicrosoftLogin#LOGIN_PASSWORD_FIELD",
+				value1 = "${key_userPassword}");
 
-		<if>
-			<condition function="IsElementPresent#pauseIsElementPresent" locator1="MicrosoftLogin#SHAREPOINT_NOTIFICATION" />
+			AssertClick(
+				locator1 = "MicrosoftLogin#LOGIN_SIGN_IN_BUTTON",
+				value1 = "Sign in");
+		}
+	}
 
-			<then>
-				<execute function="AssertClick" locator1="MicrosoftLogin#SHAREPOINT_TRUST_IT_BUTTON" value1="Trust It" />
-			</then>
-		</if>
+	macro confirmMicrosoftApp {
+		Pause(locator1 = "3000");
 
-		<if>
-			<condition function="IsElementPresent" locator1="Portlet#HEADER" />
+		if (IsElementPresent(locator1 = "MicrosoftLogin#LOGIN_STAY_SIGNED_IN_CONFIRMATION")) {
+			AssertClick(
+				locator1 = "MicrosoftLogin#LOGIN_YES_BUTTON",
+				value1 = "Yes");
+		}
+	}
 
-			<then>
-				<execute function="AssertTextEquals" locator1="Portlet#HEADER" value1="${dmRepositoryName}" />
-			</then>
-			<else>
-				<execute function="AssertTextEquals" locator1="MicrosoftLogin#SHAREPOINT_SITE_TITLE" value1="Sitio de grupo de Liferay" />
-			</else>
-		</if>
-	</command>
-</definition>
+	macro confirmSharepointApp {
+		Pause(locator1 = "3000");
+
+		var app_name = "Collaboration Test Application";
+
+		if (IsElementPresent(locator1 = "MicrosoftLogin#SHAREPOINT_NOTIFICATION")) {
+			AssertClick(
+				locator1 = "MicrosoftLogin#SHAREPOINT_TRUST_IT_BUTTON",
+				value1 = "Trust It");
+		}
+
+		if (IsElementPresent(locator1 = "Portlet#HEADER")) {
+			AssertTextEquals(
+				locator1 = "Portlet#HEADER",
+				value1 = "${dmRepositoryName}");
+		}
+		else {
+			AssertTextEquals(
+				locator1 = "MicrosoftLogin#SHAREPOINT_SITE_TITLE",
+				value1 = "Sitio de grupo de Liferay");
+		}
+	}
+
+}

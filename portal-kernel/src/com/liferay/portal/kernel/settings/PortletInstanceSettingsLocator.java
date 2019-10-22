@@ -21,7 +21,7 @@ import com.liferay.portal.kernel.util.PortletKeys;
 import com.liferay.portal.kernel.util.PrefsPropsUtil;
 
 /**
- * @author Ivan Zaera
+ * @author Iván Zaera
  * @author Jorge Ferrer
  */
 public class PortletInstanceSettingsLocator implements SettingsLocator {
@@ -81,14 +81,6 @@ public class PortletInstanceSettingsLocator implements SettingsLocator {
 		return _portletInstanceKey;
 	}
 
-	/**
-	 * @deprecated As of 7.0.0, with no direct replacement
-	 */
-	@Deprecated
-	protected long getCompanyId(long groupId) {
-		return _layout.getCompanyId();
-	}
-
 	protected boolean isEmbeddedPortlet() {
 		if (_embeddedPortlet != null) {
 			return _embeddedPortlet;
@@ -108,7 +100,5 @@ public class PortletInstanceSettingsLocator implements SettingsLocator {
 	private Boolean _embeddedPortlet;
 	private final Layout _layout;
 	private final String _portletInstanceKey;
-	private final SettingsLocatorHelper _settingsLocatorHelper =
-		SettingsLocatorHelperUtil.getSettingsLocatorHelper();
 
 }

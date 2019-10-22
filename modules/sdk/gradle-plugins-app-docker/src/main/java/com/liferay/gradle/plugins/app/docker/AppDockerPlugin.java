@@ -120,10 +120,9 @@ public class AppDockerPlugin implements Plugin<Project> {
 		final Sync prepareAppDockerImageInputDirTask,
 		final AppDockerExtension appDockerExtension) {
 
-		Project project = prepareAppDockerImageInputDirTask.getProject();
-
 		final DockerBuildImage dockerBuildImage = GradleUtil.addTask(
-			project, BUILD_APP_DOCKER_IMAGE_TASK_NAME, DockerBuildImage.class);
+			prepareAppDockerImageInputDirTask.getProject(),
+			BUILD_APP_DOCKER_IMAGE_TASK_NAME, DockerBuildImage.class);
 
 		dockerBuildImage.setDependsOn(
 			Collections.singleton(prepareAppDockerImageInputDirTask));
@@ -140,8 +139,8 @@ public class AppDockerPlugin implements Plugin<Project> {
 
 				@Override
 				public File call() throws Exception {
-					return
-						prepareAppDockerImageInputDirTask.getDestinationDir();
+					return prepareAppDockerImageInputDirTask.
+						getDestinationDir();
 				}
 
 			});
@@ -388,13 +387,13 @@ public class AppDockerPlugin implements Plugin<Project> {
 		return imageRepository + ":" + imageTag;
 	}
 
-	private static final Map<String, Object> _fixCrLfArgs = new HashMap<>();
-
-	static {
-		_fixCrLfArgs.put(
-			"eof", FixCrLfFilter.AddAsisRemove.newInstance("remove"));
-		_fixCrLfArgs.put("eol", FixCrLfFilter.CrLf.newInstance("lf"));
-		_fixCrLfArgs.put("fixlast", false);
-	}
+	private static final Map<String, Object> _fixCrLfArgs =
+		new HashMap<String, Object>() {
+			{
+				put("eof", FixCrLfFilter.AddAsisRemove.newInstance("remove"));
+				put("eol", FixCrLfFilter.CrLf.newInstance("lf"));
+				put("fixlast", false);
+			}
+		};
 
 }

@@ -16,11 +16,14 @@ package com.liferay.portal.bundle.blacklist.internal;
 
 import com.liferay.osgi.util.bundle.BundleStartLevelUtil;
 import com.liferay.petra.reflect.ReflectionUtil;
+import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.concurrent.DefaultNoticeableFuture;
 import com.liferay.portal.kernel.util.ArrayUtil;
 import com.liferay.portal.lpkg.deployer.LPKGDeployer;
 
 import java.io.File;
+
+import java.net.URI;
 
 import java.util.Collections;
 import java.util.Dictionary;
@@ -84,8 +87,12 @@ public class BundleUtil {
 		String[] webContextPath = parameters.get("Web-ContextPath");
 
 		if (parameters.isEmpty() && location.endsWith(".lpkg")) {
+			URI uri = new URI(location);
+
+			uri = uri.normalize();
+
 			bundle = bundleContext.installBundle(
-				location, lpkgDeployer.toBundle(new File(location)));
+				location, lpkgDeployer.toBundle(new File(uri.getPath())));
 		}
 		else if (ArrayUtil.isNotEmpty(lpkgPath)) {
 			bundle = bundleContext.getBundle(lpkgPath[0]);
@@ -101,8 +108,8 @@ public class BundleUtil {
 			String contextName = webContextPath[0].substring(1);
 
 			for (Bundle installedBundle : bundleContext.getBundles()) {
-				Dictionary<String, String> headers =
-					installedBundle.getHeaders();
+				Dictionary<String, String> headers = installedBundle.getHeaders(
+					StringPool.BLANK);
 
 				if (contextName.equals(
 						headers.get("Liferay-WAB-Context-Name"))) {

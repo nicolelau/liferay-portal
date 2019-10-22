@@ -1,10 +1,29 @@
 /**
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
+ *
+ * This library is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU Lesser General Public License as published by the Free
+ * Software Foundation; either version 2.1 of the License, or (at your option)
+ * any later version.
+ *
+ * This library is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+ * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
+ * details.
+ */
+
+import {onReady} from '../utils/events.js';
+
+const applicationId = 'Form';
+
+/**
  * Returns an identifier for a form element.
  * @param {object} form The form DOM element
  * @return {object} Either form id, name or action.
  */
 function getFormKey(form) {
 	return (
+		form.dataset.analyticsAssetId ||
 		form.dataset.analyticsFormId ||
 		form.id ||
 		form.getAttribute('name') ||
@@ -20,7 +39,7 @@ function getFormKey(form) {
 function getFieldPayload({form, name}) {
 	return {
 		fieldName: name,
-		formId: getFormKey(form),
+		formId: getFormKey(form)
 	};
 }
 
@@ -30,7 +49,18 @@ function getFieldPayload({form, name}) {
  * @return {object} The payload with form information
  */
 function getFormPayload(form) {
-	return {formId: getFormKey(form)};
+	let payload = {
+		formId: getFormKey(form)
+	};
+
+	if (form.dataset.analyticsAssetTitle) {
+		payload = {
+			...payload,
+			title: form.dataset.analyticsAssetTitle
+		};
+	}
+
+	return payload;
 }
 
 /**
@@ -39,7 +69,11 @@ function getFormPayload(form) {
  * @return {boolean} True if the form is trackable.
  */
 function isTrackableForm(form) {
-	return 'analytics' in form.dataset && !!getFormKey(form);
+	return (
+		('analyticsAssetId' in form.dataset ||
+			'analyticsFormId' in form.dataset) &&
+		!!getFormKey(form)
+	);
 }
 
 /**
@@ -51,7 +85,9 @@ function trackFieldBlurred(analytics) {
 	const onBlur = ({target}) => {
 		const {form} = target;
 
-		if (!form || !isTrackableForm(form)) return;
+		if (!form || !isTrackableForm(form)) {
+			return;
+		}
 
 		const payload = getFieldPayload(target);
 
@@ -62,11 +98,12 @@ function trackFieldBlurred(analytics) {
 		performance.measure('focusDuration', focusMark, blurMark);
 
 		const perfData = performance.getEntriesByName('focusDuration').pop();
+
 		const focusDuration = perfData.duration;
 
-		analytics.send('fieldBlurred', 'forms', {
+		analytics.send('fieldBlurred', applicationId, {
 			...payload,
-			focusDuration,
+			focusDuration
 		});
 
 		performance.clearMarks('focusDuration');
@@ -86,14 +123,16 @@ function trackFieldFocused(analytics) {
 	const onFocus = ({target}) => {
 		const {form} = target;
 
-		if (!form || !isTrackableForm(form)) return;
+		if (!form || !isTrackableForm(form)) {
+			return;
+		}
 
 		const payload = getFieldPayload(target);
 
 		const focusMark = `${payload.formId}${payload.fieldName}focused`;
 		performance.mark(focusMark);
 
-		analytics.send('fieldFocused', 'forms', payload);
+		analytics.send('fieldFocused', applicationId, payload);
 	};
 
 	document.addEventListener('focus', onFocus, true);
@@ -107,10 +146,17 @@ function trackFieldFocused(analytics) {
  * @param {object} The Analytics client instance
  */
 function trackFormSubmitted(analytics) {
-	const onSubmit = ({target}) => {
-		if (!isTrackableForm(target)) return;
+	const onSubmit = event => {
+		const {target} = event;
 
-		analytics.send('formSubmitted', 'forms', getFormPayload(target));
+		if (
+			!isTrackableForm(target) ||
+			(isTrackableForm(target) && event.defaultPrevented)
+		) {
+			return;
+		}
+
+		analytics.send('formSubmitted', applicationId, getFormPayload(target));
 	};
 
 	document.addEventListener('submit', onSubmit, true);
@@ -123,33 +169,16 @@ function trackFormSubmitted(analytics) {
  * @param {object} The Analytics client instance
  */
 function trackFormViewed(analytics) {
-	const onLoad = () => {
+	return onReady(() => {
 		Array.prototype.slice
 			.call(document.querySelectorAll('form'))
 			.filter(form => isTrackableForm(form))
 			.forEach(form => {
-				let payload = getFormPayload(form);
-				const title = form.dataset.analyticsTitle;
+				const payload = getFormPayload(form);
 
-				if (title) {
-					payload = {title, ...payload};
-				}
-
-				analytics.send('formViewed', 'forms', payload);
+				analytics.send('formViewed', applicationId, payload);
 			});
-	};
-
-	if (
-		document.readyState === 'interactive' ||
-		document.readyState === 'complete' ||
-		document.readyState === 'loaded'
-	) {
-		onLoad();
-	} else {
-		document.addEventListener('DOMContentLoaded', () => onLoad());
-	}
-
-	return () => document.removeEventListener('DOMContentLoaded', onLoad);
+	});
 }
 
 /**

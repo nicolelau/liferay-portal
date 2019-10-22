@@ -32,7 +32,7 @@ import com.liferay.portal.kernel.settings.PortletPreferencesSettings;
 import com.liferay.portal.kernel.settings.Settings;
 import com.liferay.portal.kernel.settings.SettingsException;
 import com.liferay.portal.kernel.settings.SettingsFactoryUtil;
-import com.liferay.portal.kernel.util.FriendlyURLNormalizerUtil;
+import com.liferay.portal.kernel.util.MapUtil;
 import com.liferay.portal.kernel.util.Validator;
 
 import java.io.IOException;
@@ -53,6 +53,8 @@ import java.util.stream.Stream;
 import javax.portlet.PortletPreferences;
 import javax.portlet.ValidatorException;
 
+import org.osgi.framework.BundleContext;
+import org.osgi.framework.ServiceRegistration;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
@@ -76,9 +78,7 @@ public class AMImageConfigurationHelperImpl
 
 		_normalizeProperties(properties);
 
-		String normalizedUuid = FriendlyURLNormalizerUtil.normalize(uuid);
-
-		_checkUuid(normalizedUuid);
+		_checkUuid(uuid);
 
 		Collection<AMImageConfigurationEntry> amImageConfigurationEntries =
 			getAMImageConfigurationEntries(
@@ -86,18 +86,18 @@ public class AMImageConfigurationHelperImpl
 
 		_checkDuplicatesName(amImageConfigurationEntries, name);
 
-		_checkDuplicatesUuid(amImageConfigurationEntries, normalizedUuid);
+		_checkDuplicatesUuid(amImageConfigurationEntries, uuid);
 
 		List<AMImageConfigurationEntry> updatedAMImageConfigurationEntries =
 			new ArrayList<>(amImageConfigurationEntries);
 
 		updatedAMImageConfigurationEntries.removeIf(
-			amImageConfigurationEntry -> normalizedUuid.equals(
+			amImageConfigurationEntry -> uuid.equals(
 				amImageConfigurationEntry.getUUID()));
 
 		AMImageConfigurationEntry amImageConfigurationEntry =
 			new AMImageConfigurationEntryImpl(
-				name, description, normalizedUuid, properties, true);
+				name, description, uuid, properties, true);
 
 		updatedAMImageConfigurationEntries.add(amImageConfigurationEntry);
 
@@ -306,9 +306,7 @@ public class AMImageConfigurationHelperImpl
 
 		_normalizeProperties(properties);
 
-		String normalizedUuid = FriendlyURLNormalizerUtil.normalize(newUuid);
-
-		_checkUuid(normalizedUuid);
+		_checkUuid(newUuid);
 
 		Collection<AMImageConfigurationEntry> amImageConfigurationEntries =
 			getAMImageConfigurationEntries(
@@ -335,8 +333,8 @@ public class AMImageConfigurationHelperImpl
 			_checkDuplicatesName(amImageConfigurationEntries, name);
 		}
 
-		if (!oldUuid.equals(normalizedUuid)) {
-			_checkDuplicatesUuid(amImageConfigurationEntries, normalizedUuid);
+		if (!oldUuid.equals(newUuid)) {
+			_checkDuplicatesUuid(amImageConfigurationEntries, newUuid);
 		}
 
 		List<AMImageConfigurationEntry> updatedAMImageConfigurationEntries =
@@ -348,7 +346,7 @@ public class AMImageConfigurationHelperImpl
 
 		AMImageConfigurationEntry amImageConfigurationEntry =
 			new AMImageConfigurationEntryImpl(
-				name, description, normalizedUuid, properties,
+				name, description, newUuid, properties,
 				oldAMImageConfigurationEntry.isEnabled());
 
 		updatedAMImageConfigurationEntries.add(amImageConfigurationEntry);
@@ -364,7 +362,7 @@ public class AMImageConfigurationHelperImpl
 	}
 
 	@Activate
-	protected void activate() {
+	protected void activate(BundleContext bundleContext) {
 		DestinationConfiguration destinationConfiguration =
 			new DestinationConfiguration(
 				DestinationConfiguration.DESTINATION_TYPE_SYNCHRONOUS,
@@ -373,20 +371,15 @@ public class AMImageConfigurationHelperImpl
 		Destination destination = _destinationFactory.createDestination(
 			destinationConfiguration);
 
-		_messageBus.addDestination(destination);
+		_destinationServiceRegistration = bundleContext.registerService(
+			Destination.class, destination,
+			MapUtil.singletonDictionary(
+				"destination.name", destination.getName()));
 	}
 
 	@Deactivate
 	protected void deactivate() {
-		_messageBus.removeDestination(
-			AMImageDestinationNames.ADAPTIVE_MEDIA_IMAGE_CONFIGURATION);
-	}
-
-	@Reference(unbind = "-")
-	protected void setAMImageConfigurationEntryParser(
-		AMImageConfigurationEntryParser amImageConfigurationEntryParser) {
-
-		_amImageConfigurationEntryParser = amImageConfigurationEntryParser;
+		_destinationServiceRegistration.unregister();
 	}
 
 	private static final boolean _isPositiveNumber(String s) {
@@ -476,6 +469,12 @@ public class AMImageConfigurationHelperImpl
 		if (Validator.isNull(uuid)) {
 			throw new AMImageConfigurationException.InvalidUuidException();
 		}
+
+		Matcher matcher = _uuidPattern.matcher(uuid);
+
+		if (!matcher.matches()) {
+			throw new AMImageConfigurationException.InvalidUuidException();
+		}
 	}
 
 	private Stream<AMImageConfigurationEntry> _getAMImageConfigurationEntries(
@@ -499,10 +498,10 @@ public class AMImageConfigurationHelperImpl
 			String[] imageVariants = nullableImageVariants.orElseGet(
 				() -> settings.getValues("imageVariants", new String[0]));
 
-			Stream<String> imageVariantsStream = Stream.of(imageVariants);
-
 			List<AMImageConfigurationEntry> amImageConfigurationEntries =
-				imageVariantsStream.map(
+				Stream.of(
+					imageVariants
+				).map(
 					_amImageConfigurationEntryParser::parse
 				).collect(
 					Collectors.toList()
@@ -581,8 +580,7 @@ public class AMImageConfigurationHelperImpl
 			);
 
 			modifiableSettings.setValues(
-				"imageVariants",
-				imageVariants.toArray(new String[imageVariants.size()]));
+				"imageVariants", imageVariants.toArray(new String[0]));
 
 			modifiableSettings.store();
 
@@ -600,7 +598,9 @@ public class AMImageConfigurationHelperImpl
 
 	private static final Pattern _positiveNumberPattern = Pattern.compile(
 		"\\d*[1-9]\\d*");
+	private static final Pattern _uuidPattern = Pattern.compile("^(?:\\w|-)+$");
 
+	@Reference
 	private AMImageConfigurationEntryParser _amImageConfigurationEntryParser;
 
 	@Reference
@@ -611,6 +611,8 @@ public class AMImageConfigurationHelperImpl
 
 	@Reference
 	private DestinationFactory _destinationFactory;
+
+	private ServiceRegistration<Destination> _destinationServiceRegistration;
 
 	@Reference
 	private MessageBus _messageBus;

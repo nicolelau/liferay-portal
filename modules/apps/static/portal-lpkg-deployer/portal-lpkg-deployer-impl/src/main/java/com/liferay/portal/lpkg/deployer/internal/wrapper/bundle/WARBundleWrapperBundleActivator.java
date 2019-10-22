@@ -14,7 +14,9 @@
 
 package com.liferay.portal.lpkg.deployer.internal.wrapper.bundle;
 
-import com.liferay.portal.kernel.util.StringBundler;
+import com.liferay.petra.string.StringBundler;
+import com.liferay.petra.string.StringPool;
+import com.liferay.portal.kernel.util.GetterUtil;
 
 import java.net.URL;
 
@@ -36,7 +38,8 @@ public class WARBundleWrapperBundleActivator implements BundleActivator {
 	public void start(final BundleContext bundleContext) throws Exception {
 		Bundle bundle = bundleContext.getBundle();
 
-		Dictionary<String, String> headers = bundle.getHeaders();
+		Dictionary<String, String> headers = bundle.getHeaders(
+			StringPool.BLANK);
 
 		String contextName = headers.get("Liferay-WAB-Context-Name");
 
@@ -59,7 +62,7 @@ public class WARBundleWrapperBundleActivator implements BundleActivator {
 				"The header \"Liferay-WAB-Start-Level\" is null");
 		}
 
-		int startLevel = Integer.parseInt(startLevelString);
+		int startLevel = GetterUtil.getInteger(startLevelString);
 
 		// Defer WAR bundle installation until WAB protocol handler is ready
 

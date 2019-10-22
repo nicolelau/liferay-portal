@@ -22,8 +22,8 @@ import com.liferay.portal.kernel.security.permission.PermissionChecker;
 import javax.servlet.http.HttpServletRequest;
 
 /**
- * @author Leonardo Barros
- * @deprecated As of 7.0.0, with no direct replacement
+ * @author     Leonardo Barros
+ * @deprecated As of Judson (7.1.x), with no direct replacement
  */
 @Deprecated
 public class ModificationDeniedLayoutTypeAccessPolicyImpl
@@ -67,17 +67,19 @@ public class ModificationDeniedLayoutTypeAccessPolicyImpl
 
 	@Override
 	protected boolean hasAccessPermission(
-			HttpServletRequest request, Layout layout, Portlet portlet)
+			HttpServletRequest httpServletRequest, Layout layout,
+			Portlet portlet)
 		throws PortalException {
 
-		return super.hasAccessPermission(request, layout, portlet);
+		return super.hasAccessPermission(httpServletRequest, layout, portlet);
 	}
 
 	@Override
 	protected boolean isAccessAllowedToLayoutPortlet(
-		HttpServletRequest request, Layout layout, Portlet portlet) {
+		HttpServletRequest httpServletRequest, Layout layout, Portlet portlet) {
 
-		return super.isAccessAllowedToLayoutPortlet(request, layout, portlet);
+		return super.isAccessAllowedToLayoutPortlet(
+			httpServletRequest, layout, portlet);
 	}
 
 }

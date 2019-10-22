@@ -30,6 +30,7 @@ import com.liferay.portal.kernel.image.ImageTool;
 import com.liferay.portal.kernel.image.ImageToolUtil;
 import com.liferay.portal.kernel.repository.model.FileEntry;
 import com.liferay.portal.kernel.repository.model.FileVersion;
+import com.liferay.portal.kernel.test.ReflectionTestUtil;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
 
 import java.io.InputStream;
@@ -49,15 +50,17 @@ public class AMImageProcessorImplTest {
 
 	@Before
 	public void setUp() {
-		_amImageProcessorImpl.setAMImageConfigurationHelper(
+		ReflectionTestUtil.setFieldValue(
+			_amImageProcessorImpl, "_amImageConfigurationHelper",
 			_amImageConfigurationHelper);
-
-		_amImageProcessorImpl.setAMImageEntryLocalService(
+		ReflectionTestUtil.setFieldValue(
+			_amImageProcessorImpl, "_amImageEntryLocalService",
 			_amImageEntryLocalService);
-
-		_amImageProcessorImpl.setAMImageScalerTracker(_amImageScalerTracker);
-
-		_amImageProcessorImpl.setAMImageValidator(_amImageValidator);
+		ReflectionTestUtil.setFieldValue(
+			_amImageProcessorImpl, "_amImageScalerTracker",
+			_amImageScalerTracker);
+		ReflectionTestUtil.setFieldValue(
+			_amImageProcessorImpl, "_amImageValidator", _amImageValidator);
 
 		ImageToolUtil imageToolUtil = new ImageToolUtil();
 
@@ -100,7 +103,7 @@ public class AMImageProcessorImplTest {
 		_amImageProcessorImpl.cleanUp(_fileVersion);
 	}
 
-	@Test(expected = AMRuntimeException.IOException.class)
+	@Test(expected = PortalException.class)
 	public void testCleanUpPortalException() throws Exception {
 		Mockito.when(
 			_amImageValidator.isValid(Mockito.any(FileVersion.class))
@@ -348,7 +351,7 @@ public class AMImageProcessorImplTest {
 		);
 	}
 
-	@Test(expected = AMRuntimeException.IOException.class)
+	@Test(expected = DuplicateAMImageEntryException.class)
 	public void testProcessDuplicateAMImageEntryExceptionInImageService()
 		throws Exception {
 

@@ -14,6 +14,7 @@
 
 package com.liferay.taglib.ui;
 
+import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.language.LanguageUtil;
 import com.liferay.portal.kernel.model.Portlet;
@@ -29,7 +30,6 @@ import com.liferay.portal.kernel.util.Http;
 import com.liferay.portal.kernel.util.IntegerWrapper;
 import com.liferay.portal.kernel.util.JavaConstants;
 import com.liferay.portal.kernel.util.PortalUtil;
-import com.liferay.portal.kernel.util.StringBundler;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.kernel.util.WebKeys;
@@ -57,12 +57,64 @@ public class IconTag extends IncludeTag {
 		return EVAL_BODY_INCLUDE;
 	}
 
+	public String getAlt() {
+		return _alt;
+	}
+
+	public String getAriaRole() {
+		return _ariaRole;
+	}
+
 	public String getCssClass() {
 		return _cssClass;
 	}
 
 	public String getIcon() {
 		return _icon;
+	}
+
+	public String getIconCssClass() {
+		return _iconCssClass;
+	}
+
+	public String getImageHover() {
+		return _imageHover;
+	}
+
+	public String getLang() {
+		return _lang;
+	}
+
+	public String getLinkCssClass() {
+		return _linkCssClass;
+	}
+
+	/**
+	 * @deprecated As of Judson (7.1.x), with no direct replacement
+	 */
+	@Deprecated
+	public String getLinkTitle() {
+		return _linkTitle;
+	}
+
+	public String getMarkupView() {
+		return _markupView;
+	}
+
+	public String getTarget() {
+		return _target;
+	}
+
+	public boolean isLocalizeMessage() {
+		return _localizeMessage;
+	}
+
+	public boolean isToolTip() {
+		return _toolTip;
+	}
+
+	public boolean isUseDialog() {
+		return _useDialog;
 	}
 
 	public void setAlt(String alt) {
@@ -111,6 +163,14 @@ public class IconTag extends IncludeTag {
 
 	public void setLinkCssClass(String linkCssClass) {
 		_linkCssClass = linkCssClass;
+	}
+
+	/**
+	 * @deprecated As of Judson (7.1.x), with no direct replacement
+	 */
+	@Deprecated
+	public void setLinkTitle(String linkTitle) {
+		_linkTitle = linkTitle;
 	}
 
 	public void setLocalizeMessage(boolean localizeMessage) {
@@ -173,11 +233,13 @@ public class IconTag extends IncludeTag {
 		_label = null;
 		_lang = null;
 		_linkCssClass = null;
+		_linkTitle = null;
 		_localizeMessage = true;
 		_markupView = null;
 		_message = null;
 		_method = null;
 		_onClick = null;
+		_resourceBundle = null;
 		_src = null;
 		_srcHover = null;
 		_target = "_self";
@@ -187,28 +249,25 @@ public class IconTag extends IncludeTag {
 	}
 
 	/**
-	 * @deprecated As of 7.0.0, with no direct replacement
+	 * @deprecated As of Judson (7.1.x), with no direct replacement
 	 */
 	@Deprecated
 	protected Map<String, Object> getData() {
-		ResourceBundle resourceBundle = TagResourceBundleUtil.getResourceBundle(
-			pageContext);
-
-		return _getData(resourceBundle);
+		return _getData();
 	}
 
 	/**
-	 * @deprecated As of 7.0.0, with no direct replacement
+	 * @deprecated As of Judson (7.1.x), with no direct replacement
 	 */
 	@Deprecated
 	protected String getDetails() {
-		ThemeDisplay themeDisplay = (ThemeDisplay)request.getAttribute(
-			WebKeys.THEME_DISPLAY);
+		HttpServletRequest httpServletRequest = getRequest();
 
-		ResourceBundle resourceBundle = TagResourceBundleUtil.getResourceBundle(
-			pageContext);
+		ThemeDisplay themeDisplay =
+			(ThemeDisplay)httpServletRequest.getAttribute(
+				WebKeys.THEME_DISPLAY);
 
-		return _getDetails(themeDisplay, resourceBundle);
+		return _getDetails(themeDisplay);
 	}
 
 	protected String getId() {
@@ -216,7 +275,10 @@ public class IconTag extends IncludeTag {
 			return _id;
 		}
 
-		String id = (String)request.getAttribute("liferay-ui:icon-menu:id");
+		HttpServletRequest httpServletRequest = getRequest();
+
+		String id = (String)httpServletRequest.getAttribute(
+			"liferay-ui:icon-menu:id");
 
 		String message = _message;
 
@@ -225,11 +287,14 @@ public class IconTag extends IncludeTag {
 		}
 
 		if (Validator.isNotNull(id) && Validator.isNotNull(message)) {
-			id = id.concat(StringPool.UNDERLINE).concat(
-				FriendlyURLNormalizerUtil.normalize(message));
+			id = id.concat(
+				StringPool.UNDERLINE
+			).concat(
+				FriendlyURLNormalizerUtil.normalize(message)
+			);
 
 			PortletResponse portletResponse =
-				(PortletResponse)request.getAttribute(
+				(PortletResponse)httpServletRequest.getAttribute(
 					JavaConstants.JAVAX_PORTLET_RESPONSE);
 
 			String namespace = StringPool.BLANK;
@@ -242,7 +307,8 @@ public class IconTag extends IncludeTag {
 				getOriginalServletRequest(), namespace, id);
 		}
 		else {
-			id = PortalUtil.generateRandomKey(request, IconTag.class.getName());
+			id = PortalUtil.generateRandomKey(
+				httpServletRequest, IconTag.class.getName());
 		}
 
 		id = HtmlUtil.getAUICompatibleId(id);
@@ -324,23 +390,29 @@ public class IconTag extends IncludeTag {
 	}
 
 	/**
-	 * @deprecated As of 7.0.0, with no direct replacement
+	 * @deprecated As of Judson (7.1.x), with no direct replacement
 	 */
 	@Deprecated
 	protected String getSrc() {
-		ThemeDisplay themeDisplay = (ThemeDisplay)request.getAttribute(
-			WebKeys.THEME_DISPLAY);
+		HttpServletRequest httpServletRequest = getRequest();
+
+		ThemeDisplay themeDisplay =
+			(ThemeDisplay)httpServletRequest.getAttribute(
+				WebKeys.THEME_DISPLAY);
 
 		return _getSrc(themeDisplay);
 	}
 
 	/**
-	 * @deprecated As of 7.0.0, with no direct replacement
+	 * @deprecated As of Judson (7.1.x), with no direct replacement
 	 */
 	@Deprecated
 	protected String getSrcHover() {
-		ThemeDisplay themeDisplay = (ThemeDisplay)request.getAttribute(
-			WebKeys.THEME_DISPLAY);
+		HttpServletRequest httpServletRequest = getRequest();
+
+		ThemeDisplay themeDisplay =
+			(ThemeDisplay)httpServletRequest.getAttribute(
+				WebKeys.THEME_DISPLAY);
 
 		return _getSrcHover(themeDisplay);
 	}
@@ -388,8 +460,11 @@ public class IconTag extends IncludeTag {
 			return _label;
 		}
 
-		IntegerWrapper iconListIconCount = (IntegerWrapper)request.getAttribute(
-			"liferay-ui:icon-list:icon-count");
+		HttpServletRequest httpServletRequest = getRequest();
+
+		IntegerWrapper iconListIconCount =
+			(IntegerWrapper)httpServletRequest.getAttribute(
+				"liferay-ui:icon-list:icon-count");
 
 		if (iconListIconCount != null) {
 			_label = true;
@@ -397,8 +472,9 @@ public class IconTag extends IncludeTag {
 			return true;
 		}
 
-		IntegerWrapper iconMenuIconCount = (IntegerWrapper)request.getAttribute(
-			"liferay-ui:icon-menu:icon-count");
+		IntegerWrapper iconMenuIconCount =
+			(IntegerWrapper)httpServletRequest.getAttribute(
+				"liferay-ui:icon-menu:icon-count");
 
 		if (iconMenuIconCount != null) {
 			_label = true;
@@ -406,7 +482,7 @@ public class IconTag extends IncludeTag {
 			return true;
 		}
 
-		Boolean iconListSingleIcon = (Boolean)request.getAttribute(
+		Boolean iconListSingleIcon = (Boolean)httpServletRequest.getAttribute(
 			"liferay-ui:icon-list:single-icon");
 
 		if (iconListSingleIcon != null) {
@@ -415,7 +491,7 @@ public class IconTag extends IncludeTag {
 			return true;
 		}
 
-		Boolean iconMenuSingleIcon = (Boolean)request.getAttribute(
+		Boolean iconMenuSingleIcon = (Boolean)httpServletRequest.getAttribute(
 			"liferay-ui:icon-menu:single-icon");
 
 		if (iconMenuSingleIcon != null) {
@@ -430,44 +506,50 @@ public class IconTag extends IncludeTag {
 	}
 
 	@Override
-	protected void setAttributes(HttpServletRequest request) {
-		ThemeDisplay themeDisplay = (ThemeDisplay)request.getAttribute(
-			WebKeys.THEME_DISPLAY);
+	protected void setAttributes(HttpServletRequest httpServletRequest) {
+		ThemeDisplay themeDisplay =
+			(ThemeDisplay)httpServletRequest.getAttribute(
+				WebKeys.THEME_DISPLAY);
 
-		ResourceBundle resourceBundle = TagResourceBundleUtil.getResourceBundle(
-			pageContext);
-
-		request.setAttribute("liferay-ui:icon:alt", _alt);
-		request.setAttribute("liferay-ui:icon:ariaRole", _ariaRole);
-		request.setAttribute(
+		httpServletRequest.setAttribute("liferay-ui:icon:alt", _alt);
+		httpServletRequest.setAttribute("liferay-ui:icon:ariaRole", _ariaRole);
+		httpServletRequest.setAttribute(
 			"liferay-ui:icon:auiImage", String.valueOf(isAUIImage()));
-		request.setAttribute("liferay-ui:icon:cssClass", _cssClass);
-		request.setAttribute("liferay-ui:icon:data", _getData(resourceBundle));
-		request.setAttribute(
-			"liferay-ui:icon:details",
-			_getDetails(themeDisplay, resourceBundle));
-		request.setAttribute(
+		httpServletRequest.setAttribute("liferay-ui:icon:cssClass", _cssClass);
+		httpServletRequest.setAttribute("liferay-ui:icon:data", _getData());
+		httpServletRequest.setAttribute(
+			"liferay-ui:icon:details", _getDetails(themeDisplay));
+		httpServletRequest.setAttribute(
 			"liferay-ui:icon:forcePost", String.valueOf(isForcePost()));
-		request.setAttribute("liferay-ui:icon:icon", _icon);
-		request.setAttribute("liferay-ui:icon:iconCssClass", _iconCssClass);
-		request.setAttribute("liferay-ui:icon:id", getId());
-		request.setAttribute("liferay-ui:icon:image", _image);
-		request.setAttribute("liferay-ui:icon:imageHover", _imageHover);
-		request.setAttribute(
+		httpServletRequest.setAttribute("liferay-ui:icon:icon", _icon);
+		httpServletRequest.setAttribute(
+			"liferay-ui:icon:iconCssClass", _iconCssClass);
+		httpServletRequest.setAttribute("liferay-ui:icon:id", getId());
+		httpServletRequest.setAttribute("liferay-ui:icon:image", _image);
+		httpServletRequest.setAttribute(
+			"liferay-ui:icon:imageHover", _imageHover);
+		httpServletRequest.setAttribute(
 			"liferay-ui:icon:label", String.valueOf(isLabel()));
-		request.setAttribute("liferay-ui:icon:lang", _lang);
-		request.setAttribute("liferay-ui:icon:linkCssClass", _linkCssClass);
-		request.setAttribute(
+		httpServletRequest.setAttribute("liferay-ui:icon:lang", _lang);
+		httpServletRequest.setAttribute(
+			"liferay-ui:icon:linkCssClass", _linkCssClass);
+		httpServletRequest.setAttribute(
+			"liferay-ui:icon:linkTitle", _linkTitle);
+		httpServletRequest.setAttribute(
 			"liferay-ui:icon:localizeMessage",
 			String.valueOf(_localizeMessage));
-		request.setAttribute("liferay-ui:icon:markupView", _markupView);
-		request.setAttribute("liferay-ui:icon:message", getProcessedMessage());
-		request.setAttribute("liferay-ui:icon:method", getMethod());
-		request.setAttribute("liferay-ui:icon:onClick", getOnClick());
-		request.setAttribute("liferay-ui:icon:src", _getSrc(themeDisplay));
-		request.setAttribute(
+		httpServletRequest.setAttribute(
+			"liferay-ui:icon:markupView", _markupView);
+		httpServletRequest.setAttribute(
+			"liferay-ui:icon:message", getProcessedMessage());
+		httpServletRequest.setAttribute("liferay-ui:icon:method", getMethod());
+		httpServletRequest.setAttribute(
+			"liferay-ui:icon:onClick", getOnClick());
+		httpServletRequest.setAttribute(
+			"liferay-ui:icon:src", _getSrc(themeDisplay));
+		httpServletRequest.setAttribute(
 			"liferay-ui:icon:srcHover", _getSrcHover(themeDisplay));
-		request.setAttribute("liferay-ui:icon:target", _target);
+		httpServletRequest.setAttribute("liferay-ui:icon:target", _target);
 
 		boolean toolTip = false;
 
@@ -478,29 +560,30 @@ public class IconTag extends IncludeTag {
 			toolTip = true;
 		}
 
-		request.setAttribute(
+		httpServletRequest.setAttribute(
 			"liferay-ui:icon:toolTip", String.valueOf(toolTip));
 
-		request.setAttribute("liferay-ui:icon:url", getProcessedUrl());
-		request.setAttribute(
+		httpServletRequest.setAttribute(
+			"liferay-ui:icon:url", getProcessedUrl());
+		httpServletRequest.setAttribute(
 			"liferay-ui:icon:useDialog", String.valueOf(_useDialog));
 	}
 
-	private Map<String, Object> _getData(ResourceBundle resourceBundle) {
+	private Map<String, Object> _getData() {
 		Map<String, Object> data = null;
 
 		if (_data != null) {
 			data = new HashMap<>(_data);
 		}
 		else {
-			data = new HashMap<>(1);
+			data = new HashMap<>();
 		}
 
 		if (_useDialog && Validator.isNull(data.get("title"))) {
 			String message = getProcessedMessage();
 
 			if (_localizeMessage) {
-				message = LanguageUtil.get(resourceBundle, message);
+				message = LanguageUtil.get(_getResourceBundle(), message);
 			}
 
 			data.put("title", HtmlUtil.stripHtml(message));
@@ -509,13 +592,12 @@ public class IconTag extends IncludeTag {
 		return data;
 	}
 
-	private String _getDetails(
-		ThemeDisplay themeDisplay, ResourceBundle resourceBundle) {
-
+	private String _getDetails(ThemeDisplay themeDisplay) {
 		String details = null;
 
 		if (_alt != null) {
-			details = " alt=\"" + LanguageUtil.get(resourceBundle, _alt) + "\"";
+			details =
+				" alt=\"" + LanguageUtil.get(_getResourceBundle(), _alt) + "\"";
 		}
 		else if (isLabel()) {
 			details = " alt=\"\"";
@@ -523,11 +605,19 @@ public class IconTag extends IncludeTag {
 		else {
 			StringBundler sb = new StringBundler(5);
 
-			String localizedProcessedMessage = LanguageUtil.get(
-				resourceBundle, getProcessedMessage());
-
 			sb.append(" alt=\"");
+
+			String localizedProcessedMessage = StringPool.BLANK;
+
+			String processedMessage = getProcessedMessage();
+
+			if (processedMessage != null) {
+				localizedProcessedMessage = LanguageUtil.get(
+					_getResourceBundle(), processedMessage);
+			}
+
 			sb.append(localizedProcessedMessage);
+
 			sb.append("\" title=\"");
 			sb.append(localizedProcessedMessage);
 			sb.append("\"");
@@ -547,8 +637,10 @@ public class IconTag extends IncludeTag {
 
 		String imageFileName = StringUtil.replace(_src, "common/../", "");
 
+		HttpServletRequest httpServletRequest = getRequest();
+
 		if (imageFileName.contains(Http.PROTOCOL_DELIMITER)) {
-			String portalURL = PortalUtil.getPortalURL(request);
+			String portalURL = PortalUtil.getPortalURL(httpServletRequest);
 
 			if (imageFileName.startsWith(portalURL)) {
 				imageFileName = imageFileName.substring(portalURL.length());
@@ -578,8 +670,9 @@ public class IconTag extends IncludeTag {
 			if (spriteImage != null) {
 				spriteFileName = spriteImage.getSpriteFileName();
 
-				if (BrowserSnifferUtil.isIe(request) &&
-					(BrowserSnifferUtil.getMajorVersion(request) < 7)) {
+				if (BrowserSnifferUtil.isIe(httpServletRequest) &&
+					(BrowserSnifferUtil.getMajorVersion(httpServletRequest) <
+						7)) {
 
 					spriteFileName = StringUtil.replace(
 						spriteFileName, ".png", ".gif");
@@ -592,11 +685,12 @@ public class IconTag extends IncludeTag {
 		}
 
 		if (spriteImage == null) {
-			Portlet portlet = (Portlet)request.getAttribute(
+			Portlet portlet = (Portlet)httpServletRequest.getAttribute(
 				"liferay-portlet:icon_portlet:portlet");
 
 			if (portlet == null) {
-				portlet = (Portlet)request.getAttribute(WebKeys.RENDER_PORTLET);
+				portlet = (Portlet)httpServletRequest.getAttribute(
+					WebKeys.RENDER_PORTLET);
 			}
 
 			if (portlet != null) {
@@ -607,8 +701,11 @@ public class IconTag extends IncludeTag {
 				if (spriteImage != null) {
 					spriteFileName = spriteImage.getSpriteFileName();
 
-					if (BrowserSnifferUtil.isIe(request) &&
-						(BrowserSnifferUtil.getMajorVersion(request) < 7)) {
+					float majorVersion = BrowserSnifferUtil.getMajorVersion(
+						httpServletRequest);
+
+					if (BrowserSnifferUtil.isIe(httpServletRequest) &&
+						(majorVersion < 7)) {
 
 						spriteFileName = StringUtil.replace(
 							spriteFileName, ".png", ".gif");
@@ -645,13 +742,24 @@ public class IconTag extends IncludeTag {
 		return details;
 	}
 
+	private ResourceBundle _getResourceBundle() {
+		if (_resourceBundle == null) {
+			_resourceBundle = TagResourceBundleUtil.getResourceBundle(
+				pageContext);
+		}
+
+		return _resourceBundle;
+	}
+
 	private String _getSrc(ThemeDisplay themeDisplay) {
 		if (Validator.isNotNull(_src)) {
 			return _src;
 		}
 
 		if (isAUIImage()) {
-			return themeDisplay.getPathThemeImages().concat("/spacer.png");
+			String pathThemeImages = themeDisplay.getPathThemeImages();
+
+			return pathThemeImages.concat("/spacer.png");
 		}
 		else if (Validator.isNotNull(_image)) {
 			StringBundler sb = new StringBundler(4);
@@ -699,11 +807,13 @@ public class IconTag extends IncludeTag {
 	private Boolean _label;
 	private String _lang;
 	private String _linkCssClass;
+	private String _linkTitle;
 	private boolean _localizeMessage = true;
 	private String _markupView;
 	private String _message;
 	private String _method;
 	private String _onClick;
+	private ResourceBundle _resourceBundle;
 	private String _src;
 	private String _srcHover;
 	private String _target = "_self";

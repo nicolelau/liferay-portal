@@ -29,7 +29,7 @@ import java.util.regex.Pattern;
 public class SubstringCheck extends BaseFileCheck {
 
 	@Override
-	public boolean isPortalCheck() {
+	public boolean isLiferaySourceCheck() {
 		return true;
 	}
 
@@ -68,7 +68,7 @@ public class SubstringCheck extends BaseFileCheck {
 		return content;
 	}
 
-	private final Pattern _substringPattern = Pattern.compile(
+	private static final Pattern _substringPattern = Pattern.compile(
 		"\\W([a-z][\\w]*)\\.substring\\(");
 
 }

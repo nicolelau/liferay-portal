@@ -55,57 +55,6 @@ import java.util.Set;
  */
 public class DocumentImpl implements Document {
 
-	/**
-	 * @deprecated As of 7.0.0, replaced by {@link
-	 *             Field#getLocalizedName(Locale, String)}
-	 */
-	@Deprecated
-	public static String getLocalizedName(Locale locale, String name) {
-		return Field.getLocalizedName(locale, name);
-	}
-
-	/**
-	 * @deprecated As of 7.0.0, replaced by {@link
-	 *             Field#getLocalizedName(String, String)}
-	 */
-	@Deprecated
-	public static String getLocalizedName(String languageId, String name) {
-		return Field.getLocalizedName(languageId, name);
-	}
-
-	/**
-	 * @deprecated As of 7.0.0, replaced by {@link
-	 *             Field#getSortableFieldName(String)}
-	 */
-	@Deprecated
-	public static String getSortableFieldName(String name) {
-		return Field.getSortableFieldName(name);
-	}
-
-	public static String getSortFieldName(Sort sort, String scoreFieldName) {
-		if (sort.getType() == Sort.SCORE_TYPE) {
-			return scoreFieldName;
-		}
-
-		String fieldName = sort.getFieldName();
-
-		if (isSortableFieldName(fieldName)) {
-			return fieldName;
-		}
-
-		if ((sort.getType() == Sort.STRING_TYPE) &&
-			!isSortableTextField(fieldName)) {
-
-			return scoreFieldName;
-		}
-
-		return Field.getSortableFieldName(fieldName);
-	}
-
-	public static boolean isSortableFieldName(String name) {
-		return name.endsWith(_SORTABLE_FIELD_SUFFIX);
-	}
-
 	public static boolean isSortableTextField(String name) {
 		return _defaultSortableTextFields.contains(name);
 	}
@@ -460,7 +409,7 @@ public class DocumentImpl implements Document {
 		}
 
 		if (lowerCase) {
-			Map<Locale, String> lowerCaseValues = new HashMap<>(values.size());
+			Map<Locale, String> lowerCaseValues = new HashMap<>();
 
 			for (Map.Entry<Locale, String> entry : values.entrySet()) {
 				String value = GetterUtil.getString(entry.getValue());
@@ -485,7 +434,7 @@ public class DocumentImpl implements Document {
 		}
 
 		if (lowerCase) {
-			Map<Locale, String> lowerCaseValues = new HashMap<>(values.size());
+			Map<Locale, String> lowerCaseValues = new HashMap<>();
 
 			for (Map.Entry<Locale, String> entry : values.entrySet()) {
 				String value = GetterUtil.getString(entry.getValue());
@@ -1058,7 +1007,11 @@ public class DocumentImpl implements Document {
 		Class<? extends Number> clazz) {
 
 		if (typify) {
-			name = name.concat(StringPool.UNDERLINE).concat("Number");
+			name = name.concat(
+				StringPool.UNDERLINE
+			).concat(
+				"Number"
+			);
 		}
 
 		Field field = createField(Field.getSortableFieldName(name), value);
@@ -1138,7 +1091,11 @@ public class DocumentImpl implements Document {
 		String name, boolean typify, String value) {
 
 		if (typify) {
-			name = name.concat(StringPool.UNDERLINE).concat("String");
+			name = name.concat(
+				StringPool.UNDERLINE
+			).concat(
+				"String"
+			);
 		}
 
 		String truncatedValue = value;
@@ -1175,14 +1132,10 @@ public class DocumentImpl implements Document {
 	private static final String _INDEX_DATE_FORMAT_PATTERN = PropsUtil.get(
 		PropsKeys.INDEX_DATE_FORMAT_PATTERN);
 
-	private static final String _SORTABLE_FIELD_SUFFIX = "sortable";
-
 	private static final int _SORTABLE_TEXT_FIELDS_TRUNCATED_LENGTH =
 		GetterUtil.getInteger(
 			PropsUtil.get(
 				PropsKeys.INDEX_SORTABLE_TEXT_FIELDS_TRUNCATED_LENGTH));
-
-	private static final String _UID_FIELD = "_FIELD_";
 
 	private static final String _UID_PORTLET = "_PORTLET_";
 

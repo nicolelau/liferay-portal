@@ -19,7 +19,6 @@ import com.liferay.portal.kernel.util.ListUtil;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.osgi.web.servlet.context.helper.definition.WebXMLDefinition;
 import com.liferay.portal.osgi.web.servlet.context.helper.order.Order;
-import com.liferay.portal.osgi.web.servlet.context.helper.order.Order.Path;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -36,7 +35,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * @author Vernon Singleton
- * @author Juan Gonzalez
+ * @author Juan González
  */
 public class OrderUtil {
 
@@ -57,10 +56,10 @@ public class OrderUtil {
 	private static String[] _appendAndSort(String[]... namesArray) {
 		Map<String, Integer> map = new HashMap<>();
 
-		if (namesArray[0] != null) {
-			if (Arrays.binarySearch(namesArray[0], Order.OTHERS) >= 0) {
-				map.put(Order.OTHERS, 1);
-			}
+		if ((namesArray[0] != null) &&
+			(Arrays.binarySearch(namesArray[0], Order.OTHERS) >= 0)) {
+
+			map.put(Order.OTHERS, 1);
 		}
 
 		for (String[] names : namesArray) {
@@ -73,7 +72,7 @@ public class OrderUtil {
 
 		Set<String> set = map.keySet();
 
-		String[] orderedNames = set.toArray(new String[set.size()]);
+		String[] orderedNames = set.toArray(new String[0]);
 
 		Arrays.sort(orderedNames);
 
@@ -122,7 +121,7 @@ public class OrderUtil {
 
 		Set<String> set = map.keySet();
 
-		String[] names = set.toArray(new String[set.size()]);
+		String[] names = set.toArray(new String[0]);
 
 		for (String name : names) {
 			if (map.get(name) > 1) {
@@ -167,7 +166,7 @@ public class OrderUtil {
 		webXMLDefinitions = _preSort(webXMLDefinitions);
 
 		WebXMLDefinition[] webXMLDefinitionsArray = webXMLDefinitions.toArray(
-			new WebXMLDefinition[webXMLDefinitions.size()]);
+			new WebXMLDefinition[0]);
 
 		_innerSort(webXMLDefinitionsArray);
 
@@ -227,9 +226,8 @@ public class OrderUtil {
 		Map<String, WebXMLDefinition> webXMLDefinitionsMap = new HashMap<>();
 
 		for (WebXMLDefinition webXMLDefinition : webXMLDefinitions) {
-			String fragmentName = webXMLDefinition.getFragmentName();
-
-			webXMLDefinitionsMap.put(fragmentName, webXMLDefinition);
+			webXMLDefinitionsMap.put(
+				webXMLDefinition.getFragmentName(), webXMLDefinition);
 		}
 
 		return webXMLDefinitionsMap;
@@ -286,7 +284,7 @@ public class OrderUtil {
 		Order order2 = webXMLDefinition2.getOrder();
 
 		if (order1.isOrdered() && !order2.isOrdered()) {
-			EnumMap<Path, String[]> routes = order1.getRoutes();
+			EnumMap<Order.Path, String[]> routes = order1.getRoutes();
 
 			if (!ArrayUtil.isEmpty(routes.get(Order.Path.AFTER)) &&
 				!order1.isBeforeOthers()) {
@@ -303,16 +301,14 @@ public class OrderUtil {
 
 		if (order1.isAfterOthers() &&
 			!order1.isBefore(webXMLDefinition2.getFragmentName()) &&
-			!(order1.isAfterOthers() &&
-			order2.isAfterOthers())) {
+			!(order1.isAfterOthers() && order2.isAfterOthers())) {
 
 			return true;
 		}
 
 		if (order2.isBeforeOthers() &&
 			!order2.isAfter(webXMLDefinition1.getFragmentName()) &&
-			!(order1.isBeforeOthers() &&
-			order2.isBeforeOthers())) {
+			!(order1.isBeforeOthers() && order2.isBeforeOthers())) {
 
 			return true;
 		}
@@ -482,9 +478,8 @@ public class OrderUtil {
 			_getWebXMLDefinitionsMap(webXMLDefinitions);
 
 		for (Map.Entry<String, Integer> entry : map.entrySet()) {
-			String key = entry.getKey();
-
-			preSortWebXMLDefinitions.add(webXMLDefinitionsMap.get(key));
+			preSortWebXMLDefinitions.add(
+				webXMLDefinitionsMap.get(entry.getKey()));
 		}
 
 		for (WebXMLDefinition webXMLDefinition : tempWebXMLDefinitions) {

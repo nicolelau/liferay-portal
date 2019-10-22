@@ -26,7 +26,7 @@ import org.osgi.service.component.annotations.Reference;
 /**
  * @author Ryan Park
  */
-@Component
+@Component(service = {})
 public class BundleManagerUtil {
 
 	public static Bundle getBundle(String symbolicName, String version) {
@@ -45,8 +45,8 @@ public class BundleManagerUtil {
 		return _bundleManagerImpl.getManifest(file);
 	}
 
-	public static List<Bundle> installLPKG(File file) throws Exception {
-		return _bundleManagerImpl.installLPKG(file);
+	public static void installLPKG(File file) throws Exception {
+		_bundleManagerImpl.installLPKG(file);
 	}
 
 	public static boolean isInstalled(Bundle bundle) {

@@ -14,8 +14,6 @@
 
 package com.liferay.portal.tools.service.builder.test.model;
 
-import aQute.bnd.annotation.ProviderType;
-
 import java.io.Serializable;
 
 import java.math.BigDecimal;
@@ -29,19 +27,21 @@ import java.util.List;
  * @author Brian Wing Shun Chan
  * @generated
  */
-@ProviderType
 public class BigDecimalEntrySoap implements Serializable {
+
 	public static BigDecimalEntrySoap toSoapModel(BigDecimalEntry model) {
 		BigDecimalEntrySoap soapModel = new BigDecimalEntrySoap();
 
 		soapModel.setBigDecimalEntryId(model.getBigDecimalEntryId());
+		soapModel.setCompanyId(model.getCompanyId());
 		soapModel.setBigDecimalValue(model.getBigDecimalValue());
 
 		return soapModel;
 	}
 
 	public static BigDecimalEntrySoap[] toSoapModels(BigDecimalEntry[] models) {
-		BigDecimalEntrySoap[] soapModels = new BigDecimalEntrySoap[models.length];
+		BigDecimalEntrySoap[] soapModels =
+			new BigDecimalEntrySoap[models.length];
 
 		for (int i = 0; i < models.length; i++) {
 			soapModels[i] = toSoapModel(models[i]);
@@ -52,10 +52,12 @@ public class BigDecimalEntrySoap implements Serializable {
 
 	public static BigDecimalEntrySoap[][] toSoapModels(
 		BigDecimalEntry[][] models) {
+
 		BigDecimalEntrySoap[][] soapModels = null;
 
 		if (models.length > 0) {
-			soapModels = new BigDecimalEntrySoap[models.length][models[0].length];
+			soapModels =
+				new BigDecimalEntrySoap[models.length][models[0].length];
 		}
 		else {
 			soapModels = new BigDecimalEntrySoap[0][0];
@@ -70,7 +72,9 @@ public class BigDecimalEntrySoap implements Serializable {
 
 	public static BigDecimalEntrySoap[] toSoapModels(
 		List<BigDecimalEntry> models) {
-		List<BigDecimalEntrySoap> soapModels = new ArrayList<BigDecimalEntrySoap>(models.size());
+
+		List<BigDecimalEntrySoap> soapModels =
+			new ArrayList<BigDecimalEntrySoap>(models.size());
 
 		for (BigDecimalEntry model : models) {
 			soapModels.add(toSoapModel(model));
@@ -98,6 +102,14 @@ public class BigDecimalEntrySoap implements Serializable {
 		_bigDecimalEntryId = bigDecimalEntryId;
 	}
 
+	public long getCompanyId() {
+		return _companyId;
+	}
+
+	public void setCompanyId(long companyId) {
+		_companyId = companyId;
+	}
+
 	public BigDecimal getBigDecimalValue() {
 		return _bigDecimalValue;
 	}
@@ -107,5 +119,7 @@ public class BigDecimalEntrySoap implements Serializable {
 	}
 
 	private long _bigDecimalEntryId;
+	private long _companyId;
 	private BigDecimal _bigDecimalValue;
+
 }

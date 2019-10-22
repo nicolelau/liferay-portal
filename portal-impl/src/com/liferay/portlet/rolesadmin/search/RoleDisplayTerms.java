@@ -16,7 +16,7 @@ package com.liferay.portlet.rolesadmin.search;
 
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.dao.search.DisplayTerms;
-import com.liferay.portal.kernel.model.RoleConstants;
+import com.liferay.portal.kernel.model.role.RoleConstants;
 import com.liferay.portal.kernel.util.ParamUtil;
 
 import javax.portlet.PortletRequest;
@@ -55,9 +55,8 @@ public class RoleDisplayTerms extends DisplayTerms {
 
 			return type;
 		}
-		else {
-			return 0;
-		}
+
+		return 0;
 	}
 
 	public String getTypeString() {
@@ -67,9 +66,8 @@ public class RoleDisplayTerms extends DisplayTerms {
 
 			return String.valueOf(type);
 		}
-		else {
-			return StringPool.BLANK;
-		}
+
+		return StringPool.BLANK;
 	}
 
 	public void setType(int type) {

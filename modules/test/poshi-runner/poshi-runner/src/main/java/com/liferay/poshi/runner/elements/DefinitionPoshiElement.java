@@ -14,11 +14,20 @@
 
 package com.liferay.poshi.runner.elements;
 
+import com.liferay.poshi.runner.script.PoshiScriptParserException;
 import com.liferay.poshi.runner.util.Dom4JUtil;
+import com.liferay.poshi.runner.util.FileUtil;
 
-import java.util.ArrayList;
+import java.io.File;
+
+import java.net.MalformedURLException;
+import java.net.URL;
+
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
+import org.dom4j.Attribute;
 import org.dom4j.Element;
 import org.dom4j.Node;
 
@@ -29,8 +38,12 @@ public class DefinitionPoshiElement extends PoshiElement {
 
 	@Override
 	public PoshiElement clone(Element element) {
-		if (isElementType(_ELEMENT_NAME, element)) {
-			return new DefinitionPoshiElement(element);
+		return clone(element, null);
+	}
+
+	public PoshiElement clone(Element element, URL url) {
+		if (isElementType(getElementName(), element)) {
+			return new DefinitionPoshiElement(element, url);
 		}
 
 		return null;
@@ -38,43 +51,95 @@ public class DefinitionPoshiElement extends PoshiElement {
 
 	@Override
 	public PoshiElement clone(
-		PoshiElement parentPoshiElement, String readableSyntax) {
+			PoshiElement parentPoshiElement, String poshiScript)
+		throws PoshiScriptParserException {
 
-		if (_isElementType(readableSyntax)) {
-			return new DefinitionPoshiElement(readableSyntax);
+		return clone(poshiScript, null);
+	}
+
+	public PoshiElement clone(String poshiScript, URL url)
+		throws PoshiScriptParserException {
+
+		if (isElementType(poshiScript)) {
+			return new DefinitionPoshiElement(poshiScript, url);
 		}
 
 		return null;
 	}
 
+	public String getFileExtension() {
+		String filePath = getFilePath();
+
+		int index = filePath.lastIndexOf(".");
+
+		return filePath.substring(index + 1);
+	}
+
+	public String getFilePath() {
+		return _filePath;
+	}
+
 	@Override
-	public void parseReadableSyntax(String readableSyntax) {
-		for (String readableBlock : getReadableBlocks(readableSyntax)) {
-			if (readableBlock.startsWith("@") &&
-				!readableBlock.startsWith("@description") &&
-				!readableBlock.startsWith("@ignore") &&
-				!readableBlock.startsWith("@priority")) {
+	public int getPoshiScriptLineNumber() {
+		return getPoshiScriptLineNumber(false);
+	}
 
-				String name = getNameFromAssignment(readableBlock);
-				String value = getQuotedContent(readableBlock);
+	@Override
+	public boolean isValidPoshiXML() {
+		if (_validPoshiXML == null) {
+			try {
+				_validPoshiXML = false;
 
-				addAttribute(name, value);
+				PoshiNodeFactory.setValidatePoshiScript(false);
 
-				continue;
+				URL url = FileUtil.getURL(new File(getFilePath()));
+
+				PoshiNode poshiNode = PoshiNodeFactory.newPoshiNodeFromFile(
+					url);
+
+				String poshiScript = poshiNode.toPoshiScript();
+
+				PoshiNode generatedPoshiNode = PoshiNodeFactory.newPoshiNode(
+					poshiScript, url);
+
+				if (Dom4JUtil.elementsEqual(poshiNode, generatedPoshiNode)) {
+					_validPoshiXML = true;
+				}
+
+				PoshiNodeFactory.setValidatePoshiScript(true);
 			}
-
-			if (isReadableSyntaxComment(readableBlock)) {
-				add(PoshiNodeFactory.newPoshiNode(null, readableBlock));
-
-				continue;
+			catch (MalformedURLException murle) {
 			}
+		}
 
-			add(PoshiNodeFactory.newPoshiNode(this, readableBlock));
+		return _validPoshiXML;
+	}
+
+	@Override
+	public void parsePoshiScript(String poshiScript)
+		throws PoshiScriptParserException {
+
+		Matcher poshiScriptAnnotationMatcher =
+			poshiScriptAnnotationPattern.matcher(getBlockName(poshiScript));
+
+		while (poshiScriptAnnotationMatcher.find()) {
+			String annotation = poshiScriptAnnotationMatcher.group();
+
+			String name = getNameFromAssignment(annotation);
+			String value = getDoubleQuotedContent(annotation);
+
+			addAttribute(name, value);
+		}
+
+		String blockContent = getBlockContent(poshiScript);
+
+		for (String poshiScriptSnippet : getPoshiScriptSnippets(blockContent)) {
+			add(PoshiNodeFactory.newPoshiNode(this, poshiScriptSnippet));
 		}
 	}
 
 	@Override
-	public String toReadableSyntax() {
+	public String toPoshiScript() {
 		StringBuilder sb = new StringBuilder();
 
 		for (PoshiElementAttribute poshiElementAttribute :
@@ -82,46 +147,10 @@ public class DefinitionPoshiElement extends PoshiElement {
 
 			sb.append("\n@");
 
-			sb.append(poshiElementAttribute.toReadableSyntax());
+			sb.append(poshiElementAttribute.toPoshiScript());
 		}
 
-		StringBuilder content = new StringBuilder();
-
-		Node previousNode = null;
-
-		for (Node node : Dom4JUtil.toNodeList(content())) {
-			if (node instanceof PoshiComment) {
-				PoshiComment poshiComment = (PoshiComment)node;
-
-				content.append("\n");
-				content.append(poshiComment.toReadableSyntax());
-			}
-			else if (node instanceof PoshiElement) {
-				content.append("\n");
-
-				if (previousNode == null) {
-					content.deleteCharAt(content.length() - 1);
-				}
-				else if ((node instanceof PropertyPoshiElement) &&
-						 (previousNode instanceof PropertyPoshiElement)) {
-
-					content.deleteCharAt(content.length() - 1);
-				}
-				else if ((node instanceof VarPoshiElement) &&
-						 (previousNode instanceof VarPoshiElement)) {
-
-					content.deleteCharAt(content.length() - 1);
-				}
-
-				PoshiElement poshiElement = (PoshiElement)node;
-
-				content.append(poshiElement.toReadableSyntax());
-			}
-
-			previousNode = node;
-		}
-
-		sb.append(createReadableBlock(content.toString()));
+		sb.append(createPoshiScriptBlock(getPoshiNodes()));
 
 		String string = sb.toString();
 
@@ -131,12 +160,27 @@ public class DefinitionPoshiElement extends PoshiElement {
 	protected DefinitionPoshiElement() {
 	}
 
-	protected DefinitionPoshiElement(Element element) {
-		super(_ELEMENT_NAME, element);
+	protected DefinitionPoshiElement(Element element, URL url) {
+		super(_ELEMENT_NAME, element, url);
 	}
 
-	protected DefinitionPoshiElement(String readableSyntax) {
-		super(_ELEMENT_NAME, readableSyntax);
+	protected DefinitionPoshiElement(
+		List<Attribute> attributes, List<Node> nodes) {
+
+		super(_ELEMENT_NAME, attributes, nodes);
+	}
+
+	protected DefinitionPoshiElement(
+			PoshiElement parentPoshiElement, String poshiScript)
+		throws PoshiScriptParserException {
+
+		super(_ELEMENT_NAME, parentPoshiElement, poshiScript);
+	}
+
+	protected DefinitionPoshiElement(String poshiScript, URL url)
+		throws PoshiScriptParserException {
+
+		super(_ELEMENT_NAME, null, poshiScript, url);
 	}
 
 	@Override
@@ -144,99 +188,42 @@ public class DefinitionPoshiElement extends PoshiElement {
 		return "definition";
 	}
 
+	protected String getElementName() {
+		return _ELEMENT_NAME;
+	}
+
 	@Override
 	protected String getPad() {
 		return "";
 	}
 
-	protected List<String> getReadableBlocks(String readableSyntax) {
-		StringBuilder sb = new StringBuilder();
+	protected String getPoshiScriptKeyword() {
+		String fileExtension = getFileExtension();
 
-		List<String> readableBlocks = new ArrayList<>();
-
-		for (String line : readableSyntax.split("\n")) {
-			String trimmedLine = line.trim();
-
-			if (trimmedLine.length() == 0) {
-				sb.append("\n");
-
-				continue;
-			}
-
-			if (trimmedLine.startsWith("@") &&
-				!trimmedLine.startsWith("@description") &&
-				!trimmedLine.startsWith("@ignore") &&
-				!trimmedLine.startsWith("@priority")) {
-
-				readableBlocks.add(line);
-
-				continue;
-			}
-
-			if (trimmedLine.startsWith("definition {")) {
-				continue;
-			}
-
-			String readableBlock = sb.toString();
-
-			readableBlock = readableBlock.trim();
-
-			if (isValidReadableBlock(readableBlock)) {
-				readableBlocks.add(readableBlock);
-
-				sb.setLength(0);
-			}
-
-			sb.append(line);
-			sb.append("\n");
+		if (fileExtension.equals("testcase")) {
+			return "test";
 		}
 
-		return readableBlocks;
+		return fileExtension;
 	}
 
-	@Override
-	protected boolean isBalanceValidationRequired(String readableSyntax) {
-		readableSyntax = readableSyntax.trim();
-
-		if ((readableSyntax.startsWith("@") && readableSyntax.contains("{")) ||
-			readableSyntax.startsWith("setUp") ||
-			readableSyntax.startsWith("tearDown") ||
-			readableSyntax.startsWith("test")) {
-
-			return true;
-		}
-
-		return false;
+	protected boolean isElementType(String poshiScript) {
+		return isValidPoshiScriptBlock(_blockNamePattern, poshiScript);
 	}
 
-	private boolean _isElementType(String readableSyntax) {
-		readableSyntax = readableSyntax.trim();
-
-		if (!isBalancedReadableSyntax(readableSyntax)) {
-			return false;
-		}
-
-		if (!readableSyntax.endsWith("}")) {
-			return false;
-		}
-
-		for (String line : readableSyntax.split("\n")) {
-			line = line.trim();
-
-			if (line.startsWith("@")) {
-				continue;
-			}
-
-			if (!line.equals("definition {")) {
-				return false;
-			}
-
-			break;
-		}
-
-		return true;
+	protected void setFilePath(URL url) {
+		_filePath = url.getFile();
 	}
 
 	private static final String _ELEMENT_NAME = "definition";
+
+	private static final String _POSHI_SCRIPT_KEYWORD = _ELEMENT_NAME;
+
+	private static final Pattern _blockNamePattern = Pattern.compile(
+		"^" + BLOCK_NAME_ANNOTATION_REGEX + _POSHI_SCRIPT_KEYWORD,
+		Pattern.DOTALL);
+
+	private String _filePath;
+	private Boolean _validPoshiXML;
 
 }

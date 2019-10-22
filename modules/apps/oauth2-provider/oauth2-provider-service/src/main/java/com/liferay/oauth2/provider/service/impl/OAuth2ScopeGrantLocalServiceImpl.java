@@ -19,6 +19,7 @@ import com.liferay.oauth2.provider.model.OAuth2Authorization;
 import com.liferay.oauth2.provider.model.OAuth2ScopeGrant;
 import com.liferay.oauth2.provider.scope.liferay.LiferayOAuth2Scope;
 import com.liferay.oauth2.provider.service.base.OAuth2ScopeGrantLocalServiceBaseImpl;
+import com.liferay.portal.aop.AopService;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.util.OrderByComparator;
 
@@ -29,10 +30,15 @@ import java.util.List;
 import java.util.Objects;
 
 import org.osgi.framework.Bundle;
+import org.osgi.service.component.annotations.Component;
 
 /**
  * @author Brian Wing Shun Chan
  */
+@Component(
+	property = "model.class.name=com.liferay.oauth2.provider.model.OAuth2ScopeGrant",
+	service = AopService.class
+)
 public class OAuth2ScopeGrantLocalServiceImpl
 	extends OAuth2ScopeGrantLocalServiceBaseImpl {
 
@@ -40,6 +46,16 @@ public class OAuth2ScopeGrantLocalServiceImpl
 	public OAuth2ScopeGrant createOAuth2ScopeGrant(
 			long companyId, long oAuth2ApplicationScopeAliasesId,
 			String applicationName, String bundleSymbolicName, String scope)
+		throws DuplicateOAuth2ScopeGrantException {
+
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
+	public OAuth2ScopeGrant createOAuth2ScopeGrant(
+			long companyId, long oAuth2ApplicationScopeAliasesId,
+			String applicationName, String bundleSymbolicName, String scope,
+			List<String> scopeAliases)
 		throws DuplicateOAuth2ScopeGrantException {
 
 		OAuth2ScopeGrant oAuth2ScopeGrant =
@@ -64,9 +80,37 @@ public class OAuth2ScopeGrantLocalServiceImpl
 		oAuth2ScopeGrant.setBundleSymbolicName(bundleSymbolicName);
 		oAuth2ScopeGrant.setScope(scope);
 
+		oAuth2ScopeGrant.setScopeAliasesList(scopeAliases);
+
 		return oAuth2ScopeGrantPersistence.update(oAuth2ScopeGrant);
 	}
 
+	@Override
+	public Collection<LiferayOAuth2Scope> getFilteredLiferayOAuth2Scopes(
+		long oAuth2ApplicationScopeAliasesId,
+		Collection<LiferayOAuth2Scope> liferayOAuth2Scopes) {
+
+		Collection<LiferayOAuth2Scope> filteredLiferayOAuth2Scopes =
+			new ArrayList<>(liferayOAuth2Scopes.size());
+
+		List<OAuth2ScopeGrant> oAuth2ScopeGrants =
+			oAuth2ScopeGrantPersistence.findByOAuth2ApplicationScopeAliasesId(
+				oAuth2ApplicationScopeAliasesId);
+
+		for (LiferayOAuth2Scope liferayOAuth2Scope : liferayOAuth2Scopes) {
+			for (OAuth2ScopeGrant oAuth2ScopeGrant : oAuth2ScopeGrants) {
+				if (_isMatch(oAuth2ScopeGrant, liferayOAuth2Scope)) {
+					filteredLiferayOAuth2Scopes.add(liferayOAuth2Scope);
+
+					break;
+				}
+			}
+		}
+
+		return filteredLiferayOAuth2Scopes;
+	}
+
+	@Override
 	public Collection<OAuth2ScopeGrant> getOAuth2ScopeGrants(
 		long oAuth2ApplicationScopeAliasesId, int start, int end,
 		OrderByComparator<OAuth2ScopeGrant> orderByComparator) {
@@ -96,7 +140,7 @@ public class OAuth2ScopeGrantLocalServiceImpl
 		}
 
 		OAuth2Authorization oAuth2Authorization =
-			oAuth2AuthorizationLocalService.getOAuth2Authorization(
+			oAuth2AuthorizationPersistence.findByPrimaryKey(
 				oAuth2AuthorizationId);
 
 		List<OAuth2ScopeGrant> oAuth2ScopeGrants =
@@ -107,33 +151,12 @@ public class OAuth2ScopeGrantLocalServiceImpl
 			oAuth2ScopeGrants.size());
 
 		for (LiferayOAuth2Scope liferayOAuth2Scope : liferayOAuth2Scopes) {
-			Bundle bundle = liferayOAuth2Scope.getBundle();
-
-			String bundleSymbolicName = bundle.getSymbolicName();
-
 			for (OAuth2ScopeGrant oAuth2ScopeGrant : oAuth2ScopeGrants) {
-				if (!Objects.equals(
-						oAuth2ScopeGrant.getApplicationName(),
-						liferayOAuth2Scope.getApplicationName())) {
+				if (_isMatch(oAuth2ScopeGrant, liferayOAuth2Scope)) {
+					resultOAuth2ScopeGrants.add(oAuth2ScopeGrant);
 
-					continue;
+					break;
 				}
-
-				if (!Objects.equals(
-						oAuth2ScopeGrant.getBundleSymbolicName(),
-						bundleSymbolicName)) {
-
-					continue;
-				}
-
-				if (!Objects.equals(
-						oAuth2ScopeGrant.getScope(),
-						liferayOAuth2Scope.getScope())) {
-
-					continue;
-				}
-
-				resultOAuth2ScopeGrants.add(oAuth2ScopeGrant);
 			}
 		}
 
@@ -141,6 +164,36 @@ public class OAuth2ScopeGrantLocalServiceImpl
 			oAuth2AuthorizationId, resultOAuth2ScopeGrants);
 
 		return resultOAuth2ScopeGrants;
+	}
+
+	private boolean _isMatch(
+		OAuth2ScopeGrant oAuth2ScopeGrant,
+		LiferayOAuth2Scope liferayOAuth2Scope) {
+
+		if (!Objects.equals(
+				oAuth2ScopeGrant.getApplicationName(),
+				liferayOAuth2Scope.getApplicationName())) {
+
+			return false;
+		}
+
+		if (!Objects.equals(
+				oAuth2ScopeGrant.getScope(), liferayOAuth2Scope.getScope())) {
+
+			return false;
+		}
+
+		Bundle bundle = liferayOAuth2Scope.getBundle();
+
+		String bundleSymbolicName = bundle.getSymbolicName();
+
+		if (!Objects.equals(
+				oAuth2ScopeGrant.getBundleSymbolicName(), bundleSymbolicName)) {
+
+			return false;
+		}
+
+		return true;
 	}
 
 }

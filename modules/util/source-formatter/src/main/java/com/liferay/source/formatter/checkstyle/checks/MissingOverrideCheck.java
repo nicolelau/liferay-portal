@@ -41,6 +41,7 @@ import com.thoughtworks.qdox.model.expression.AnnotationValue;
 import com.thoughtworks.qdox.model.impl.DefaultJavaParameterizedType;
 
 import java.io.File;
+import java.io.IOException;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -144,14 +145,11 @@ public class MissingOverrideCheck extends BaseCheck {
 	}
 
 	private JavaProjectBuilder _getJavaProjectBuilder(String fileName)
-		throws Exception {
+		throws IOException {
 
 		if (_javaProjectBuilder != null) {
 			return _javaProjectBuilder;
 		}
-
-		JavaProjectBuilder javaProjectBuilder = new JavaProjectBuilder(
-			new ThreadSafeSortedClassLibraryBuilder());
 
 		String absolutePath = SourceUtil.getAbsolutePath(fileName);
 
@@ -170,6 +168,9 @@ public class MissingOverrideCheck extends BaseCheck {
 				break;
 			}
 		}
+
+		JavaProjectBuilder javaProjectBuilder = new JavaProjectBuilder(
+			new ThreadSafeSortedClassLibraryBuilder());
 
 		Set<ExcludeSyntaxPattern> defaultExcludeSyntaxPatterns =
 			SetUtil.fromArray(SourceFormatter.DEFAULT_EXCLUDE_SYNTAX_PATTERNS);
@@ -195,10 +196,11 @@ public class MissingOverrideCheck extends BaseCheck {
 		return _javaProjectBuilder;
 	}
 
-	private String _getPackageName(DetailAST packageDefAST) {
-		DetailAST dotAST = packageDefAST.findFirstToken(TokenTypes.DOT);
+	private String _getPackageName(DetailAST packageDefinitionDetailAST) {
+		DetailAST dotDetailAST = packageDefinitionDetailAST.findFirstToken(
+			TokenTypes.DOT);
 
-		FullIdent fullIdent = FullIdent.createFullIdent(dotAST);
+		FullIdent fullIdent = FullIdent.createFullIdent(dotDetailAST);
 
 		return fullIdent.getText();
 	}
@@ -320,9 +322,8 @@ public class MissingOverrideCheck extends BaseCheck {
 
 				return true;
 			}
-			else {
-				return false;
-			}
+
+			return false;
 		}
 
 		return false;

@@ -10,7 +10,11 @@ dependencies {
 	jsCompile group: "com.liferay", name: "com.liferay.frontend.js.web", version: "1.0.20"
 }
 
-npmRunBuild {
+node {
+	useNpm = true
+}
+
+packageRunBuild {
 	doFirst {
 		File expectedFile = file("node_modules/com.liferay.frontend.js.web/package.json")
 
@@ -20,7 +24,7 @@ npmRunBuild {
 
 repositories {
 	maven {
-		url "https://cdn.lfrs.sl/repository.liferay.com/nexus/content/groups/public"
+		url "https://repository-cdn.liferay.com/nexus/content/groups/public"
 	}
 }
 

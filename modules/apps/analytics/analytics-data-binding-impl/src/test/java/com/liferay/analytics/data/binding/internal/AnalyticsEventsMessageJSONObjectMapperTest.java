@@ -18,6 +18,7 @@ import com.fasterxml.jackson.databind.util.ISO8601Utils;
 
 import com.liferay.analytics.data.binding.JSONObjectMapper;
 import com.liferay.analytics.model.AnalyticsEventsMessage;
+import com.liferay.portal.kernel.util.StringUtil;
 
 import java.net.URL;
 
@@ -47,7 +48,7 @@ public class AnalyticsEventsMessageJSONObjectMapperTest {
 			jsonString);
 
 		Assert.assertEquals(
-			"AnalyticsKey", analyticsEventsMessage.getAnalyticsKey());
+			"DataSourceId", analyticsEventsMessage.getDataSourceId());
 
 		Map<String, String> context = analyticsEventsMessage.getContext();
 
@@ -80,7 +81,7 @@ public class AnalyticsEventsMessageJSONObjectMapperTest {
 	@Test
 	public void testJSONSerialization() throws Exception {
 		AnalyticsEventsMessage.Builder messageBuilder =
-			AnalyticsEventsMessage.builder("AnalyticsKey", "UserId");
+			AnalyticsEventsMessage.builder("DataSourceId", "UserId");
 
 		messageBuilder.contextProperty("k1", "v1");
 		messageBuilder.contextProperty("k2", "v2");
@@ -99,8 +100,8 @@ public class AnalyticsEventsMessageJSONObjectMapperTest {
 
 		String expectedJSON = read("analytics_events_message.json");
 
-		expectedJSON = expectedJSON.replace(
-			"2017-11-20T19:52:56.723Z",
+		expectedJSON = StringUtil.replace(
+			expectedJSON, "2017-11-20T19:52:56.723Z",
 			ISO8601Utils.format(event.getEventDate(), true));
 
 		String actualJSON = _jsonObjectMapper.map(messageBuilder.build());

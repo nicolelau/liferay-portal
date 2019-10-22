@@ -14,12 +14,12 @@
 
 package com.liferay.portal.dao.db;
 
+import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.dao.db.DBType;
 import com.liferay.portal.kernel.dao.db.Index;
 import com.liferay.portal.kernel.dao.jdbc.DataAccess;
 import com.liferay.portal.kernel.io.unsync.UnsyncBufferedReader;
 import com.liferay.portal.kernel.io.unsync.UnsyncStringReader;
-import com.liferay.portal.kernel.util.StringBundler;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.util.PropsValues;
 
@@ -29,6 +29,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Types;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -92,6 +93,16 @@ public class MySQLDB extends BaseDB {
 	}
 
 	@Override
+	public String getNewUuidFunctionName() {
+		return "UUID()";
+	}
+
+	@Override
+	public boolean isSupportsNewUuidFunction() {
+		return _SUPPORTS_NEW_UUID_FUNCTION;
+	}
+
+	@Override
 	public boolean isSupportsUpdateWithInnerJoin() {
 		return _SUPPORTS_UPDATE_WITH_INNER_JOIN;
 	}
@@ -119,9 +130,7 @@ public class MySQLDB extends BaseDB {
 			sb.append(databaseName);
 			sb.append(";\n\n");
 
-			String suffix = getSuffix(population);
-
-			sb.append(getCreateTablesContent(sqlDir, suffix));
+			sb.append(getCreateTablesContent(sqlDir, getSuffix(population)));
 
 			sb.append("\n\n");
 			sb.append(readFile(sqlDir + "/indexes/indexes-mysql.sql"));
@@ -135,6 +144,11 @@ public class MySQLDB extends BaseDB {
 	@Override
 	protected String getServerName() {
 		return "mysql";
+	}
+
+	@Override
+	protected int[] getSQLTypes() {
+		return _SQL_TYPES;
 	}
 
 	@Override
@@ -203,6 +217,14 @@ public class MySQLDB extends BaseDB {
 		" tinyint", " datetime(6)", " double", " integer", " bigint",
 		" longtext", " longtext", " varchar", "  auto_increment", "commit"
 	};
+
+	private static final int[] _SQL_TYPES = {
+		Types.LONGVARBINARY, Types.LONGVARBINARY, Types.TINYINT,
+		Types.TIMESTAMP, Types.DOUBLE, Types.INTEGER, Types.BIGINT,
+		Types.LONGVARCHAR, Types.LONGVARCHAR, Types.VARCHAR
+	};
+
+	private static final boolean _SUPPORTS_NEW_UUID_FUNCTION = true;
 
 	private static final boolean _SUPPORTS_UPDATE_WITH_INNER_JOIN = true;
 

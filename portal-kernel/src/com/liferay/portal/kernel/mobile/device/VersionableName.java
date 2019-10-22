@@ -14,9 +14,7 @@
 
 package com.liferay.portal.kernel.mobile.device;
 
-import aQute.bnd.annotation.ProviderType;
-
-import com.liferay.portal.kernel.util.StringBundler;
+import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
 
@@ -32,7 +30,6 @@ import java.util.TreeSet;
  * @author Milen Dyankov
  * @author Michael C. Han
  */
-@ProviderType
 public class VersionableName
 	implements Comparable<VersionableName>, Serializable {
 
@@ -114,9 +111,8 @@ public class VersionableName
 		if (_name != null) {
 			return _name.hashCode();
 		}
-		else {
-			return 0;
-		}
+
+		return 0;
 	}
 
 	@Override

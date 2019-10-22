@@ -156,15 +156,8 @@ public abstract class BaseMobileDriverImpl
 	}
 
 	@Override
-	public String getElementValue(String locator, String timeout)
-		throws Exception {
-
+	public String getElementValue(String locator, String timeout) {
 		WebElement webElement = getWebElement(locator, timeout);
-
-		if (webElement == null) {
-			throw new Exception(
-				"Element is not present at \"" + locator + "\"");
-		}
 
 		if (!isInViewport(locator)) {
 			swipeWebElementIntoView(locator);
@@ -213,13 +206,8 @@ public abstract class BaseMobileDriverImpl
 	}
 
 	@Override
-	public String getText(String locator, String timeout) throws Exception {
+	public String getText(String locator, String timeout) {
 		WebElement webElement = getWebElement(locator, timeout);
-
-		if (webElement == null) {
-			throw new Exception(
-				"Element is not present at \"" + locator + "\"");
-		}
 
 		if (!isInViewport(locator)) {
 			swipeWebElementIntoView(locator);
@@ -281,9 +269,8 @@ public abstract class BaseMobileDriverImpl
 
 			return false;
 		}
-		else {
-			return true;
-		}
+
+		return true;
 	}
 
 	@Override
@@ -307,11 +294,10 @@ public abstract class BaseMobileDriverImpl
 
 			return isInViewport(locator);
 		}
-		else {
-			scrollWebElementIntoView(webElement);
 
-			return webElement.isDisplayed();
-		}
+		scrollWebElementIntoView(webElement);
+
+		return webElement.isDisplayed();
 	}
 
 	@Override
@@ -563,9 +549,7 @@ public abstract class BaseMobileDriverImpl
 	}
 
 	protected void swipeWebElementIntoView(String locator) {
-		WebElement webElement = getWebElement(locator, "1");
-
-		scrollWebElementIntoView(webElement);
+		scrollWebElementIntoView(getWebElement(locator));
 	}
 
 	protected void tap(String locator) {

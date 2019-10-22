@@ -17,7 +17,9 @@ package com.liferay.talend;
 import com.liferay.talend.tliferayconnection.TLiferayConnectionDefinition;
 import com.liferay.talend.tliferayinput.TLiferayInputDefinition;
 import com.liferay.talend.tliferayoutput.TLiferayOutputDefinition;
+import com.liferay.talend.wizard.LiferayConnectionEditWizardDefinition;
 import com.liferay.talend.wizard.LiferayConnectionWizardDefinition;
+import com.liferay.talend.wizard.LiferaySchemaWizardDefinition;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -28,7 +30,6 @@ import org.junit.Test;
 
 import org.mockito.Mockito;
 
-import org.talend.components.api.ComponentInstaller;
 import org.talend.components.api.ComponentInstaller.ComponentFrameworkContext;
 import org.talend.components.liferay.LiferayFamilyDefinition;
 import org.talend.daikon.definition.Definition;
@@ -51,6 +52,8 @@ public class LiferayFamilyDefinitionTest {
 		expectedDefinitions.add(TLiferayConnectionDefinition.class);
 		expectedDefinitions.add(TLiferayInputDefinition.class);
 		expectedDefinitions.add(TLiferayOutputDefinition.class);
+		expectedDefinitions.add(LiferayConnectionEditWizardDefinition.class);
+		expectedDefinitions.add(LiferaySchemaWizardDefinition.class);
 		expectedDefinitions.add(LiferayConnectionWizardDefinition.class);
 
 		List<Class> actualDefinitionsNames = new ArrayList<>();
@@ -66,13 +69,12 @@ public class LiferayFamilyDefinitionTest {
 
 	@Test
 	public void testFamilyInstalled() {
-		ComponentInstaller.ComponentFrameworkContext context = Mockito.mock(
-			ComponentInstaller.ComponentFrameworkContext.class);
+		ComponentFrameworkContext componentFrameworkContext = Mockito.mock(
+			ComponentFrameworkContext.class);
 
-		_liferayFamilyDefinition.install(context);
+		_liferayFamilyDefinition.install(componentFrameworkContext);
 
-		ComponentFrameworkContext componentFrameworkContext = Mockito.verify(
-			context);
+		Mockito.verify(componentFrameworkContext);
 
 		componentFrameworkContext.registerComponentFamilyDefinition(
 			_liferayFamilyDefinition);

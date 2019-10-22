@@ -14,21 +14,48 @@
 
 package com.liferay.portal.osgi.web.servlet.context.helper.internal;
 
+import com.liferay.petra.string.CharPool;
+import com.liferay.petra.string.StringPool;
+import com.liferay.portal.kernel.log.Log;
+import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.servlet.PortletServlet;
 import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.HashMapDictionary;
+import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.osgi.web.servlet.JSPServletFactory;
 import com.liferay.portal.osgi.web.servlet.context.helper.ServletContextHelperRegistration;
 import com.liferay.portal.osgi.web.servlet.context.helper.definition.WebXMLDefinition;
 import com.liferay.portal.osgi.web.servlet.context.helper.internal.definition.WebXMLDefinitionLoader;
+import com.liferay.portal.util.PropsValues;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+
+import java.lang.management.ManagementFactory;
 
 import java.net.URL;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.Dictionary;
+import java.util.HashSet;
 import java.util.Hashtable;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
+import java.util.Properties;
+import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
+
+import javax.management.JMException;
+import javax.management.MBeanServer;
+import javax.management.ObjectName;
 
 import javax.servlet.Servlet;
 import javax.servlet.ServletContext;
@@ -36,12 +63,11 @@ import javax.servlet.ServletContextListener;
 
 import javax.xml.parsers.SAXParserFactory;
 
-import org.apache.felix.utils.log.Logger;
-
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.ServiceReference;
 import org.osgi.framework.ServiceRegistration;
+import org.osgi.framework.wiring.BundleWiring;
 import org.osgi.service.http.context.ServletContextHelper;
 import org.osgi.service.http.whiteboard.HttpWhiteboardConstants;
 
@@ -53,13 +79,13 @@ public class ServletContextHelperRegistrationImpl
 
 	public ServletContextHelperRegistrationImpl(
 		Bundle bundle, JSPServletFactory jspServletFactory,
-		SAXParserFactory saxParserFactory, Logger logger,
-		Map<String, Object> properties) {
+		SAXParserFactory saxParserFactory, Map<String, Object> properties,
+		ExecutorService executorService) {
 
 		_bundle = bundle;
 		_jspServletFactory = jspServletFactory;
-		_logger = logger;
 		_properties = properties;
+		_executorService = executorService;
 
 		String contextPath = getContextPath();
 
@@ -68,11 +94,14 @@ public class ServletContextHelperRegistrationImpl
 		URL url = _bundle.getEntry("WEB-INF/");
 
 		if (url != null) {
+			_annotatedClasses = new HashSet<>();
+			_classes = _loadClasses(bundle);
 			_wabShapedBundle = true;
 
 			WebXMLDefinitionLoader webXMLDefinitionLoader =
 				new WebXMLDefinitionLoader(
-					_bundle, _jspServletFactory, saxParserFactory, _logger);
+					_bundle, _jspServletFactory, saxParserFactory, _classes,
+					_annotatedClasses);
 
 			WebXMLDefinition webXMLDefinition = null;
 
@@ -88,16 +117,16 @@ public class ServletContextHelperRegistrationImpl
 			_webXMLDefinition = webXMLDefinition;
 		}
 		else {
+			_annotatedClasses = Collections.emptySet();
+			_classes = Collections.emptySet();
 			_wabShapedBundle = false;
-
 			_webXMLDefinition = new WebXMLDefinition();
 		}
 
 		_bundleContext = _bundle.getBundleContext();
 
 		_customServletContextHelper = new CustomServletContextHelper(
-			_bundle, _logger,
-			_webXMLDefinition.getWebResourceCollectionDefinitions());
+			_bundle, _webXMLDefinition.getWebResourceCollectionDefinitions());
 
 		_servletContextHelperServiceRegistration = createServletContextHelper(
 			contextPath);
@@ -116,19 +145,75 @@ public class ServletContextHelperRegistrationImpl
 
 	@Override
 	public void close() {
-		_servletContextRegistration.unregister();
+		try {
+			_servletContextRegistration.unregister();
+		}
+		catch (IllegalStateException ise) {
 
-		_servletContextHelperServiceRegistration.unregister();
+			// Ignore since the service has been unregistered
 
-		_servletContextListenerServiceRegistration.unregister();
+		}
 
-		_defaultServletServiceRegistration.unregister();
+		try {
+			_servletContextHelperServiceRegistration.unregister();
+		}
+		catch (IllegalStateException ise) {
 
-		_jspServletServiceRegistration.unregister();
+			// Ignore since the service has been unregistered
+
+		}
+
+		try {
+			_servletContextListenerServiceRegistration.unregister();
+		}
+		catch (IllegalStateException ise) {
+
+			// Ignore since the service has been unregistered
+
+		}
+
+		try {
+			_defaultServletServiceRegistration.unregister();
+		}
+		catch (IllegalStateException ise) {
+
+			// Ignore since the service has been unregistered
+
+		}
+
+		try {
+			_jspServletServiceRegistration.unregister();
+		}
+		catch (IllegalStateException ise) {
+
+			// Ignore since the service has been unregistered
+
+		}
 
 		if (_portletServletServiceRegistration != null) {
-			_portletServletServiceRegistration.unregister();
+			try {
+				_portletServletServiceRegistration.unregister();
+			}
+			catch (IllegalStateException ise) {
+
+				// Ignore since the service has been unregistered
+
+			}
 		}
+
+		BundleWiring bundleWiring = _bundle.adapt(BundleWiring.class);
+
+		clearResidualMBeans(bundleWiring.getClassLoader());
+	}
+
+	@Override
+	public Set<Class<?>> getAnnotatedClasses() {
+		return _annotatedClasses;
+	}
+
+	@Override
+	public Set<Class<?>> getClasses() {
+		return _classes;
 	}
 
 	@Override
@@ -161,29 +246,33 @@ public class ServletContextHelperRegistrationImpl
 			properties.put(key, serviceReference.getProperty(key));
 		}
 
-		for (Entry<String, String> entry : contextParameters.entrySet()) {
+		for (Map.Entry<String, String> entry : contextParameters.entrySet()) {
 			String key = entry.getKey();
-			String value = entry.getValue();
 
 			properties.put(
 				HttpWhiteboardConstants.
 					HTTP_WHITEBOARD_CONTEXT_INIT_PARAM_PREFIX + key,
-				value);
+				entry.getValue());
 		}
 
 		_servletContextHelperServiceRegistration.setProperties(properties);
 	}
 
-	protected String createContextSelectFilterString() {
-		StringBuilder sb = new StringBuilder();
+	protected void clearResidualMBeans(ClassLoader classLoader) {
+		MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
 
-		sb.append('(');
-		sb.append(HttpWhiteboardConstants.HTTP_WHITEBOARD_CONTEXT_NAME);
-		sb.append('=');
-		sb.append(_servletContextName);
-		sb.append(')');
+		for (ObjectName objectName : mBeanServer.queryNames(null, null)) {
+			try {
+				if (classLoader.equals(
+						mBeanServer.getClassLoaderFor(objectName))) {
 
-		return sb.toString();
+					mBeanServer.unregisterMBean(objectName);
+				}
+			}
+			catch (JMException jme) {
+				_log.error(jme, jme);
+			}
+		}
 	}
 
 	protected ServiceRegistration<?> createDefaultServlet() {
@@ -191,7 +280,7 @@ public class ServletContextHelperRegistrationImpl
 
 		properties.put(
 			HttpWhiteboardConstants.HTTP_WHITEBOARD_CONTEXT_SELECT,
-			createContextSelectFilterString());
+			_servletContextName);
 
 		String prefix = "/META-INF/resources";
 
@@ -228,7 +317,7 @@ public class ServletContextHelperRegistrationImpl
 
 		properties.put(
 			HttpWhiteboardConstants.HTTP_WHITEBOARD_CONTEXT_SELECT,
-			createContextSelectFilterString());
+			_servletContextName);
 		properties.put(
 			HttpWhiteboardConstants.HTTP_WHITEBOARD_SERVLET_NAME,
 			JspServletWrapper.class.getName());
@@ -249,7 +338,7 @@ public class ServletContextHelperRegistrationImpl
 
 		properties.put(
 			HttpWhiteboardConstants.HTTP_WHITEBOARD_CONTEXT_SELECT,
-			createContextSelectFilterString());
+			_servletContextName);
 		properties.put(
 			HttpWhiteboardConstants.HTTP_WHITEBOARD_SERVLET_NAME,
 			PortletServlet.class.getName());
@@ -258,7 +347,10 @@ public class ServletContextHelperRegistrationImpl
 			"/portlet-servlet/*");
 
 		return _bundleContext.registerService(
-			Servlet.class, new PortletServlet() {}, properties);
+			Servlet.class,
+			new PortletServlet() {
+			},
+			properties);
 	}
 
 	protected ServiceRegistration<ServletContextHelper>
@@ -298,7 +390,7 @@ public class ServletContextHelperRegistrationImpl
 
 		properties.put(
 			HttpWhiteboardConstants.HTTP_WHITEBOARD_CONTEXT_SELECT,
-			createContextSelectFilterString());
+			_servletContextName);
 		properties.put(
 			HttpWhiteboardConstants.HTTP_WHITEBOARD_LISTENER,
 			Boolean.TRUE.toString());
@@ -309,7 +401,8 @@ public class ServletContextHelperRegistrationImpl
 	}
 
 	protected String getContextPath() {
-		Dictionary<String, String> headers = _bundle.getHeaders();
+		Dictionary<String, String> headers = _bundle.getHeaders(
+			StringPool.BLANK);
 
 		String contextPath = headers.get("Web-ContextPath");
 
@@ -321,7 +414,8 @@ public class ServletContextHelperRegistrationImpl
 	}
 
 	protected String getServletContextName(String contextPath) {
-		Dictionary<String, String> headers = _bundle.getHeaders();
+		Dictionary<String, String> headers = _bundle.getHeaders(
+			StringPool.BLANK);
 
 		String header = headers.get("Web-ContextName");
 
@@ -339,7 +433,8 @@ public class ServletContextHelperRegistrationImpl
 			return GetterUtil.getBoolean(rtlRequired);
 		}
 
-		Dictionary<String, String> headers = _bundle.getHeaders();
+		Dictionary<String, String> headers = _bundle.getHeaders(
+			StringPool.BLANK);
 
 		rtlRequired = headers.get("Liferay-RTL-Support-Required");
 
@@ -366,19 +461,157 @@ public class ServletContextHelperRegistrationImpl
 			ServletContext.class, servletContext, properties);
 	}
 
+	private boolean _contains(String[] array, String classResource) {
+		int index = Arrays.binarySearch(array, classResource);
+
+		if (index >= -1) {
+			return false;
+		}
+
+		if (classResource.startsWith(array[-index - 2])) {
+			return true;
+		}
+
+		return false;
+	}
+
+	private Set<Class<?>> _loadClasses(Bundle bundle) {
+		BundleWiring bundleWiring = bundle.adapt(BundleWiring.class);
+
+		ClassLoader classLoader = bundleWiring.getClassLoader();
+
+		Set<Class<?>> classes = new HashSet<>();
+
+		File annotatedClassesFile = _bundle.getDataFile("annotated.classes");
+
+		if (annotatedClassesFile.exists()) {
+			Properties properties = new Properties();
+
+			try (InputStream inputStream = new FileInputStream(
+					annotatedClassesFile)) {
+
+				properties.load(inputStream);
+			}
+			catch (IOException ioe) {
+			}
+
+			if (_bundle.getLastModified() == GetterUtil.getLong(
+					properties.get("last.modified"))) {
+
+				boolean failed = false;
+
+				for (String className :
+						StringUtil.split(
+							properties.getProperty("annotated.classes"))) {
+
+					try {
+						classes.add(classLoader.loadClass(className));
+					}
+					catch (ClassNotFoundException cnfe) {
+						failed = true;
+
+						break;
+					}
+				}
+
+				if (!failed) {
+					return classes;
+				}
+			}
+		}
+
+		Collection<String> classResources = bundleWiring.listResources(
+			"/", "*.class", BundleWiring.LISTRESOURCES_RECURSE);
+
+		Iterator<String> iterator = classResources.iterator();
+
+		while (iterator.hasNext()) {
+			String classResource = iterator.next();
+
+			if (_contains(_WHITELIST, classResource)) {
+				continue;
+			}
+
+			if (_contains(_BLACKLIST, classResource)) {
+				iterator.remove();
+			}
+		}
+
+		if (classResources == null) {
+			return Collections.emptySet();
+		}
+
+		List<Future<Class<?>>> futures = new ArrayList<>();
+
+		for (String classResource : classResources) {
+			futures.add(
+				_executorService.submit(
+					() -> {
+						String className = classResource.substring(
+							0, classResource.length() - 6);
+
+						className = StringUtil.replace(
+							className, CharPool.SLASH, CharPool.PERIOD);
+
+						return classLoader.loadClass(className);
+					}));
+		}
+
+		for (Future<Class<?>> future : futures) {
+			try {
+				classes.add(future.get());
+			}
+			catch (Exception e) {
+			}
+		}
+
+		return classes;
+	}
+
+	private static final String[] _BLACKLIST;
+
 	private static final String _JSP_SERVLET_INIT_PARAM_PREFIX =
 		"jsp.servlet.init.param.";
 
 	private static final String _SERVLET_INIT_PARAM_PREFIX =
 		HttpWhiteboardConstants.HTTP_WHITEBOARD_SERVLET_INIT_PARAM_PREFIX;
 
+	private static final String[] _WHITELIST;
+
+	private static final Log _log = LogFactoryUtil.getLog(
+		ServletContextHelperRegistrationImpl.class);
+
+	static {
+		String[] blacklist =
+			PropsValues.
+				MODULE_FRAMEWORK_WEB_SERVLET_ANNOTATION_SCANNING_BLACKLIST;
+
+		blacklist = Arrays.copyOf(blacklist, blacklist.length);
+
+		Arrays.sort(blacklist);
+
+		_BLACKLIST = blacklist;
+
+		String[] whitelist =
+			PropsValues.
+				MODULE_FRAMEWORK_WEB_SERVLET_ANNOTATION_SCANNING_WHITELIST;
+
+		whitelist = Arrays.copyOf(whitelist, whitelist.length);
+
+		Arrays.sort(whitelist);
+
+		_WHITELIST = whitelist;
+	}
+
+	private final Set<Class<?>> _annotatedClasses;
 	private final Bundle _bundle;
 	private final BundleContext _bundleContext;
+	private final Set<Class<?>> _classes;
 	private final CustomServletContextHelper _customServletContextHelper;
 	private final ServiceRegistration<?> _defaultServletServiceRegistration;
+	private final ExecutorService _executorService;
 	private final JSPServletFactory _jspServletFactory;
 	private final ServiceRegistration<Servlet> _jspServletServiceRegistration;
-	private final Logger _logger;
 	private final ServiceRegistration<Servlet>
 		_portletServletServiceRegistration;
 	private final Map<String, Object> _properties;

@@ -52,16 +52,14 @@ public class LegacyDataArchiveGroup {
 		if (!status.contains("nothing to commit") &&
 			!status.contains("nothing added to commit")) {
 
-			Commit latestTestCommit =
-				_legacyDataArchivePortalVersion.getLatestTestCommit();
-			String portalVersion =
-				_legacyDataArchivePortalVersion.getPortalVersion();
+			LocalGitCommit latestTestLocalGitCommit =
+				_legacyDataArchivePortalVersion.getLatestTestLocalGitCommit();
 
 			_legacyGitWorkingDirectory.commitStagedFilesToCurrentBranch(
 				JenkinsResultsParserUtil.combine(
 					"archive:ignore Update '", _dataArchiveType, "' for '",
-					portalVersion, "' at ",
-					latestTestCommit.getAbbreviatedSHA(), "."));
+					_legacyDataArchivePortalVersion.getPortalVersion(), "' at ",
+					latestTestLocalGitCommit.getAbbreviatedSHA(), "."));
 		}
 	}
 

@@ -16,24 +16,17 @@ package com.liferay.portal.search.elasticsearch6.internal.filter;
 
 import com.liferay.portal.kernel.search.BooleanClauseOccur;
 import com.liferay.portal.kernel.search.Field;
-import com.liferay.portal.kernel.search.Hits;
 import com.liferay.portal.kernel.search.Query;
-import com.liferay.portal.kernel.search.SearchContext;
 import com.liferay.portal.kernel.search.filter.BooleanFilter;
 import com.liferay.portal.kernel.search.filter.Filter;
 import com.liferay.portal.kernel.search.filter.GeoDistanceFilter;
 import com.liferay.portal.kernel.search.filter.GeoDistanceRangeFilter;
 import com.liferay.portal.kernel.search.geolocation.GeoDistance;
 import com.liferay.portal.kernel.search.geolocation.GeoLocationPoint;
-import com.liferay.portal.search.elasticsearch6.internal.ElasticsearchIndexingFixture;
-import com.liferay.portal.search.elasticsearch6.internal.connection.ElasticsearchFixture;
-import com.liferay.portal.search.elasticsearch6.internal.connection.LiferayIndexCreator;
-import com.liferay.portal.search.test.util.IdempotentRetryAssert;
+import com.liferay.portal.search.elasticsearch6.internal.LiferayElasticsearchIndexingFixtureFactory;
 import com.liferay.portal.search.test.util.indexing.BaseIndexingTestCase;
 import com.liferay.portal.search.test.util.indexing.DocumentCreationHelpers;
 import com.liferay.portal.search.test.util.indexing.IndexingFixture;
-
-import java.util.concurrent.TimeUnit;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -74,18 +67,16 @@ public class GeoDistanceFilterTest extends BaseIndexingTestCase {
 	}
 
 	protected void assertCount(int expected, Filter filter) throws Exception {
-		IdempotentRetryAssert.retryAssert(
-			3, TimeUnit.SECONDS,
-			() -> {
-				SearchContext searchContext = createSearchContext();
+		assertSearch(
+			indexingTestHelper -> {
+				indexingTestHelper.setFilter(filter);
 
-				Hits hits = search(
-					searchContext, query -> setPreBooleanFilter(filter, query));
+				indexingTestHelper.search();
 
-				Assert.assertEquals(
-					hits.toString(), expected, hits.getLength());
-
-				return null;
+				indexingTestHelper.verify(
+					hits -> Assert.assertEquals(
+						indexingTestHelper.getRequestString(), expected,
+						hits.getLength()));
 			});
 	}
 
@@ -113,12 +104,7 @@ public class GeoDistanceFilterTest extends BaseIndexingTestCase {
 
 	@Override
 	protected IndexingFixture createIndexingFixture() throws Exception {
-		ElasticsearchFixture elasticsearchFixture = new ElasticsearchFixture(
-			GeoDistanceFilterTest.class.getSimpleName());
-
-		return new ElasticsearchIndexingFixture(
-			elasticsearchFixture, BaseIndexingTestCase.COMPANY_ID,
-			new LiferayIndexCreator(elasticsearchFixture));
+		return LiferayElasticsearchIndexingFixtureFactory.getInstance();
 	}
 
 	protected void index(double latitude, double longitude) throws Exception {
@@ -127,6 +113,7 @@ public class GeoDistanceFilterTest extends BaseIndexingTestCase {
 				FIELD, latitude, longitude));
 	}
 
+	@Override
 	protected void setPreBooleanFilter(Filter filter, Query query) {
 		BooleanFilter booleanFilter = new BooleanFilter();
 

@@ -14,8 +14,6 @@
 
 package com.liferay.dynamic.data.mapping.kernel;
 
-import aQute.bnd.annotation.ProviderType;
-
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.json.JSONArray;
@@ -27,6 +25,8 @@ import java.io.Serializable;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+
+import org.osgi.annotation.versioning.ProviderType;
 
 /**
  * @author Leonardo Barros
@@ -41,7 +41,7 @@ public interface DDMStructureManager {
 	public static final String STRUCTURE_INDEXER_FIELD_NAMESPACE = "ddm";
 
 	public static final String STRUCTURE_INDEXER_FIELD_PREFIX =
-		DDMStructureManager.STRUCTURE_INDEXER_FIELD_NAMESPACE +
+		STRUCTURE_INDEXER_FIELD_NAMESPACE +
 			DDMStructureManager.STRUCTURE_INDEXER_FIELD_SEPARATOR;
 
 	public static final String STRUCTURE_INDEXER_FIELD_SEPARATOR =

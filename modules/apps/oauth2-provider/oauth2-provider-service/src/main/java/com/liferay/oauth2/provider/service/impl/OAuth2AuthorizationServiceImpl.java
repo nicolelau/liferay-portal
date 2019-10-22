@@ -18,24 +18,29 @@ import com.liferay.oauth2.provider.constants.OAuth2ProviderActionKeys;
 import com.liferay.oauth2.provider.model.OAuth2Application;
 import com.liferay.oauth2.provider.model.OAuth2Authorization;
 import com.liferay.oauth2.provider.service.base.OAuth2AuthorizationServiceBaseImpl;
+import com.liferay.portal.aop.AopService;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.jsonwebservice.JSONWebService;
 import com.liferay.portal.kernel.jsonwebservice.JSONWebServiceMode;
 import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.security.permission.ActionKeys;
 import com.liferay.portal.kernel.security.permission.resource.ModelResourcePermission;
-import com.liferay.portal.kernel.security.permission.resource.ModelResourcePermissionFactory;
 import com.liferay.portal.kernel.util.OrderByComparator;
 
 import java.util.List;
 
+import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Reference;
+
 /**
  * @author Brian Wing Shun Chan
  */
+@Component(service = AopService.class)
 @JSONWebService(mode = JSONWebServiceMode.IGNORE)
 public class OAuth2AuthorizationServiceImpl
 	extends OAuth2AuthorizationServiceBaseImpl {
 
+	@Override
 	public List<OAuth2Authorization> getApplicationOAuth2Authorizations(
 			long oAuth2ApplicationId, int start, int end,
 			OrderByComparator<OAuth2Authorization> orderByComparator)
@@ -48,6 +53,7 @@ public class OAuth2AuthorizationServiceImpl
 			oAuth2ApplicationId, start, end, orderByComparator);
 	}
 
+	@Override
 	public int getApplicationOAuth2AuthorizationsCount(long oAuth2ApplicationId)
 		throws PortalException {
 
@@ -58,6 +64,7 @@ public class OAuth2AuthorizationServiceImpl
 			oAuth2ApplicationId);
 	}
 
+	@Override
 	public List<OAuth2Authorization> getUserOAuth2Authorizations(
 			int start, int end,
 			OrderByComparator<OAuth2Authorization> orderByComparator)
@@ -69,6 +76,7 @@ public class OAuth2AuthorizationServiceImpl
 			user.getUserId(), start, end, orderByComparator);
 	}
 
+	@Override
 	public int getUserOAuth2AuthorizationsCount() throws PortalException {
 		User user = getUser();
 
@@ -97,11 +105,10 @@ public class OAuth2AuthorizationServiceImpl
 			oAuth2AuthorizationId);
 	}
 
-	private static volatile ModelResourcePermission<OAuth2Application>
-		_oAuth2ApplicationModelResourcePermission =
-			ModelResourcePermissionFactory.getInstance(
-				OAuth2AuthorizationServiceImpl.class,
-				"_oAuth2ApplicationModelResourcePermission",
-				OAuth2Application.class);
+	@Reference(
+		target = "(model.class.name=com.liferay.oauth2.provider.model.OAuth2Application)"
+	)
+	private ModelResourcePermission<OAuth2Application>
+		_oAuth2ApplicationModelResourcePermission;
 
 }

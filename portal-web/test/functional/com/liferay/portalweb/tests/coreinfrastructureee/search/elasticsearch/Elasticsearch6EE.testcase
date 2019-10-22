@@ -1,324 +1,167 @@
-<definition component-name="portal-search-ee">
-	<property name="portal.release" value="true" />
-	<property name="portal.upstream" value="true" />
-	<property name="test.run.environment" value="EE" />
-	<property name="testray.main.component.name" value="Elastic Search Impl" />
-
-	<set-up>
-		<execute macro="TestCase#setUpPortalInstance" />
+@component-name = "portal-search-ee"
+definition {
 
-		<execute macro="User#firstLoginPG" />
-	</set-up>
+	property portal.release = "true";
+	property portal.suite.search.engine = "elasticsearch6";
+	property portal.upstream = "true";
+	property test.run.environment = "EE";
+	property testray.main.component.name = "Elasticsearch Impl";
 
-	<tear-down>
-		<var method="TestPropsUtil#get('test.portal.instance')" name="testPortalInstance" />
-
-		<if>
-			<equals arg1="${testPortalInstance}" arg2="true" />
-			<then>
-				<execute macro="PortalInstances#tearDownCP" />
-			</then>
-			<else>
-				<execute macro="MessageboardsThread#tearDownCP" />
+	setUp {
+		TestCase.setUpPortalInstance();
 
-				<execute macro="DMDocument#tearDownCP" />
+		User.firstLoginPG();
+	}
 
-				<execute macro="Page#tearDownCP" />
-			</else>
-		</if>
-	</tear-down>
+	tearDown {
+		var testPortalInstance = PropsUtil.get("test.portal.instance");
 
-	<command ignore="true" name="EmbeddedClusterSmokeTest" priority="3">
-		<description message="This test asserts Elasticsearch clustering to add/remove replicas as nodes are added/removed from the portal cluster. Also, we want to maintain no loss in search functionality as replicas are being added or removed." />
+		if ("${testPortalInstance}" == "true") {
+			PortalInstances.tearDownCP();
+		}
+		else {
+			MessageboardsThread.tearDownCP();
 
-		<property name="app.server.bundles.size" value="1" />
-		<property name="cluster.enabled" value="true" />
-		<property name="test.name.skip.portal.instance" value="Elasticsearch6EE#EmbeddedClusterSmokeTest" />
+			DMDocument.tearDownCP();
 
-		<!-- Verify the total number of Elasticsearch replicas is two as there are two nodes/bundles running -->
+			Page.tearDownCP();
+		}
+	}
 
-		<!-- LPS-67744 -->
+	@priority = "5"
+	test PortalClusterSmokeTest {
+		property app.server.bundles.size = "1";
+		property cluster.enabled = "true";
+		property remote.elasticsearch.enabled = "true";
+		property test.name.skip.portal.instance = "Elasticsearch6EE#PortalClusterSmokeTest";
 
-		<!--<execute macro="Elasticsearch#viewClusterStatusViaClusterHealthAPI">
-			<var name="numberOfNodes" value="2" />
-		</execute>-->
+		Elasticsearch.viewClusterStatusViaClusterHealthAPI(numberOfNodes = "1");
 
-		<!--<execute macro="Elasticsearch#viewReplicaAddedInConsole" />-->
+		Navigator.openURL();
 
-		<!--<execute macro="Navigator#openURL" />-->
+		ProductMenu.gotoPortlet(
+			category = "Content &amp; Data",
+			panel = "Site Administration",
+			portlet = "Message Boards");
 
-		<execute macro="ProductMenu#gotoPortlet">
-			<var name="category" value="Content" />
-			<var name="panel" value="Site Administration" />
-			<var name="portlet" value="Message Boards" />
-		</execute>
+		MessageboardsThread.addCP(
+			threadBody = "Orange",
+			threadSubject = "Apple");
 
-		<execute macro="MessageboardsThread#addCP">
-			<var name="threadBody" value="Orange" />
-			<var name="threadSubject" value="Apple" />
-		</execute>
+		Navigator.openURL();
 
-		<execute macro="Navigator#openURL" />
+		ProductMenu.gotoPortlet(
+			category = "Content &amp; Data",
+			panel = "Site Administration",
+			portlet = "Documents and Media");
 
-		<execute macro="ProductMenu#gotoPortlet">
-			<var name="category" value="Content" />
-			<var name="panel" value="Site Administration" />
-			<var name="portlet" value="Documents and Media" />
-		</execute>
+		DMDocument.addCP(
+			dmDocumentDescription = "Orange",
+			dmDocumentFile = "Document_1.txt",
+			dmDocumentTitle = "Apple");
 
-		<execute macro="DMDocument#addCP">
-			<var name="dmDocumentDescription" value="Orange" />
-			<var name="dmDocumentFile" value="Document_1.txt" />
-			<var name="dmDocumentTitle" value="Apple" />
-		</execute>
+		Navigator.openURL();
 
-		<execute macro="ProductMenu#gotoPortlet">
-			<var name="category" value="Configuration" />
-			<var name="panel" value="Control Panel" />
-			<var name="portlet" value="Server Administration" />
-		</execute>
+		SearchPortlets.searchEmbedded(searchTerm = "Apple");
 
-		<execute macro="ServerAdministration#executeServerResourcesActions">
-			<var name="actionsDescription" value="Reindex all search indexes." />
-		</execute>
+		SearchResultPortlet.viewSearchResults(
+			searchAssetTitle = "Apple",
+			searchAssetType = "Document");
 
-		<execute macro="Navigator#openURL" />
+		SearchResultPortlet.viewSearchResults(
+			searchAssetTitle = "Apple",
+			searchAssetType = "Message Boards Message");
 
-		<execute macro="SearchPortlet#searchPG">
-			<var name="searchTerm" value="Apple" />
-		</execute>
+		Navigator.openURL();
 
-		<execute macro="SearchPortlet#viewSearchResultsPG">
-			<var name="searchAssetTitle" value="Apple" />
-			<var name="searchAssetType" value="Document" />
-		</execute>
+		SearchPortlets.searchEmbedded(searchTerm = "Orange");
 
-		<execute macro="SearchPortlet#viewSearchResultsPG">
-			<var name="searchAssetTitle" value="Apple" />
-			<var name="searchAssetType" value="Message Boards Message" />
-		</execute>
+		SearchResultPortlet.viewSearchResults(
+			searchAssetTitle = "Apple",
+			searchAssetType = "Document");
 
-		<execute macro="Navigator#openURL" />
-
-		<execute macro="SearchPortlet#searchPG">
-			<var name="searchTerm" value="Orange" />
-		</execute>
+		SearchResultPortlet.viewSearchResults(
+			searchAssetTitle = "Apple",
+			searchAssetType = "Message Boards Message");
 
-		<execute macro="SearchPortlet#viewSearchResultsPG">
-			<var name="searchAssetTitle" value="Apple" />
-			<var name="searchAssetType" value="Document" />
-		</execute>
+		User.logoutPG(
+			password = "test",
+			userEmailAddress = "test@liferay.com");
 
-		<execute macro="SearchPortlet#viewSearchResultsPG">
-			<var name="searchAssetTitle" value="Apple" />
-			<var name="searchAssetType" value="Message Boards Message" />
-		</execute>
+		User.loginPG(
+			nodePort = "9080",
+			password = "test",
+			userEmailAddress = "test@liferay.com");
 
-		<execute macro="Portlet#shutdownSpecificServer">
-			<var name="nodePort" value="9" />
-		</execute>
+		Clustering.shutdownSpecificServer(nodePort = "8");
 
-		<!-- Verify the total number of Elasticsearch replicas has decreased to one -->
+		SearchPortlets.searchEmbedded(searchTerm = "Apple");
 
-		<!-- LPS-67744 -->
+		SearchResultPortlet.viewSearchResults(
+			searchAssetTitle = "Apple",
+			searchAssetType = "Document");
 
-		<!-- <execute macro="Elasticsearch#viewReplicaRemovedInConsole" /> -->
+		SearchResultPortlet.viewSearchResults(
+			searchAssetTitle = "Apple",
+			searchAssetType = "Message Boards Message");
 
-		<!-- <execute macro="Elasticsearch#viewClusterStatusViaClusterHealthAPI">
-			<var name="numberOfNodes" value="1" />
-		</execute> -->
+		Navigator.openSpecificURL(url = "http://localhost:9080");
 
-		<!-- Verify search functionality after a replica has been removed -->
+		SearchPortlets.searchEmbedded(searchTerm = "Orange");
 
-		<execute macro="Navigator#openURL" />
-
-		<execute macro="SearchPortlet#searchPG">
-			<var name="searchTerm" value="Apple" />
-		</execute>
-
-		<execute macro="SearchPortlet#viewSearchResultsPG">
-			<var name="searchAssetTitle" value="Apple" />
-			<var name="searchAssetType" value="Document" />
-		</execute>
-
-		<execute macro="SearchPortlet#viewSearchResultsPG">
-			<var name="searchAssetTitle" value="Apple" />
-			<var name="searchAssetType" value="Message Boards Message" />
-		</execute>
-
-		<execute macro="Navigator#openURL" />
-
-		<execute macro="SearchPortlet#searchPG">
-			<var name="searchTerm" value="Orange" />
-		</execute>
-
-		<execute macro="SearchPortlet#viewSearchResultsPG">
-			<var name="searchAssetTitle" value="Apple" />
-			<var name="searchAssetType" value="Document" />
-		</execute>
-
-		<execute macro="SearchPortlet#viewSearchResultsPG">
-			<var name="searchAssetTitle" value="Apple" />
-			<var name="searchAssetType" value="Message Boards Message" />
-		</execute>
-	</command>
-
-	<command name="PortalClusterSmokeTest" priority="5">
-		<property name="app.server.bundles.size" value="1" />
-		<property name="cluster.enabled" value="true" />
-		<property name="remote.elasticsearch.enabled" value="true" />
-		<property name="test.name.skip.portal.instance" value="Elasticsearch6EE#PortalClusterSmokeTest" />
-
-		<execute macro="Elasticsearch#viewClusterStatusViaClusterHealthAPI">
-			<var name="numberOfNodes" value="1" />
-		</execute>
-
-		<execute macro="Navigator#openURL" />
-
-		<execute macro="ProductMenu#gotoPortlet">
-			<var name="category" value="Content" />
-			<var name="panel" value="Site Administration" />
-			<var name="portlet" value="Message Boards" />
-		</execute>
-
-		<execute macro="MessageboardsThread#addCP">
-			<var name="threadBody" value="Orange" />
-			<var name="threadSubject" value="Apple" />
-		</execute>
-
-		<execute macro="Navigator#openURL" />
-
-		<execute macro="ProductMenu#gotoPortlet">
-			<var name="category" value="Content" />
-			<var name="panel" value="Site Administration" />
-			<var name="portlet" value="Documents and Media" />
-		</execute>
-
-		<execute macro="DMDocument#addCP">
-			<var name="dmDocumentDescription" value="Orange" />
-			<var name="dmDocumentFile" value="Document_1.txt" />
-			<var name="dmDocumentTitle" value="Apple" />
-		</execute>
-
-		<execute macro="Navigator#openURL" />
-
-		<execute macro="SearchPortlet#searchPG">
-			<var name="searchTerm" value="Apple" />
-		</execute>
-
-		<execute macro="SearchPortlet#viewSearchResultsPG">
-			<var name="searchAssetTitle" value="Apple" />
-			<var name="searchAssetType" value="Document" />
-		</execute>
-
-		<execute macro="SearchPortlet#viewSearchResultsPG">
-			<var name="searchAssetTitle" value="Apple" />
-			<var name="searchAssetType" value="Message Boards Message" />
-		</execute>
-
-		<execute macro="Navigator#openURL" />
-
-		<execute macro="SearchPortlet#searchPG">
-			<var name="searchTerm" value="Orange" />
-		</execute>
-
-		<execute macro="SearchPortlet#viewSearchResultsPG">
-			<var name="searchAssetTitle" value="Apple" />
-			<var name="searchAssetType" value="Document" />
-		</execute>
-
-		<execute macro="SearchPortlet#viewSearchResultsPG">
-			<var name="searchAssetTitle" value="Apple" />
-			<var name="searchAssetType" value="Message Boards Message" />
-		</execute>
-
-		<execute macro="User#logoutPG">
-			<var name="password" value="test" />
-			<var name="userEmailAddress" value="test@liferay.com" />
-		</execute>
-
-		<execute macro="User#loginPG">
-			<var name="nodePort" value="9080" />
-			<var name="password" value="test" />
-			<var name="userEmailAddress" value="test@liferay.com" />
-		</execute>
-
-		<execute macro="Portlet#shutdownSpecificServer">
-			<var name="nodePort" value="8" />
-		</execute>
-
-		<execute macro="SearchPortlet#searchPG">
-			<var name="searchTerm" value="Apple" />
-		</execute>
-
-		<execute macro="SearchPortlet#viewSearchResultsPG">
-			<var name="searchAssetTitle" value="Apple" />
-			<var name="searchAssetType" value="Document" />
-		</execute>
-
-		<execute macro="SearchPortlet#viewSearchResultsPG">
-			<var name="searchAssetTitle" value="Apple" />
-			<var name="searchAssetType" value="Message Boards Message" />
-		</execute>
-
-		<execute macro="Navigator#openSpecificURL">
-			<var name="url" value="http://localhost:9080" />
-		</execute>
-
-		<execute macro="SearchPortlet#searchPG">
-			<var name="searchTerm" value="Orange" />
-		</execute>
-
-		<execute macro="SearchPortlet#viewSearchResultsPG">
-			<var name="searchAssetTitle" value="Apple" />
-			<var name="searchAssetType" value="Document" />
-		</execute>
-
-		<execute macro="SearchPortlet#viewSearchResultsPG">
-			<var name="searchAssetTitle" value="Apple" />
-			<var name="searchAssetType" value="Message Boards Message" />
-		</execute>
-	</command>
-
-	<command name="XPackSmokeTest" priority="5">
-		<property name="elastic.xpack.enabled" value="true" />
-		<property name="remote.elasticsearch.enabled" value="true" />
-		<property name="test.name.skip.portal.instance" value="Elasticsearch6EE#XPackSmokeTest" />
-
-		<execute macro="ProductMenu#gotoPortlet">
-			<var name="category" value="Navigation" />
-			<var name="panel" value="Site Administration" />
-			<var name="portlet" value="Site Pages" />
-		</execute>
-
-		<execute macro="SitePages#addPublicPage">
-			<var name="pageName" value="X-Pack Monitoring Page" />
-			<var name="sitePageType" value="Layout" />
-		</execute>
-
-		<execute macro="SitePages#configurePage">
-			<var name="columnName" value="1 Column" />
-			<var name="pageName" value="X-Pack Monitoring Page" />
-			<var name="privacy" value="Public" />
-			<var name="sitePageType" value="Layout" />
-		</execute>
-
-		<execute macro="Navigator#gotoPage">
-			<var name="pageName" value="X-Pack Monitoring Page" />
-		</execute>
-
-		<execute macro="Portlet#addPG">
-			<var name="portletName" value="X-Pack Monitoring" />
-		</execute>
-
-		<execute macro="XPackMonitoring#viewPG" />
-
-		<execute macro="User#logoutPG" />
-
-		<execute macro="Navigator#gotoPage">
-			<var name="pageName" value="X-Pack Monitoring Page" />
-		</execute>
-
-		<execute macro="XPackMonitoring#viewAsGuestPG" />
-	</command>
-</definition>
+		SearchResultPortlet.viewSearchResults(
+			searchAssetTitle = "Apple",
+			searchAssetType = "Document");
+
+		SearchResultPortlet.viewSearchResults(
+			searchAssetTitle = "Apple",
+			searchAssetType = "Message Boards Message");
+	}
+
+	@priority = "5"
+	test XPackSmokeTest {
+		property elastic.xpack.enabled = "true";
+		property osgi.app.includes = "portal-search-elasticsearch6-xpack-monitoring,portal-search-elasticsearch6-xpack-security";
+		property remote.elasticsearch.enabled = "true";
+		property test.name.skip.portal.instance = "Elasticsearch6EE#XPackSmokeTest";
+
+		JSONWebcontent.addWebContent(
+			content = "WC Content",
+			groupName = "Guest",
+			title = "WC Title");
+
+		SearchPortlets.searchEmbedded(searchTerm = "WC Title");
+
+		SearchResultPortlet.viewSearchResults(
+			searchAssetTitle = "WC Title",
+			searchAssetType = "Web Content Article");
+
+		ProductMenu.gotoPortlet(
+			category = "Site Builder",
+			panel = "Site Administration",
+			portlet = "Pages");
+
+		SitePages.addPublicPage(
+			pageName = "X-Pack Monitoring Page",
+			sitePageType = "Widget Page");
+
+		SitePages.configurePage(
+			columnName = "1 Column",
+			pageName = "X-Pack Monitoring Page",
+			privacy = "Public Pages",
+			sitePageType = "Widget Page");
+
+		Navigator.gotoPage(pageName = "X-Pack Monitoring Page");
+
+		Portlet.addPG(portletName = "X-Pack Monitoring");
+
+		XPackMonitoring.viewPG();
+
+		User.logoutPG();
+
+		Navigator.gotoPage(pageName = "X-Pack Monitoring Page");
+
+		XPackMonitoring.viewAsGuestPG();
+	}
+
+}

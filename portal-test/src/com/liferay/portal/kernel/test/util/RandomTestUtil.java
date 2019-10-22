@@ -15,14 +15,11 @@
 package com.liferay.portal.kernel.test.util;
 
 import com.liferay.counter.kernel.service.CounterLocalServiceUtil;
-import com.liferay.portal.kernel.io.unsync.UnsyncByteArrayInputStream;
+import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.test.randomizerbumpers.RandomizerBumper;
 import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.PwdGenerator;
-import com.liferay.portal.kernel.util.StringBundler;
 import com.liferay.portal.kernel.util.UnicodeProperties;
-
-import java.io.InputStream;
 
 import java.util.Arrays;
 import java.util.Date;
@@ -40,56 +37,20 @@ public class RandomTestUtil {
 		return new Date();
 	}
 
-	public static double nextDouble() throws Exception {
+	public static double nextDouble() {
 		return CounterLocalServiceUtil.increment();
 	}
 
-	public static int nextInt() throws Exception {
+	public static int nextInt() {
 		return (int)CounterLocalServiceUtil.increment();
 	}
 
-	public static long nextLong() throws Exception {
+	public static long nextLong() {
 		return CounterLocalServiceUtil.increment();
 	}
 
 	public static boolean randomBoolean() {
 		return _random.nextBoolean();
-	}
-
-	@SafeVarargs
-	public static byte[] randomBytes(
-		int size, RandomizerBumper<byte[]>... randomizerBumpers) {
-
-		byte[] bytes = new byte[size];
-
-		generation:
-		for (int i = 0; i < _RANDOMIZER_BUMPER_TRIES_MAX; i++) {
-			_random.nextBytes(bytes);
-
-			for (RandomizerBumper<byte[]> randomizerBumper :
-					randomizerBumpers) {
-
-				if (!randomizerBumper.accept(bytes)) {
-					continue generation;
-				}
-			}
-
-			return bytes;
-		}
-
-		throw new IllegalStateException(
-			StringBundler.concat(
-				"Unable to generate a random byte array that is acceptable by ",
-				"all randomizer bumpers ", Arrays.toString(randomizerBumpers),
-				" after ", String.valueOf(_RANDOMIZER_BUMPER_TRIES_MAX),
-				" tries"));
-	}
-
-	@SafeVarargs
-	public static byte[] randomBytes(
-		RandomizerBumper<byte[]>... randomizerBumpers) {
-
-		return randomBytes(8, randomizerBumpers);
 	}
 
 	public static double randomDouble() {
@@ -101,16 +62,14 @@ public class RandomTestUtil {
 		else if (value == 0) {
 			return randomDouble();
 		}
-		else {
-			return -value;
-		}
+
+		return -value;
 	}
 
-	@SafeVarargs
-	public static InputStream randomInputStream(
-		RandomizerBumper<byte[]>... randomizerBumpers) {
+	public static <T extends Enum<?>> T randomEnum(Class<T> clazz) {
+		T[] enumConstants = clazz.getEnumConstants();
 
-		return new UnsyncByteArrayInputStream(randomBytes(randomizerBumpers));
+		return enumConstants[_random.nextInt(enumConstants.length)];
 	}
 
 	public static int randomInt() {
@@ -155,9 +114,8 @@ public class RandomTestUtil {
 		else if (value == 0) {
 			return randomLong();
 		}
-		else {
-			return -value;
-		}
+
+		return -value;
 	}
 
 	@SafeVarargs
@@ -183,8 +141,7 @@ public class RandomTestUtil {
 			StringBundler.concat(
 				"Unable to generate a random string that is acceptable by all ",
 				"randomizer bumpers ", Arrays.toString(randomizerBumpers),
-				" after ", String.valueOf(_RANDOMIZER_BUMPER_TRIES_MAX),
-				" tries"));
+				" after ", _RANDOMIZER_BUMPER_TRIES_MAX, " tries"));
 	}
 
 	@SafeVarargs

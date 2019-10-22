@@ -25,30 +25,28 @@ import com.liferay.portal.kernel.util.HttpUtil;
 import com.liferay.portal.kernel.util.ParamUtil;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
+import com.liferay.portal.struts.Action;
+import com.liferay.portal.struts.model.ActionForward;
+import com.liferay.portal.struts.model.ActionMapping;
 import com.liferay.portal.util.PropsValues;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-
-import org.apache.struts.action.Action;
-import org.apache.struts.action.ActionForm;
-import org.apache.struts.action.ActionForward;
-import org.apache.struts.action.ActionMapping;
 
 /**
  * @author David Truong
  * @author Gavin Wan
  * @author Samuel Kong
  */
-public class RESTProxyAction extends Action {
+public class RESTProxyAction implements Action {
 
 	@Override
 	public ActionForward execute(
-			ActionMapping actionMapping, ActionForm actionForm,
-			HttpServletRequest request, HttpServletResponse response)
+			ActionMapping actionMapping, HttpServletRequest httpServletRequest,
+			HttpServletResponse httpServletResponse)
 		throws Exception {
 
-		String url = ParamUtil.getString(request, "url");
+		String url = ParamUtil.getString(httpServletRequest, "url");
 
 		if (!validate(url)) {
 			return null;
@@ -73,7 +71,7 @@ public class RESTProxyAction extends Action {
 
 		String content = HttpUtil.URLtoString(options);
 
-		ServletResponseUtil.write(response, content);
+		ServletResponseUtil.write(httpServletResponse, content);
 
 		return null;
 	}

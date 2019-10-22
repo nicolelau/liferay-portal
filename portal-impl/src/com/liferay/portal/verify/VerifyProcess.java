@@ -15,14 +15,13 @@
 package com.liferay.portal.verify;
 
 import com.liferay.petra.function.UnsafeConsumer;
+import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.dao.db.BaseDBProcess;
 import com.liferay.portal.kernel.dao.jdbc.DataAccess;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.model.ReleaseConstants;
-import com.liferay.portal.kernel.util.ClassLoaderUtil;
 import com.liferay.portal.kernel.util.ClassUtil;
-import com.liferay.portal.kernel.util.StringBundler;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.util.PropsValues;
 
@@ -66,7 +65,7 @@ public abstract class VerifyProcess extends BaseDBProcess {
 			_log.info("Verifying " + ClassUtil.getClassName(this));
 		}
 
-		try (Connection con = DataAccess.getUpgradeOptimizedConnection()) {
+		try (Connection con = DataAccess.getConnection()) {
 			connection = con;
 
 			doVerify();
@@ -82,8 +81,7 @@ public abstract class VerifyProcess extends BaseDBProcess {
 					StringBundler.concat(
 						"Completed verification process ",
 						ClassUtil.getClassName(this), " in ",
-						String.valueOf(System.currentTimeMillis() - start),
-						"ms"));
+						System.currentTimeMillis() - start, " ms"));
 			}
 		}
 	}
@@ -151,10 +149,10 @@ public abstract class VerifyProcess extends BaseDBProcess {
 			return _portalTableNames;
 		}
 
-		ClassLoader classLoader = ClassLoaderUtil.getContextClassLoader();
+		Thread currentThread = Thread.currentThread();
 
 		String sql = StringUtil.read(
-			classLoader,
+			currentThread.getContextClassLoader(),
 			"com/liferay/portal/tools/sql/dependencies/portal-tables.sql");
 
 		Matcher matcher = _createTablePattern.matcher(sql);
@@ -186,8 +184,9 @@ public abstract class VerifyProcess extends BaseDBProcess {
 
 	private static final Log _log = LogFactoryUtil.getLog(VerifyProcess.class);
 
-	private final Pattern _createTablePattern = Pattern.compile(
+	private static final Pattern _createTablePattern = Pattern.compile(
 		"create table (\\S*) \\(");
+
 	private Set<String> _portalTableNames;
 
 }

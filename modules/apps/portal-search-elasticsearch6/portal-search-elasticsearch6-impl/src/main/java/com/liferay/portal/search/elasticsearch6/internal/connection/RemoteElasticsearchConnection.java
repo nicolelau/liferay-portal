@@ -19,6 +19,7 @@ import com.liferay.portal.configuration.metatype.bnd.util.ConfigurableUtil;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.util.GetterUtil;
+import com.liferay.portal.kernel.util.InetAddressUtil;
 import com.liferay.portal.kernel.util.Props;
 import com.liferay.portal.kernel.util.SetUtil;
 import com.liferay.portal.kernel.util.StringUtil;
@@ -36,6 +37,7 @@ import java.util.Set;
 
 import org.elasticsearch.client.Client;
 import org.elasticsearch.client.transport.TransportClient;
+import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.transport.TransportAddress;
 import org.elasticsearch.transport.client.PreBuiltTransportClient;
 import org.elasticsearch.xpack.client.PreBuiltXPackTransportClient;
@@ -103,7 +105,7 @@ public class RemoteElasticsearchConnection extends BaseElasticsearchConnection {
 
 		int port = GetterUtil.getInteger(transportAddressParts[1]);
 
-		InetAddress inetAddress = InetAddress.getByName(host);
+		InetAddress inetAddress = InetAddressUtil.getInetAddressByName(host);
 
 		transportClient.addTransportAddress(
 			new TransportAddress(inetAddress, port));
@@ -116,32 +118,52 @@ public class RemoteElasticsearchConnection extends BaseElasticsearchConnection {
 				"There must be at least one transport address");
 		}
 
-		TransportClient transportClient = createTransportClient();
+		Thread thread = Thread.currentThread();
 
-		for (String transportAddress : _transportAddresses) {
-			try {
-				addTransportAddress(transportClient, transportAddress);
-			}
-			catch (Exception e) {
-				if (_log.isWarnEnabled()) {
-					_log.warn(
-						"Unable to add transport address " + transportAddress,
-						e);
+		ClassLoader contextClassLoader = thread.getContextClassLoader();
+
+		Class<?> clazz = getClass();
+
+		thread.setContextClassLoader(clazz.getClassLoader());
+
+		try {
+			TransportClient transportClient = createTransportClient();
+
+			for (String transportAddress : _transportAddresses) {
+				try {
+					addTransportAddress(transportClient, transportAddress);
+				}
+				catch (Exception e) {
+					if (_log.isWarnEnabled()) {
+						_log.warn(
+							"Unable to add transport address " +
+								transportAddress,
+							e);
+					}
 				}
 			}
-		}
 
-		return transportClient;
+			return transportClient;
+		}
+		finally {
+			thread.setContextClassLoader(contextClassLoader);
+		}
 	}
 
 	protected TransportClient createTransportClient() {
+		Settings settings = settingsBuilder.build();
+
+		if (_log.isDebugEnabled()) {
+			_log.debug("Settings: " + settings.toString());
+		}
+
 		if ((xPackSecuritySettings != null) &&
 			xPackSecuritySettings.requiresXPackSecurity()) {
 
-			return new PreBuiltXPackTransportClient(settingsBuilder.build());
+			return new PreBuiltXPackTransportClient(settings);
 		}
 
-		return new PreBuiltTransportClient(settingsBuilder.build());
+		return new PreBuiltTransportClient(settings);
 	}
 
 	@Deactivate
@@ -178,9 +200,10 @@ public class RemoteElasticsearchConnection extends BaseElasticsearchConnection {
 			close();
 		}
 
-		if (!isConnected() && (elasticsearchConfiguration.operationMode() ==
-				com.liferay.portal.
-					search.elasticsearch6.configuration.OperationMode.REMOTE)) {
+		if (!isConnected() &&
+			(elasticsearchConfiguration.operationMode() ==
+				com.liferay.portal.search.elasticsearch6.configuration.
+					OperationMode.REMOTE)) {
 
 			connect();
 		}

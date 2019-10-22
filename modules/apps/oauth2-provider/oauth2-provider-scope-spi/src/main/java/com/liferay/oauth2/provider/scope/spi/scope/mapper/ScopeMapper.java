@@ -14,10 +14,10 @@
 
 package com.liferay.oauth2.provider.scope.spi.scope.mapper;
 
-import aQute.bnd.annotation.ProviderType;
-
 import java.util.Collections;
 import java.util.Set;
+
+import org.osgi.annotation.versioning.ProviderType;
 
 /**
  * Represents a transformation between internal scope names to external aliases.
@@ -28,13 +28,13 @@ import java.util.Set;
 @ProviderType
 public interface ScopeMapper {
 
-	public static final ScopeMapper PASSTHROUGH_SCOPEMAPPER =
+	public static final ScopeMapper PASS_THROUGH_SCOPE_MAPPER =
 		Collections::singleton;
 
 	/**
 	 * Renames an application provided scope to new scope names
 	 *
-	 * @param scope application provided scope
+	 * @param  scope application provided scope
 	 * @return set of new names for the scope
 	 * @review
 	 */

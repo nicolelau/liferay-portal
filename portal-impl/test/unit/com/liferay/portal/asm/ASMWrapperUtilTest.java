@@ -14,14 +14,13 @@
 
 package com.liferay.portal.asm;
 
+import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.test.ReflectionTestUtil;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
 import com.liferay.portal.kernel.test.rule.CodeCoverageAssertor;
 import com.liferay.portal.kernel.test.rule.NewEnv;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.util.ArrayUtil;
-import com.liferay.portal.kernel.util.PredicateFilter;
-import com.liferay.portal.kernel.util.StringBundler;
 import com.liferay.portal.test.aspects.ReflectionUtilAdvice;
 import com.liferay.portal.test.rule.AdviseWith;
 import com.liferay.portal.test.rule.AspectJNewEnvTestRule;
@@ -284,30 +283,25 @@ public class ASMWrapperUtilTest {
 	private void _assertEquals(Method expectedMethod, Method actualMethod) {
 		Assert.assertEquals(
 			StringBundler.concat(
-				"Expected:", String.valueOf(expectedMethod), ", actual: ",
-				String.valueOf(actualMethod)),
+				"Expected:", expectedMethod, ", actual: ", actualMethod),
 			expectedMethod.getModifiers() - Modifier.ABSTRACT,
 			actualMethod.getModifiers());
 		Assert.assertSame(
 			StringBundler.concat(
-				"Expected:", String.valueOf(expectedMethod), ", actual: ",
-				String.valueOf(actualMethod)),
+				"Expected:", expectedMethod, ", actual: ", actualMethod),
 			expectedMethod.getReturnType(), actualMethod.getReturnType());
 		Assert.assertEquals(
 			StringBundler.concat(
-				"Expected:", String.valueOf(expectedMethod), ", actual: ",
-				String.valueOf(actualMethod)),
+				"Expected:", expectedMethod, ", actual: ", actualMethod),
 			expectedMethod.getName(), actualMethod.getName());
 		Assert.assertArrayEquals(
 			StringBundler.concat(
-				"Expected:", String.valueOf(expectedMethod), ", actual: ",
-				String.valueOf(actualMethod)),
+				"Expected:", expectedMethod, ", actual: ", actualMethod),
 			expectedMethod.getParameterTypes(),
 			actualMethod.getParameterTypes());
 		Assert.assertArrayEquals(
 			StringBundler.concat(
-				"Expected:", String.valueOf(expectedMethod), ", actual: ",
-				String.valueOf(actualMethod)),
+				"Expected:", expectedMethod, ", actual: ", actualMethod),
 			expectedMethod.getExceptionTypes(),
 			actualMethod.getExceptionTypes());
 	}
@@ -317,21 +311,16 @@ public class ASMWrapperUtilTest {
 
 		methods = ArrayUtil.<Method>filter(
 			methods,
-			new PredicateFilter<Method>() {
+			method -> {
+				String name = method.getName();
 
-				@Override
-				public boolean filter(Method method) {
-					String name = method.getName();
+				if (name.equals("equals") || name.equals("hashCode") ||
+					name.equals("toString")) {
 
-					if (name.equals("equals") || name.equals("hashCode") ||
-						name.equals("toString")) {
-
-						return false;
-					}
-
-					return true;
+					return false;
 				}
 
+				return true;
 			});
 
 		Arrays.sort(

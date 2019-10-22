@@ -14,13 +14,18 @@
 
 package com.liferay.portal.search.elasticsearch6.internal.facet;
 
+import com.liferay.petra.string.CharPool;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.json.JSONArray;
 import com.liferay.portal.kernel.json.JSONObject;
 import com.liferay.portal.kernel.search.facet.Facet;
 import com.liferay.portal.kernel.search.facet.config.FacetConfiguration;
+import com.liferay.portal.kernel.util.StringUtil;
+
+import java.util.Optional;
 
 import org.elasticsearch.action.search.SearchRequestBuilder;
+import org.elasticsearch.search.aggregations.AggregationBuilder;
 import org.elasticsearch.search.aggregations.AggregationBuilders;
 import org.elasticsearch.search.aggregations.bucket.range.DateRangeAggregationBuilder;
 
@@ -38,9 +43,7 @@ public class DateRangeFacetProcessor
 	implements FacetProcessor<SearchRequestBuilder> {
 
 	@Override
-	public void processFacet(
-		SearchRequestBuilder searchRequestBuilder, Facet facet) {
-
+	public Optional<AggregationBuilder> processFacet(Facet facet) {
 		FacetConfiguration facetConfiguration = facet.getFacetConfiguration();
 
 		JSONObject jsonObject = facetConfiguration.getData();
@@ -48,11 +51,13 @@ public class DateRangeFacetProcessor
 		JSONArray jsonArray = jsonObject.getJSONArray("ranges");
 
 		if (jsonArray == null) {
-			return;
+			return Optional.empty();
 		}
 
 		DateRangeAggregationBuilder dateRangeAggregationBuilder =
-			AggregationBuilders.dateRange(facetConfiguration.getFieldName());
+			AggregationBuilders.dateRange(FacetUtil.getAggregationName(facet));
+
+		dateRangeAggregationBuilder.field(facetConfiguration.getFieldName());
 
 		String format = jsonObject.getString("format");
 
@@ -63,15 +68,17 @@ public class DateRangeFacetProcessor
 
 			String range = rangeJSONObject.getString("range");
 
-			range = range.replace(StringPool.OPEN_BRACKET, StringPool.BLANK);
-			range = range.replace(StringPool.CLOSE_BRACKET, StringPool.BLANK);
+			range = StringUtil.replace(
+				range, CharPool.OPEN_BRACKET, StringPool.BLANK);
+			range = StringUtil.replace(
+				range, CharPool.CLOSE_BRACKET, StringPool.BLANK);
 
 			String[] rangeParts = range.split(StringPool.SPACE);
 
 			dateRangeAggregationBuilder.addRange(rangeParts[0], rangeParts[2]);
 		}
 
-		searchRequestBuilder.addAggregation(dateRangeAggregationBuilder);
+		return Optional.of(dateRangeAggregationBuilder);
 	}
 
 }

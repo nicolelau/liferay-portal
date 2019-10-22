@@ -15,7 +15,6 @@
 package com.liferay.portlet.documentlibrary.service.impl;
 
 import com.liferay.document.library.kernel.model.DLFolder;
-import com.liferay.document.library.kernel.model.DLFolderConstants;
 import com.liferay.portal.kernel.dao.orm.QueryDefinition;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.lock.Lock;
@@ -199,10 +198,9 @@ public class DLFolderServiceImpl extends DLFolderServiceBaseImpl {
 			return dlFolderPersistence.filterFindByG_P_H_S(
 				groupId, parentFolderId, false, status, start, end, obc);
 		}
-		else {
-			return dlFolderPersistence.filterFindByG_M_P_H_S(
-				groupId, false, parentFolderId, false, status, start, end, obc);
-		}
+
+		return dlFolderPersistence.filterFindByG_M_P_H_S(
+			groupId, false, parentFolderId, false, status, start, end, obc);
 	}
 
 	@Override
@@ -367,10 +365,9 @@ public class DLFolderServiceImpl extends DLFolderServiceBaseImpl {
 			return dlFolderPersistence.filterCountByG_P_H_S(
 				groupId, parentFolderId, false, status);
 		}
-		else {
-			return dlFolderPersistence.filterCountByG_M_P_H_S(
-				groupId, false, parentFolderId, false, status);
-		}
+
+		return dlFolderPersistence.filterCountByG_M_P_H_S(
+			groupId, false, parentFolderId, false, status);
 	}
 
 	@Override
@@ -393,10 +390,9 @@ public class DLFolderServiceImpl extends DLFolderServiceBaseImpl {
 			return dlFolderPersistence.filterFindByG_M_P(
 				groupId, true, parentFolderId, start, end, obc);
 		}
-		else {
-			return dlFolderPersistence.filterFindByG_M_P_H(
-				groupId, true, parentFolderId, false, start, end, obc);
-		}
+
+		return dlFolderPersistence.filterFindByG_M_P_H(
+			groupId, true, parentFolderId, false, start, end, obc);
 	}
 
 	@Override
@@ -412,19 +408,6 @@ public class DLFolderServiceImpl extends DLFolderServiceBaseImpl {
 
 		return dlFolderPersistence.filterCountByG_M_P_H(
 			groupId, true, parentFolderId, false);
-	}
-
-	/**
-	 * @deprecated As of 7.0.0, replaced by {@link #getSubfolderIds(List, long,
-	 *             long, boolean)}
-	 */
-	@Deprecated
-	@Override
-	public void getSubfolderIds(
-			List<Long> folderIds, long groupId, long folderId)
-		throws PortalException {
-
-		getSubfolderIds(folderIds, groupId, folderId, true);
 	}
 
 	@Override
@@ -574,32 +557,6 @@ public class DLFolderServiceImpl extends DLFolderServiceBaseImpl {
 
 		return dlFolderLocalService.updateFolder(
 			folderId, parentFolderId, name, description, defaultFileEntryTypeId,
-			fileEntryTypeIds, restrictionType, serviceContext);
-	}
-
-	/**
-	 * @deprecated As of 7.0.0, replaced by more general {@link
-	 *             #updateFolder(long, String, String, long, List, int,
-	 *             ServiceContext)}
-	 */
-	@Deprecated
-	@Override
-	public DLFolder updateFolder(
-			long folderId, String name, String description,
-			long defaultFileEntryTypeId, List<Long> fileEntryTypeIds,
-			boolean overrideFileEntryTypes, ServiceContext serviceContext)
-		throws PortalException {
-
-		int restrictionType = DLFolderConstants.RESTRICTION_TYPE_INHERIT;
-
-		if (overrideFileEntryTypes) {
-			restrictionType =
-				DLFolderConstants.
-					RESTRICTION_TYPE_FILE_ENTRY_TYPES_AND_WORKFLOW;
-		}
-
-		return dlFolderLocalService.updateFolder(
-			folderId, name, description, defaultFileEntryTypeId,
 			fileEntryTypeIds, restrictionType, serviceContext);
 	}
 

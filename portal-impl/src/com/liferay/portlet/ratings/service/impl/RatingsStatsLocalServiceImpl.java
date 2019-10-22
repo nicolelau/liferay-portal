@@ -14,17 +14,16 @@
 
 package com.liferay.portlet.ratings.service.impl;
 
+import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.exception.SystemException;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
-import com.liferay.portal.kernel.util.StringBundler;
 import com.liferay.portlet.ratings.service.base.RatingsStatsLocalServiceBaseImpl;
 import com.liferay.ratings.kernel.exception.NoSuchStatsException;
 import com.liferay.ratings.kernel.model.RatingsStats;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -52,9 +51,8 @@ public class RatingsStatsLocalServiceImpl
 			if (_log.isWarnEnabled()) {
 				_log.warn(
 					StringBundler.concat(
-						"Add failed, fetch {classNameId=",
-						String.valueOf(classNameId), ", classPK=",
-						String.valueOf(classPK), "}"));
+						"Add failed, fetch {classNameId=", classNameId,
+						", classPK=", classPK, "}"));
 			}
 
 			stats = ratingsStatsPersistence.fetchByC_C(
@@ -77,7 +75,7 @@ public class RatingsStatsLocalServiceImpl
 		}
 		catch (NoSuchStatsException nsse) {
 			if (_log.isWarnEnabled()) {
-				_log.warn(nsse);
+				_log.warn(nsse, nsse);
 			}
 		}
 
@@ -86,9 +84,8 @@ public class RatingsStatsLocalServiceImpl
 
 	@Override
 	public RatingsStats fetchStats(String className, long classPK) {
-		long classNameId = classNameLocalService.getClassNameId(className);
-
-		return ratingsStatsPersistence.fetchByC_C(classNameId, classPK);
+		return ratingsStatsPersistence.fetchByC_C(
+			classNameLocalService.getClassNameId(className), classPK);
 	}
 
 	@Override
@@ -96,24 +93,12 @@ public class RatingsStatsLocalServiceImpl
 		return ratingsStatsPersistence.findByPrimaryKey(statsId);
 	}
 
-	/**
-	 * @deprecated As of 7.0.0, with no direct replacement
-	 */
-	@Deprecated
-	@Override
-	public List<RatingsStats> getStats(String className, List<Long> classPKs) {
-		long classNameId = classNameLocalService.getClassNameId(className);
-
-		return ratingsStatsFinder.findByC_C(classNameId, classPKs);
-	}
-
 	@Override
 	public RatingsStats getStats(String className, long classPK)
 		throws PortalException {
 
-		long classNameId = classNameLocalService.getClassNameId(className);
-
-		return ratingsStatsPersistence.findByC_C(classNameId, classPK);
+		return ratingsStatsPersistence.findByC_C(
+			classNameLocalService.getClassNameId(className), classPK);
 	}
 
 	@Override

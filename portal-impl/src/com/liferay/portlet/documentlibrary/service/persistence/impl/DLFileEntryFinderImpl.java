@@ -18,6 +18,7 @@ import com.liferay.document.library.kernel.exception.NoSuchFileEntryException;
 import com.liferay.document.library.kernel.model.DLFileEntry;
 import com.liferay.document.library.kernel.model.DLFileEntryConstants;
 import com.liferay.document.library.kernel.service.persistence.DLFileEntryFinder;
+import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.dao.orm.QueryDefinition;
 import com.liferay.portal.kernel.dao.orm.QueryPos;
@@ -32,7 +33,6 @@ import com.liferay.portal.kernel.util.ArrayUtil;
 import com.liferay.portal.kernel.util.DateRange;
 import com.liferay.portal.kernel.util.ListUtil;
 import com.liferay.portal.kernel.util.PortalUtil;
-import com.liferay.portal.kernel.util.StringBundler;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.workflow.WorkflowConstants;
 import com.liferay.portlet.documentlibrary.model.impl.DLFileEntryImpl;
@@ -96,7 +96,7 @@ public class DLFileEntryFinderImpl
 		DLFileEntryFinder.class.getName() + ".findByG_U_F";
 
 	/**
-	 * @deprecated As of 7.0.0, with no direct replacement
+	 * @deprecated As of Judson (7.1.x), with no direct replacement
 	 */
 	@Deprecated
 	public static final String JOIN_AE_BY_DL_FILE_ENTRY =
@@ -144,7 +144,7 @@ public class DLFileEntryFinderImpl
 	}
 
 	/**
-	 * @deprecated As of 7.0.0, with no direct replacement
+	 * @deprecated As of Wilberforce (7.0.x), with no direct replacement
 	 */
 	@Deprecated
 	@Override
@@ -188,7 +188,7 @@ public class DLFileEntryFinderImpl
 	}
 
 	/**
-	 * @deprecated As of 7.0.0, with no direct replacement
+	 * @deprecated As of Judson (7.1.x), with no direct replacement
 	 */
 	@Deprecated
 	@Override
@@ -313,7 +313,7 @@ public class DLFileEntryFinderImpl
 	}
 
 	/**
-	 * @deprecated As of 7.0.0, with no direct replacement
+	 * @deprecated As of Judson (7.1.x), with no direct replacement
 	 */
 	@Deprecated
 	@Override
@@ -376,11 +376,11 @@ public class DLFileEntryFinderImpl
 		try {
 			session = openSession();
 
-			String sql = CustomSQLUtil.get(FIND_BY_DDM_STRUCTURE_IDS);
-
 			if ((ddmStructureIds == null) || (ddmStructureIds.length <= 0)) {
 				return Collections.emptyList();
 			}
+
+			String sql = CustomSQLUtil.get(FIND_BY_DDM_STRUCTURE_IDS);
 
 			if (groupId <= 0) {
 				sql = StringUtil.replace(
@@ -421,6 +421,10 @@ public class DLFileEntryFinderImpl
 		return findByDDMStructureIds(0, ddmStructureIds, start, end);
 	}
 
+	/**
+	 * @deprecated As of Judson (7.1.x), with no direct replacement
+	 */
+	@Deprecated
 	@Override
 	public List<DLFileEntry> findByMisversioned() {
 		Session session = null;
@@ -850,10 +854,10 @@ public class DLFileEntryFinderImpl
 			}
 		}
 
-		StringBundler sb = new StringBundler(12);
-
 		if (ListUtil.isNotEmpty(repositoryIds) ||
 			ListUtil.isNotEmpty(folderIds) || ArrayUtil.isNotEmpty(mimeTypes)) {
+
+			StringBundler sb = new StringBundler(12);
 
 			if (ListUtil.isNotEmpty(repositoryIds)) {
 				sb.append(WHERE_AND);
@@ -878,9 +882,8 @@ public class DLFileEntryFinderImpl
 
 			return StringUtil.replace(sql, "[$FOLDER_ID$]", sb.toString());
 		}
-		else {
-			return StringUtil.replace(sql, "[$FOLDER_ID$]", StringPool.BLANK);
-		}
+
+		return StringUtil.replace(sql, "[$FOLDER_ID$]", StringPool.BLANK);
 	}
 
 	protected String getFolderIds(List<Long> folderIds, String tableName) {

@@ -20,6 +20,7 @@ import com.liferay.source.formatter.checks.util.SourceUtil;
 import java.util.List;
 
 import org.dom4j.Document;
+import org.dom4j.DocumentException;
 import org.dom4j.Element;
 
 /**
@@ -30,7 +31,7 @@ public class XMLDDLStructuresFileCheck extends BaseFileCheck {
 	@Override
 	protected String doProcess(
 			String fileName, String absolutePath, String content)
-		throws Exception {
+		throws DocumentException {
 
 		if (fileName.endsWith("structures.xml")) {
 			_checkDDLStructuresXML(fileName, content);
@@ -40,7 +41,7 @@ public class XMLDDLStructuresFileCheck extends BaseFileCheck {
 	}
 
 	private void _checkDDLStructuresXML(String fileName, String content)
-		throws Exception {
+		throws DocumentException {
 
 		Document document = SourceUtil.readXML(content);
 
@@ -77,9 +78,7 @@ public class XMLDDLStructuresFileCheck extends BaseFileCheck {
 
 		@Override
 		public String getElementName(Element element) {
-			Element nameElement = element.element(getNameAttribute());
-
-			return nameElement.getText();
+			return getTagValue(element);
 		}
 
 	}

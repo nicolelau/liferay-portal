@@ -57,11 +57,11 @@ public abstract class BaseJSDocPlugin implements Plugin<Project> {
 	}
 
 	private void _configureTaskJSDoc(
-		JSDocTask jsdocTask, final DownloadNodeModuleTask downloadJSDocTask) {
+		JSDocTask jsDocTask, final DownloadNodeModuleTask downloadJSDocTask) {
 
-		jsdocTask.dependsOn(downloadJSDocTask);
+		jsDocTask.dependsOn(downloadJSDocTask);
 
-		jsdocTask.setScriptFile(
+		jsDocTask.setScriptFile(
 			new Callable<File>() {
 
 				@Override
@@ -85,13 +85,13 @@ public abstract class BaseJSDocPlugin implements Plugin<Project> {
 			new Action<JSDocTask>() {
 
 				@Override
-				public void execute(JSDocTask jsdocTask) {
-					_configureTaskJSDoc(jsdocTask, downloadJSDocTask);
+				public void execute(JSDocTask jsDocTask) {
+					_configureTaskJSDoc(jsDocTask, downloadJSDocTask);
 				}
 
 			});
 	}
 
-	private static final String _VERSION = "3.5.5";
+	private static final String _VERSION = "3.6.3";
 
 }

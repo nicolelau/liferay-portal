@@ -14,7 +14,7 @@
 
 package com.liferay.asset.kernel.service.persistence;
 
-import aQute.bnd.annotation.ProviderType;
+import org.osgi.annotation.versioning.ProviderType;
 
 /**
  * @author Brian Wing Shun Chan
@@ -24,11 +24,13 @@ import aQute.bnd.annotation.ProviderType;
 @Deprecated
 @ProviderType
 public interface AssetCategoryPropertyFinder {
-	public int countByG_K(long groupId, java.lang.String key);
 
-	public java.util.List<com.liferay.asset.kernel.model.AssetCategoryProperty> findByG_K(
-		long groupId, java.lang.String key);
+	public int countByG_K(long groupId, String key);
 
-	public java.util.List<com.liferay.asset.kernel.model.AssetCategoryProperty> findByG_K(
-		long groupId, java.lang.String key, int start, int end);
+	public java.util.List<com.liferay.asset.kernel.model.AssetCategoryProperty>
+		findByG_K(long groupId, String key);
+
+	public java.util.List<com.liferay.asset.kernel.model.AssetCategoryProperty>
+		findByG_K(long groupId, String key, int start, int end);
+
 }

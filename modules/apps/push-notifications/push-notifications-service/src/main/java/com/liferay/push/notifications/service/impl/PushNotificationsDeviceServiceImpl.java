@@ -14,6 +14,8 @@
 
 package com.liferay.push.notifications.service.impl;
 
+import com.liferay.petra.string.StringBundler;
+import com.liferay.portal.aop.AopService;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.json.JSONFactoryUtil;
 import com.liferay.portal.kernel.json.JSONObject;
@@ -21,8 +23,6 @@ import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.security.access.control.AccessControlled;
 import com.liferay.portal.kernel.security.permission.resource.PortletResourcePermission;
-import com.liferay.portal.kernel.security.permission.resource.PortletResourcePermissionFactory;
-import com.liferay.portal.kernel.util.StringBundler;
 import com.liferay.push.notifications.constants.PushNotificationsActionKeys;
 import com.liferay.push.notifications.constants.PushNotificationsConstants;
 import com.liferay.push.notifications.model.PushNotificationsDevice;
@@ -30,10 +30,20 @@ import com.liferay.push.notifications.service.base.PushNotificationsDeviceServic
 
 import java.util.List;
 
+import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Reference;
+
 /**
  * @author Silvio Santos
  * @author Bruno Farache
  */
+@Component(
+	property = {
+		"json.web.service.context.name=pushnotifications",
+		"json.web.service.context.path=PushNotificationsDevice"
+	},
+	service = AopService.class
+)
 public class PushNotificationsDeviceServiceImpl
 	extends PushNotificationsDeviceServiceBaseImpl {
 
@@ -109,7 +119,7 @@ public class PushNotificationsDeviceServiceImpl
 				_log.info(
 					StringBundler.concat(
 						"Device found with token ", token,
-						" does not belong to user ", String.valueOf(userId)));
+						" does not belong to user ", userId));
 			}
 		}
 
@@ -150,11 +160,9 @@ public class PushNotificationsDeviceServiceImpl
 	private static final Log _log = LogFactoryUtil.getLog(
 		PushNotificationsDeviceServiceImpl.class);
 
-	private static volatile PortletResourcePermission
-		_portletResourcePermission =
-			PortletResourcePermissionFactory.getInstance(
-				PushNotificationsDeviceServiceImpl.class,
-				"_portletResourcePermission",
-				PushNotificationsConstants.RESOURCE_NAME);
+	@Reference(
+		target = "(resource.name=" + PushNotificationsConstants.RESOURCE_NAME + ")"
+	)
+	private PortletResourcePermission _portletResourcePermission;
 
 }

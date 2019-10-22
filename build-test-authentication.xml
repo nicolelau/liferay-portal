@@ -104,7 +104,7 @@ SERVER_URL=http://test.able.com:8080</echo>
 			<java
 				failonerror="true"
 				fork="true"
-				jar="${openam.configurator.tools.dir}/openam-configurator-tool-12.0.0.jar"
+				jar="${openam.configurator.tools.dir}/openam-configurator-tool-${openam.version}.jar"
 			>
 				<arg line="--file ${openam.configurator.tools.dir}/config.properties" />
 			</java>
@@ -180,7 +180,9 @@ SERVER_URL=http://test.able.com:8080</echo>
 		<echo>${curl.output}</echo>
 
 		<if>
-			<contains string="${curl.output}" substring="Test Test" />
+			<not>
+				<contains string="${curl.output}" substring="Sign In" />
+			</not>
 			<then>
 				<echo>Signed in successfully.</echo>
 			</then>

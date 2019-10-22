@@ -14,9 +14,9 @@
 
 package com.liferay.oauth2.provider.scope.spi.scope.descriptor;
 
-import aQute.bnd.annotation.ProviderType;
-
 import java.util.Locale;
+
+import org.osgi.annotation.versioning.ProviderType;
 
 /**
  * Represents localization information for the scopes of OAuth2 applications.
@@ -30,8 +30,8 @@ public interface ScopeDescriptor {
 	/**
 	 * Localize a scope for a given locale.
 	 *
-	 * @param scope the scope to be described.
-	 * @param locale the locale requested for the description.
+	 * @param  scope the scope to be described.
+	 * @param  locale the locale requested for the description.
 	 * @return a description for the scope in the requested locale.
 	 * @review
 	 */

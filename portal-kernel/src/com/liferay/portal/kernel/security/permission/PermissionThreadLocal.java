@@ -35,16 +35,6 @@ public class PermissionThreadLocal {
 		return _addResource.get();
 	}
 
-	/**
-	 * @deprecated As of 7.0.0, with no direct replacement
-	 */
-	@Deprecated
-	public static boolean isFlushResourceBlockEnabled(
-		long companyId, long groupId, String name) {
-
-		return false;
-	}
-
 	public static boolean isFlushResourcePermissionEnabled(
 		String resourceName, String primKey) {
 
@@ -55,14 +45,6 @@ public class PermissionThreadLocal {
 
 	public static void setAddResource(boolean addResource) {
 		_addResource.set(addResource);
-	}
-
-	/**
-	 * @deprecated As of 7.0.0, with no direct replacement
-	 */
-	@Deprecated
-	public static void setFlushResourceBlockEnabled(
-		long companyId, long groupId, String name, boolean enabled) {
 	}
 
 	public static void setFlushResourcePermissionEnabled(
@@ -89,8 +71,7 @@ public class PermissionThreadLocal {
 			PermissionThreadLocal.class + "._addResource", () -> Boolean.TRUE);
 	private static final ThreadLocal<Set<String>>
 		_flushResourcePermissionEnabled = new CentralizedThreadLocal<>(
-			PermissionThreadLocal.class +
-				"._flushResourcePermissionEnabled",
+			PermissionThreadLocal.class + "._flushResourcePermissionEnabled",
 			HashSet::new);
 	private static final ThreadLocal<PermissionChecker> _permissionChecker =
 		new CentralizedThreadLocal<>(

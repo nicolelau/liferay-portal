@@ -22,8 +22,6 @@ import com.liferay.knowledge.base.service.KBArticleLocalService;
 import com.liferay.knowledge.base.service.KBFolderLocalService;
 import com.liferay.knowledge.base.util.KnowledgeBaseUtil;
 import com.liferay.petra.string.StringPool;
-import com.liferay.portal.kernel.dao.orm.ActionableDynamicQuery;
-import com.liferay.portal.kernel.dao.orm.DynamicQuery;
 import com.liferay.portal.kernel.dao.orm.IndexableActionableDynamicQuery;
 import com.liferay.portal.kernel.dao.orm.Property;
 import com.liferay.portal.kernel.dao.orm.PropertyFactoryUtil;
@@ -134,9 +132,11 @@ public class KBArticleIndexer extends BaseIndexer<KBArticle> {
 		document.addText(
 			Field.CONTENT, HtmlUtil.extractText(kbArticle.getContent()));
 		document.addText(Field.DESCRIPTION, kbArticle.getDescription());
+		document.addKeyword(Field.FOLDER_ID, kbArticle.getKbFolderId());
 		document.addText(Field.TITLE, kbArticle.getTitle());
-
 		document.addKeyword("folderNames", getKBFolderNames(kbArticle));
+		document.addKeyword(
+			"parentMessageId", kbArticle.getParentResourcePrimKey());
 		document.addKeyword("titleKeyword", kbArticle.getTitle(), true);
 
 		return document;
@@ -208,7 +208,7 @@ public class KBArticleIndexer extends BaseIndexer<KBArticle> {
 			kbFolderId = kbFolder.getParentKBFolderId();
 		}
 
-		return kbFolderNames.toArray(new String[kbFolderNames.size()]);
+		return kbFolderNames.toArray(new String[0]);
 	}
 
 	protected void reindexAttachments(KBArticle kbArticle)
@@ -249,38 +249,27 @@ public class KBArticleIndexer extends BaseIndexer<KBArticle> {
 			kbArticleLocalService.getIndexableActionableDynamicQuery();
 
 		indexableActionableDynamicQuery.setAddCriteriaMethod(
-			new ActionableDynamicQuery.AddCriteriaMethod() {
+			dynamicQuery -> {
+				Property property = PropertyFactoryUtil.forName("status");
 
-				@Override
-				public void addCriteria(DynamicQuery dynamicQuery) {
-					Property property = PropertyFactoryUtil.forName("status");
-
-					dynamicQuery.add(
-						property.eq(WorkflowConstants.STATUS_APPROVED));
-				}
-
+				dynamicQuery.add(
+					property.eq(WorkflowConstants.STATUS_APPROVED));
 			});
 		indexableActionableDynamicQuery.setCompanyId(companyId);
 		indexableActionableDynamicQuery.setPerformActionMethod(
-			new ActionableDynamicQuery.PerformActionMethod<KBArticle>() {
-
-				@Override
-				public void performAction(KBArticle kbArticle) {
-					try {
-						Document document = getDocument(kbArticle);
-
-						indexableActionableDynamicQuery.addDocuments(document);
-					}
-					catch (PortalException pe) {
-						if (_log.isWarnEnabled()) {
-							_log.warn(
-								"Unable to index knowledge base article " +
-									kbArticle.getKbArticleId(),
-								pe);
-						}
+			(KBArticle kbArticle) -> {
+				try {
+					indexableActionableDynamicQuery.addDocuments(
+						getDocument(kbArticle));
+				}
+				catch (PortalException pe) {
+					if (_log.isWarnEnabled()) {
+						_log.warn(
+							"Unable to index knowledge base article " +
+								kbArticle.getKbArticleId(),
+							pe);
 					}
 				}
-
 			});
 		indexableActionableDynamicQuery.setSearchEngineId(getSearchEngineId());
 

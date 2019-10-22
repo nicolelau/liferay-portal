@@ -14,13 +14,10 @@
 
 package com.liferay.oauth2.provider.model.impl;
 
-import aQute.bnd.annotation.ProviderType;
-
 import com.liferay.oauth2.provider.model.OAuth2Application;
-
+import com.liferay.petra.lang.HashUtil;
+import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.model.CacheModel;
-import com.liferay.portal.kernel.util.HashUtil;
-import com.liferay.portal.kernel.util.StringBundler;
 
 import java.io.Externalizable;
 import java.io.IOException;
@@ -33,12 +30,11 @@ import java.util.Date;
  * The cache model class for representing OAuth2Application in entity cache.
  *
  * @author Brian Wing Shun Chan
- * @see OAuth2Application
  * @generated
  */
-@ProviderType
-public class OAuth2ApplicationCacheModel implements CacheModel<OAuth2Application>,
-	Externalizable {
+public class OAuth2ApplicationCacheModel
+	implements CacheModel<OAuth2Application>, Externalizable {
+
 	@Override
 	public boolean equals(Object obj) {
 		if (this == obj) {
@@ -49,9 +45,12 @@ public class OAuth2ApplicationCacheModel implements CacheModel<OAuth2Application
 			return false;
 		}
 
-		OAuth2ApplicationCacheModel oAuth2ApplicationCacheModel = (OAuth2ApplicationCacheModel)obj;
+		OAuth2ApplicationCacheModel oAuth2ApplicationCacheModel =
+			(OAuth2ApplicationCacheModel)obj;
 
-		if (oAuth2ApplicationId == oAuth2ApplicationCacheModel.oAuth2ApplicationId) {
+		if (oAuth2ApplicationId ==
+				oAuth2ApplicationCacheModel.oAuth2ApplicationId) {
+
 			return true;
 		}
 
@@ -65,7 +64,7 @@ public class OAuth2ApplicationCacheModel implements CacheModel<OAuth2Application
 
 	@Override
 	public String toString() {
-		StringBundler sb = new StringBundler(37);
+		StringBundler sb = new StringBundler(41);
 
 		sb.append("{oAuth2ApplicationId=");
 		sb.append(oAuth2ApplicationId);
@@ -83,6 +82,10 @@ public class OAuth2ApplicationCacheModel implements CacheModel<OAuth2Application
 		sb.append(oAuth2ApplicationScopeAliasesId);
 		sb.append(", allowedGrantTypes=");
 		sb.append(allowedGrantTypes);
+		sb.append(", clientCredentialUserId=");
+		sb.append(clientCredentialUserId);
+		sb.append(", clientCredentialUserName=");
+		sb.append(clientCredentialUserName);
 		sb.append(", clientId=");
 		sb.append(clientId);
 		sb.append(", clientProfile=");
@@ -110,7 +113,8 @@ public class OAuth2ApplicationCacheModel implements CacheModel<OAuth2Application
 
 	@Override
 	public OAuth2Application toEntityModel() {
-		OAuth2ApplicationImpl oAuth2ApplicationImpl = new OAuth2ApplicationImpl();
+		OAuth2ApplicationImpl oAuth2ApplicationImpl =
+			new OAuth2ApplicationImpl();
 
 		oAuth2ApplicationImpl.setOAuth2ApplicationId(oAuth2ApplicationId);
 		oAuth2ApplicationImpl.setCompanyId(companyId);
@@ -137,13 +141,24 @@ public class OAuth2ApplicationCacheModel implements CacheModel<OAuth2Application
 			oAuth2ApplicationImpl.setModifiedDate(new Date(modifiedDate));
 		}
 
-		oAuth2ApplicationImpl.setOAuth2ApplicationScopeAliasesId(oAuth2ApplicationScopeAliasesId);
+		oAuth2ApplicationImpl.setOAuth2ApplicationScopeAliasesId(
+			oAuth2ApplicationScopeAliasesId);
 
 		if (allowedGrantTypes == null) {
 			oAuth2ApplicationImpl.setAllowedGrantTypes("");
 		}
 		else {
 			oAuth2ApplicationImpl.setAllowedGrantTypes(allowedGrantTypes);
+		}
+
+		oAuth2ApplicationImpl.setClientCredentialUserId(clientCredentialUserId);
+
+		if (clientCredentialUserName == null) {
+			oAuth2ApplicationImpl.setClientCredentialUserName("");
+		}
+		else {
+			oAuth2ApplicationImpl.setClientCredentialUserName(
+				clientCredentialUserName);
 		}
 
 		if (clientId == null) {
@@ -224,6 +239,9 @@ public class OAuth2ApplicationCacheModel implements CacheModel<OAuth2Application
 
 		oAuth2ApplicationScopeAliasesId = objectInput.readLong();
 		allowedGrantTypes = objectInput.readUTF();
+
+		clientCredentialUserId = objectInput.readLong();
+		clientCredentialUserName = objectInput.readUTF();
 		clientId = objectInput.readUTF();
 
 		clientProfile = objectInput.readInt();
@@ -239,8 +257,7 @@ public class OAuth2ApplicationCacheModel implements CacheModel<OAuth2Application
 	}
 
 	@Override
-	public void writeExternal(ObjectOutput objectOutput)
-		throws IOException {
+	public void writeExternal(ObjectOutput objectOutput) throws IOException {
 		objectOutput.writeLong(oAuth2ApplicationId);
 
 		objectOutput.writeLong(companyId);
@@ -264,6 +281,15 @@ public class OAuth2ApplicationCacheModel implements CacheModel<OAuth2Application
 		}
 		else {
 			objectOutput.writeUTF(allowedGrantTypes);
+		}
+
+		objectOutput.writeLong(clientCredentialUserId);
+
+		if (clientCredentialUserName == null) {
+			objectOutput.writeUTF("");
+		}
+		else {
+			objectOutput.writeUTF(clientCredentialUserName);
 		}
 
 		if (clientId == null) {
@@ -335,6 +361,8 @@ public class OAuth2ApplicationCacheModel implements CacheModel<OAuth2Application
 	public long modifiedDate;
 	public long oAuth2ApplicationScopeAliasesId;
 	public String allowedGrantTypes;
+	public long clientCredentialUserId;
+	public String clientCredentialUserName;
 	public String clientId;
 	public int clientProfile;
 	public String clientSecret;
@@ -345,4 +373,5 @@ public class OAuth2ApplicationCacheModel implements CacheModel<OAuth2Application
 	public String name;
 	public String privacyPolicyURL;
 	public String redirectURIs;
+
 }

@@ -22,7 +22,7 @@ import com.liferay.portal.kernel.util.StringUtil;
 public class JavaDeprecatedKernelClassesCheck extends BaseFileCheck {
 
 	@Override
-	public boolean isPortalCheck() {
+	public boolean isLiferaySourceCheck() {
 		return true;
 	}
 
@@ -31,8 +31,15 @@ public class JavaDeprecatedKernelClassesCheck extends BaseFileCheck {
 		String fileName, String absolutePath, String content) {
 
 		return StringUtil.replace(
-			content, "com.liferay.petra.string.StringPool",
-			"com.liferay.petra.string.StringPool");
+			content,
+			new String[] {
+				"com.liferay.portal.kernel.util.CharPool",
+				"com.liferay.portal.kernel.util.StringPool"
+			},
+			new String[] {
+				"com.liferay.petra.string.CharPool",
+				"com.liferay.petra.string.StringPool"
+			});
 	}
 
 }

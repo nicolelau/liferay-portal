@@ -14,6 +14,7 @@
 
 package com.liferay.portal.kernel.notifications;
 
+import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.language.LanguageUtil;
@@ -25,7 +26,6 @@ import com.liferay.portal.kernel.model.UserNotificationEvent;
 import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.service.UserNotificationDeliveryLocalServiceUtil;
 import com.liferay.portal.kernel.util.PortalUtil;
-import com.liferay.portal.kernel.util.StringBundler;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
 
@@ -119,11 +119,15 @@ public abstract class BaseUserNotificationHandler
 
 		UserNotificationDelivery userNotificationDelivery =
 			UserNotificationDeliveryLocalServiceUtil.
-				getUserNotificationDelivery(
+				fetchUserNotificationDelivery(
 					userId, _portletId, classNameId, notificationType,
-					deliveryType, userNotificationDeliveryType.isDefault());
+					deliveryType);
 
-		return userNotificationDelivery.isDeliver();
+		if (userNotificationDelivery != null) {
+			return userNotificationDelivery.isDeliver();
+		}
+
+		return userNotificationDeliveryType.isDefault();
 	}
 
 	@Override
@@ -172,9 +176,8 @@ public abstract class BaseUserNotificationHandler
 
 			return sb.toString();
 		}
-		else {
-			return _BODY_TEMPLATE_DEFAULT;
-		}
+
+		return _BODY_TEMPLATE_DEFAULT;
 	}
 
 	protected String getLink(

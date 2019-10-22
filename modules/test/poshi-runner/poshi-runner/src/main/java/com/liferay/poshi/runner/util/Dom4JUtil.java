@@ -33,6 +33,7 @@ import org.dom4j.io.OutputFormat;
 import org.dom4j.io.SAXReader;
 import org.dom4j.io.XMLWriter;
 import org.dom4j.tree.DefaultElement;
+import org.dom4j.util.NodeComparator;
 
 /**
  * @author Peter Yoo
@@ -42,6 +43,12 @@ public class Dom4JUtil {
 	public static void addToElement(Element element, Object... items) {
 		for (Object item : items) {
 			if (item == null) {
+				continue;
+			}
+
+			if (item instanceof Attribute) {
+				element.add((Attribute)item);
+
 				continue;
 			}
 
@@ -58,8 +65,20 @@ public class Dom4JUtil {
 			}
 
 			throw new IllegalArgumentException(
-				"Only elements and strings may be added");
+				"Only attributes, elements, and strings may be added");
 		}
+	}
+
+	public static boolean elementsEqual(Node node1, Node node2) {
+		NodeComparator nodeComparator = new NodeComparator();
+
+		int compare = nodeComparator.compare(node1, node2);
+
+		if (compare != 0) {
+			return false;
+		}
+
+		return true;
 	}
 
 	public static String format(Element element) throws IOException {
@@ -128,6 +147,24 @@ public class Dom4JUtil {
 		return saxReader.read(new StringReader(xml));
 	}
 
+	public static void removeWhiteSpaceTextNodes(Element element) {
+		for (Node node : toNodeList(element.content())) {
+			if (node instanceof Text) {
+				String nodeText = node.getText();
+
+				nodeText = nodeText.trim();
+
+				if (nodeText.length() == 0) {
+					node.detach();
+				}
+			}
+		}
+
+		for (Element childElement : toElementList(element.elements())) {
+			removeWhiteSpaceTextNodes(childElement);
+		}
+	}
+
 	public static void replace(
 		Element element, boolean cascade, String replacementText,
 		String targetText) {
@@ -161,10 +198,8 @@ public class Dom4JUtil {
 				continue;
 			}
 
-			if (node instanceof Element && cascade) {
+			if ((node instanceof Element) && cascade) {
 				replace((Element)node, cascade, replacementText, targetText);
-
-				continue;
 			}
 		}
 	}

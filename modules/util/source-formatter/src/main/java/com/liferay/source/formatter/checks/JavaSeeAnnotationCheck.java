@@ -32,13 +32,13 @@ public class JavaSeeAnnotationCheck extends BaseFileCheck {
 			addMessage(
 				fileName, "Do not use @see with another annotation",
 				"see_annotation.markdown",
-				getLineCount(content, matcher.start() + 1));
+				getLineNumber(content, matcher.start() + 1));
 		}
 
 		return content;
 	}
 
-	private final Pattern _seeAnnotationPattern = Pattern.compile(
+	private static final Pattern _seeAnnotationPattern = Pattern.compile(
 		"[\n\t] ?\\* @see.*@");
 
 }

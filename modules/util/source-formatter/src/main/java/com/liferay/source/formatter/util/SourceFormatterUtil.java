@@ -15,20 +15,21 @@
 package com.liferay.source.formatter.util;
 
 import com.liferay.petra.string.CharPool;
+import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.util.ArrayUtil;
-import com.liferay.portal.kernel.util.ListUtil;
-import com.liferay.portal.kernel.util.StringBundler;
 import com.liferay.portal.kernel.util.StringUtil;
+import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.tools.ToolsUtil;
 import com.liferay.source.formatter.ExcludeSyntax;
 import com.liferay.source.formatter.ExcludeSyntaxPattern;
 import com.liferay.source.formatter.SourceFormatterExcludes;
 import com.liferay.source.formatter.checks.util.SourceUtil;
-import com.liferay.source.formatter.checkstyle.util.AlloyMVCCheckstyleUtil;
 
 import java.io.File;
 import java.io.IOException;
+
+import java.net.URL;
 
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
@@ -42,10 +43,8 @@ import java.nio.file.attribute.BasicFileAttributes;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -55,6 +54,15 @@ import java.util.regex.Pattern;
  * @author Hugo Huijser
  */
 public class SourceFormatterUtil {
+
+	public static final String GIT_LIFERAY_PORTAL_BRANCH =
+		"git.liferay.portal.branch";
+
+	public static final String GIT_LIFERAY_PORTAL_URL =
+		"https://raw.githubusercontent.com/liferay/liferay-portal/";
+
+	public static final String SOURCE_FORMATTER_TEST_PATH =
+		"/source/formatter/dependencies/";
 
 	public static List<String> filterFileNames(
 		List<String> allFileNames, String[] excludes, String[] includes,
@@ -68,21 +76,6 @@ public class SourceFormatterUtil {
 		for (String exclude : excludes) {
 			if (!exclude.contains(StringPool.DOLLAR)) {
 				excludeRegexList.add(_createRegex(exclude));
-			}
-		}
-
-		for (ExcludeSyntaxPattern excludeSyntaxPattern :
-				sourceFormatterExcludes.getDefaultExcludeSyntaxPatterns()) {
-
-			String excludePattern = excludeSyntaxPattern.getExcludePattern();
-			ExcludeSyntax excludeSyntax =
-				excludeSyntaxPattern.getExcludeSyntax();
-
-			if (excludeSyntax.equals(ExcludeSyntax.REGEX)) {
-				excludeRegexList.add(excludePattern);
-			}
-			else if (!excludePattern.contains(StringPool.DOLLAR)) {
-				excludeRegexList.add(_createRegex(excludePattern));
 			}
 		}
 
@@ -165,11 +158,9 @@ public class SourceFormatterUtil {
 	}
 
 	public static List<String> filterRecentChangesFileNames(
-			String baseDir, List<String> recentChangesFileNames,
-			String[] excludes, String[] includes,
-			SourceFormatterExcludes sourceFormatterExcludes,
-			boolean includeSubrepositories)
-		throws Exception {
+			Set<String> recentChangesFileNames, String[] excludes,
+			String[] includes, SourceFormatterExcludes sourceFormatterExcludes)
+		throws IOException {
 
 		if (ArrayUtil.isEmpty(includes)) {
 			return new ArrayList<>();
@@ -179,59 +170,12 @@ public class SourceFormatterUtil {
 			excludes, includes, sourceFormatterExcludes);
 
 		return _filterRecentChangesFileNames(
-			baseDir, recentChangesFileNames, pathMatchers);
+			recentChangesFileNames, pathMatchers);
 	}
 
-	public static List<String> getAttributeNames(
-		CheckType checkType, String checkName,
-		Map<String, Properties> propertiesMap) {
-
-		checkName = checkName.replaceAll("([a-z])([A-Z])", "$1.$2");
-
-		checkName = checkName.replaceAll("([A-Z])([A-Z][a-z])", "$1.$2");
-
-		String keyPrefix = StringUtil.toLowerCase(checkName) + ".";
-
-		if (checkType != null) {
-			String checkTypeName = checkType.getValue();
-
-			checkTypeName = checkTypeName.replaceAll("([a-z])([A-Z])", "$1.$2");
-
-			checkTypeName = checkTypeName.replaceAll(
-				"([A-Z])([A-Z][a-z])", "$1.$2");
-
-			keyPrefix = StringUtil.toLowerCase(checkTypeName) + "." + keyPrefix;
-		}
-
-		Set<String> attributeNames = new HashSet<>();
-
-		for (Map.Entry<String, Properties> entry : propertiesMap.entrySet()) {
-			Properties properties = entry.getValue();
-
-			for (Object key : properties.keySet()) {
-				String s = (String)key;
-
-				if (s.startsWith(keyPrefix)) {
-					String attributeName = StringUtil.replaceFirst(
-						s, keyPrefix, StringPool.BLANK);
-
-					attributeNames.add(attributeName);
-				}
-			}
-		}
-
-		return ListUtil.fromCollection(attributeNames);
-	}
-
-	public static List<String> getAttributeNames(
-		String checkName, Map<String, Properties> propertiesMap) {
-
-		return getAttributeNames(null, checkName, propertiesMap);
-	}
-
-	public static File getFile(String baseDir, String fileName, int level) {
+	public static File getFile(String baseDirName, String fileName, int level) {
 		for (int i = 0; i < level; i++) {
-			File file = new File(baseDir + fileName);
+			File file = new File(baseDirName + fileName);
 
 			if (file.exists()) {
 				return file;
@@ -243,60 +187,63 @@ public class SourceFormatterUtil {
 		return null;
 	}
 
-	public static String getPropertyValue(
-		String attributeName, CheckType checkType, String checkName,
-		Map<String, Properties> propertiesMap) {
+	public static String getGitContent(String fileName, String branchName) {
+		URL url = getPortalGitURL(fileName, branchName);
 
-		checkName = checkName.replaceAll("([a-z])([A-Z])", "$1.$2");
-
-		checkName = checkName.replaceAll("([A-Z])([A-Z][a-z])", "$1.$2");
-
-		String key = StringBundler.concat(
-			StringUtil.toLowerCase(checkName), ".", attributeName);
-
-		if (checkType != null) {
-			String checkTypeName = checkType.getValue();
-
-			checkTypeName = checkTypeName.replaceAll("([a-z])([A-Z])", "$1.$2");
-
-			checkTypeName = checkTypeName.replaceAll(
-				"([A-Z])([A-Z][a-z])", "$1.$2");
-
-			key = StringUtil.toLowerCase(checkTypeName) + "." + key;
+		if (url == null) {
+			return null;
 		}
 
-		StringBundler sb = new StringBundler(propertiesMap.size() * 2);
-
-		for (Map.Entry<String, Properties> entry : propertiesMap.entrySet()) {
-			Properties properties = entry.getValue();
-
-			String value = properties.getProperty(key);
-
-			if (value != null) {
-				sb.append(value);
-				sb.append(CharPool.COMMA);
-			}
+		try {
+			return StringUtil.read(url.openStream());
 		}
-
-		if (sb.index() > 0) {
-			sb.setIndex(sb.index() - 1);
+		catch (IOException ioe) {
+			return null;
 		}
-
-		return sb.toString();
 	}
 
-	public static String getPropertyValue(
-		String attributeName, String checkName,
-		Map<String, Properties> propertiesMap) {
+	public static File getPortalDir(String baseDirName) {
+		File portalImplDir = getFile(
+			baseDirName, "portal-impl", ToolsUtil.PORTAL_MAX_DIR_LEVEL);
 
-		return getPropertyValue(attributeName, null, checkName, propertiesMap);
+		if (portalImplDir == null) {
+			return null;
+		}
+
+		return portalImplDir.getParentFile();
+	}
+
+	public static URL getPortalGitURL(
+		String fileName, String portalBranchName) {
+
+		if (Validator.isNull(portalBranchName)) {
+			return null;
+		}
+
+		try {
+			return new URL(
+				StringBundler.concat(
+					SourceFormatterUtil.GIT_LIFERAY_PORTAL_URL,
+					portalBranchName, StringPool.SLASH, fileName));
+		}
+		catch (Exception e) {
+			return null;
+		}
+	}
+
+	public static String getSimpleName(String name) {
+		int pos = name.lastIndexOf(CharPool.PERIOD);
+
+		if (pos != -1) {
+			return name.substring(pos + 1);
+		}
+
+		return name;
 	}
 
 	public static List<File> getSuppressionsFiles(
-			String basedir, List<String> allFileNames,
-			SourceFormatterExcludes sourceFormatterExcludes,
-			String... fileNames)
-		throws Exception {
+		String baseDirName, List<String> allFileNames,
+		SourceFormatterExcludes sourceFormatterExcludes, String... fileNames) {
 
 		List<File> suppressionsFiles = new ArrayList<>();
 
@@ -309,7 +256,7 @@ public class SourceFormatterUtil {
 
 			// Find suppressions files in any parent directory
 
-			String parentDirName = basedir;
+			String parentDirName = baseDirName;
 
 			for (int j = 0; j < ToolsUtil.PORTAL_MAX_DIR_LEVEL; j++) {
 				File suppressionsFile = new File(parentDirName + fileName);
@@ -336,9 +283,6 @@ public class SourceFormatterUtil {
 			suppressionsFiles.add(new File(moduleSuppressionsFileName));
 		}
 
-		suppressionsFiles.addAll(
-			AlloyMVCCheckstyleUtil.getSuppressionsFiles(suppressionsFiles));
-
 		return suppressionsFiles;
 	}
 
@@ -351,10 +295,10 @@ public class SourceFormatterUtil {
 	}
 
 	public static List<String> scanForFiles(
-			String baseDir, String[] excludes, String[] includes,
+			String baseDirName, String[] excludes, String[] includes,
 			SourceFormatterExcludes sourceFormatterExcludes,
 			boolean includeSubrepositories)
-		throws Exception {
+		throws IOException {
 
 		if (ArrayUtil.isEmpty(includes)) {
 			return new ArrayList<>();
@@ -363,7 +307,7 @@ public class SourceFormatterUtil {
 		PathMatchers pathMatchers = _getPathMatchers(
 			excludes, includes, sourceFormatterExcludes);
 
-		return _scanForFiles(baseDir, pathMatchers, includeSubrepositories);
+		return _scanForFiles(baseDirName, pathMatchers, includeSubrepositories);
 	}
 
 	private static String _createRegex(String s) {
@@ -407,16 +351,13 @@ public class SourceFormatterUtil {
 	}
 
 	private static List<String> _filterRecentChangesFileNames(
-			String baseDir, List<String> recentChangesFileNames,
-			PathMatchers pathMatchers)
-		throws Exception {
+			Set<String> recentChangesFileNames, PathMatchers pathMatchers)
+		throws IOException {
 
 		List<String> fileNames = new ArrayList<>();
 
 		recentChangesFileNamesLoop:
 		for (String fileName : recentChangesFileNames) {
-			fileName = baseDir.concat(fileName);
-
 			File file = new File(fileName);
 
 			File canonicalFile = file.getCanonicalFile();
@@ -499,10 +440,9 @@ public class SourceFormatterUtil {
 					pathMatchers.getIncludeFilePathMatchers()) {
 
 				if (pathMatcher.matches(filePath)) {
-					fileName = StringUtil.replace(
-						fileName, CharPool.SLASH, CharPool.BACK_SLASH);
+					Path curFilePath = Paths.get(fileName);
 
-					fileNames.add(fileName);
+					fileNames.add(curFilePath.toString());
 
 					continue recentChangesFileNamesLoop;
 				}
@@ -560,14 +500,14 @@ public class SourceFormatterUtil {
 	}
 
 	private static List<String> _scanForFiles(
-			final String baseDir, final PathMatchers pathMatchers,
+			final String baseDirName, final PathMatchers pathMatchers,
 			final boolean includeSubrepositories)
-		throws Exception {
+		throws IOException {
 
 		final List<String> fileNames = new ArrayList<>();
 
 		Files.walkFileTree(
-			Paths.get(baseDir),
+			Paths.get(baseDirName),
 			new SimpleFileVisitor<Path>() {
 
 				@Override
@@ -584,7 +524,7 @@ public class SourceFormatterUtil {
 
 					if (!includeSubrepositories) {
 						String baseDirPath = SourceUtil.getAbsolutePath(
-							baseDir);
+							baseDirName);
 
 						if (!baseDirPath.equals(currentDirPath)) {
 							Path gitRepoPath = dirPath.resolve(".gitrepo");
@@ -594,7 +534,7 @@ public class SourceFormatterUtil {
 									String content = FileUtil.read(
 										gitRepoPath.toFile());
 
-									if (content.contains("mode = pull")) {
+									if (content.contains("autopull = true")) {
 										return FileVisitResult.SKIP_SUBTREE;
 									}
 								}

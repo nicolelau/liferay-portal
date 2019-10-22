@@ -24,10 +24,10 @@ import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.model.WorkflowDefinitionLink;
 import com.liferay.portal.kernel.portlet.LiferayPortletRequest;
 import com.liferay.portal.kernel.portlet.LiferayPortletResponse;
+import com.liferay.portal.kernel.portlet.PortletURLFactoryUtil;
 import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.service.WorkflowDefinitionLinkLocalServiceUtil;
 import com.liferay.portal.kernel.service.WorkflowInstanceLinkLocalServiceUtil;
-import com.liferay.portal.kernel.util.PortalUtil;
 import com.liferay.portal.kernel.util.PortletKeys;
 
 import java.io.Serializable;
@@ -64,15 +64,15 @@ public abstract class BaseWorkflowHandler<T> implements WorkflowHandler<T> {
 			return assetRendererFactory.getAssetRenderer(
 				classPK, AssetRendererFactory.TYPE_LATEST);
 		}
-		else {
-			return null;
-		}
+
+		return null;
 	}
 
 	@Override
 	public AssetRendererFactory<T> getAssetRendererFactory() {
-		return (AssetRendererFactory<T>)AssetRendererFactoryRegistryUtil.
-			getAssetRendererFactoryByClassName(getClassName());
+		return (AssetRendererFactory<T>)
+			AssetRendererFactoryRegistryUtil.getAssetRendererFactoryByClassName(
+				getClassName());
 	}
 
 	@Override
@@ -85,25 +85,6 @@ public abstract class BaseWorkflowHandler<T> implements WorkflowHandler<T> {
 		}
 
 		return StringPool.BLANK;
-	}
-
-	/**
-	 * @deprecated As of 7.0.0, with no direct replacement
-	 */
-	@Deprecated
-	@Override
-	public String getIconPath(LiferayPortletRequest liferayPortletRequest) {
-		return StringPool.BLANK;
-	}
-
-	/**
-	 * @deprecated As of 7.0.0, replaced by {@link #getSummary(long,
-	 *             PortletRequest, PortletResponse)}
-	 */
-	@Deprecated
-	@Override
-	public String getSummary(long classPK, Locale locale) {
-		return getSummary(classPK, null, null);
 	}
 
 	@Override
@@ -174,7 +155,7 @@ public abstract class BaseWorkflowHandler<T> implements WorkflowHandler<T> {
 		throws PortalException {
 
 		try {
-			PortletURL portletURL = PortalUtil.getControlPanelPortletURL(
+			PortletURL portletURL = PortletURLFactoryUtil.create(
 				serviceContext.getRequest(), PortletKeys.MY_WORKFLOW_TASK,
 				PortletRequest.RENDER_PHASE);
 
@@ -251,14 +232,15 @@ public abstract class BaseWorkflowHandler<T> implements WorkflowHandler<T> {
 
 	@Override
 	public boolean include(
-		long classPK, HttpServletRequest request, HttpServletResponse response,
-		String template) {
+		long classPK, HttpServletRequest httpServletRequest,
+		HttpServletResponse httpServletResponse, String template) {
 
 		try {
 			AssetRenderer<?> assetRenderer = getAssetRenderer(classPK);
 
 			if (assetRenderer != null) {
-				return assetRenderer.include(request, response, template);
+				return assetRenderer.include(
+					httpServletRequest, httpServletResponse, template);
 			}
 		}
 		catch (Exception e) {

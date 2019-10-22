@@ -110,7 +110,10 @@ public abstract class BaseRawMetadataProcessor implements RawMetadataProcessor {
 			String fieldClassName = fieldClass.getSimpleName();
 
 			String name = fieldClassName.concat(
-				StringPool.UNDERLINE).concat(field.getName());
+				StringPool.UNDERLINE
+			).concat(
+				field.getName()
+			);
 
 			String value = getMetadataValue(metadata, field);
 
@@ -234,8 +237,7 @@ public abstract class BaseRawMetadataProcessor implements RawMetadataProcessor {
 		_addFields(TikaMimeKeys.class, fields);
 		_addFields(XMPDM.class, fields);
 
-		_fields.put(
-			TIKA_RAW_METADATA, fields.toArray(new Field[fields.size()]));
+		_fields.put(TIKA_RAW_METADATA, fields.toArray(new Field[0]));
 	}
 
 }

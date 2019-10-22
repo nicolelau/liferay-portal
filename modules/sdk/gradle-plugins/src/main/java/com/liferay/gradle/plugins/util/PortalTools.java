@@ -26,7 +26,6 @@ import java.util.Map;
 import java.util.Properties;
 
 import org.gradle.api.Project;
-import org.gradle.util.GUtil;
 
 /**
  * @author Andrea Di Giorgi
@@ -36,6 +35,8 @@ public class PortalTools {
 	public static final String GROUP = "com.liferay";
 
 	public static final String PORTAL_VERSION_7_0_X = "7.0.x";
+
+	public static final String PORTAL_VERSION_7_1_X = "7.1.x";
 
 	public static final String PORTAL_VERSION_PROPERTY_NAME = "portal.version";
 
@@ -95,13 +96,10 @@ public class PortalTools {
 		File dir = project.getProjectDir();
 
 		while ((dir != null) && Validator.isNull(version)) {
-			File gradlePropertiesFile = new File(dir, "gradle.properties");
+			Properties properties = GradleUtil.getGradleProperties(dir);
 
-			if (gradlePropertiesFile.exists()) {
-				Properties gradleProperties = GUtil.loadProperties(
-					gradlePropertiesFile);
-
-				version = gradleProperties.getProperty(key);
+			if (properties != null) {
+				version = properties.getProperty(key);
 			}
 
 			dir = dir.getParentFile();
@@ -112,6 +110,10 @@ public class PortalTools {
 		}
 
 		Properties properties = _versionsMap.get(portalVersion);
+
+		if (properties == null) {
+			properties = _versionsMap.get(null);
+		}
 
 		return properties.getProperty(name);
 	}
@@ -142,8 +144,9 @@ public class PortalTools {
 		return properties;
 	}
 
-	private static final String[] _PORTAL_VERSION_PROPERTY_NAMES =
-		{"git.working.branch.name", PORTAL_VERSION_PROPERTY_NAME};
+	private static final String[] _PORTAL_VERSION_PROPERTY_NAMES = {
+		"git.working.branch.name", PORTAL_VERSION_PROPERTY_NAME
+	};
 
 	private static final Map<String, Properties> _versionsMap;
 
@@ -153,10 +156,7 @@ public class PortalTools {
 		ClassLoader classLoader = PortalTools.class.getClassLoader();
 
 		try {
-			Properties properties = _populateVersionsMap(
-				classLoader, null, null);
-
-			_populateVersionsMap(classLoader, PORTAL_VERSION_7_0_X, properties);
+			_populateVersionsMap(classLoader, null, null);
 		}
 		catch (IOException ioe) {
 			throw new ExceptionInInitializerError(ioe);

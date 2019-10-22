@@ -30,6 +30,7 @@ import com.liferay.portal.kernel.search.filter.QueryFilter;
 import com.liferay.portal.kernel.search.filter.RangeTermFilter;
 import com.liferay.portal.kernel.search.filter.TermFilter;
 import com.liferay.portal.kernel.search.filter.TermsFilter;
+import com.liferay.portal.search.filter.DateRangeFilter;
 import com.liferay.portal.search.filter.FilterVisitor;
 import com.liferay.portal.search.filter.TermsSetFilter;
 
@@ -37,6 +38,9 @@ import org.elasticsearch.index.query.QueryBuilder;
 
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.component.annotations.ReferenceCardinality;
+import org.osgi.service.component.annotations.ReferencePolicy;
+import org.osgi.service.component.annotations.ReferencePolicyOption;
 
 /**
  * @author Michael C. Han
@@ -44,10 +48,17 @@ import org.osgi.service.component.annotations.Reference;
  */
 @Component(
 	immediate = true, property = "search.engine.impl=Elasticsearch",
-	service = FilterTranslator.class
+	service = {FilterToQueryBuilderTranslator.class, FilterTranslator.class}
 )
 public class ElasticsearchFilterTranslator
-	implements FilterTranslator<QueryBuilder>, FilterVisitor<QueryBuilder> {
+	implements FilterToQueryBuilderTranslator, FilterTranslator<QueryBuilder>,
+			   FilterVisitor<QueryBuilder> {
+
+	public void setQueryFilterTranslator(
+		QueryFilterTranslator queryFilterTranslator) {
+
+		this.queryFilterTranslator = queryFilterTranslator;
+	}
 
 	@Override
 	public QueryBuilder translate(Filter filter, SearchContext searchContext) {
@@ -57,6 +68,11 @@ public class ElasticsearchFilterTranslator
 	@Override
 	public QueryBuilder visit(BooleanFilter booleanFilter) {
 		return booleanFilterTranslator.translate(booleanFilter, this);
+	}
+
+	@Override
+	public QueryBuilder visit(DateRangeFilter dateRangeFilter) {
+		return dateRangeFilterTranslator.translate(dateRangeFilter);
 	}
 
 	@Override
@@ -102,6 +118,11 @@ public class ElasticsearchFilterTranslator
 
 	@Override
 	public QueryBuilder visit(QueryFilter queryFilter) {
+		if (queryFilterTranslator == null) {
+			throw new IllegalStateException(
+				"No queryFilter translator configured");
+		}
+
 		return queryFilterTranslator.translate(queryFilter);
 	}
 
@@ -129,6 +150,9 @@ public class ElasticsearchFilterTranslator
 	protected BooleanFilterTranslator booleanFilterTranslator;
 
 	@Reference
+	protected DateRangeFilterTranslator dateRangeFilterTranslator;
+
+	@Reference
 	protected DateRangeTermFilterTranslator dateRangeTermFilterTranslator;
 
 	@Reference
@@ -152,8 +176,12 @@ public class ElasticsearchFilterTranslator
 	@Reference
 	protected PrefixFilterTranslator prefixFilterTranslator;
 
-	@Reference
-	protected QueryFilterTranslator queryFilterTranslator;
+	@Reference(
+		cardinality = ReferenceCardinality.OPTIONAL,
+		policy = ReferencePolicy.DYNAMIC,
+		policyOption = ReferencePolicyOption.GREEDY
+	)
+	protected volatile QueryFilterTranslator queryFilterTranslator;
 
 	@Reference
 	protected RangeTermFilterTranslator rangeTermFilterTranslator;

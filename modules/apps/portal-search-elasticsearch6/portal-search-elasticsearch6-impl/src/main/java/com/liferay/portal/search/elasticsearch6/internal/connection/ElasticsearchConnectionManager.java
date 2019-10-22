@@ -24,10 +24,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
-import org.elasticsearch.action.admin.cluster.health.ClusterHealthResponse;
 import org.elasticsearch.client.AdminClient;
 import org.elasticsearch.client.Client;
-import org.elasticsearch.client.ClusterAdminClient;
 
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
@@ -40,9 +38,19 @@ import org.osgi.service.component.annotations.ReferenceCardinality;
  */
 @Component(
 	configurationPid = "com.liferay.portal.search.elasticsearch6.configuration.ElasticsearchConfiguration",
-	immediate = true, service = ElasticsearchConnectionManager.class
+	immediate = true,
+	service = {
+		ElasticsearchClientResolver.class, ElasticsearchConnectionManager.class
+	}
 )
-public class ElasticsearchConnectionManager {
+public class ElasticsearchConnectionManager
+	implements ElasticsearchClientResolver {
+
+	public void activate(OperationMode operationMode) {
+		validate(operationMode);
+
+		_operationMode = operationMode;
+	}
 
 	public void connect() {
 		ElasticsearchConnection elasticsearchConnection =
@@ -57,6 +65,7 @@ public class ElasticsearchConnectionManager {
 		return client.admin();
 	}
 
+	@Override
 	public Client getClient() {
 		ElasticsearchConnection elasticsearchConnection =
 			getElasticsearchConnection();
@@ -66,19 +75,6 @@ public class ElasticsearchConnectionManager {
 		}
 
 		return elasticsearchConnection.getClient();
-	}
-
-	public ClusterAdminClient getClusterAdminClient() {
-		AdminClient adminClient = getAdminClient();
-
-		return adminClient.cluster();
-	}
-
-	public ClusterHealthResponse getClusterHealthResponse(long timeout) {
-		ElasticsearchConnection elasticsearchConnection =
-			getElasticsearchConnection();
-
-		return elasticsearchConnection.getClusterHealthResponse(timeout);
 	}
 
 	public ElasticsearchConnection getElasticsearchConnection() {
@@ -134,12 +130,6 @@ public class ElasticsearchConnectionManager {
 			ElasticsearchConfiguration.class, properties);
 
 		activate(translate(_elasticsearchConfiguration.operationMode()));
-	}
-
-	protected void activate(OperationMode operationMode) {
-		validate(operationMode);
-
-		_operationMode = operationMode;
 	}
 
 	@Modified

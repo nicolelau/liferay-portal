@@ -14,16 +14,15 @@
 
 package com.liferay.portal.patcher;
 
+import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.patcher.PatchInconsistencyException;
 import com.liferay.portal.kernel.patcher.Patcher;
-import com.liferay.portal.kernel.security.pacl.DoPrivileged;
 import com.liferay.portal.kernel.util.ArrayUtil;
 import com.liferay.portal.kernel.util.FileUtil;
 import com.liferay.portal.kernel.util.GetterUtil;
-import com.liferay.portal.kernel.util.StringBundler;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
 
@@ -41,7 +40,6 @@ import java.util.Properties;
  * @author Igor Beslic
  * @author Zoltán Takács
  */
-@DoPrivileged
 public class PatcherImpl implements Patcher {
 
 	public PatcherImpl() {
@@ -238,10 +236,8 @@ public class PatcherImpl implements Patcher {
 			properties = getProperties();
 		}
 
-		String[] installedPatchNames = StringUtil.split(
+		return StringUtil.split(
 			properties.getProperty(PROPERTY_INSTALLED_PATCHES));
-
-		return installedPatchNames;
 	}
 
 	private Properties _getProperties(String fileName) {
@@ -259,8 +255,8 @@ public class PatcherImpl implements Patcher {
 
 		ClassLoader classLoader = clazz.getClassLoader();
 
-		try (InputStream inputStream =
-				classLoader.getResourceAsStream(fileName)) {
+		try (InputStream inputStream = classLoader.getResourceAsStream(
+				fileName)) {
 
 			if (inputStream == null) {
 				if (_log.isDebugEnabled()) {

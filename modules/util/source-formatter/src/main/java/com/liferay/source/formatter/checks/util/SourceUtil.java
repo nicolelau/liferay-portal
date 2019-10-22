@@ -15,10 +15,9 @@
 package com.liferay.source.formatter.checks.util;
 
 import com.liferay.petra.string.CharPool;
-import com.liferay.petra.string.StringPool;
+import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.io.unsync.UnsyncStringReader;
 import com.liferay.portal.kernel.util.ArrayUtil;
-import com.liferay.portal.kernel.util.StringBundler;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.tools.ToolsUtil;
@@ -29,13 +28,35 @@ import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 import org.dom4j.Document;
+import org.dom4j.DocumentException;
 import org.dom4j.io.SAXReader;
 
 /**
  * @author Hugo Huijser
  */
 public class SourceUtil {
+
+	public static boolean containsUnquoted(String s, String text) {
+		int x = -1;
+
+		while (true) {
+			x = s.indexOf(text, x + 1);
+
+			if (x == -1) {
+				return false;
+			}
+
+			if (!ToolsUtil.isInsideQuotes(s, x)) {
+				return true;
+			}
+		}
+	}
 
 	public static String getAbsolutePath(File file) {
 		return getAbsolutePath(file.toPath());
@@ -68,42 +89,62 @@ public class SourceUtil {
 		return sb.toString();
 	}
 
-	public static int getLevel(String s) {
-		return getLevel(
-			s, new String[] {StringPool.OPEN_PARENTHESIS},
-			new String[] {StringPool.CLOSE_PARENTHESIS}, 0);
-	}
+	public static String getLine(String content, int lineNumber) {
+		int nextLineStartPos = getLineStartPos(content, lineNumber);
 
-	public static int getLevel(
-		String s, String increaseLevelString, String decreaseLevelString) {
-
-		return getLevel(
-			s, new String[] {increaseLevelString},
-			new String[] {decreaseLevelString}, 0);
-	}
-
-	public static int getLevel(
-		String s, String[] increaseLevelStrings,
-		String[] decreaseLevelStrings) {
-
-		return getLevel(s, increaseLevelStrings, decreaseLevelStrings, 0);
-	}
-
-	public static int getLevel(
-		String s, String[] increaseLevelStrings, String[] decreaseLevelStrings,
-		int startLevel) {
-
-		int level = startLevel;
-
-		for (String increaseLevelString : increaseLevelStrings) {
-			level = _adjustLevel(level, s, increaseLevelString, 1);
+		if (nextLineStartPos == -1) {
+			return null;
 		}
 
-		for (String decreaseLevelString : decreaseLevelStrings) {
-			level = _adjustLevel(level, s, decreaseLevelString, -1);
+		int nextLineEndPos = content.indexOf(
+			CharPool.NEW_LINE, nextLineStartPos);
+
+		if (nextLineEndPos == -1) {
+			return content.substring(nextLineStartPos);
 		}
 
-		return level;
+		return content.substring(nextLineStartPos, nextLineEndPos);
+	}
+
+	public static int getLineNumber(String content, int pos) {
+		return StringUtil.count(content, 0, pos, CharPool.NEW_LINE) + 1;
+	}
+
+	public static int getLineStartPos(String content, int lineNumber) {
+		if (lineNumber <= 0) {
+			return -1;
+		}
+
+		if (lineNumber == 1) {
+			return 0;
+		}
+
+		int x = -1;
+
+		for (int i = 1; i < lineNumber; i++) {
+			x = content.indexOf(CharPool.NEW_LINE, x + 1);
+
+			if (x == -1) {
+				return x;
+			}
+		}
+
+		return x + 1;
+	}
+
+	public static int[] getMultiLinePositions(
+		String content, Pattern multiLinePattern) {
+
+		List<Integer> multiLinePositions = new ArrayList<>();
+
+		Matcher matcher = multiLinePattern.matcher(content);
+
+		while (matcher.find()) {
+			multiLinePositions.add(getLineNumber(content, matcher.start()));
+			multiLinePositions.add(getLineNumber(content, matcher.end() - 1));
+		}
+
+		return ArrayUtil.toIntArray(multiLinePositions);
 	}
 
 	public static String getTitleCase(String s, String[] exceptions) {
@@ -161,53 +202,50 @@ public class SourceUtil {
 		return sb.toString();
 	}
 
-	public static Document readXML(File file) throws Exception {
+	public static boolean isInsideMultiLines(
+		int lineNumber, int[] multiLinePositions) {
+
+		for (int i = 0; i < (multiLinePositions.length - 1); i += 2) {
+			if (lineNumber < multiLinePositions[i]) {
+				return false;
+			}
+
+			if (lineNumber <= multiLinePositions[i + 1]) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	public static boolean isXML(String content) {
+		try {
+			readXML(content);
+
+			return true;
+		}
+		catch (DocumentException de) {
+			return false;
+		}
+	}
+
+	public static Document readXML(File file) throws DocumentException {
 		SAXReader saxReader = SAXReaderFactory.getSAXReader(null, false, false);
 
 		return saxReader.read(file);
 	}
 
-	public static Document readXML(String content) throws Exception {
+	public static Document readXML(String content) throws DocumentException {
 		SAXReader saxReader = SAXReaderFactory.getSAXReader(null, false, false);
 
 		return saxReader.read(new UnsyncStringReader(content));
 	}
 
-	private static int _adjustLevel(
-		int level, String text, String s, int diff) {
-
-		String[] lines = StringUtil.splitLines(text);
-
-		forLoop:
-		for (String line : lines) {
-			line = StringUtil.trim(line);
-
-			if (line.startsWith("//") || line.startsWith("*")) {
-				continue;
-			}
-
-			int x = -1;
-
-			while (true) {
-				x = line.indexOf(s, x + 1);
-
-				if (x == -1) {
-					continue forLoop;
-				}
-
-				if (!ToolsUtil.isInsideQuotes(line, x)) {
-					level += diff;
-				}
-			}
-		}
-
-		return level;
-	}
-
 	private static final String[] _ARTICLES = {"a", "an", "the"};
 
-	private static final String[] _CONJUNCTIONS =
-		{"and", "but", "for", "nor", "or", "yet"};
+	private static final String[] _CONJUNCTIONS = {
+		"and", "but", "for", "nor", "or", "yet"
+	};
 
 	private static final String[] _PREPOSITIONS = {
 		"a", "abaft", "aboard", "about", "above", "absent", "across", "afore",

@@ -26,11 +26,10 @@ import com.liferay.portal.kernel.test.SwappableSecurityManager;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
 import com.liferay.portal.kernel.test.rule.CodeCoverageAssertor;
 import com.liferay.portal.kernel.test.rule.NewEnv;
+import com.liferay.portal.kernel.test.rule.NewEnvTestRule;
+import com.liferay.portal.kernel.test.util.PropsTestUtil;
 import com.liferay.portal.kernel.util.PropsKeys;
-import com.liferay.portal.kernel.util.PropsUtilAdvice;
 import com.liferay.portal.kernel.util.ProxyUtil;
-import com.liferay.portal.test.rule.AdviseWith;
-import com.liferay.portal.test.rule.AspectJNewEnvTestRule;
 import com.liferay.registry.BasicRegistryImpl;
 import com.liferay.registry.Registry;
 import com.liferay.registry.RegistryUtil;
@@ -50,6 +49,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.Executors;
@@ -76,7 +76,7 @@ public class AutoBatchPreparedStatementUtilTest {
 	@Rule
 	public static final AggregateTestRule aggregateTestRule =
 		new AggregateTestRule(
-			AspectJNewEnvTestRule.INSTANCE, CodeCoverageAssertor.INSTANCE);
+			CodeCoverageAssertor.INSTANCE, NewEnvTestRule.INSTANCE);
 
 	@Before
 	public void setUp() {
@@ -92,10 +92,9 @@ public class AutoBatchPreparedStatementUtilTest {
 				new PortalExecutorManagerInvocationHandler()));
 	}
 
-	@AdviseWith(adviceClasses = PropsUtilAdvice.class)
 	@Test
 	public void testCINITFailure() throws ClassNotFoundException {
-		PropsUtilAdvice.setProps(PropsKeys.HIBERNATE_JDBC_BATCH_SIZE, "0");
+		PropsTestUtil.setProps(PropsKeys.HIBERNATE_JDBC_BATCH_SIZE, "0");
 
 		final NoSuchMethodException nsme = new NoSuchMethodException();
 		final AtomicInteger counter = new AtomicInteger();
@@ -123,7 +122,6 @@ public class AutoBatchPreparedStatementUtilTest {
 		}
 	}
 
-	@AdviseWith(adviceClasses = PropsUtilAdvice.class)
 	@Test
 	public void testConcurrentCancellationException() {
 		Registry registry = RegistryUtil.getRegistry();
@@ -134,7 +132,7 @@ public class AutoBatchPreparedStatementUtilTest {
 				AutoBatchPreparedStatementUtilTest.class.getClassLoader(),
 				new Class<?>[] {PortalExecutorManager.class},
 				(proxy, method, args) -> {
-					if ("getPortalExecutor".equals(method.getName())) {
+					if (Objects.equals(method.getName(), "getPortalExecutor")) {
 						return new NoticeableThreadPoolExecutor(
 							1, 1, 60, TimeUnit.SECONDS,
 							new LinkedBlockingQueue<>(1),
@@ -156,34 +154,31 @@ public class AutoBatchPreparedStatementUtilTest {
 				}),
 			Collections.singletonMap("service.ranking", Integer.MAX_VALUE));
 
-		PropsUtilAdvice.setProps(PropsKeys.HIBERNATE_JDBC_BATCH_SIZE, "0");
+		PropsTestUtil.setProps(PropsKeys.HIBERNATE_JDBC_BATCH_SIZE, "0");
 
 		doTestConcurrentCancellationException(true);
 		doTestConcurrentCancellationException(false);
 	}
 
-	@AdviseWith(adviceClasses = PropsUtilAdvice.class)
 	@Test
 	public void testConcurrentExecutionException() {
-		PropsUtilAdvice.setProps(PropsKeys.HIBERNATE_JDBC_BATCH_SIZE, "0");
+		PropsTestUtil.setProps(PropsKeys.HIBERNATE_JDBC_BATCH_SIZE, "0");
 
 		doTestConcurrentExecutionExceptions(true);
 		doTestConcurrentExecutionExceptions(false);
 	}
 
-	@AdviseWith(adviceClasses = PropsUtilAdvice.class)
 	@Test
 	public void testConcurrentWaitingForFutures() throws SQLException {
-		PropsUtilAdvice.setProps(PropsKeys.HIBERNATE_JDBC_BATCH_SIZE, "0");
+		PropsTestUtil.setProps(PropsKeys.HIBERNATE_JDBC_BATCH_SIZE, "0");
 
 		doTestConcurrentWaitingForFutures(true);
 		doTestConcurrentWaitingForFutures(false);
 	}
 
-	@AdviseWith(adviceClasses = PropsUtilAdvice.class)
 	@Test
 	public void testConstructor() throws ReflectiveOperationException {
-		PropsUtilAdvice.setProps(PropsKeys.HIBERNATE_JDBC_BATCH_SIZE, "0");
+		PropsTestUtil.setProps(PropsKeys.HIBERNATE_JDBC_BATCH_SIZE, "0");
 
 		Constructor<AutoBatchPreparedStatementUtil> constructor =
 			AutoBatchPreparedStatementUtil.class.getDeclaredConstructor();
@@ -195,19 +190,17 @@ public class AutoBatchPreparedStatementUtilTest {
 		constructor.newInstance();
 	}
 
-	@AdviseWith(adviceClasses = PropsUtilAdvice.class)
 	@Test
 	public void testNotSupportBatchUpdates() throws Exception {
-		PropsUtilAdvice.setProps(PropsKeys.HIBERNATE_JDBC_BATCH_SIZE, "0");
+		PropsTestUtil.setProps(PropsKeys.HIBERNATE_JDBC_BATCH_SIZE, "0");
 
 		doTestNotSupportBatchUpdates();
 		doTestNotSupportBatchUpdatesConcurrent();
 	}
 
-	@AdviseWith(adviceClasses = PropsUtilAdvice.class)
 	@Test
 	public void testSupportBatchUpdates() throws Exception {
-		PropsUtilAdvice.setProps(PropsKeys.HIBERNATE_JDBC_BATCH_SIZE, "2");
+		PropsTestUtil.setProps(PropsKeys.HIBERNATE_JDBC_BATCH_SIZE, "2");
 
 		doTestSupportBaseUpdates();
 		doTestSupportBaseUpdatesConcurrent();
@@ -250,7 +243,7 @@ public class AutoBatchPreparedStatementUtilTest {
 			return;
 		}
 
-		Assert.fail();
+		throw new IllegalStateException("Should have returned from catch");
 	}
 
 	protected void doTestConcurrentExecutionExceptions(
@@ -308,7 +301,7 @@ public class AutoBatchPreparedStatementUtilTest {
 			return;
 		}
 
-		Assert.fail();
+		throw new IllegalStateException("Should have returned from catch");
 	}
 
 	protected void doTestConcurrentWaitingForFutures(

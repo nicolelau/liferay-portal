@@ -20,6 +20,7 @@ import com.liferay.portal.kernel.application.type.ApplicationType;
 import com.liferay.portal.kernel.model.LayoutConstants;
 import com.liferay.portal.kernel.model.Portlet;
 import com.liferay.portal.kernel.portlet.PortletQName;
+import com.liferay.portal.kernel.portlet.PortletURLFactoryUtil;
 import com.liferay.portal.kernel.service.LayoutLocalServiceUtil;
 import com.liferay.portal.kernel.service.PortletLocalServiceUtil;
 import com.liferay.portal.kernel.test.randomizerbumpers.NumericStringRandomizerBumper;
@@ -31,11 +32,9 @@ import com.liferay.portal.kernel.test.util.TestPropsValues;
 import com.liferay.portal.kernel.util.FriendlyURLNormalizerUtil;
 import com.liferay.portal.kernel.util.HashMapDictionary;
 import com.liferay.portal.kernel.util.UnicodeProperties;
+import com.liferay.portal.osgi.web.portlet.container.test.util.PortletContainerTestUtil;
 import com.liferay.portal.test.randomizerbumpers.FriendlyURLRandomizerBumper;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
-import com.liferay.portal.util.test.PortletContainerTestUtil;
-import com.liferay.portal.util.test.PortletContainerTestUtil.Response;
-import com.liferay.portlet.PortletURLImpl;
 
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -137,7 +136,7 @@ public class PublicRenderParameterTest extends BasePortletContainerTestCase {
 		HttpServletRequest httpServletRequest =
 			PortletContainerTestUtil.getHttpServletRequest(group, layout);
 
-		PortletURL portletURL = new PortletURLImpl(
+		PortletURL portletURL = PortletURLFactoryUtil.create(
 			httpServletRequest, TEST_PORTLET_ID, layout.getPlid(),
 			PortletRequest.RENDER_PHASE);
 
@@ -150,7 +149,8 @@ public class PublicRenderParameterTest extends BasePortletContainerTestCase {
 			portletURLString.contains(
 				PortletQName.PUBLIC_RENDER_PARAMETER_NAMESPACE));
 
-		Response response = PortletContainerTestUtil.request(portletURLString);
+		PortletContainerTestUtil.Response response =
+			PortletContainerTestUtil.request(portletURLString);
 
 		Assert.assertEquals(200, response.getCode());
 
@@ -196,7 +196,7 @@ public class PublicRenderParameterTest extends BasePortletContainerTestCase {
 		HttpServletRequest httpServletRequest =
 			PortletContainerTestUtil.getHttpServletRequest(group, layout);
 
-		PortletURL portletURL = new PortletURLImpl(
+		PortletURL portletURL = PortletURLFactoryUtil.create(
 			httpServletRequest, TEST_PORTLET_ID, layout.getPlid(),
 			PortletRequest.RENDER_PHASE);
 
@@ -209,7 +209,8 @@ public class PublicRenderParameterTest extends BasePortletContainerTestCase {
 			portletURLString.contains(
 				PortletQName.PUBLIC_RENDER_PARAMETER_NAMESPACE));
 
-		Response response = PortletContainerTestUtil.request(portletURLString);
+		PortletContainerTestUtil.Response response =
+			PortletContainerTestUtil.request(portletURLString);
 
 		Assert.assertEquals(200, response.getCode());
 

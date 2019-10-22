@@ -30,6 +30,7 @@ import com.liferay.journal.model.JournalFolder;
 import com.liferay.journal.model.JournalFolderConstants;
 import com.liferay.journal.service.JournalArticleLocalService;
 import com.liferay.journal.service.JournalFolderLocalService;
+import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.model.Group;
@@ -42,10 +43,10 @@ import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.test.util.ServiceContextTestUtil;
 import com.liferay.portal.kernel.test.util.TestPropsValues;
 import com.liferay.portal.kernel.util.ContentTypes;
+import com.liferay.portal.kernel.util.DateUtil;
 import com.liferay.portal.kernel.util.FileUtil;
 import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.PortalUtil;
-import com.liferay.portal.kernel.util.StringBundler;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.xml.Document;
 import com.liferay.portal.kernel.xml.Element;
@@ -209,19 +210,31 @@ public class AMJournalArticleStagedModelDataHandlerTest
 	}
 
 	@Override
-	protected StagedModel getStagedModel(String uuid, Group group) {
-		try {
-			return _journalArticleLocalService.
-				getJournalArticleByUuidAndGroupId(uuid, group.getGroupId());
-		}
-		catch (Exception e) {
-			return null;
-		}
+	protected StagedModel getStagedModel(String uuid, Group group)
+		throws PortalException {
+
+		return _journalArticleLocalService.getJournalArticleByUuidAndGroupId(
+			uuid, group.getGroupId());
 	}
 
 	@Override
 	protected Class<? extends StagedModel> getStagedModelClass() {
 		return JournalArticle.class;
+	}
+
+	@Override
+	protected void validateImportedStagedModel(
+			StagedModel stagedModel, StagedModel importedStagedModel)
+		throws Exception {
+
+		Assert.assertTrue(
+			stagedModel.getCreateDate() + " " +
+				importedStagedModel.getCreateDate(),
+			DateUtil.equals(
+				stagedModel.getCreateDate(),
+				importedStagedModel.getCreateDate()));
+		Assert.assertEquals(
+			stagedModel.getUuid(), importedStagedModel.getUuid());
 	}
 
 	private FileEntry _addImageFileEntry(ServiceContext serviceContext)
@@ -278,9 +291,12 @@ public class AMJournalArticleStagedModelDataHandlerTest
 	private void _assertXMLEquals(String expectedXML, String actualXML)
 		throws Exception {
 
+		Document actualDocument = SAXReaderUtil.read(actualXML);
+		Document expectedDocument = SAXReaderUtil.read(expectedXML);
+
 		AssertUtils.assertEqualsIgnoreCase(
-			SAXReaderUtil.read(expectedXML).formattedString(),
-			SAXReaderUtil.read(actualXML).formattedString());
+			expectedDocument.formattedString(),
+			actualDocument.formattedString());
 	}
 
 	private String _getContent(String html) throws Exception {

@@ -100,6 +100,7 @@ public class AssetVocabularyLocalServiceImpl
 		// Vocabulary
 
 		User user = userLocalService.getUser(userId);
+
 		String name = titleMap.get(LocaleUtil.getSiteDefault());
 
 		validate(groupId, name);
@@ -236,9 +237,7 @@ public class AssetVocabularyLocalServiceImpl
 	}
 
 	@Override
-	public AssetVocabulary fetchGroupVocabulary(long groupId, String name)
-		throws PortalException {
-
+	public AssetVocabulary fetchGroupVocabulary(long groupId, String name) {
 		return assetVocabularyPersistence.fetchByG_N(groupId, name);
 	}
 
@@ -368,9 +367,7 @@ public class AssetVocabularyLocalServiceImpl
 		List<AssetVocabulary> vocabularies = new ArrayList<>();
 
 		for (long vocabularyId : vocabularyIds) {
-			AssetVocabulary vocabulary = getVocabulary(vocabularyId);
-
-			vocabularies.add(vocabulary);
+			vocabularies.add(getVocabulary(vocabularyId));
 		}
 
 		return vocabularies;
@@ -463,9 +460,8 @@ public class AssetVocabularyLocalServiceImpl
 		if (assetVocabularyPersistence.countByG_N(groupId, name) == 0) {
 			return false;
 		}
-		else {
-			return true;
-		}
+
+		return true;
 	}
 
 	protected BaseModelSearchResult<AssetVocabulary> searchVocabularies(

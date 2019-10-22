@@ -19,6 +19,10 @@
 <%@ include file="/html/taglib/ui/search_iterator/lexicon/top.jspf" %>
 
 <%
+if (searchResultCssClass == null) {
+	searchResultCssClass = "list-group list-group-notification show-quick-actions-on-hover";
+}
+
 List<ResultRowSplitterEntry> resultRowSplitterEntries = new ArrayList<ResultRowSplitterEntry>();
 
 if (resultRowSplitter != null) {
@@ -40,7 +44,7 @@ for (ResultRowSplitterEntry resultRowSplitterEntry : resultRowSplitterEntries) {
 		</div>
 	</c:if>
 
-	<ul class="list-group list-group-notification show-quick-actions-on-hover">
+	<ul class="<%= searchResultCssClass %>">
 		<c:if test="<%= (headerNames != null) && Validator.isNotNull(headerNames.get(0)) %>">
 			<li class="list-group-heading"><liferay-ui:message key="<%= headerNames.get(0) %>" /></li>
 		</c:if>
@@ -97,7 +101,7 @@ for (ResultRowSplitterEntry resultRowSplitterEntry : resultRowSplitterEntries) {
 					<div class="autofit-col">
 						<div class="checkbox">
 							<label>
-								<%= rowChecker.getRowCheckBox(request, rowIsChecked, rowChecker.isDisabled(row.getObject()), row.getPrimaryKey()) %>
+								<%= rowChecker.getRowCheckBox(request, row) %>
 							</label>
 						</div>
 					</div>
@@ -112,7 +116,7 @@ for (ResultRowSplitterEntry resultRowSplitterEntry : resultRowSplitterEntries) {
 					request.setAttribute(WebKeys.SEARCH_CONTAINER_RESULT_ROW_ENTRY, entry);
 				%>
 
-					<div class="<%= entry.getCssClass() %> <%= entry.getColspan() > 1 ? "autofit-col autofit-col-expand" : "autofit-col" %>" data-qa-id="rowItemContent">
+					<div class="<%= entry.getCssClass() %> <%= (entry.getColspan() > 1) ? "autofit-col autofit-col-expand" : "autofit-col" %>" data-qa-id="rowItemContent">
 
 						<%
 						entry.print(pageContext.getOut(), request, response);

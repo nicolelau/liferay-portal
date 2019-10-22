@@ -14,12 +14,12 @@
 
 package com.liferay.portal.image;
 
+import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.image.ImageBag;
 import com.liferay.portal.kernel.image.ImageToolUtil;
 import com.liferay.portal.kernel.image.SpriteProcessor;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
-import com.liferay.portal.kernel.security.pacl.DoPrivileged;
 import com.liferay.portal.kernel.servlet.ServletContextUtil;
 import com.liferay.portal.kernel.util.ArrayUtil;
 import com.liferay.portal.kernel.util.FileUtil;
@@ -28,7 +28,6 @@ import com.liferay.portal.kernel.util.PropertiesUtil;
 import com.liferay.portal.kernel.util.PropsKeys;
 import com.liferay.portal.kernel.util.PropsUtil;
 import com.liferay.portal.kernel.util.SortedProperties;
-import com.liferay.portal.kernel.util.StringBundler;
 import com.liferay.portal.kernel.util.URLUtil;
 import com.liferay.portal.kernel.util.Validator;
 
@@ -70,7 +69,6 @@ import javax.servlet.ServletContext;
 /**
  * @author Brian Wing Shun Chan
  */
-@DoPrivileged
 public class SpriteProcessorImpl implements SpriteProcessor {
 
 	@Override
@@ -143,9 +141,8 @@ public class SpriteProcessorImpl implements SpriteProcessor {
 			if (Validator.isNull(spritePropertiesString)) {
 				return null;
 			}
-			else {
-				return PropertiesUtil.load(spritePropertiesString);
-			}
+
+			return PropertiesUtil.load(spritePropertiesString);
 		}
 
 		List<RenderedImage> renderedImages = new ArrayList<>();
@@ -181,6 +178,8 @@ public class SpriteProcessorImpl implements SpriteProcessor {
 					renderedImage = TranslateDescriptor.create(
 						renderedImage, x, y, null, null);
 
+					y += renderedImage.getHeight();
+
 					renderedImages.add(renderedImage);
 
 					String key = ServletContextUtil.getResourcePath(imageURL);
@@ -196,17 +195,14 @@ public class SpriteProcessorImpl implements SpriteProcessor {
 					key = contextPath.concat(key);
 
 					String value = StringBundler.concat(
-						String.valueOf((int)y), ",", String.valueOf(height),
-						",", String.valueOf(width));
+						(int)y, ",", height, ",", width);
 
 					spriteProperties.setProperty(key, value);
-
-					y += renderedImage.getHeight();
 				}
 			}
 			catch (Exception e) {
 				if (_log.isWarnEnabled()) {
-					_log.warn("Unable to process " + imageURL);
+					_log.warn("Unable to process " + imageURL, e);
 				}
 
 				if (_log.isDebugEnabled()) {
@@ -224,8 +220,7 @@ public class SpriteProcessorImpl implements SpriteProcessor {
 			// PNG
 
 			RenderedImage renderedImage = MosaicDescriptor.create(
-				renderedImages.toArray(
-					new RenderedImage[renderedImages.size()]),
+				renderedImages.toArray(new RenderedImage[0]),
 				MosaicDescriptor.MOSAIC_TYPE_OVERLAY, null, null, null, null,
 				null);
 
@@ -290,9 +285,7 @@ public class SpriteProcessorImpl implements SpriteProcessor {
 		if (colorModel instanceof IndexColorModel) {
 			IndexColorModel indexColorModel = (IndexColorModel)colorModel;
 
-			int mapSize = indexColorModel.getMapSize();
-
-			byte[][] data = new byte[4][mapSize];
+			byte[][] data = new byte[4][indexColorModel.getMapSize()];
 
 			indexColorModel.getReds(data[0]);
 			indexColorModel.getGreens(data[1]);
@@ -323,8 +316,7 @@ public class SpriteProcessorImpl implements SpriteProcessor {
 				bytesList.add(elem);
 			}
 
-			byte[] data = ArrayUtil.toArray(
-				bytesList.toArray(new Byte[bytesList.size()]));
+			byte[] data = ArrayUtil.toArray(bytesList.toArray(new Byte[0]));
 
 			DataBuffer newDataBuffer = new DataBufferByte(data, data.length);
 
@@ -358,8 +350,7 @@ public class SpriteProcessorImpl implements SpriteProcessor {
 				}
 			}
 
-			byte[] data = ArrayUtil.toArray(
-				bytesList.toArray(new Byte[bytesList.size()]));
+			byte[] data = ArrayUtil.toArray(bytesList.toArray(new Byte[0]));
 
 			DataBuffer newDataBuffer = new DataBufferByte(data, data.length);
 
@@ -390,8 +381,7 @@ public class SpriteProcessorImpl implements SpriteProcessor {
 				}
 			}
 
-			byte[] data = ArrayUtil.toArray(
-				bytesList.toArray(new Byte[bytesList.size()]));
+			byte[] data = ArrayUtil.toArray(bytesList.toArray(new Byte[0]));
 
 			DataBuffer newDataBuffer = new DataBufferByte(data, data.length);
 
@@ -448,10 +438,7 @@ public class SpriteProcessorImpl implements SpriteProcessor {
 			for (int w = 0; w < width; w++) {
 				offset = (h * width * numOfBands) + (w * numOfBands);
 
-				System.out.print(
-					StringBundler.concat(
-						"[", String.valueOf(w), ", ", String.valueOf(h),
-						"] = "));
+				System.out.print(StringBundler.concat("[", w, ", ", h, "] = "));
 
 				for (int b = 0; b < numOfBands; b++) {
 					System.out.print(pixels[offset + b] + " ");

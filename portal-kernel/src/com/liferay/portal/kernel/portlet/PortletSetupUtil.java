@@ -60,7 +60,7 @@ public class PortletSetupUtil {
 			css = null;
 
 			if (_log.isWarnEnabled()) {
-				_log.warn(e);
+				_log.warn(e, e);
 			}
 		}
 
@@ -97,24 +97,22 @@ public class PortletSetupUtil {
 		for (Locale locale : LanguageUtil.getAvailableLocales()) {
 			String languageId = LocaleUtil.toLanguageId(locale);
 
-			String title = portletSetup.getValue(
-				"portletSetupTitle_" + languageId, null);
-
 			if (Validator.isNotNull(languageId)) {
+				String title = portletSetup.getValue(
+					"portletSetupTitle_" + languageId, null);
+
 				titlesJSONObject.put(languageId, title);
 			}
 		}
 
-		String linkToLayoutUuid = GetterUtil.getString(
-			portletSetup.getValue("portletSetupLinkToLayoutUuid", null));
-		boolean useCustomTitle = GetterUtil.getBoolean(
-			portletSetup.getValue("portletSetupUseCustomTitle", null));
 		String portletDecoratorId = GetterUtil.getString(
 			portletSetup.getValue("portletSetupPortletDecoratorId", null));
 
 		portletDataJSONObject.put("portletDecoratorId", portletDecoratorId);
 
-		portletDataJSONObject.put("portletLinksTarget", linkToLayoutUuid);
+		boolean useCustomTitle = GetterUtil.getBoolean(
+			portletSetup.getValue("portletSetupUseCustomTitle", null));
+
 		portletDataJSONObject.put("useCustomTitle", useCustomTitle);
 
 		return cssJSONObject;

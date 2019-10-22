@@ -17,19 +17,19 @@ package com.liferay.sync.internal.upgrade.v1_0_2;
 import com.liferay.document.library.kernel.model.DLFileEntryConstants;
 import com.liferay.document.library.sync.service.DLSyncEventLocalService;
 import com.liferay.petra.string.CharPool;
+import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.dao.orm.common.SQLTransformer;
 import com.liferay.portal.kernel.dao.db.DB;
 import com.liferay.portal.kernel.dao.db.DBManagerUtil;
 import com.liferay.portal.kernel.dao.jdbc.AutoBatchPreparedStatementUtil;
 import com.liferay.portal.kernel.dao.orm.ActionableDynamicQuery;
-import com.liferay.portal.kernel.dao.orm.DynamicQuery;
 import com.liferay.portal.kernel.dao.orm.Property;
 import com.liferay.portal.kernel.dao.orm.PropertyFactoryUtil;
 import com.liferay.portal.kernel.dao.orm.RestrictionsFactoryUtil;
 import com.liferay.portal.kernel.exception.PortalException;
-import com.liferay.portal.kernel.json.JSONFactoryUtil;
 import com.liferay.portal.kernel.json.JSONObject;
+import com.liferay.portal.kernel.json.JSONUtil;
 import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.service.GroupLocalService;
@@ -38,10 +38,9 @@ import com.liferay.portal.kernel.util.ArrayUtil;
 import com.liferay.portal.kernel.util.FileUtil;
 import com.liferay.portal.kernel.util.LoggingTimer;
 import com.liferay.portal.kernel.util.PortalUtil;
-import com.liferay.portal.kernel.util.StringBundler;
 import com.liferay.portal.kernel.workflow.WorkflowConstants;
 import com.liferay.sync.constants.SyncDLObjectConstants;
-import com.liferay.sync.service.internal.configuration.SyncServiceConfigurationValues;
+import com.liferay.sync.internal.configuration.SyncServiceConfigurationValues;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -67,45 +66,32 @@ public class UpgradeSyncDLObject extends UpgradeProcess {
 				_groupLocalService.getActionableDynamicQuery();
 
 			actionableDynamicQuery.setAddCriteriaMethod(
-				new ActionableDynamicQuery.AddCriteriaMethod() {
+				dynamicQuery -> {
+					Property classNameId = PropertyFactoryUtil.forName(
+						"classNameId");
+					Property siteProperty = PropertyFactoryUtil.forName("site");
 
-					@Override
-					public void addCriteria(DynamicQuery dynamicQuery) {
-						Property classNameId = PropertyFactoryUtil.forName(
-							"classNameId");
-						Property siteProperty = PropertyFactoryUtil.forName(
-							"site");
-
-						dynamicQuery.add(
-							RestrictionsFactoryUtil.or(
-								classNameId.eq(
-									PortalUtil.getClassNameId(User.class)),
-								siteProperty.eq(true)));
-					}
-
+					dynamicQuery.add(
+						RestrictionsFactoryUtil.or(
+							classNameId.eq(
+								PortalUtil.getClassNameId(User.class)),
+							siteProperty.eq(true)));
 				});
 			actionableDynamicQuery.setPerformActionMethod(
-				new ActionableDynamicQuery.PerformActionMethod<Group>() {
-
-					@Override
-					public void performAction(Group group)
-						throws PortalException {
-
-						if (group.isStaged()) {
-							return;
-						}
-
-						try {
-							verifyDLFileEntriesAndFolders(group.getGroupId());
-
-							verifyLocks(group.getGroupId());
-							verifyMacPackages(group.getGroupId());
-						}
-						catch (Exception e) {
-							throw new PortalException(e);
-						}
+				(Group group) -> {
+					if (group.isStaged()) {
+						return;
 					}
 
+					try {
+						verifyDLFileEntriesAndFolders(group.getGroupId());
+
+						verifyLocks(group.getGroupId());
+						verifyMacPackages(group.getGroupId());
+					}
+					catch (Exception e) {
+						throw new PortalException(e);
+					}
 				});
 
 			actionableDynamicQuery.performActions();
@@ -247,7 +233,7 @@ public class UpgradeSyncDLObject extends UpgradeProcess {
 					StringBundler.concat(
 						"update SyncDLObject set lockExpirationDate = ?, ",
 						"lockUserId = ?, lockUserName = ? where typePK = ? ",
-						"and repositoryId = ", String.valueOf(groupId)));
+						"and repositoryId = ", groupId));
 			ResultSet rs = ps1.executeQuery()) {
 
 			while (rs.next()) {
@@ -296,27 +282,22 @@ public class UpgradeSyncDLObject extends UpgradeProcess {
 			ResultSet rs = ps1.executeQuery()) {
 
 			while (rs.next()) {
-				long folderId = rs.getLong("folderId");
 				String name = rs.getString("name");
-
-				String extension = FileUtil.getExtension(name);
 
 				if (!ArrayUtil.contains(
 						SyncServiceConfigurationValues.
 							SYNC_MAC_PACKAGE_FOLDER_EXTENSIONS,
-						extension)) {
+						FileUtil.getExtension(name))) {
 
 					continue;
 				}
 
-				JSONObject extraSettingsJSONObject =
-					JSONFactoryUtil.createJSONObject();
-
-				extraSettingsJSONObject.put("macPackage", true);
+				JSONObject extraSettingsJSONObject = JSONUtil.put(
+					"macPackage", true);
 
 				ps2.setString(1, extraSettingsJSONObject.toString());
 
-				ps2.setLong(2, folderId);
+				ps2.setLong(2, rs.getLong("folderId"));
 
 				ps2.addBatch();
 			}

@@ -21,7 +21,7 @@ import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.model.ResourceConstants;
-import com.liferay.portal.kernel.model.RoleConstants;
+import com.liferay.portal.kernel.model.role.RoleConstants;
 import com.liferay.portal.kernel.repository.model.Folder;
 import com.liferay.portal.kernel.security.auth.PrincipalThreadLocal;
 import com.liferay.portal.kernel.security.permission.ActionKeys;
@@ -32,7 +32,7 @@ import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.test.util.RoleTestUtil;
 import com.liferay.portal.kernel.test.util.ServiceContextTestUtil;
 import com.liferay.portal.kernel.test.util.TestPropsValues;
-import com.liferay.portal.test.rule.PermissionCheckerTestRule;
+import com.liferay.portal.test.rule.PermissionCheckerMethodTestRule;
 import com.liferay.portlet.documentlibrary.constants.DLConstants;
 
 import org.junit.After;
@@ -42,13 +42,18 @@ import org.junit.Rule;
 
 /**
  * @author Alexander Chow
+ * @deprecated As of Mueller (7.2.x), with no direct replacement
  */
+@Deprecated
 public abstract class BaseDLAppTestCase {
+
+	public static final String CONTENT =
+		"Content: Enterprise. Open Source. For Life.";
 
 	@ClassRule
 	@Rule
-	public static final PermissionCheckerTestRule permissionCheckerTestRule =
-		PermissionCheckerTestRule.INSTANCE;
+	public static final PermissionCheckerMethodTestRule
+		permissionCheckerTestRule = PermissionCheckerMethodTestRule.INSTANCE;
 
 	@Before
 	public void setUp() throws Exception {
@@ -92,9 +97,6 @@ public abstract class BaseDLAppTestCase {
 			ResourceConstants.SCOPE_GROUP, String.valueOf(group.getGroupId()),
 			ActionKeys.VIEW);
 	}
-
-	protected static final String CONTENT =
-		"Content: Enterprise. Open Source. For Life.";
 
 	@DeleteAfterTestRun
 	protected Group group;

@@ -61,6 +61,7 @@ public class Element {
 
 		_text = _formatText(text);
 		_elementStack = new LinkedList<>();
+
 		_sb = new StringBundler();
 
 		if (addHeader) {
@@ -134,9 +135,8 @@ public class Element {
 		if (_parentElement == null) {
 			return true;
 		}
-		else {
-			return false;
-		}
+
+		return false;
 	}
 
 	public String toXMLString() {

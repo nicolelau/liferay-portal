@@ -18,6 +18,7 @@ import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.util.StringBundler;
 import com.liferay.portal.kernel.util.TextFormatter;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -28,14 +29,23 @@ public class EntityFinder {
 
 	public EntityFinder(
 		String name, String returnType, boolean unique, String where,
-		boolean dbIndex, List<EntityColumn> entityColumns) {
+		String dbWhere, boolean dbIndex, List<EntityColumn> entityColumns) {
 
 		_name = name;
 		_returnType = returnType;
 		_unique = unique;
 		_where = where;
+		_dbWhere = dbWhere;
 		_dbIndex = dbIndex;
 		_entityColumns = entityColumns;
+
+		_arrayableColumns = new ArrayList<>();
+
+		for (EntityColumn column : _entityColumns) {
+			if (column.hasArrayableOperator()) {
+				_arrayableColumns.add(column);
+			}
+		}
 
 		if (isCollection() && isUnique() && !hasArrayableOperator()) {
 			throw new IllegalArgumentException(
@@ -48,6 +58,14 @@ public class EntityFinder {
 			throw new IllegalArgumentException(
 				"A unique finder cannot have a custom comparator");
 		}
+	}
+
+	public List<EntityColumn> getArrayableColumns() {
+		return _arrayableColumns;
+	}
+
+	public String getDBWhere() {
+		return _dbWhere;
 	}
 
 	public EntityColumn getEntityColumn(String name) {
@@ -111,6 +129,16 @@ public class EntityFinder {
 		return false;
 	}
 
+	public boolean hasArrayablePagination() {
+		for (EntityColumn column : _entityColumns) {
+			if (column.hasArrayablePagination()) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
 	public boolean hasCustomComparator() {
 		for (EntityColumn column : _entityColumns) {
 			String comparator = column.getComparator();
@@ -131,9 +159,8 @@ public class EntityFinder {
 		if ((_returnType != null) && _returnType.equals("Collection")) {
 			return true;
 		}
-		else {
-			return false;
-		}
+
+		return false;
 	}
 
 	public boolean isDBIndex() {
@@ -144,7 +171,9 @@ public class EntityFinder {
 		return _unique;
 	}
 
+	private final List<EntityColumn> _arrayableColumns;
 	private final boolean _dbIndex;
+	private final String _dbWhere;
 	private final List<EntityColumn> _entityColumns;
 	private final String _name;
 	private final String _returnType;

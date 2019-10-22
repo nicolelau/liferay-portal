@@ -14,6 +14,7 @@
 
 package com.liferay.portal.kernel.messaging;
 
+import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.cluster.ClusterInvokeThreadLocal;
 import com.liferay.portal.kernel.concurrent.RejectedExecutionHandler;
 import com.liferay.portal.kernel.concurrent.ThreadPoolExecutor;
@@ -32,7 +33,6 @@ import com.liferay.portal.kernel.util.GroupThreadLocal;
 import com.liferay.portal.kernel.util.LocaleThreadLocal;
 import com.liferay.portal.kernel.util.NamedThreadFactory;
 import com.liferay.portal.kernel.util.PortalClassLoaderUtil;
-import com.liferay.portal.kernel.util.StringBundler;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.registry.Registry;
 import com.liferay.registry.RegistryUtil;
@@ -47,7 +47,10 @@ import java.util.concurrent.TimeUnit;
 /**
  * @author Michael C. Han
  * @author Shuyang Zhou
+ * @deprecated As of Athanasius (7.3.x), replaced by {@link
+ *   		com.liferay.portal.messaging.internal.BaseAsyncDestination}
  */
+@Deprecated
 public abstract class BaseAsyncDestination extends BaseDestination {
 
 	@Override
@@ -169,7 +172,7 @@ public abstract class BaseAsyncDestination extends BaseDestination {
 			return;
 		}
 
-		ThreadPoolExecutor threadPoolExecutor = getThreadPoolExecutor();
+		ThreadPoolExecutor threadPoolExecutor = _threadPoolExecutor;
 
 		if (threadPoolExecutor.isShutdown()) {
 			throw new IllegalStateException(
@@ -183,9 +186,8 @@ public abstract class BaseAsyncDestination extends BaseDestination {
 		if (_log.isDebugEnabled()) {
 			_log.debug(
 				StringBundler.concat(
-					"Sending message ", String.valueOf(message),
-					" from destination ", getName(), " to message listeners ",
-					String.valueOf(messageListeners)));
+					"Sending message ", message, " from destination ",
+					getName(), " to message listeners ", messageListeners));
 		}
 
 		dispatch(messageListeners, message);
@@ -196,7 +198,7 @@ public abstract class BaseAsyncDestination extends BaseDestination {
 	}
 
 	/**
-	 * @deprecated As of 7.0.0, with no direct replacement
+	 * @deprecated As of Judson (7.1.x), with no direct replacement
 	 */
 	@Deprecated
 	public void setRejectedExecutionHandler(
@@ -224,7 +226,7 @@ public abstract class BaseAsyncDestination extends BaseDestination {
 	}
 
 	/**
-	 * @deprecated As of 7.0.0, with no direct replacement
+	 * @deprecated As of Judson (7.1.x), with no direct replacement
 	 */
 	@Deprecated
 	protected RejectedExecutionHandler createRejectionExecutionHandler() {
@@ -235,7 +237,7 @@ public abstract class BaseAsyncDestination extends BaseDestination {
 		Set<MessageListener> messageListeners, Message message);
 
 	/**
-	 * @deprecated As of 7.0.0, with no direct replacement
+	 * @deprecated As of Judson (7.1.x), with no direct replacement
 	 */
 	@Deprecated
 	protected ThreadPoolExecutor getThreadPoolExecutor() {
@@ -374,10 +376,9 @@ public abstract class BaseAsyncDestination extends BaseDestination {
 
 				_log.warn(
 					StringBundler.concat(
-						"Discarding message ",
-						String.valueOf(messageRunnable.getMessage()),
+						"Discarding message ", messageRunnable.getMessage(),
 						" because it exceeds the maximum queue size of ",
-						String.valueOf(_maximumQueueSize)));
+						_maximumQueueSize));
 			}
 
 		};

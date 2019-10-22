@@ -15,19 +15,37 @@
 package com.liferay.source.formatter.checkstyle.checks;
 
 import com.liferay.petra.string.CharPool;
+import com.liferay.petra.string.StringBundler;
+import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.util.ArrayUtil;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
+import com.liferay.portal.tools.ToolsUtil;
+import com.liferay.source.formatter.checks.util.JavaSourceUtil;
 import com.liferay.source.formatter.checkstyle.util.DetailASTUtil;
+import com.liferay.source.formatter.parser.JavaClass;
+import com.liferay.source.formatter.parser.JavaClassParser;
+import com.liferay.source.formatter.parser.JavaMethod;
+import com.liferay.source.formatter.parser.JavaSignature;
+import com.liferay.source.formatter.parser.JavaTerm;
+import com.liferay.source.formatter.util.FileUtil;
+import com.liferay.source.formatter.util.SourceFormatterUtil;
 
 import com.puppycrawl.tools.checkstyle.api.DetailAST;
 import com.puppycrawl.tools.checkstyle.api.FileContents;
-import com.puppycrawl.tools.checkstyle.api.FileText;
+import com.puppycrawl.tools.checkstyle.api.FullIdent;
 import com.puppycrawl.tools.checkstyle.api.TokenTypes;
+
+import java.io.File;
+
+import java.net.URL;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
 /**
  * @author Hugo Huijser
@@ -36,105 +54,174 @@ public class ChainingCheck extends BaseCheck {
 
 	@Override
 	public int[] getDefaultTokens() {
-		return new int[] {TokenTypes.CTOR_DEF, TokenTypes.METHOD_DEF};
-	}
-
-	public void setAllowedClassNames(String allowedClassNames) {
-		_allowedClassNames = ArrayUtil.append(
-			_allowedClassNames, StringUtil.split(allowedClassNames));
-	}
-
-	public void setAllowedMethodNames(String allowedMethodNames) {
-		_allowedMethodNames = ArrayUtil.append(
-			_allowedMethodNames, StringUtil.split(allowedMethodNames));
-	}
-
-	public void setAllowedVariableTypeNames(String allowedVariableTypeNames) {
-		_allowedVariableTypeNames = ArrayUtil.append(
-			_allowedVariableTypeNames,
-			StringUtil.split(allowedVariableTypeNames));
+		return new int[] {
+			TokenTypes.CLASS_DEF, TokenTypes.ENUM_DEF, TokenTypes.INTERFACE_DEF,
+			TokenTypes.TYPECAST
+		};
 	}
 
 	@Override
 	protected void doVisitToken(DetailAST detailAST) {
-		List<DetailAST> methodCallASTList = DetailASTUtil.getAllChildTokens(
-			detailAST, true, TokenTypes.METHOD_CALL);
+		if ((detailAST.getType() == TokenTypes.TYPECAST) &&
+			isAttributeValue(_APPLY_TO_TYPE_CAST_KEY)) {
 
-		for (DetailAST methodCallAST : methodCallASTList) {
-			DetailAST dotAST = methodCallAST.findFirstToken(TokenTypes.DOT);
+			_checkChainingOnTypeCast(detailAST);
 
-			if (dotAST != null) {
-				List<DetailAST> childMethodCallASTList =
+			return;
+		}
+
+		DetailAST parentDetailAST = detailAST.getParent();
+
+		if (parentDetailAST != null) {
+			return;
+		}
+
+		_checkChainingOnMethodCalls(detailAST);
+	}
+
+	private void _checkAllowedChaining(DetailAST methodCallDetailAST) {
+		DetailAST parentDetailAST = methodCallDetailAST.getParent();
+
+		while (true) {
+			if ((parentDetailAST.getType() == TokenTypes.DOT) ||
+				(parentDetailAST.getType() == TokenTypes.METHOD_CALL)) {
+
+				parentDetailAST = parentDetailAST.getParent();
+
+				continue;
+			}
+
+			break;
+		}
+
+		if (parentDetailAST.getType() != TokenTypes.EXPR) {
+			return;
+		}
+
+		parentDetailAST = parentDetailAST.getParent();
+
+		if (parentDetailAST.getType() != TokenTypes.ASSIGN) {
+			return;
+		}
+
+		parentDetailAST = parentDetailAST.getParent();
+
+		if (parentDetailAST.getType() != TokenTypes.VARIABLE_DEF) {
+			return;
+		}
+
+		String classOrVariableName = _getClassOrVariableName(
+			methodCallDetailAST);
+
+		if (!Objects.equals(classOrVariableName, "Optional") &&
+			!Objects.equals(classOrVariableName, "Stream") &&
+			!Objects.equals(classOrVariableName, "Try")) {
+
+			return;
+		}
+
+		DetailAST variableNameDetailAST = parentDetailAST.findFirstToken(
+			TokenTypes.IDENT);
+
+		String variableName = variableNameDetailAST.getText();
+
+		String variableTypeName = DetailASTUtil.getVariableTypeName(
+			methodCallDetailAST, variableName, false);
+
+		if (!classOrVariableName.equals(variableTypeName)) {
+			return;
+		}
+
+		List<DetailAST> identDetailASTList = _getIdentDetailASTList(
+			parentDetailAST.getParent(), variableName);
+
+		if ((identDetailASTList.size() == 2) &&
+			Objects.equals(
+				_findFirstParent(
+					identDetailASTList.get(0), TokenTypes.ELIST,
+					TokenTypes.LITERAL_IF),
+				_findFirstParent(
+					identDetailASTList.get(1), TokenTypes.ELIST,
+					TokenTypes.LITERAL_IF))) {
+
+			log(
+				methodCallDetailAST, _MSG_ALLOWED_CHAINING,
+				StringBundler.concat(
+					classOrVariableName, StringPool.PERIOD,
+					DetailASTUtil.getMethodName(methodCallDetailAST)));
+		}
+	}
+
+	private void _checkChainingOnMethodCalls(DetailAST detailAST) {
+		List<DetailAST> methodCallDetailASTList =
+			DetailASTUtil.getAllChildTokens(
+				detailAST, true, TokenTypes.METHOD_CALL);
+
+		for (DetailAST methodCallDetailAST : methodCallDetailASTList) {
+			DetailAST dotDetailAST = methodCallDetailAST.findFirstToken(
+				TokenTypes.DOT);
+
+			if (dotDetailAST != null) {
+				List<DetailAST> childMethodCallDetailASTList =
 					DetailASTUtil.getAllChildTokens(
-						dotAST, false, TokenTypes.METHOD_CALL);
+						dotDetailAST, false, TokenTypes.METHOD_CALL);
 
 				// Only check the method that is first in the chain
 
-				if (!childMethodCallASTList.isEmpty()) {
+				if (!childMethodCallDetailASTList.isEmpty()) {
 					continue;
 				}
 			}
 
-			if (_isInsideAnonymousClassVariableDefinition(methodCallAST)) {
-				continue;
-			}
+			_checkAllowedChaining(methodCallDetailAST);
 
-			List<String> chain = _getChain(methodCallAST);
+			List<String> chainedMethodNames = _getChainedMethodNames(
+				methodCallDetailAST);
 
-			int chainSize = chain.size();
+			_checkRequiredChaining(methodCallDetailAST, chainedMethodNames);
+
+			int chainSize = chainedMethodNames.size();
 
 			if (chainSize == 1) {
 				continue;
 			}
 
 			if (chainSize == 2) {
-				if (dotAST == null) {
-					continue;
-				}
+				DetailAST elistDetailAST = methodCallDetailAST.findFirstToken(
+					TokenTypes.ELIST);
 
-				_checkMethodName(chain, "getClass", methodCallAST, detailAST);
-
-				String name1 = chain.get(0);
-
-				if ((name1.equals("getParamValue") ||
-					 name1.equals("getValue")) &&
-					DetailASTUtil.hasParentWithTokenType(
-						detailAST, TokenTypes.ENUM_DEF)) {
+				if ((elistDetailAST.getChildCount() == 0) &&
+					(dotDetailAST == null)) {
 
 					continue;
 				}
 
-				String name2 = chain.get(1);
+				_checkMethodName(
+					chainedMethodNames, "getClass", methodCallDetailAST);
 
-				if (name1.equals("concat") || name2.equals("concat")) {
-					continue;
-				}
+				String name1 = chainedMethodNames.get(0);
+				String name2 = chainedMethodNames.get(1);
 
-				FileContents fileContents = getFileContents();
-
-				String fileName = StringUtil.replace(
-					fileContents.getFileName(), CharPool.BACK_SLASH,
-					CharPool.SLASH);
-
-				if (fileName.contains("/test/") ||
-					fileName.contains("/testIntegration/")) {
-
+				if (name1.equals("concat") && name2.equals("concat")) {
 					continue;
 				}
 			}
 
-			if (_isAllowedChainingMethodCall(detailAST, methodCallAST, chain)) {
-				if (chainSize > 2) {
-					_checkStyling(detailAST, methodCallAST);
-				}
+			if (chainSize > 3) {
+				_checkChainOrder(methodCallDetailAST, chainedMethodNames);
+			}
+
+			if (_isAllowedChainingMethodCall(
+					methodCallDetailAST, chainedMethodNames, detailAST)) {
 
 				continue;
 			}
 
-			int concatsCount = Collections.frequency(chain, "concat");
+			int concatsCount = Collections.frequency(
+				chainedMethodNames, "concat");
 
 			if (concatsCount > 2) {
-				log(methodCallAST.getLineNo(), _MSG_AVOID_TOO_MANY_CONCAT);
+				log(methodCallDetailAST, _MSG_AVOID_TOO_MANY_CONCAT);
 
 				continue;
 			}
@@ -144,80 +231,339 @@ public class ChainingCheck extends BaseCheck {
 			}
 
 			log(
-				methodCallAST.getLineNo(), _MSG_AVOID_CHAINING,
-				DetailASTUtil.getMethodName(methodCallAST));
+				methodCallDetailAST, _MSG_AVOID_METHOD_CHAINING,
+				DetailASTUtil.getMethodName(methodCallDetailAST));
+		}
+	}
+
+	private void _checkChainingOnTypeCast(DetailAST detailAST) {
+		if (_isInsideConstructorThisCall(detailAST) ||
+			DetailASTUtil.hasParentWithTokenType(
+				detailAST, TokenTypes.SUPER_CTOR_CALL)) {
+
+			return;
+		}
+
+		DetailAST parentDetailAST = detailAST.getParent();
+
+		if (parentDetailAST.getType() == TokenTypes.DOT) {
+			log(detailAST, _MSG_AVOID_TYPE_CAST_CHAINING);
+		}
+	}
+
+	private void _checkChainOrder(
+		DetailAST methodCallDetailAST, List<String> chainedMethodNames) {
+
+		if (!Objects.equals(chainedMethodNames.get(0), "status") ||
+			!Objects.equals(
+				chainedMethodNames.get(chainedMethodNames.size() - 1),
+				"build") ||
+			!Objects.equals(
+				_getClassOrVariableName(methodCallDetailAST), "Response")) {
+
+			return;
+		}
+
+		List<String> middleMethodNames = chainedMethodNames.subList(
+			1, chainedMethodNames.size() - 1);
+
+		String unsortedNames = middleMethodNames.toString();
+
+		Collections.sort(middleMethodNames);
+
+		if (!unsortedNames.equals(middleMethodNames.toString())) {
+			log(methodCallDetailAST, _MSG_UNSORTED_RESPONSE);
 		}
 	}
 
 	private void _checkMethodName(
 		List<String> chainedMethodNames, String methodName,
-		DetailAST methodCallAST, DetailAST detailAST) {
+		DetailAST methodCallDetailAST) {
 
 		String firstMethodName = chainedMethodNames.get(0);
 
 		if (firstMethodName.equals(methodName) &&
-			!_isInsideConstructorThisCall(methodCallAST, detailAST) &&
+			!_isInsideConstructorThisCall(methodCallDetailAST) &&
 			!DetailASTUtil.hasParentWithTokenType(
-				methodCallAST, TokenTypes.SUPER_CTOR_CALL)) {
+				methodCallDetailAST, TokenTypes.SUPER_CTOR_CALL)) {
 
-			log(methodCallAST.getLineNo(), _MSG_AVOID_CHAINING, methodName);
+			log(methodCallDetailAST, _MSG_AVOID_METHOD_CHAINING, methodName);
 		}
 	}
 
-	private void _checkStyling(DetailAST detailAST, DetailAST methodCallAST) {
-		if (_isInsideConstructorThisCall(methodCallAST, detailAST) ||
-			DetailASTUtil.hasParentWithTokenType(
-				methodCallAST, TokenTypes.SUPER_CTOR_CALL)) {
+	private void _checkRequiredChaining(
+		DetailAST methodCallDetailAST, List<String> chainedMethodNames) {
+
+		String classOrVariableName = _getClassOrVariableName(
+			methodCallDetailAST);
+
+		if (classOrVariableName == null) {
+			return;
+		}
+
+		String variableTypeName = DetailASTUtil.getVariableTypeName(
+			methodCallDetailAST, classOrVariableName, false);
+
+		String fullyQualifiedClassName = variableTypeName;
+
+		for (String importName :
+				DetailASTUtil.getImportNames(methodCallDetailAST)) {
+
+			if (importName.endsWith("." + variableTypeName)) {
+				fullyQualifiedClassName = importName;
+
+				break;
+			}
+		}
+
+		List<String> requiredChainingMethodNames =
+			_getRequiredChainingMethodNames(fullyQualifiedClassName);
+
+		if (requiredChainingMethodNames == null) {
+			return;
+		}
+
+		String methodName = chainedMethodNames.get(
+			chainedMethodNames.size() - 1);
+
+		if (!requiredChainingMethodNames.contains(methodName)) {
+			return;
+		}
+
+		DetailAST topLevelMethodCallDetailAST = methodCallDetailAST;
+
+		while (true) {
+			DetailAST parentDetailAST = topLevelMethodCallDetailAST.getParent();
+
+			if (parentDetailAST.getType() != TokenTypes.DOT) {
+				break;
+			}
+
+			parentDetailAST = parentDetailAST.getParent();
+
+			if (parentDetailAST.getType() != TokenTypes.METHOD_CALL) {
+				break;
+			}
+
+			topLevelMethodCallDetailAST = parentDetailAST;
+		}
+
+		DetailAST parentDetailAST = topLevelMethodCallDetailAST.getParent();
+
+		if (parentDetailAST.getType() != TokenTypes.EXPR) {
+			return;
+		}
+
+		DetailAST nextSiblingDetailAST = parentDetailAST.getNextSibling();
+
+		if ((nextSiblingDetailAST == null) ||
+			(nextSiblingDetailAST.getType() != TokenTypes.SEMI)) {
 
 			return;
 		}
 
-		for (int i = DetailASTUtil.getStartLine(methodCallAST) + 1;
-			 i <= DetailASTUtil.getEndLine(methodCallAST); i++) {
+		nextSiblingDetailAST = nextSiblingDetailAST.getNextSibling();
 
-			String line = StringUtil.trim(getLine(i - 1));
+		if ((nextSiblingDetailAST == null) ||
+			(nextSiblingDetailAST.getType() != TokenTypes.EXPR)) {
 
-			if (line.startsWith(").")) {
-				return;
-			}
+			return;
 		}
 
-		log(
-			methodCallAST.getLineNo(), _MSG_INCORRECT_STYLING,
-			DetailASTUtil.getMethodName(methodCallAST));
-	}
+		DetailAST nextMethodCallDetailAST =
+			nextSiblingDetailAST.getFirstChild();
 
-	private List<String> _getChain(DetailAST methodCallAST) {
-		List<String> chain = new ArrayList<>();
-
-		chain.add(DetailASTUtil.getMethodName(methodCallAST));
+		if (nextMethodCallDetailAST.getType() != TokenTypes.METHOD_CALL) {
+			return;
+		}
 
 		while (true) {
-			DetailAST parentAST = methodCallAST.getParent();
+			DetailAST firstChildDetailAST =
+				nextMethodCallDetailAST.getFirstChild();
 
-			if (parentAST.getType() != TokenTypes.DOT) {
-				return chain;
+			if (firstChildDetailAST.getType() != TokenTypes.DOT) {
+				break;
 			}
 
-			DetailAST grandParentAST = parentAST.getParent();
+			firstChildDetailAST = firstChildDetailAST.getFirstChild();
 
-			if (grandParentAST.getType() != TokenTypes.METHOD_CALL) {
-				DetailAST siblingAST = methodCallAST.getNextSibling();
+			if (firstChildDetailAST.getType() != TokenTypes.METHOD_CALL) {
+				break;
+			}
 
-				if (siblingAST.getType() == TokenTypes.IDENT) {
-					chain.add(siblingAST.getText());
+			nextMethodCallDetailAST = firstChildDetailAST;
+		}
+
+		if (classOrVariableName.equals(
+				_getClassOrVariableName(nextMethodCallDetailAST)) &&
+			!Objects.equals(
+				DetailASTUtil.getMethodName(nextMethodCallDetailAST),
+				"remove")) {
+
+			log(
+				methodCallDetailAST, _MSG_REQUIRED_CHAINING,
+				classOrVariableName + "." + methodName);
+		}
+	}
+
+	private DetailAST _findFirstParent(DetailAST detailAST, int... types) {
+		DetailAST parentDetailAST = detailAST.getParent();
+
+		while (true) {
+			if (parentDetailAST == null) {
+				return null;
+			}
+
+			if (ArrayUtil.contains(types, parentDetailAST.getType())) {
+				return parentDetailAST;
+			}
+
+			parentDetailAST = parentDetailAST.getParent();
+		}
+	}
+
+	private List<String> _getChainedMethodNames(DetailAST methodCallDetailAST) {
+		List<String> chainedMethodNames = new ArrayList<>();
+
+		chainedMethodNames.add(
+			DetailASTUtil.getMethodName(methodCallDetailAST));
+
+		while (true) {
+			DetailAST parentDetailAST = methodCallDetailAST.getParent();
+
+			if (parentDetailAST.getType() != TokenTypes.DOT) {
+				return chainedMethodNames;
+			}
+
+			DetailAST grandParentDetailAST = parentDetailAST.getParent();
+
+			if (grandParentDetailAST.getType() != TokenTypes.METHOD_CALL) {
+				DetailAST siblingDetailAST =
+					methodCallDetailAST.getNextSibling();
+
+				if (siblingDetailAST.getType() == TokenTypes.IDENT) {
+					chainedMethodNames.add(siblingDetailAST.getText());
 				}
 
-				return chain;
+				return chainedMethodNames;
 			}
 
-			methodCallAST = grandParentAST;
+			methodCallDetailAST = grandParentDetailAST;
 
-			chain.add(DetailASTUtil.getMethodName(methodCallAST));
+			chainedMethodNames.add(
+				DetailASTUtil.getMethodName(methodCallDetailAST));
 		}
 	}
 
-	private DetailAST _getOuterMethodCallAST(DetailAST detailAST) {
+	private String _getClassOrVariableName(DetailAST methodCallDetailAST) {
+		DetailAST dotDetailAST = methodCallDetailAST.findFirstToken(
+			TokenTypes.DOT);
+
+		if (dotDetailAST == null) {
+			return null;
+		}
+
+		DetailAST firstChildDetailAST = dotDetailAST.getFirstChild();
+
+		FullIdent fullIdent = null;
+
+		if (firstChildDetailAST.getType() == TokenTypes.LITERAL_NEW) {
+			fullIdent = FullIdent.createFullIdent(
+				firstChildDetailAST.getFirstChild());
+		}
+		else {
+			fullIdent = FullIdent.createFullIdent(dotDetailAST);
+		}
+
+		String s = fullIdent.getText();
+
+		int x = s.lastIndexOf(CharPool.PERIOD);
+
+		if (x == -1) {
+			return s;
+		}
+
+		return s.substring(0, x);
+	}
+
+	private DetailAST _getGlobalVariableDefinitonDetailAST(
+		DetailAST methodCallDetailAST) {
+
+		DetailAST parentDetailAST = methodCallDetailAST.getParent();
+
+		while (true) {
+			if ((parentDetailAST == null) ||
+				(parentDetailAST.getType() == TokenTypes.CTOR_DEF) ||
+				(parentDetailAST.getType() == TokenTypes.METHOD_DEF)) {
+
+				return null;
+			}
+
+			if (parentDetailAST.getType() == TokenTypes.VARIABLE_DEF) {
+				DetailAST grandParentDetailAST = parentDetailAST.getParent();
+
+				if (grandParentDetailAST.getType() == TokenTypes.OBJBLOCK) {
+					return parentDetailAST;
+				}
+
+				return null;
+			}
+
+			parentDetailAST = parentDetailAST.getParent();
+		}
+	}
+
+	private List<DetailAST> _getIdentDetailASTList(
+		DetailAST detailAST, String name) {
+
+		List<DetailAST> identDetailASTList = new ArrayList<>();
+
+		for (DetailAST identDetailAST :
+				DetailASTUtil.getAllChildTokens(
+					detailAST, true, TokenTypes.IDENT)) {
+
+			if (name.equals(identDetailAST.getText())) {
+				identDetailASTList.add(identDetailAST);
+			}
+		}
+
+		return identDetailASTList;
+	}
+
+	private JavaClass _getJavaClass(String requiredChainingClassFileName) {
+		File file = SourceFormatterUtil.getFile(
+			getBaseDirName(), requiredChainingClassFileName,
+			ToolsUtil.PORTAL_MAX_DIR_LEVEL);
+
+		try {
+			if (file != null) {
+				return JavaClassParser.parseJavaClass(
+					requiredChainingClassFileName, FileUtil.read(file));
+			}
+
+			String portalBranchName = getAttributeValue(
+				SourceFormatterUtil.GIT_LIFERAY_PORTAL_BRANCH);
+
+			if (Validator.isNull(portalBranchName)) {
+				return null;
+			}
+
+			URL url = new URL(
+				StringBundler.concat(
+					SourceFormatterUtil.GIT_LIFERAY_PORTAL_URL,
+					portalBranchName, StringPool.SLASH,
+					requiredChainingClassFileName));
+
+			return JavaClassParser.parseJavaClass(
+				requiredChainingClassFileName,
+				StringUtil.read(url.openStream()));
+		}
+		catch (Exception e) {
+			return null;
+		}
+	}
+
+	private DetailAST _getOuterMethodCallDetailAST(DetailAST detailAST) {
 		while (true) {
 			if ((detailAST.getType() != TokenTypes.DOT) &&
 				(detailAST.getType() != TokenTypes.METHOD_CALL)) {
@@ -225,115 +571,240 @@ public class ChainingCheck extends BaseCheck {
 				return null;
 			}
 
-			DetailAST parentAST = detailAST.getParent();
+			DetailAST parentDetailAST = detailAST.getParent();
 
 			if ((detailAST.getType() == TokenTypes.METHOD_CALL) &&
-				(parentAST.getType() != TokenTypes.DOT)) {
+				(parentDetailAST.getType() != TokenTypes.DOT)) {
 
 				break;
 			}
 
-			detailAST = parentAST;
+			detailAST = parentDetailAST;
 		}
 
 		while (true) {
-			DetailAST parentAST = detailAST.getParent();
+			DetailAST parentDetailAST = detailAST.getParent();
 
-			if (parentAST == null) {
+			if (parentDetailAST == null) {
 				return null;
 			}
 
-			if (parentAST.getType() == TokenTypes.METHOD_CALL) {
-				detailAST = parentAST;
+			if (parentDetailAST.getType() == TokenTypes.METHOD_CALL) {
+				detailAST = parentDetailAST;
 
 				break;
 			}
 
-			detailAST = parentAST;
+			detailAST = parentDetailAST;
 		}
 
 		while (true) {
-			DetailAST childAST = detailAST.getFirstChild();
-
 			if ((detailAST.getType() != TokenTypes.DOT) &&
 				(detailAST.getType() != TokenTypes.METHOD_CALL)) {
 
 				return null;
 			}
 
+			DetailAST childDetailAST = detailAST.getFirstChild();
+
 			if ((detailAST.getType() == TokenTypes.DOT) &&
-				(childAST.getType() != TokenTypes.METHOD_CALL)) {
+				(childDetailAST.getType() != TokenTypes.METHOD_CALL)) {
 
 				return detailAST.getParent();
 			}
 
-			detailAST = childAST;
+			detailAST = childDetailAST;
 		}
 	}
 
-	private boolean _isAllowedChainingMethodCall(
-		DetailAST detailAST, DetailAST methodCallAST,
-		List<String> chainedMethodNames) {
+	private List<String> _getRequiredChainingMethodNames(
+		String fullyQualifiedClassName) {
 
-		if (_isInsideConstructorThisCall(methodCallAST, detailAST) ||
-			DetailASTUtil.hasParentWithTokenType(
-				methodCallAST, TokenTypes.SUPER_CTOR_CALL)) {
+		if (_requiredChainingMethodNamesMap != null) {
+			return _requiredChainingMethodNamesMap.get(fullyQualifiedClassName);
+		}
+
+		_requiredChainingMethodNamesMap = new HashMap<>();
+
+		List<String> requiredChainingClassFileNames = getAttributeValues(
+			_REQUIRED_CHAINING_CLASS_FILE_NAMES_KEY);
+
+		for (String requiredChainingClassFileName :
+				requiredChainingClassFileNames) {
+
+			JavaClass javaClass = _getJavaClass(requiredChainingClassFileName);
+
+			if (javaClass == null) {
+				continue;
+			}
+
+			List<String> requiredChainingMethodNames = new ArrayList<>();
+
+			for (JavaTerm javaTerm : javaClass.getChildJavaTerms()) {
+				if (!(javaTerm instanceof JavaMethod)) {
+					continue;
+				}
+
+				JavaMethod javaMethod = (JavaMethod)javaTerm;
+
+				if (javaMethod.getAccessModifier() !=
+						JavaTerm.ACCESS_MODIFIER_PUBLIC) {
+
+					continue;
+				}
+
+				JavaSignature javaSignature = javaMethod.getSignature();
+
+				if (Objects.equals(
+						javaClass.getName(), javaSignature.getReturnType())) {
+
+					requiredChainingMethodNames.add(javaMethod.getName());
+				}
+			}
+
+			_requiredChainingMethodNamesMap.put(
+				javaClass.getPackageName() + "." + javaClass.getName(),
+				requiredChainingMethodNames);
+		}
+
+		return _requiredChainingMethodNamesMap.get(fullyQualifiedClassName);
+	}
+
+	private String _getReturnType(
+		String methodName, DetailAST classDefinitionDetailAST) {
+
+		List<DetailAST> methodDefinitionDetailASTList =
+			DetailASTUtil.getAllChildTokens(
+				classDefinitionDetailAST, true, TokenTypes.METHOD_DEF);
+
+		for (DetailAST methodDefinitionDetailAST :
+				methodDefinitionDetailASTList) {
+
+			DetailAST nameDetailAST = methodDefinitionDetailAST.findFirstToken(
+				TokenTypes.IDENT);
+
+			if (methodName.equals(nameDetailAST.getText())) {
+				return DetailASTUtil.getTypeName(
+					methodDefinitionDetailAST, false);
+			}
+		}
+
+		return null;
+	}
+
+	private boolean _isAllowedChainingMethodCall(
+		DetailAST methodCallDetailAST, List<String> chainedMethodNames,
+		DetailAST detailAST) {
+
+		DetailAST globalVariableDefinitonDetailAST =
+			_getGlobalVariableDefinitonDetailAST(methodCallDetailAST);
+
+		if ((globalVariableDefinitonDetailAST != null) &&
+			((detailAST.getType() != TokenTypes.CLASS_DEF) ||
+			 _isInsideInnerClass(
+				 globalVariableDefinitonDetailAST, detailAST))) {
 
 			return true;
 		}
 
-		for (String allowedMethodName : _allowedMethodNames) {
+		if (_isInsideConstructorThisCall(methodCallDetailAST) ||
+			DetailASTUtil.hasParentWithTokenType(
+				methodCallDetailAST, TokenTypes.SUPER_CTOR_CALL)) {
+
+			return true;
+		}
+
+		List<String> allowedMethodNames = getAttributeValues(
+			_ALLOWED_METHOD_NAMES_KEY);
+
+		for (String allowedMethodName : allowedMethodNames) {
 			if (chainedMethodNames.contains(allowedMethodName)) {
 				return true;
 			}
 		}
 
-		DetailAST dotAST = methodCallAST.findFirstToken(TokenTypes.DOT);
+		FileContents fileContents = getFileContents();
 
-		if (dotAST == null) {
-			FileContents fileContents = getFileContents();
+		String fileName = StringUtil.replace(
+			fileContents.getFileName(), CharPool.BACK_SLASH, CharPool.SLASH);
 
-			FileText fileText = fileContents.getText();
+		if (fileName.contains("/test/") ||
+			fileName.contains("/testIntegration/")) {
 
-			String content = (String)fileText.getFullText();
+			List<String> allowedMockitoMethodNames = getAttributeValues(
+				_ALLOWED_MOCKITO_METHOD_NAMES_KEY);
 
-			if (content.contains("extends PowerMockito")) {
-				return true;
+			for (String allowedMockitoMethodName : allowedMockitoMethodNames) {
+				if (chainedMethodNames.contains(allowedMockitoMethodName)) {
+					return true;
+				}
+			}
+		}
+
+		DetailAST dotDetailAST = methodCallDetailAST.findFirstToken(
+			TokenTypes.DOT);
+
+		if (dotDetailAST == null) {
+			String className = JavaSourceUtil.getClassName(fileName);
+
+			List<String> allowedClassNames = getAttributeValues(
+				_ALLOWED_CLASS_NAMES_KEY);
+
+			for (String allowedClassName : allowedClassNames) {
+				if (className.matches(allowedClassName)) {
+					return true;
+				}
+			}
+
+			String returnType = _getReturnType(
+				chainedMethodNames.get(0), detailAST);
+
+			if (returnType != null) {
+				List<String> allowedVariableTypeNames = getAttributeValues(
+					_ALLOWED_VARIABLE_TYPE_NAMES_KEY);
+
+				for (String allowedVariableTypeName :
+						allowedVariableTypeNames) {
+
+					if (returnType.matches(allowedVariableTypeName)) {
+						return true;
+					}
+				}
 			}
 
 			return false;
 		}
 
-		DetailAST nameAST = null;
+		String classOrVariableName = _getClassOrVariableName(
+			methodCallDetailAST);
 
-		DetailAST firstChild = dotAST.getFirstChild();
-
-		if (firstChild.getType() == TokenTypes.LITERAL_NEW) {
-			nameAST = firstChild.findFirstToken(TokenTypes.IDENT);
-		}
-		else {
-			nameAST = dotAST.findFirstToken(TokenTypes.IDENT);
-		}
-
-		if (nameAST != null) {
-			String classOrVariableName = nameAST.getText();
-
-			if (_isLambdaVariable(methodCallAST, classOrVariableName)) {
+		if (classOrVariableName != null) {
+			if (_isLambdaVariable(methodCallDetailAST, classOrVariableName)) {
 				return true;
 			}
 
-			for (String allowedClassName : _allowedClassNames) {
-				if (classOrVariableName.matches(allowedClassName)) {
-					return true;
+			List<String> allowedClassNames = getAttributeValues(
+				_ALLOWED_CLASS_NAMES_KEY);
+
+			for (String s :
+					StringUtil.split(classOrVariableName, CharPool.PERIOD)) {
+
+				for (String allowedClassName : allowedClassNames) {
+					if (s.matches("(?i)" + allowedClassName)) {
+						return true;
+					}
 				}
 			}
 
 			String variableTypeName = DetailASTUtil.getVariableTypeName(
-				methodCallAST, classOrVariableName);
+				methodCallDetailAST, classOrVariableName, false);
 
 			if (Validator.isNotNull(variableTypeName)) {
+				List<String> allowedVariableTypeNames = getAttributeValues(
+					_ALLOWED_VARIABLE_TYPE_NAMES_KEY);
+
 				for (String allowedVariableTypeName :
-						_allowedVariableTypeNames) {
+						allowedVariableTypeNames) {
 
 					if (variableTypeName.matches(allowedVariableTypeName)) {
 						return true;
@@ -342,83 +813,70 @@ public class ChainingCheck extends BaseCheck {
 			}
 		}
 
-		DetailAST outerMethodCallAST = _getOuterMethodCallAST(methodCallAST);
+		DetailAST outerMethodCallDetailAST = _getOuterMethodCallDetailAST(
+			methodCallDetailAST);
 
-		if (outerMethodCallAST != null) {
+		if (outerMethodCallDetailAST != null) {
 			return _isAllowedChainingMethodCall(
-				detailAST, outerMethodCallAST, _getChain(outerMethodCallAST));
+				outerMethodCallDetailAST,
+				_getChainedMethodNames(outerMethodCallDetailAST), detailAST);
 		}
 
 		return false;
 	}
 
-	private boolean _isInsideAnonymousClassVariableDefinition(
-		DetailAST detailAST) {
+	private boolean _isInsideConstructorThisCall(DetailAST detailAST) {
+		DetailAST parentDetailAST = detailAST.getParent();
 
-		DetailAST parentAST = detailAST.getParent();
+		while (parentDetailAST != null) {
+			String parentDetailASTText = parentDetailAST.getText();
 
-		while (parentAST != null) {
-			if ((parentAST.getType() == TokenTypes.CTOR_DEF) ||
-				(parentAST.getType() == TokenTypes.METHOD_DEF)) {
-
-				return false;
-			}
-
-			if (parentAST.getType() == TokenTypes.VARIABLE_DEF) {
-				parentAST = parentAST.getParent();
-
-				if (parentAST.getType() == TokenTypes.OBJBLOCK) {
-					return true;
-				}
-
-				return false;
-			}
-
-			parentAST = parentAST.getParent();
-		}
-
-		return false;
-	}
-
-	private boolean _isInsideConstructorThisCall(
-		DetailAST methodCallAST, DetailAST detailAST) {
-
-		if (detailAST.getType() != TokenTypes.CTOR_DEF) {
-			return false;
-		}
-
-		DetailAST parentAST = methodCallAST.getParent();
-
-		while (parentAST != null) {
-			String parentASTText = parentAST.getText();
-
-			if ((parentAST.getType() == TokenTypes.CTOR_CALL) &&
-				parentASTText.equals("this")) {
+			if ((parentDetailAST.getType() == TokenTypes.CTOR_CALL) &&
+				parentDetailASTText.equals("this")) {
 
 				return true;
 			}
 
-			parentAST = parentAST.getParent();
+			parentDetailAST = parentDetailAST.getParent();
+		}
+
+		return false;
+	}
+
+	private boolean _isInsideInnerClass(
+		DetailAST globalVariableDefinitonDetailAST,
+		DetailAST outerClassDefinitionDetailAST) {
+
+		DetailAST detailAST = DetailASTUtil.getParentWithTokenType(
+			globalVariableDefinitonDetailAST, TokenTypes.CLASS_DEF,
+			TokenTypes.ENUM_DEF, TokenTypes.INTERFACE_DEF,
+			TokenTypes.LITERAL_NEW);
+
+		if (!detailAST.equals(outerClassDefinitionDetailAST)) {
+			return true;
 		}
 
 		return false;
 	}
 
 	private boolean _isLambdaVariable(
-		DetailAST methodCallAST, String variableName) {
+		DetailAST methodCallDetailAST, String variableName) {
 
-		DetailAST parentAST = methodCallAST.getParent();
+		DetailAST parentDetailAST = methodCallDetailAST.getParent();
 
-		while (parentAST != null) {
-			if (parentAST.getType() != TokenTypes.LAMBDA) {
-				parentAST = parentAST.getParent();
+		while (parentDetailAST != null) {
+			if (parentDetailAST.getType() != TokenTypes.LAMBDA) {
+				parentDetailAST = parentDetailAST.getParent();
 
 				continue;
 			}
 
-			DetailAST nameAST = parentAST.findFirstToken(TokenTypes.IDENT);
+			DetailAST nameDetailAST = parentDetailAST.findFirstToken(
+				TokenTypes.IDENT);
 
-			if ((nameAST != null) && variableName.equals(nameAST.getText())) {
+			if ((nameDetailAST != null) &&
+				variableName.equals(nameDetailAST.getText())) {
+
 				return true;
 			}
 
@@ -428,15 +886,37 @@ public class ChainingCheck extends BaseCheck {
 		return false;
 	}
 
-	private static final String _MSG_AVOID_CHAINING = "chaining.avoid";
+	private static final String _ALLOWED_CLASS_NAMES_KEY = "allowedClassNames";
+
+	private static final String _ALLOWED_METHOD_NAMES_KEY =
+		"allowedMethodNames";
+
+	private static final String _ALLOWED_MOCKITO_METHOD_NAMES_KEY =
+		"allowedMockitoMethodNames";
+
+	private static final String _ALLOWED_VARIABLE_TYPE_NAMES_KEY =
+		"allowedVariableTypeNames";
+
+	private static final String _APPLY_TO_TYPE_CAST_KEY = "applyToTypeCast";
+
+	private static final String _MSG_ALLOWED_CHAINING = "chaining.allowed";
+
+	private static final String _MSG_AVOID_METHOD_CHAINING =
+		"chaining.avoid.method";
 
 	private static final String _MSG_AVOID_TOO_MANY_CONCAT =
 		"concat.avoid.too.many";
 
-	private static final String _MSG_INCORRECT_STYLING = "styling.incorrect";
+	private static final String _MSG_AVOID_TYPE_CAST_CHAINING =
+		"chaining.avoid.type.cast";
 
-	private String[] _allowedClassNames = new String[0];
-	private String[] _allowedMethodNames = new String[0];
-	private String[] _allowedVariableTypeNames = new String[0];
+	private static final String _MSG_REQUIRED_CHAINING = "chaining.required";
+
+	private static final String _MSG_UNSORTED_RESPONSE = "response.unsorted";
+
+	private static final String _REQUIRED_CHAINING_CLASS_FILE_NAMES_KEY =
+		"requiredChainingClassFileNames";
+
+	private Map<String, List<String>> _requiredChainingMethodNamesMap;
 
 }

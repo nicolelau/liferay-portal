@@ -14,10 +14,14 @@
 
 package com.liferay.poshi.runner.elements;
 
-import java.util.ArrayList;
-import java.util.List;
+import com.liferay.poshi.runner.script.PoshiScriptParserException;
 
+import java.util.List;
+import java.util.regex.Pattern;
+
+import org.dom4j.Attribute;
 import org.dom4j.Element;
+import org.dom4j.Node;
 
 /**
  * @author Kenji Heigel
@@ -35,29 +39,40 @@ public class OrPoshiElement extends PoshiElement {
 
 	@Override
 	public PoshiElement clone(
-		PoshiElement parentPoshiElement, String readableSyntax) {
+			PoshiElement parentPoshiElement, String poshiScript)
+		throws PoshiScriptParserException {
 
-		if (_isElementType(parentPoshiElement, readableSyntax)) {
-			return new OrPoshiElement(readableSyntax);
+		if (_isElementType(parentPoshiElement, poshiScript)) {
+			return new OrPoshiElement(parentPoshiElement, poshiScript);
 		}
 
 		return null;
 	}
 
 	@Override
-	public void parseReadableSyntax(String readableSyntax) {
-		for (String readableBlock : getReadableBlocks(readableSyntax)) {
-			add(PoshiNodeFactory.newPoshiNode(this, readableBlock));
+	public void parsePoshiScript(String poshiScript)
+		throws PoshiScriptParserException {
+
+		for (String nestedCondition : getNestedConditions(poshiScript, "||")) {
+			nestedCondition = nestedCondition.trim();
+
+			if (nestedCondition.endsWith(")") &&
+				nestedCondition.startsWith("(")) {
+
+				nestedCondition = getParentheticalContent(nestedCondition);
+			}
+
+			add(PoshiNodeFactory.newPoshiNode(this, nestedCondition));
 		}
 	}
 
 	@Override
-	public String toReadableSyntax() {
+	public String toPoshiScript() {
 		StringBuilder sb = new StringBuilder();
 
 		for (PoshiElement poshiElement : toPoshiElements(elements())) {
 			sb.append("(");
-			sb.append(poshiElement.toReadableSyntax());
+			sb.append(poshiElement.toPoshiScript());
 			sb.append(") || ");
 		}
 
@@ -73,8 +88,15 @@ public class OrPoshiElement extends PoshiElement {
 		super(_ELEMENT_NAME, element);
 	}
 
-	protected OrPoshiElement(String readableSyntax) {
-		super(_ELEMENT_NAME, readableSyntax);
+	protected OrPoshiElement(List<Attribute> attributes, List<Node> nodes) {
+		super(_ELEMENT_NAME, attributes, nodes);
+	}
+
+	protected OrPoshiElement(
+			PoshiElement parentPoshiElement, String poshiScript)
+		throws PoshiScriptParserException {
+
+		super(_ELEMENT_NAME, parentPoshiElement, poshiScript);
 	}
 
 	@Override
@@ -82,38 +104,26 @@ public class OrPoshiElement extends PoshiElement {
 		return "or";
 	}
 
-	protected List<String> getReadableBlocks(String readableSyntax) {
-		List<String> readableBlocks = new ArrayList<>();
-
-		for (String condition : readableSyntax.split(" \\|\\| ")) {
-			condition = getParentheticalContent(condition);
-
-			readableBlocks.add(condition);
-		}
-
-		return readableBlocks;
+	@Override
+	protected Pattern getConditionPattern() {
+		return _conditionPattern;
 	}
 
 	private boolean _isElementType(
-		PoshiElement parentPoshiElement, String readableSyntax) {
+		PoshiElement parentPoshiElement, String poshiScript) {
 
-		if (!isConditionValidInParent(parentPoshiElement)) {
+		if (!isConditionElementType(parentPoshiElement, poshiScript)) {
 			return false;
 		}
 
-		if (readableSyntax.contains(" && ") ||
-			readableSyntax.startsWith("else if (")) {
+		List<String> nestedConditions = getNestedConditions(poshiScript, "||");
 
-			return false;
-		}
-
-		if (readableSyntax.contains(" || ")) {
-			return true;
-		}
-
-		return false;
+		return !nestedConditions.isEmpty();
 	}
 
 	private static final String _ELEMENT_NAME = "or";
+
+	private static final Pattern _conditionPattern = Pattern.compile(
+		"^(?!!|else)[\\s\\S]*\\|\\|[\\s\\S]*$");
 
 }

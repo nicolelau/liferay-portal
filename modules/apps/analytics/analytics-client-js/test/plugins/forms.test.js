@@ -1,9 +1,32 @@
-import AnalyticsClient from '../../src/analytics';
-import {assert, expect} from 'chai';
+/**
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
+ *
+ * This library is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU Lesser General Public License as published by the Free
+ * Software Foundation; either version 2.1 of the License, or (at your option)
+ * any later version.
+ *
+ * This library is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+ * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
+ * details.
+ */
 
-let Analytics = AnalyticsClient.create();
+import {expect} from 'chai';
+import fetchMock from 'fetch-mock';
+
+import AnalyticsClient from '../../src/analytics';
+
+const applicationId = 'Form';
+
+let Analytics;
 
 describe('Forms Plugin', () => {
+	afterEach(() => {
+		Analytics.reset();
+		Analytics.dispose();
+	});
+
 	beforeEach(() => {
 		// Force attaching DOM Content Loaded event
 		Object.defineProperty(document, 'readyState', {
@@ -11,19 +34,21 @@ describe('Forms Plugin', () => {
 			writable: false
 		});
 
-		Analytics.create();
-	});
-
-	afterEach(() => {
-		Analytics.dispose();
+		fetchMock.mock('*', () => 200);
+		Analytics = AnalyticsClient.create();
 	});
 
 	describe('formViewed event', () => {
-		it('should be fired for every form on the page', () => {
-			const form = document.createElement('form');
-			form.dataset.analytics = 'true';
-			form.id = 'myId';
-			document.body.appendChild(form);
+		it('is fired for every form on the page', () => {
+			const formWithAssetId = document.createElement('form');
+			formWithAssetId.dataset.analyticsAssetId = 'assetId';
+			formWithAssetId.dataset.analyticsAssetTitle = 'Form Title 1';
+			document.body.appendChild(formWithAssetId);
+
+			const formWithFormId = document.createElement('form');
+			formWithFormId.dataset.analyticsFormId = 'formId';
+			formWithFormId.dataset.analyticsAssetTitle = 'Form Title 2';
+			document.body.appendChild(formWithFormId);
 
 			const domContentLoaded = new Event('DOMContentLoaded');
 			document.dispatchEvent(domContentLoaded);
@@ -32,23 +57,30 @@ describe('Forms Plugin', () => {
 				({eventId}) => eventId === 'formViewed'
 			);
 
-			expect(events.length).to.be.at.least(1);
+			expect(events.length).to.equal(2);
+
+			expect(events[1]).to.deep.include({
+				applicationId,
+				eventId: 'formViewed'
+			});
+			expect(events[1].properties.formId).to.equal('formId');
 
 			events[0].should.deep.include({
-				applicationId: 'forms',
-				eventId: 'formViewed',
-				properties: {
-					formId: 'myId'
-				}
+				applicationId,
+				eventId: 'formViewed'
 			});
+			expect(events[0].properties.formId).to.equal('assetId');
+
+			document.body.removeChild(formWithAssetId);
+			document.body.removeChild(formWithFormId);
 		});
 	});
 
 	describe('formSubmitted event', () => {
-		it('should be fired when a form is submitted', () => {
+		it('is fired when a form is submitted', () => {
 			const form = document.createElement('form');
-			form.dataset.analytics = 'true';
-			form.id = 'myId';
+			form.dataset.analyticsAssetId = 'formId';
+			form.dataset.analyticsAssetTitle = 'Form Title';
 			document.body.appendChild(form);
 			form.addEventListener('submit', event => event.preventDefault());
 
@@ -61,23 +93,24 @@ describe('Forms Plugin', () => {
 				({eventId}) => eventId === 'formSubmitted'
 			);
 
-			expect(events.length).to.be.at.least(1);
+			expect(events.length).to.equal(1);
 
-			events[0].should.deep.include({
-				applicationId: 'forms',
+			expect(events[0]).to.deep.include({
+				applicationId,
 				eventId: 'formSubmitted',
 				properties: {
-					formId: 'myId'
+					formId: 'formId',
+					title: 'Form Title'
 				}
 			});
 		});
 	});
 
 	describe('fieldFocused event', () => {
-		it('should be fired whenever a field is focused', () => {
+		it('is fired whenever a field is focused', () => {
 			const form = document.createElement('form');
-			form.dataset.analytics = 'true';
-			form.id = 'myId';
+			form.dataset.analyticsAssetId = 'formId';
+			form.dataset.analyticsAssetTitle = 'Form Title';
 			document.body.appendChild(form);
 			const field = document.createElement('input');
 			field.name = 'myField';
@@ -90,24 +123,24 @@ describe('Forms Plugin', () => {
 				({eventId}) => eventId === 'fieldFocused'
 			);
 
-			expect(events.length).to.be.at.least(1);
+			expect(events.length).to.equal(1);
 
-			events[0].should.deep.include({
-				applicationId: 'forms',
+			expect(events[0]).to.deep.include({
+				applicationId,
 				eventId: 'fieldFocused',
 				properties: {
-					formId: 'myId',
-					fieldName: 'myField'
+					fieldName: 'myField',
+					formId: 'formId'
 				}
 			});
 		});
 	});
 
 	describe('fieldBlurred event', () => {
-		it('should be fired whenever a field is blurred', (done) => {
+		it('is fired whenever a field is blurred', done => {
 			const form = document.createElement('form');
-			form.dataset.analytics = 'true';
-			form.id = 'myId';
+			form.dataset.analyticsAssetId = 'formId';
+			form.dataset.analyticsAssetTitle = 'Form Title';
 			document.body.appendChild(form);
 			const field = document.createElement('input');
 			field.name = 'myField';
@@ -123,11 +156,11 @@ describe('Forms Plugin', () => {
 					({eventId}) => eventId === 'fieldBlurred'
 				);
 
-				expect(events.length).to.be.at.least(1);
+				expect(events.length).to.equal(1);
 
-				events[0].applicationId.should.equal('forms');
+				events[0].applicationId.should.equal(applicationId);
 				events[0].eventId.should.equal('fieldBlurred');
-				events[0].properties.formId.should.equal('myId');
+				events[0].properties.formId.should.equal('formId');
 				events[0].properties.fieldName.should.equal('myField');
 				events[0].properties.focusDuration.should.be.at.least(1500);
 

@@ -14,6 +14,8 @@
 
 package com.liferay.portal.service.impl;
 
+import com.liferay.petra.io.StreamUtil;
+import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.exception.SystemException;
 import com.liferay.portal.kernel.io.DummyWriter;
@@ -23,16 +25,14 @@ import com.liferay.portal.kernel.model.LayoutTemplate;
 import com.liferay.portal.kernel.model.LayoutTemplateConstants;
 import com.liferay.portal.kernel.model.PluginSetting;
 import com.liferay.portal.kernel.plugin.PluginPackage;
-import com.liferay.portal.kernel.spring.aop.Skip;
 import com.liferay.portal.kernel.template.StringTemplateResource;
 import com.liferay.portal.kernel.template.Template;
 import com.liferay.portal.kernel.template.TemplateConstants;
 import com.liferay.portal.kernel.template.TemplateManagerUtil;
 import com.liferay.portal.kernel.template.TemplateResourceLoaderUtil;
+import com.liferay.portal.kernel.transaction.Transactional;
 import com.liferay.portal.kernel.util.GetterUtil;
-import com.liferay.portal.kernel.util.HttpUtil;
 import com.liferay.portal.kernel.util.ListUtil;
-import com.liferay.portal.kernel.util.StringBundler;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.kernel.xml.Document;
 import com.liferay.portal.kernel.xml.Element;
@@ -62,7 +62,7 @@ import javax.servlet.ServletContext;
  * @author Brian Wing Shun Chan
  * @author Raymond Augé
  */
-@Skip
+@Transactional(enabled = false)
 public class LayoutTemplateLocalServiceImpl
 	extends LayoutTemplateLocalServiceBaseImpl {
 
@@ -139,12 +139,16 @@ public class LayoutTemplateLocalServiceImpl
 
 		if (themeId != null) {
 			if (standard) {
-				layoutTemplate = _getThemesStandard(themeId).get(
-					layoutTemplateId);
+				Map<String, LayoutTemplate> themesStandard = _getThemesStandard(
+					themeId);
+
+				layoutTemplate = themesStandard.get(layoutTemplateId);
 			}
 			else {
-				layoutTemplate = _getThemesCustom(themeId).get(
-					layoutTemplateId);
+				Map<String, LayoutTemplate> themesCustom = _getThemesCustom(
+					themeId);
+
+				layoutTemplate = themesCustom.get(layoutTemplateId);
 			}
 
 			if (layoutTemplate != null) {
@@ -192,7 +196,6 @@ public class LayoutTemplateLocalServiceImpl
 				_portalCustom.entrySet()) {
 
 			String layoutTemplateId = entry.getKey();
-			LayoutTemplate layoutTemplate = entry.getValue();
 
 			LayoutTemplate themeCustomLayoutTemplate = themesCustom.get(
 				layoutTemplateId);
@@ -208,7 +211,7 @@ public class LayoutTemplateLocalServiceImpl
 					customLayoutTemplates.add(warCustomLayoutTemplate);
 				}
 				else {
-					customLayoutTemplates.add(layoutTemplate);
+					customLayoutTemplates.add(entry.getValue());
 				}
 			}
 		}
@@ -350,8 +353,8 @@ public class LayoutTemplateLocalServiceImpl
 			String content = null;
 
 			try {
-				content = HttpUtil.URLtoString(
-					servletContext.getResource(
+				content = StreamUtil.toString(
+					servletContext.getResourceAsStream(
 						layoutTemplateModel.getTemplatePath()));
 			}
 			catch (Exception e) {

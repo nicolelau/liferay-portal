@@ -23,15 +23,17 @@ import com.liferay.document.library.kernel.service.DLFileVersionLocalService;
 import com.liferay.petra.io.delta.ByteChannelReader;
 import com.liferay.petra.io.delta.ByteChannelWriter;
 import com.liferay.petra.io.delta.DeltaUtil;
+import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.exception.PortalException;
-import com.liferay.portal.kernel.json.JSONFactoryUtil;
 import com.liferay.portal.kernel.json.JSONObject;
+import com.liferay.portal.kernel.json.JSONUtil;
 import com.liferay.portal.kernel.lock.Lock;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.model.User;
+import com.liferay.portal.kernel.model.role.RoleConstants;
 import com.liferay.portal.kernel.repository.model.FileEntry;
 import com.liferay.portal.kernel.repository.model.Folder;
 import com.liferay.portal.kernel.security.SecureRandom;
@@ -39,6 +41,7 @@ import com.liferay.portal.kernel.security.permission.PermissionChecker;
 import com.liferay.portal.kernel.security.permission.PermissionThreadLocal;
 import com.liferay.portal.kernel.service.GroupLocalService;
 import com.liferay.portal.kernel.service.ServiceContext;
+import com.liferay.portal.kernel.service.permission.ModelPermissions;
 import com.liferay.portal.kernel.util.Base64;
 import com.liferay.portal.kernel.util.ClassUtil;
 import com.liferay.portal.kernel.util.Digester;
@@ -47,7 +50,6 @@ import com.liferay.portal.kernel.util.FileUtil;
 import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.PrefsPropsUtil;
 import com.liferay.portal.kernel.util.PwdGenerator;
-import com.liferay.portal.kernel.util.StringBundler;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Time;
 import com.liferay.portal.kernel.util.Validator;
@@ -56,12 +58,12 @@ import com.liferay.sync.SyncSiteUnavailableException;
 import com.liferay.sync.constants.SyncConstants;
 import com.liferay.sync.constants.SyncDLObjectConstants;
 import com.liferay.sync.constants.SyncPermissionsConstants;
+import com.liferay.sync.internal.configuration.SyncServiceConfigurationValues;
 import com.liferay.sync.model.SyncDLObject;
 import com.liferay.sync.model.SyncDevice;
 import com.liferay.sync.model.impl.SyncDLObjectImpl;
 import com.liferay.sync.service.SyncDLObjectLocalService;
 import com.liferay.sync.service.configuration.SyncServiceConfigurationKeys;
-import com.liferay.sync.service.internal.configuration.SyncServiceConfigurationValues;
 import com.liferay.sync.util.SyncHelper;
 
 import java.io.File;
@@ -177,10 +179,11 @@ public class SyncHelperImpl implements SyncHelper {
 		sb.append(StringPool.COMMA_AND_SPACE);
 		sb.append("\"error\": ");
 
-		JSONObject errorJSONObject = JSONFactoryUtil.createJSONObject();
-
-		errorJSONObject.put("message", throwableMessage);
-		errorJSONObject.put("type", ClassUtil.getClassName(throwable));
+		JSONObject errorJSONObject = JSONUtil.put(
+			"message", throwableMessage
+		).put(
+			"type", ClassUtil.getClassName(throwable)
+		);
 
 		sb.append(errorJSONObject.toString());
 
@@ -202,18 +205,17 @@ public class SyncHelperImpl implements SyncHelper {
 			rootCauseThrowable = rootCauseThrowable.getCause();
 		}
 
-		JSONObject rootCauseJSONObject = JSONFactoryUtil.createJSONObject();
-
 		throwableMessage = rootCauseThrowable.getMessage();
 
 		if (Validator.isNull(throwableMessage)) {
 			throwableMessage = rootCauseThrowable.toString();
 		}
 
-		rootCauseJSONObject.put("message", throwableMessage);
-
-		rootCauseJSONObject.put(
-			"type", ClassUtil.getClassName(rootCauseThrowable));
+		JSONObject rootCauseJSONObject = JSONUtil.put(
+			"message", throwableMessage
+		).put(
+			"type", ClassUtil.getClassName(rootCauseThrowable)
+		);
 
 		sb.append(rootCauseJSONObject);
 
@@ -254,7 +256,7 @@ public class SyncHelperImpl implements SyncHelper {
 
 		KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("RSA");
 
-		keyPairGenerator.initialize(1024);
+		keyPairGenerator.initialize(2048);
 
 		KeyPair keyPair = keyPairGenerator.generateKeyPair();
 
@@ -377,7 +379,7 @@ public class SyncHelperImpl implements SyncHelper {
 				Channels.newChannel(checksumsInputStream);
 			OutputStream deltaOutputStream = new FileOutputStream(deltaFile);
 			WritableByteChannel deltaOutputStreamWritableByteChannel =
-				Channels.newChannel(deltaOutputStream);) {
+				Channels.newChannel(deltaOutputStream)) {
 
 			ByteChannelReader checksumsByteChannelReader =
 				new ByteChannelReader(checksumsReadableByteChannel);
@@ -471,8 +473,8 @@ public class SyncHelperImpl implements SyncHelper {
 			WritableByteChannel patchedWritableByteChannel =
 				Channels.newChannel(patchedFileOutputStream);
 			FileInputStream deltaInputStream = new FileInputStream(deltaFile);
-			ReadableByteChannel deltaReadableByteChannel =
-				Channels.newChannel(deltaInputStream)) {
+			ReadableByteChannel deltaReadableByteChannel = Channels.newChannel(
+				deltaInputStream)) {
 
 			ByteChannelReader deltaByteChannelReader = new ByteChannelReader(
 				deltaReadableByteChannel);
@@ -512,7 +514,17 @@ public class SyncHelperImpl implements SyncHelper {
 				syncSiteMemberFilePermissions);
 		}
 
-		serviceContext.setGroupPermissions(resourceActions);
+		ModelPermissions modelPermissions =
+			serviceContext.getModelPermissions();
+
+		if (modelPermissions == null) {
+			modelPermissions = new ModelPermissions();
+		}
+
+		modelPermissions.addRolePermissions(
+			RoleConstants.PLACEHOLDER_DEFAULT_GROUP_ROLE, resourceActions);
+
+		serviceContext.setModelPermissions(modelPermissions);
 	}
 
 	@Override

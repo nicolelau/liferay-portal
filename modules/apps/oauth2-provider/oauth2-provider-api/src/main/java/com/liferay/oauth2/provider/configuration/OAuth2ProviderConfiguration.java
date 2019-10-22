@@ -18,17 +18,20 @@ import aQute.bnd.annotation.metatype.Meta;
 
 import com.liferay.portal.configuration.metatype.annotations.ExtendedObjectClassDefinition;
 
+import org.osgi.annotation.versioning.ProviderType;
+
 /**
  * @author Stian Sigvartsen
  */
 @ExtendedObjectClassDefinition(
-	category = "foundation", scope = ExtendedObjectClassDefinition.Scope.SYSTEM
+	category = "oauth2", scope = ExtendedObjectClassDefinition.Scope.SYSTEM
 )
 @Meta.OCD(
 	id = "com.liferay.oauth2.provider.configuration.OAuth2ProviderConfiguration",
 	localization = "content/Language",
 	name = "oauth2-provider-configuration-name"
 )
+@ProviderType
 public interface OAuth2ProviderConfiguration {
 
 	@Meta.AD(
@@ -71,5 +74,13 @@ public interface OAuth2ProviderConfiguration {
 		name = "oauth2-allow-refresh-token-grant", required = false
 	)
 	public boolean allowRefreshTokenGrant();
+
+	@Meta.AD(
+		deflt = "true",
+		description = "oauth2-recycle-refresh-token-description",
+		id = "oauth2.recycle.refresh.token",
+		name = "oauth2-recycle-refresh-token", required = false
+	)
+	public boolean recycleRefreshToken();
 
 }

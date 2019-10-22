@@ -14,6 +14,7 @@
 
 package com.liferay.portal.upgrade.util;
 
+import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.dao.jdbc.postgresql.PostgreSQLJDBCUtil;
 import com.liferay.portal.kernel.dao.db.DB;
@@ -31,7 +32,6 @@ import com.liferay.portal.kernel.util.Base64;
 import com.liferay.portal.kernel.util.DateUtil;
 import com.liferay.portal.kernel.util.FileUtil;
 import com.liferay.portal.kernel.util.GetterUtil;
-import com.liferay.portal.kernel.util.StringBundler;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.SystemProperties;
 import com.liferay.portal.kernel.util.Validator;
@@ -40,6 +40,8 @@ import com.liferay.portal.kernel.uuid.PortalUUIDUtil;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.Reader;
+
+import java.math.BigDecimal;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -138,7 +140,7 @@ public class Table {
 	}
 
 	public void generateTempFile() throws Exception {
-		Connection con = DataAccess.getUpgradeOptimizedConnection();
+		Connection con = DataAccess.getConnection();
 
 		try {
 			generateTempFile(con);
@@ -204,7 +206,7 @@ public class Table {
 				_log.info(
 					StringBundler.concat(
 						"Finished backup of ", _tableName, " to ", tempFileName,
-						" in ", String.valueOf(stopWatch.getTime()), " ms"));
+						" in ", stopWatch.getTime(), " ms"));
 			}
 		}
 		catch (Exception e) {
@@ -306,9 +308,8 @@ public class Table {
 
 			return StringUtil.trim(createSQL.substring(x, y));
 		}
-		else {
-			return _tableName;
-		}
+
+		return _tableName;
 	}
 
 	public int[] getOrder() {
@@ -340,9 +341,8 @@ public class Table {
 
 			return "select * from " + _tableName;
 		}
-		else {
-			return _selectSQL;
-		}
+
+		return _selectSQL;
 	}
 
 	public String getTableName() {
@@ -412,8 +412,8 @@ public class Table {
 
 						String line = null;
 
-						while ((line =
-									unsyncBufferedReader.readLine()) != null) {
+						while ((line = unsyncBufferedReader.readLine()) !=
+									null) {
 
 							if (sb.length() != 0) {
 								sb.append(_SAFE_TABLE_NEWLINE_CHARACTER);
@@ -433,6 +433,16 @@ public class Table {
 
 				value = GetterUtil.getString(rs.getString(name));
 			}
+		}
+		else if (t == Types.DECIMAL) {
+			try {
+				value = rs.getBigDecimal(name);
+			}
+			catch (SQLException sqle) {
+				value = rs.getString(name);
+			}
+
+			value = GetterUtil.get(value, BigDecimal.ZERO);
 		}
 		else if (t == Types.DOUBLE) {
 			value = GetterUtil.getDouble(rs.getDouble(name));
@@ -478,7 +488,7 @@ public class Table {
 	}
 
 	public void populateTable() throws Exception {
-		Connection con = DataAccess.getUpgradeOptimizedConnection();
+		Connection con = DataAccess.getConnection();
 
 		try {
 			populateTable(con);
@@ -579,6 +589,10 @@ public class Table {
 
 			ps.setString(paramIndex, value);
 		}
+		else if (t == Types.DECIMAL) {
+			ps.setBigDecimal(
+				paramIndex, (BigDecimal)GetterUtil.get(value, BigDecimal.ZERO));
+		}
 		else if (t == Types.DOUBLE) {
 			ps.setDouble(paramIndex, GetterUtil.getDouble(value));
 		}
@@ -666,7 +680,7 @@ public class Table {
 		String sql = sb.toString();
 
 		try {
-			con = DataAccess.getUpgradeOptimizedConnection();
+			con = DataAccess.getConnection();
 
 			ps = con.prepareStatement(sql);
 

@@ -14,78 +14,77 @@
 
 package com.liferay.jenkins.results.parser;
 
-import java.util.List;
+import java.io.File;
+
+import java.util.Set;
+import java.util.TreeSet;
 
 /**
  * @author Michael Hashimoto
  */
-public class PortalAcceptancePullRequestJob extends PortalRepositoryJob {
+public class PortalAcceptancePullRequestJob
+	extends PortalAcceptanceTestSuiteJob {
 
-	public PortalAcceptancePullRequestJob(String url) {
-		this(url, "default");
+	public PortalAcceptancePullRequestJob(String jobName) {
+		this(jobName, "default");
 	}
 
-	public PortalAcceptancePullRequestJob(String url, String testSuiteName) {
-		super(url);
+	public PortalAcceptancePullRequestJob(
+		String jobName, String testSuiteName) {
 
-		_testSuiteName = testSuiteName;
-	}
-
-	@Override
-	public List<String> getBatchNames() {
-		String testBatchNames = getProperty(
-			portalTestProperties, "test.batch.names[" + _testSuiteName + "]");
-
-		if (testBatchNames == null) {
-			testBatchNames = getProperty(
-				portalTestProperties, "test.batch.names");
-		}
-
-		return getListFromString(testBatchNames);
+		super(jobName, testSuiteName);
 	}
 
 	@Override
-	public List<String> getDistTypes() {
-		String testBatchDistAppServers = getProperty(
-			portalTestProperties,
-			"test.batch.dist.app.servers[" + _testSuiteName + "]");
+	public Set<String> getBatchNames() {
+		Set<String> testBatchNamesSet = super.getBatchNames();
 
-		if (testBatchDistAppServers == null) {
-			testBatchDistAppServers = getProperty(
-				portalTestProperties, "test.batch.dist.app.servers");
-		}
+		if (_isRelevantTestSuite() && _isPortalWebOnly()) {
+			String[] portalWebOnlyBatchNameMarkers = {
+				"compile-jsp", "functional", "portal-web", "source-format"
+			};
 
-		return getListFromString(testBatchDistAppServers);
-	}
+			Set<String> portalWebOnlyBatchNamesSet = new TreeSet<>();
 
-	@Override
-	public String getPoshiQuery(String testBatchName) {
-		String[] propertyNames = {
-			JenkinsResultsParserUtil.combine(
-				"test.batch.run.property.query[", testBatchName, "][",
-				_testSuiteName, "]"),
-			JenkinsResultsParserUtil.combine(
-				"test.batch.run.property.query[", testBatchName, "]")
-		};
+			for (String testBatchName : testBatchNamesSet) {
+				for (String portalWebOnlyBatchNameMarker :
+						portalWebOnlyBatchNameMarkers) {
 
-		for (String propertyName : propertyNames) {
-			if (portalTestProperties.containsKey(propertyName)) {
-				String propertyValue = getProperty(
-					portalTestProperties, propertyName);
+					if (testBatchName.contains(portalWebOnlyBatchNameMarker)) {
+						portalWebOnlyBatchNamesSet.add(testBatchName);
 
-				if ((propertyValue != null) && !propertyValue.isEmpty()) {
-					return propertyValue;
+						break;
+					}
 				}
+			}
+
+			return portalWebOnlyBatchNamesSet;
+		}
+
+		return testBatchNamesSet;
+	}
+
+	private boolean _isPortalWebOnly() {
+		GitWorkingDirectory gitWorkingDirectory = getGitWorkingDirectory();
+
+		File portalWebDirectory = new File(
+			gitWorkingDirectory.getWorkingDirectory(), "portal-web");
+
+		for (File modifiedFile : gitWorkingDirectory.getModifiedFilesList()) {
+			if (!JenkinsResultsParserUtil.isFileInDirectory(
+					portalWebDirectory, modifiedFile)) {
+
+				return false;
 			}
 		}
 
-		return null;
+		return true;
 	}
 
-	public String getTestSuiteName() {
-		return _testSuiteName;
-	}
+	private boolean _isRelevantTestSuite() {
+		String testSuiteName = getTestSuiteName();
 
-	private final String _testSuiteName;
+		return testSuiteName.equals("relevant");
+	}
 
 }

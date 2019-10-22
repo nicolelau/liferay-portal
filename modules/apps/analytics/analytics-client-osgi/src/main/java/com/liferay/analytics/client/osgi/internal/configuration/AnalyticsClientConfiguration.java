@@ -30,22 +30,22 @@ import com.liferay.portal.configuration.metatype.annotations.ExtendedObjectClass
 public interface AnalyticsClientConfiguration {
 
 	@Meta.AD(
-		deflt = "ec-dev.liferay.com", name = "analytics-gateway-host",
-		required = true
+		deflt = "analytics-gw.liferay.com", name = "analytics-gateway-host",
+		required = false
 	)
 	public String analyticsGatewayHost();
 
 	@Meta.AD(
 		deflt = "/api/analyticsgateway/send-analytics-events",
-		name = "analytics-gateway-path", required = true
+		name = "analytics-gateway-path", required = false
 	)
 	public String analyticsGatewayPath();
 
-	@Meta.AD(deflt = "8095", name = "analytics-gateway-port", required = true)
+	@Meta.AD(deflt = "80", name = "analytics-gateway-port", required = false)
 	public String analyticsGatewayPort();
 
 	@Meta.AD(
-		deflt = "https", name = "analytics-gateway-protocol", required = true
+		deflt = "https", name = "analytics-gateway-protocol", required = false
 	)
 	public String analyticsGatewayProtocol();
 

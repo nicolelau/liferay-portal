@@ -14,7 +14,8 @@
 
 package com.liferay.portal.upgrade.util;
 
-import com.liferay.layouts.admin.kernel.model.LayoutTypePortletConstants;
+import com.liferay.layout.admin.kernel.model.LayoutTypePortletConstants;
+import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.dao.jdbc.AutoBatchPreparedStatementUtil;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
@@ -25,7 +26,6 @@ import com.liferay.portal.kernel.service.permission.PortletPermissionUtil;
 import com.liferay.portal.kernel.upgrade.UpgradeProcess;
 import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.LoggingTimer;
-import com.liferay.portal.kernel.util.StringBundler;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.UnicodeProperties;
 
@@ -38,7 +38,7 @@ import java.util.Map;
 
 /**
  * @author     Brian Wing Shun Chan
- * @deprecated As of 7.0.0, replaced by {@link
+ * @deprecated As of Judson (7.1.x), replaced by {@link
  *             com.liferay.portal.kernel.upgrade.BaseUpgradePortletId}
  */
 @Deprecated
@@ -113,18 +113,16 @@ public class UpgradePortletId extends UpgradeProcess {
 
 	protected String[][] getRenamePortletIdsArray() {
 		return new String[][] {
-			new String[] {
-				"109", "1_WAR_webformportlet"
-			},
-			new String[] {
+			{"109", "1_WAR_webformportlet"},
+			{
 				"google_adsense_portlet_WAR_googleadsenseportlet",
 				"1_WAR_googleadsenseportlet"
 			},
-			new String[] {
+			{
 				"google_gadget_portlet_WAR_googlegadgetportlet",
 				"1_WAR_googlegadgetportlet"
 			},
-			new String[] {
+			{
 				"google_maps_portlet_WAR_googlemapsportlet",
 				"1_WAR_googlemapsportlet"
 			}
@@ -188,6 +186,7 @@ public class UpgradePortletId extends UpgradeProcess {
 
 			while (rs.next()) {
 				long portletPreferencesId = rs.getLong("portletPreferencesId");
+
 				String portletId = rs.getString("portletId");
 
 				String newPortletId = StringUtil.replace(
@@ -279,6 +278,7 @@ public class UpgradePortletId extends UpgradeProcess {
 
 			while (rs.next()) {
 				long layoutRevisionId = rs.getLong("layoutRevisionId");
+
 				String typeSettings = rs.getString("typeSettings");
 
 				String newTypeSettings = getNewTypeSettings(
@@ -304,6 +304,7 @@ public class UpgradePortletId extends UpgradeProcess {
 
 			while (rs.next()) {
 				long plid = rs.getLong("plid");
+
 				String typeSettings = rs.getString("typeSettings");
 
 				String newTypeSettings = getNewTypeSettings(

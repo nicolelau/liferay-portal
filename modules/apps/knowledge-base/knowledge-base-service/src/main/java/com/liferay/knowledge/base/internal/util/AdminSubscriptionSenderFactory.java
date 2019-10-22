@@ -15,7 +15,6 @@
 package com.liferay.knowledge.base.internal.util;
 
 import com.liferay.knowledge.base.model.KBArticle;
-import com.liferay.knowledge.base.service.util.AdminSubscriptionSender;
 import com.liferay.portal.kernel.security.permission.resource.ModelResourcePermission;
 import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.util.SubscriptionSender;
@@ -26,7 +25,7 @@ import org.osgi.service.component.annotations.Reference;
 /**
  * @author Preston Crary
  */
-@Component(immediate = true)
+@Component(immediate = true, service = {})
 public class AdminSubscriptionSenderFactory {
 
 	public static SubscriptionSender createSubscriptionSender(

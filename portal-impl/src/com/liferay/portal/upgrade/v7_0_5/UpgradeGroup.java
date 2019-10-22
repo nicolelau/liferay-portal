@@ -14,6 +14,7 @@
 
 package com.liferay.portal.upgrade.v7_0_5;
 
+import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.dao.jdbc.AutoBatchPreparedStatementUtil;
 import com.liferay.portal.kernel.exception.PortalException;
@@ -25,7 +26,6 @@ import com.liferay.portal.kernel.tree.TreeModelTasksAdapter;
 import com.liferay.portal.kernel.tree.TreePathUtil;
 import com.liferay.portal.kernel.upgrade.UpgradeProcess;
 import com.liferay.portal.kernel.util.LoggingTimer;
-import com.liferay.portal.kernel.util.StringBundler;
 import com.liferay.portal.util.PortalInstances;
 
 import java.io.Serializable;
@@ -48,7 +48,7 @@ public class UpgradeGroup extends UpgradeProcess {
 	}
 
 	/**
-	 * @deprecated As of 7.0.0, with no direct replacement
+	 * @deprecated As of Judson (7.1.x), with no direct replacement
 	 */
 	@Deprecated
 	protected void rebuildTree(
@@ -140,12 +140,13 @@ public class UpgradeGroup extends UpgradeProcess {
 				PreparedStatement ps3 =
 					AutoBatchPreparedStatementUtil.concurrentAutoBatch(
 						connection,
-						"update Group_ set parentGroupId = ?, treePath = ?" +
+						"update Group_ set parentGroupId = ?, treePath = ? " +
 							"where groupId = ?");
 				ResultSet rs1 = ps1.executeQuery()) {
 
 				while (rs1.next()) {
 					long groupId = rs1.getLong(1);
+
 					long parentGroupId = rs1.getLong(2);
 
 					ps2.setLong(1, parentGroupId);
@@ -192,7 +193,7 @@ public class UpgradeGroup extends UpgradeProcess {
 	}
 
 	/**
-	 * @deprecated As of 7.0.0, with no direct replacement
+	 * @deprecated As of Judson (7.1.x), with no direct replacement
 	 */
 	@Deprecated
 	protected void updateTreePath() throws Exception {

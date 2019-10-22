@@ -15,16 +15,26 @@
 package com.liferay.jenkins.results.parser;
 
 import java.util.List;
+import java.util.Properties;
+import java.util.Set;
 
 /**
  * @author Michael Hashimoto
  */
 public interface Job {
 
-	public List<String> getBatchNames();
+	public Set<String> getBatchNames();
 
-	public List<String> getDistTypes();
+	public List<Build> getBuildHistory(JenkinsMaster jenkinsMaster);
+
+	public Set<String> getDistTypes();
 
 	public String getJobName();
+
+	public Properties getJobProperties();
+
+	public String getJobProperty(String key);
+
+	public void readJobProperties();
 
 }

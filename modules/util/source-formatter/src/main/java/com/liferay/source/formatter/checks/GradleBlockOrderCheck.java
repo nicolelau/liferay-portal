@@ -14,8 +14,8 @@
 
 package com.liferay.source.formatter.checks;
 
+import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
-import com.liferay.portal.kernel.util.StringBundler;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.source.formatter.parser.GradleFile;
@@ -30,9 +30,8 @@ public class GradleBlockOrderCheck extends BaseGradleFileCheck {
 
 	@Override
 	protected String doProcess(
-			String fileName, String absolutePath, GradleFile gradleFile,
-			String content)
-		throws Exception {
+		String fileName, String absolutePath, GradleFile gradleFile,
+		String content) {
 
 		if (absolutePath.contains("/project-templates-")) {
 			return content;

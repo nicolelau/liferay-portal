@@ -14,13 +14,11 @@
 
 package com.liferay.portal.model.impl;
 
-import aQute.bnd.annotation.ProviderType;
-
+import com.liferay.petra.lang.HashUtil;
+import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.model.CacheModel;
 import com.liferay.portal.kernel.model.EmailAddress;
 import com.liferay.portal.kernel.model.MVCCModel;
-import com.liferay.portal.kernel.util.HashUtil;
-import com.liferay.portal.kernel.util.StringBundler;
 
 import java.io.Externalizable;
 import java.io.IOException;
@@ -33,12 +31,11 @@ import java.util.Date;
  * The cache model class for representing EmailAddress in entity cache.
  *
  * @author Brian Wing Shun Chan
- * @see EmailAddress
  * @generated
  */
-@ProviderType
-public class EmailAddressCacheModel implements CacheModel<EmailAddress>,
-	Externalizable, MVCCModel {
+public class EmailAddressCacheModel
+	implements CacheModel<EmailAddress>, Externalizable, MVCCModel {
+
 	@Override
 	public boolean equals(Object obj) {
 		if (this == obj) {
@@ -49,10 +46,12 @@ public class EmailAddressCacheModel implements CacheModel<EmailAddress>,
 			return false;
 		}
 
-		EmailAddressCacheModel emailAddressCacheModel = (EmailAddressCacheModel)obj;
+		EmailAddressCacheModel emailAddressCacheModel =
+			(EmailAddressCacheModel)obj;
 
 		if ((emailAddressId == emailAddressCacheModel.emailAddressId) &&
-				(mvccVersion == emailAddressCacheModel.mvccVersion)) {
+			(mvccVersion == emailAddressCacheModel.mvccVersion)) {
+
 			return true;
 		}
 
@@ -192,8 +191,7 @@ public class EmailAddressCacheModel implements CacheModel<EmailAddress>,
 	}
 
 	@Override
-	public void writeExternal(ObjectOutput objectOutput)
-		throws IOException {
+	public void writeExternal(ObjectOutput objectOutput) throws IOException {
 		objectOutput.writeLong(mvccVersion);
 
 		if (uuid == null) {
@@ -248,4 +246,5 @@ public class EmailAddressCacheModel implements CacheModel<EmailAddress>,
 	public String address;
 	public long typeId;
 	public boolean primary;
+
 }

@@ -227,6 +227,7 @@ public class LiferayAppDefaultsPlugin implements Plugin<Project> {
 		GradleUtil.applyPlugin(project, NodeDefaultsPlugin.class);
 	}
 
+	@SuppressWarnings("serial")
 	private void _configureAppJavadocBuilder(
 		Project project, Project privateProject) {
 
@@ -374,12 +375,12 @@ public class LiferayAppDefaultsPlugin implements Plugin<Project> {
 			return;
 		}
 
-		TLDDocTask tlddocTask = (TLDDocTask)GradleUtil.getTask(
+		TLDDocTask tldDocTask = (TLDDocTask)GradleUtil.getTask(
 			project, AppTLDDocBuilderPlugin.APP_TLDDOC_TASK_NAME);
 
 		File xsltDir = new File(portalRootDir, "tools/styles/taglibs");
 
-		tlddocTask.setXsltDir(xsltDir);
+		tldDocTask.setXsltDir(xsltDir);
 	}
 
 	private void _forceProjectHierarchyEvaluation(Project project) {

@@ -14,8 +14,6 @@
 
 package com.liferay.portal.tools.service.builder.test.model.impl;
 
-import aQute.bnd.annotation.ProviderType;
-
 import com.liferay.portal.kernel.model.CacheModel;
 import com.liferay.portal.kernel.util.HashUtil;
 import com.liferay.portal.kernel.util.StringBundler;
@@ -32,12 +30,11 @@ import java.math.BigDecimal;
  * The cache model class for representing BigDecimalEntry in entity cache.
  *
  * @author Brian Wing Shun Chan
- * @see BigDecimalEntry
  * @generated
  */
-@ProviderType
-public class BigDecimalEntryCacheModel implements CacheModel<BigDecimalEntry>,
-	Externalizable {
+public class BigDecimalEntryCacheModel
+	implements CacheModel<BigDecimalEntry>, Externalizable {
+
 	@Override
 	public boolean equals(Object obj) {
 		if (this == obj) {
@@ -48,7 +45,8 @@ public class BigDecimalEntryCacheModel implements CacheModel<BigDecimalEntry>,
 			return false;
 		}
 
-		BigDecimalEntryCacheModel bigDecimalEntryCacheModel = (BigDecimalEntryCacheModel)obj;
+		BigDecimalEntryCacheModel bigDecimalEntryCacheModel =
+			(BigDecimalEntryCacheModel)obj;
 
 		if (bigDecimalEntryId == bigDecimalEntryCacheModel.bigDecimalEntryId) {
 			return true;
@@ -64,10 +62,12 @@ public class BigDecimalEntryCacheModel implements CacheModel<BigDecimalEntry>,
 
 	@Override
 	public String toString() {
-		StringBundler sb = new StringBundler(5);
+		StringBundler sb = new StringBundler(7);
 
 		sb.append("{bigDecimalEntryId=");
 		sb.append(bigDecimalEntryId);
+		sb.append(", companyId=");
+		sb.append(companyId);
 		sb.append(", bigDecimalValue=");
 		sb.append(bigDecimalValue);
 		sb.append("}");
@@ -80,6 +80,7 @@ public class BigDecimalEntryCacheModel implements CacheModel<BigDecimalEntry>,
 		BigDecimalEntryImpl bigDecimalEntryImpl = new BigDecimalEntryImpl();
 
 		bigDecimalEntryImpl.setBigDecimalEntryId(bigDecimalEntryId);
+		bigDecimalEntryImpl.setCompanyId(companyId);
 		bigDecimalEntryImpl.setBigDecimalValue(bigDecimalValue);
 
 		bigDecimalEntryImpl.resetOriginalValues();
@@ -90,17 +91,23 @@ public class BigDecimalEntryCacheModel implements CacheModel<BigDecimalEntry>,
 	@Override
 	public void readExternal(ObjectInput objectInput)
 		throws ClassNotFoundException, IOException {
+
 		bigDecimalEntryId = objectInput.readLong();
+
+		companyId = objectInput.readLong();
 		bigDecimalValue = (BigDecimal)objectInput.readObject();
 	}
 
 	@Override
-	public void writeExternal(ObjectOutput objectOutput)
-		throws IOException {
+	public void writeExternal(ObjectOutput objectOutput) throws IOException {
 		objectOutput.writeLong(bigDecimalEntryId);
+
+		objectOutput.writeLong(companyId);
 		objectOutput.writeObject(bigDecimalValue);
 	}
 
 	public long bigDecimalEntryId;
+	public long companyId;
 	public BigDecimal bigDecimalValue;
+
 }

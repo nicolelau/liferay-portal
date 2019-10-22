@@ -30,14 +30,14 @@ import java.util.regex.Pattern;
 public class BNDWebContextPathCheck extends BaseFileCheck {
 
 	@Override
-	public boolean isModulesCheck() {
+	public boolean isModuleSourceCheck() {
 		return true;
 	}
 
 	@Override
 	protected String doProcess(
 			String fileName, String absolutePath, String content)
-		throws Exception {
+		throws IOException {
 
 		if (fileName.endsWith("/bnd.bnd") &&
 			!isModulesApp(absolutePath, true) &&
@@ -108,7 +108,7 @@ public class BNDWebContextPathCheck extends BaseFileCheck {
 		return false;
 	}
 
-	private final Pattern _jsonNamePattern = Pattern.compile(
+	private static final Pattern _jsonNamePattern = Pattern.compile(
 		"\n\\s*['\"]name['\"]:");
 
 }

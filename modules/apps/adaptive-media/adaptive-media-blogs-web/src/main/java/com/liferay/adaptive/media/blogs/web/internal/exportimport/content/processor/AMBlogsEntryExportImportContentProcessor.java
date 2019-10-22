@@ -29,7 +29,8 @@ import org.osgi.service.component.annotations.Reference;
 	property = {
 		"model.class.name=com.liferay.blogs.model.BlogsEntry",
 		"service.ranking:Integer=100"
-	}
+	},
+	service = ExportImportContentProcessor.class
 )
 public class AMBlogsEntryExportImportContentProcessor
 	implements ExportImportContentProcessor<String> {
@@ -79,26 +80,12 @@ public class AMBlogsEntryExportImportContentProcessor
 	}
 
 	@Reference(
-		target = "(&(model.class.name=com.liferay.blogs.model.BlogsEntry)(!(component.name=com.liferay.adaptive.media.blogs.web.internal.exportimport.content.processor.AMBlogsEntryExportImportContentProcessor)))",
-		unbind = "-"
+		target = "(&(model.class.name=com.liferay.blogs.model.BlogsEntry)(!(component.name=com.liferay.adaptive.media.blogs.web.internal.exportimport.content.processor.AMBlogsEntryExportImportContentProcessor)))"
 	)
-	protected void setBlogsEntryExportImportContentProcessor(
-		ExportImportContentProcessor<String>
-			blogsEntryExportImportContentProcessor) {
-
-		_blogsEntryExportImportContentProcessor =
-			blogsEntryExportImportContentProcessor;
-	}
-
-	@Reference(target = "(adaptive.media.format=html)", unbind = "-")
-	protected void setHTMLExportImportContentProcessor(
-		ExportImportContentProcessor<String> htmlExportImportContentProcessor) {
-
-		_htmlExportImportContentProcessor = htmlExportImportContentProcessor;
-	}
-
 	private ExportImportContentProcessor<String>
 		_blogsEntryExportImportContentProcessor;
+
+	@Reference(target = "(adaptive.media.format=html)")
 	private ExportImportContentProcessor<String>
 		_htmlExportImportContentProcessor;
 

@@ -33,6 +33,10 @@ import javax.servlet.http.HttpServletRequest;
  */
 public class IconPortletTag extends IconTag {
 
+	public Portlet getPortlet() {
+		return _portlet;
+	}
+
 	public void setPortlet(Portlet portlet) {
 		_portlet = portlet;
 	}
@@ -46,12 +50,15 @@ public class IconPortletTag extends IconTag {
 
 	@Override
 	protected String getPage() {
-		if (FileAvailabilityUtil.isAvailable(servletContext, _PAGE)) {
+		if (FileAvailabilityUtil.isAvailable(getServletContext(), _PAGE)) {
 			return _PAGE;
 		}
 
-		ThemeDisplay themeDisplay = (ThemeDisplay)request.getAttribute(
-			WebKeys.THEME_DISPLAY);
+		HttpServletRequest httpServletRequest = getRequest();
+
+		ThemeDisplay themeDisplay =
+			(ThemeDisplay)httpServletRequest.getAttribute(
+				WebKeys.THEME_DISPLAY);
 
 		String message = null;
 		String src = null;
@@ -62,8 +69,9 @@ public class IconPortletTag extends IconTag {
 				themeDisplay.getLocale());
 
 			if (Validator.isNotNull(_portlet.getIcon())) {
-				src = _portlet.getStaticResourcePath().concat(
-					_portlet.getIcon());
+				String staticResourcePath = _portlet.getStaticResourcePath();
+
+				src = staticResourcePath.concat(_portlet.getIcon());
 			}
 			else {
 				src = themeDisplay.getPathContext() + "/html/icons/default.png";
@@ -88,10 +96,11 @@ public class IconPortletTag extends IconTag {
 	}
 
 	@Override
-	protected void setAttributes(HttpServletRequest request) {
-		super.setAttributes(request);
+	protected void setAttributes(HttpServletRequest httpServletRequest) {
+		super.setAttributes(httpServletRequest);
 
-		request.setAttribute("liferay-portlet:icon_portlet:portlet", _portlet);
+		httpServletRequest.setAttribute(
+			"liferay-portlet:icon_portlet:portlet", _portlet);
 	}
 
 	private static final String _PAGE =

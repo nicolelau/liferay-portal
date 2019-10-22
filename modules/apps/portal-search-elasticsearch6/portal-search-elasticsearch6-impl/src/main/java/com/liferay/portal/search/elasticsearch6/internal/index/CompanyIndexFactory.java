@@ -26,15 +26,16 @@ import com.liferay.portal.search.elasticsearch6.internal.util.LogUtil;
 import com.liferay.portal.search.elasticsearch6.internal.util.ResourceUtil;
 import com.liferay.portal.search.elasticsearch6.settings.IndexSettingsContributor;
 import com.liferay.portal.search.elasticsearch6.settings.IndexSettingsHelper;
+import com.liferay.portal.search.index.IndexNameBuilder;
 
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentSkipListSet;
 
+import org.elasticsearch.action.ActionResponse;
 import org.elasticsearch.action.admin.indices.create.CreateIndexRequestBuilder;
 import org.elasticsearch.action.admin.indices.create.CreateIndexResponse;
 import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequestBuilder;
-import org.elasticsearch.action.admin.indices.delete.DeleteIndexResponse;
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsRequestBuilder;
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsResponse;
 import org.elasticsearch.client.AdminClient;
@@ -55,14 +56,12 @@ import org.osgi.service.component.annotations.ReferencePolicyOption;
  */
 @Component(
 	configurationPid = "com.liferay.portal.search.elasticsearch6.configuration.ElasticsearchConfiguration",
-	immediate = true
+	immediate = true, service = IndexFactory.class
 )
 public class CompanyIndexFactory implements IndexFactory {
 
 	@Override
-	public void createIndices(AdminClient adminClient, long companyId)
-		throws Exception {
-
+	public void createIndices(AdminClient adminClient, long companyId) {
 		IndicesAdminClient indicesAdminClient = adminClient.indices();
 
 		String indexName = getIndexName(companyId);
@@ -75,9 +74,7 @@ public class CompanyIndexFactory implements IndexFactory {
 	}
 
 	@Override
-	public void deleteIndices(AdminClient adminClient, long companyId)
-		throws Exception {
-
+	public void deleteIndices(AdminClient adminClient, long companyId) {
 		IndicesAdminClient indicesAdminClient = adminClient.indices();
 
 		String indexName = getIndexName(companyId);
@@ -89,10 +86,9 @@ public class CompanyIndexFactory implements IndexFactory {
 		DeleteIndexRequestBuilder deleteIndexRequestBuilder =
 			indicesAdminClient.prepareDelete(indexName);
 
-		DeleteIndexResponse deleteIndexResponse =
-			deleteIndexRequestBuilder.get();
+		ActionResponse actionResponse = deleteIndexRequestBuilder.get();
 
-		LogUtil.logActionResponse(_log, deleteIndexResponse);
+		LogUtil.logActionResponse(_log, actionResponse);
 	}
 
 	@Activate
@@ -117,8 +113,7 @@ public class CompanyIndexFactory implements IndexFactory {
 	@Reference(
 		cardinality = ReferenceCardinality.MULTIPLE,
 		policy = ReferencePolicy.DYNAMIC,
-		policyOption = ReferencePolicyOption.GREEDY,
-		unbind = "removeIndexSettingsContributor"
+		policyOption = ReferencePolicyOption.GREEDY
 	)
 	protected void addIndexSettingsContributor(
 		IndexSettingsContributor indexSettingsContributor) {
@@ -141,8 +136,7 @@ public class CompanyIndexFactory implements IndexFactory {
 	}
 
 	protected void createIndex(
-			String indexName, IndicesAdminClient indicesAdminClient)
-		throws Exception {
+		String indexName, IndicesAdminClient indicesAdminClient) {
 
 		CreateIndexRequestBuilder createIndexRequestBuilder =
 			indicesAdminClient.prepareCreate(indexName);
@@ -168,8 +162,7 @@ public class CompanyIndexFactory implements IndexFactory {
 	}
 
 	protected boolean hasIndex(
-			IndicesAdminClient indicesAdminClient, String indexName)
-		throws Exception {
+		IndicesAdminClient indicesAdminClient, String indexName) {
 
 		IndicesExistsRequestBuilder indicesExistsRequestBuilder =
 			indicesAdminClient.prepareExists(indexName);

@@ -33,10 +33,10 @@ import com.liferay.expando.kernel.model.ExpandoBridge;
 import com.liferay.expando.kernel.util.ExpandoBridgeFactoryUtil;
 import com.liferay.expando.kernel.util.ExpandoBridgeIndexerUtil;
 import com.liferay.petra.string.CharPool;
+import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.comment.Comment;
 import com.liferay.portal.kernel.dao.orm.ActionableDynamicQuery;
-import com.liferay.portal.kernel.dao.orm.DynamicQuery;
 import com.liferay.portal.kernel.dao.orm.IndexableActionableDynamicQuery;
 import com.liferay.portal.kernel.dao.orm.Property;
 import com.liferay.portal.kernel.dao.orm.PropertyFactoryUtil;
@@ -68,7 +68,6 @@ import com.liferay.portal.kernel.security.permission.ActionKeys;
 import com.liferay.portal.kernel.security.permission.PermissionChecker;
 import com.liferay.portal.kernel.security.permission.resource.ModelResourcePermission;
 import com.liferay.portal.kernel.service.GroupLocalServiceUtil;
-import com.liferay.portal.kernel.spring.osgi.OSGiBeanProperties;
 import com.liferay.portal.kernel.util.ArrayUtil;
 import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.LocaleUtil;
@@ -76,7 +75,6 @@ import com.liferay.portal.kernel.util.LocalizationUtil;
 import com.liferay.portal.kernel.util.PortalUtil;
 import com.liferay.portal.kernel.util.PropsKeys;
 import com.liferay.portal.kernel.util.ServiceProxyFactory;
-import com.liferay.portal.kernel.util.StringBundler;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.repository.liferayrepository.model.LiferayFileEntry;
@@ -96,14 +94,13 @@ import javax.portlet.PortletRequest;
 import javax.portlet.PortletResponse;
 
 /**
- * @author Brian Wing Shun Chan
- * @author Raymond Augé
- * @author Alexander Chow
+ * @author     Brian Wing Shun Chan
+ * @author     Raymond Augé
+ * @author     Alexander Chow
+ * @deprecated As of Judson (7.1.x), replaced by {@link
+ *             com.liferay.document.library.internal.search.DLFileEntryIndexer}
  */
-@OSGiBeanProperties(
-	property = "related.entry.indexer.class.name=com.liferay.document.library.kernel.model.DLFileEntry",
-	service = {Indexer.class, RelatedEntryIndexer.class}
-)
+@Deprecated
 public class DLFileEntryIndexer
 	extends BaseIndexer<DLFileEntry> implements RelatedEntryIndexer {
 
@@ -295,9 +292,7 @@ public class DLFileEntryIndexer
 			SearchContext searchContext)
 		throws Exception {
 
-		String keywords = searchContext.getKeywords();
-
-		if (Validator.isNull(keywords)) {
+		if (Validator.isNull(searchContext.getKeywords())) {
 			addSearchTerm(searchQuery, searchContext, Field.DESCRIPTION, false);
 			addSearchTerm(searchQuery, searchContext, Field.TITLE, false);
 			addSearchTerm(searchQuery, searchContext, Field.USER_NAME, false);
@@ -568,11 +563,9 @@ public class DLFileEntryIndexer
 			return;
 		}
 
-		Document document = getDocument(dlFileEntry);
-
 		IndexWriterHelperUtil.updateDocument(
-			getSearchEngineId(), dlFileEntry.getCompanyId(), document,
-			isCommitImmediately());
+			getSearchEngineId(), dlFileEntry.getCompanyId(),
+			getDocument(dlFileEntry), isCommitImmediately());
 	}
 
 	@Override
@@ -640,43 +633,32 @@ public class DLFileEntryIndexer
 			DLFileEntryLocalServiceUtil.getIndexableActionableDynamicQuery();
 
 		indexableActionableDynamicQuery.setAddCriteriaMethod(
-			new ActionableDynamicQuery.AddCriteriaMethod() {
+			dynamicQuery -> {
+				Property property = PropertyFactoryUtil.forName("folderId");
 
-				@Override
-				public void addCriteria(DynamicQuery dynamicQuery) {
-					Property property = PropertyFactoryUtil.forName("folderId");
+				long folderId = DLFolderConstants.getFolderId(
+					groupId, dataRepositoryId);
 
-					long folderId = DLFolderConstants.getFolderId(
-						groupId, dataRepositoryId);
-
-					dynamicQuery.add(property.eq(folderId));
-				}
-
+				dynamicQuery.add(property.eq(folderId));
 			});
 		indexableActionableDynamicQuery.setCompanyId(companyId);
 		indexableActionableDynamicQuery.setGroupId(groupId);
 		indexableActionableDynamicQuery.setInterval(
 			PropsValues.DL_FILE_INDEXING_INTERVAL);
 		indexableActionableDynamicQuery.setPerformActionMethod(
-			new ActionableDynamicQuery.PerformActionMethod<DLFileEntry>() {
-
-				@Override
-				public void performAction(DLFileEntry dlFileEntry) {
-					try {
-						Document document = getDocument(dlFileEntry);
-
-						indexableActionableDynamicQuery.addDocuments(document);
-					}
-					catch (PortalException pe) {
-						if (_log.isWarnEnabled()) {
-							_log.warn(
-								"Unable to index document library file entry " +
-									dlFileEntry.getFileEntryId(),
-								pe);
-						}
+			(DLFileEntry dlFileEntry) -> {
+				try {
+					indexableActionableDynamicQuery.addDocuments(
+						getDocument(dlFileEntry));
+				}
+				catch (PortalException pe) {
+					if (_log.isWarnEnabled()) {
+						_log.warn(
+							"Unable to index document library file entry " +
+								dlFileEntry.getFileEntryId(),
+							pe);
 					}
 				}
-
 			});
 		indexableActionableDynamicQuery.setSearchEngineId(getSearchEngineId());
 
@@ -689,23 +671,14 @@ public class DLFileEntryIndexer
 
 		actionableDynamicQuery.setCompanyId(companyId);
 		actionableDynamicQuery.setPerformActionMethod(
-			new ActionableDynamicQuery.PerformActionMethod<DLFolder>() {
+			(DLFolder dlFolder) -> {
+				String[] newIds = {
+					String.valueOf(companyId),
+					String.valueOf(dlFolder.getGroupId()),
+					String.valueOf(dlFolder.getFolderId())
+				};
 
-				@Override
-				public void performAction(DLFolder dlFolder)
-					throws PortalException {
-
-					long groupId = dlFolder.getGroupId();
-					long folderId = dlFolder.getFolderId();
-
-					String[] newIds = {
-						String.valueOf(companyId), String.valueOf(groupId),
-						String.valueOf(folderId)
-					};
-
-					reindex(newIds);
-				}
-
+				reindex(newIds);
 			});
 
 		actionableDynamicQuery.performActions();
@@ -717,22 +690,17 @@ public class DLFileEntryIndexer
 
 		actionableDynamicQuery.setCompanyId(companyId);
 		actionableDynamicQuery.setPerformActionMethod(
-			new ActionableDynamicQuery.PerformActionMethod<Group>() {
+			(Group group) -> {
+				long groupId = group.getGroupId();
 
-				@Override
-				public void performAction(Group group) throws PortalException {
-					long groupId = group.getGroupId();
+				long folderId = groupId;
 
-					long folderId = groupId;
+				String[] newIds = {
+					String.valueOf(companyId), String.valueOf(groupId),
+					String.valueOf(folderId)
+				};
 
-					String[] newIds = {
-						String.valueOf(companyId), String.valueOf(groupId),
-						String.valueOf(folderId)
-					};
-
-					reindex(newIds);
-				}
-
+				reindex(newIds);
 			});
 
 		actionableDynamicQuery.performActions();

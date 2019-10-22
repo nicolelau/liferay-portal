@@ -14,12 +14,25 @@
 
 package com.liferay.talend.tliferayoutput;
 
+import com.liferay.talend.common.oas.constants.OASConstants;
+
 /**
  * @author Zoltán Takács
  */
 public enum Action {
 
-	DELETE("DELETE"), INSERT("POST"), UPDATE("PUT");
+	Delete(OASConstants.OPERATION_DELETE), Insert(OASConstants.OPERATION_POST),
+	Unavailable("noop"), Update(OASConstants.OPERATION_PATCH);
+
+	public static Action toAction(String methodName) {
+		for (Action action : values()) {
+			if (methodName.equals(action._method)) {
+				return action;
+			}
+		}
+
+		return Unavailable;
+	}
 
 	public String getMethodName() {
 		return _method;

@@ -110,13 +110,12 @@ public class PermissionServiceImpl extends PermissionServiceBaseImpl {
 
 				return true;
 			}
-			else {
-				ModelResourcePermissionHelper.check(
-					modelResourcePermission, permissionChecker, groupId,
-					classPK, actionId);
 
-				return true;
-			}
+			ModelResourcePermissionHelper.check(
+				modelResourcePermission, permissionChecker, groupId, classPK,
+				actionId);
+
+			return true;
 		}
 
 		BaseModelPermissionChecker baseModelPermissionChecker =
@@ -184,11 +183,9 @@ public class PermissionServiceImpl extends PermissionServiceBaseImpl {
 					ResourceConstants.SCOPE_INDIVIDUAL, primKey,
 					permissionChecker.getOwnerRoleId());
 
-			long ownerId = resourcePermission.getOwnerId();
-
 			if (permissionChecker.hasOwnerPermission(
-					permissionChecker.getCompanyId(), name, primKey, ownerId,
-					ActionKeys.PERMISSIONS)) {
+					permissionChecker.getCompanyId(), name, primKey,
+					resourcePermission.getOwnerId(), ActionKeys.PERMISSIONS)) {
 
 				return;
 			}

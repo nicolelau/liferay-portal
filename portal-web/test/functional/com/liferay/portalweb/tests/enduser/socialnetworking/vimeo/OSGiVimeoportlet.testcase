@@ -1,40 +1,39 @@
-<definition component-name="portal-plugins-osgi">
-	<property name="portal.release" value="true" />
-	<property name="portal.upstream" value="true" />
-	<property name="plugins.deployment.type" value="osgi" />
-	<property name="testray.main.component.name" value="Social Networking" />
+@component-name = "portal-plugins-osgi"
+definition {
 
-	<set-up>
-		<execute macro="User#firstLoginPG" />
+	property portal.release = "true";
+	property portal.upstream = "true";
+	property plugins.deployment.type = "osgi";
+	property testray.main.component.name = "Social Networking";
 
-		<execute macro="ProductMenu#gotoPortlet">
-			<var name="category" value="Navigation" />
-			<var name="panel" value="Site Administration" />
-			<var name="portlet" value="Site Pages" />
-		</execute>
+	setUp {
+		User.firstLoginPG();
 
-		<execute macro="SitePages#addPublicPage">
-			<var name="pageName" value="Test Page" />
-		</execute>
-	</set-up>
+		ProductMenu.gotoPortlet(
+			category = "Site Builder",
+			panel = "Site Administration",
+			portlet = "Pages");
 
-	<tear-down>
-		<execute macro="Page#tearDownCP" />
-	</tear-down>
+		SitePages.addPublicPage(pageName = "Test Page");
+	}
 
-	<command name="VimeoPortletSmoke" priority="4">
-		<property name="portlet.plugins.includes" value="vimeo-portlet" />
+	tearDown {
+		Page.tearDownCP();
+	}
 
-		<var name="appName" value="Vimeo" />
+	@ignore = "true"
+	@priority = "4"
+	test VimeoPortletSmoke {
+		property portlet.plugins.includes = "vimeo-portlet";
+		var appName = "Vimeo";
 
-		<execute macro="Navigator#gotoPage">
-			<var name="pageName" value="Test Page" />
-		</execute>
+		Navigator.gotoPage(pageName = "Test Page");
 
-		<execute macro="Portlet#addPG">
-			<var name="portletName" value="Vimeo" />
-		</execute>
+		Portlet.addPG(portletName = "Vimeo");
 
-		<execute function="AntCommand#antCommand" locator1="build-test.xml" value1="remove-plugin -Dplugin.name=vimeo-portlet" />
-	</command>
-</definition>
+		AntCommand.antCommand(
+			locator1 = "build-test.xml",
+			value1 = "remove-plugin -Dplugin.name=vimeo-portlet");
+	}
+
+}

@@ -1,20 +1,49 @@
-<definition>
-	<command name="searchCP">
-		<execute function="AssertElementPresent" locator1="TextInput#SEARCH" />
-		<execute function="AssertElementPresent" locator1="Icon#BASIC_SEARCH" />
+definition {
 
-		<execute function="Type" locator1="TextInput#SEARCH" value1="${searchTerm}" />
+	macro openSearchAdmin {
+		Navigator.openWithAppendToBaseURL(urlAppend = "group/${siteURLKey}/~/control_panel/manage?p_p_id=com_liferay_portal_search_admin_web_portlet_SearchAdminPortlet");
+	}
 
-		<execute function="KeyPress" locator1="TextInput#SEARCH" value1="\RETURN" />
-	</command>
+	macro searchCP {
+		AssertElementPresent(locator1 = "TextInput#SEARCH");
 
-	<command name="searchPG">
-		<var name="key_portletName" value="${portletName}" />
+		AssertElementPresent(locator1 = "Icon#BASIC_SEARCH");
 
-		<execute function="AssertElementPresent" locator1="Portlet#SEARCH_FIELD" />
+		Type(
+			locator1 = "TextInput#SEARCH",
+			value1 = "${searchTerm}");
 
-		<execute function="Type" locator1="Portlet#SEARCH_FIELD" value1="${searchTerm}" />
+		KeyPress(
+			locator1 = "TextInput#SEARCH",
+			value1 = "\RETURN");
+	}
 
-		<execute function="KeyPress" locator1="Portlet#SEARCH_FIELD" value1="\RETURN" />
-	</command>
-</definition>
+	macro searchPG {
+		var key_portletName = "${portletName}";
+
+		AssertElementPresent(locator1 = "Portlet#SEARCH_FIELD");
+
+		Type(
+			locator1 = "Portlet#SEARCH_FIELD",
+			value1 = "${searchTerm}");
+
+		KeyPress(
+			locator1 = "Portlet#SEARCH_FIELD",
+			value1 = "\RETURN");
+	}
+
+	macro viewNoResultAssetTitle {
+		AssertElementNotPresent(
+			key_searchAssetTitle = "${searchAssetTitle}",
+			locator1 = "SearchResults#ASSET_ENTRY_TABLE_TITLE");
+	}
+
+	macro viewResultAssetTitle {
+		var key_searchAssetTitle = "${searchAssetTitle}";
+
+		AssertTextEquals(
+			locator1 = "SearchResults#ASSET_ENTRY_TABLE_TITLE",
+			value1 = "${searchAssetTitle}");
+	}
+
+}

@@ -15,22 +15,20 @@
 package com.liferay.source.formatter.checkstyle.checks;
 
 import com.liferay.petra.string.StringPool;
+import com.liferay.portal.kernel.util.GetterUtil;
+import com.liferay.source.formatter.checkstyle.util.CheckstyleUtil;
 
 /**
  * @author Hugo Huijser
  */
 public abstract class StringConcatenationCheck extends BaseCheck {
 
-	public void setMaxLineLength(int maxLineLength) {
-		this.maxLineLength = maxLineLength;
-	}
-
 	protected void checkLiteralStringStartAndEndCharacter(
-		String literalString1, String literalString2, int lineCount) {
+		String literalString1, String literalString2, int lineNumber) {
 
 		if (literalString1.endsWith(StringPool.SLASH)) {
 			log(
-				lineCount, _MSG_INVALID_END_CHARACTER,
+				lineNumber, _MSG_INVALID_END_CHARACTER,
 				literalString1.charAt(literalString1.length() - 1));
 		}
 
@@ -39,9 +37,14 @@ public abstract class StringConcatenationCheck extends BaseCheck {
 			 literalString2.matches("^[-:;.].*"))) {
 
 			log(
-				lineCount + 1, _MSG_INVALID_START_CHARACTER,
+				lineNumber + 1, _MSG_INVALID_START_CHARACTER,
 				literalString2.charAt(0));
 		}
+	}
+
+	protected int getMaxLineLength() {
+		return GetterUtil.getInteger(
+			getAttributeValue(CheckstyleUtil.MAX_LINE_LENGTH_KEY));
 	}
 
 	protected int getStringBreakPos(String s1, String s2, int i) {
@@ -77,10 +80,10 @@ public abstract class StringConcatenationCheck extends BaseCheck {
 	protected static final String MSG_COMBINE_LITERAL_STRINGS =
 		"literal.string.combine";
 
+	protected static final String MSG_INCORRECT_PLUS = "plus.incorrect";
+
 	protected static final String MSG_MOVE_LITERAL_STRING =
 		"literal.string.move";
-
-	protected int maxLineLength = 80;
 
 	private static final String _MSG_INVALID_END_CHARACTER =
 		"end.character.invalid";

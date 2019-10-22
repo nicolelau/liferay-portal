@@ -1,25 +1,69 @@
-import {LocalStorageMechanism, Storage} from 'metal-storage';
+/**
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
+ *
+ * This library is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU Lesser General Public License as published by the Free
+ * Software Foundation; either version 2.1 of the License, or (at your option)
+ * any later version.
+ *
+ * This library is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+ * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
+ * details.
+ */
 
-import LCSClient from './LCSClient/LCSClient';
+import uuidv1 from 'uuid/v1';
+
+// Gateway
+
+import Client from './client';
+import middlewares from './middlewares/defaults';
 import defaultPlugins from './plugins/defaults';
-import fingerprint from './utils/fingerprint';
+import hash from './utils/hash';
+
+// Constants
 
 const ENV = window || global;
+
 const FLUSH_INTERVAL = 2000;
+
 const REQUEST_TIMEOUT = 5000;
-const STORAGE_KEY_EVENTS = 'lcs_client_batch';
-const STORAGE_KEY_USER_ID = 'lcs_client_user_id';
 
-// Creates LocalStorage wrapper
-const storage = new Storage(new LocalStorageMechanism());
+// Local Storage keys
 
-let instance = null;
+const STORAGE_KEY_CONTEXTS = 'ac_client_context';
+
+const STORAGE_KEY_EVENTS = 'ac_client_batch';
+
+const STORAGE_KEY_IDENTITY_HASH = 'ac_client_identity';
+
+const STORAGE_KEY_USER_ID = 'ac_client_user_id';
+
+let instance;
+
+const getItem = key => {
+	let data;
+	const item = localStorage.getItem(key);
+	try {
+		data = JSON.parse(item);
+	} catch (e) {
+		return;
+	}
+	return data;
+};
+
+const setItem = (key, value) => {
+	try {
+		localStorage.setItem(key, JSON.stringify(value));
+	} catch (e) {
+		return;
+	}
+};
 
 /**
  * Analytics class that is desined to collect events that are captured
- * for later processing. It persists the events in the LocalStorage using the
- * metal-storage implementation and flushes it to the defined endpoint at
- * regular intervals.
+ * for later processing. It persists the events in localStorage
+ * and flushes it to the defined endpoint at regular intervals.
  */
 class Analytics {
 	/**
@@ -31,17 +75,22 @@ class Analytics {
 			instance = this;
 		}
 
-		const client = new LCSClient(config.uri);
+		const {endpointUrl, flushInterval} = config;
+
+		const client = new Client(endpointUrl);
 
 		instance.client = client;
 
-		instance._sendData = client.send.bind(client, instance);
+		instance._sendData = userId => {
+			return client.send(instance, userId);
+		};
 
 		instance.config = config;
-		instance.identityEndpoint = `https://contacts-prod.liferay.com/${
-			config.analyticsKey
-		}/identity`;
-		instance.events = storage.get(STORAGE_KEY_EVENTS) || [];
+
+		instance.identityEndpoint = `${endpointUrl}/identity`;
+
+		instance.events = getItem(STORAGE_KEY_EVENTS) || [];
+		instance.contexts = getItem(STORAGE_KEY_CONTEXTS) || [];
 		instance.isFlushInProgress = false;
 
 		// Initializes default plugins
@@ -58,8 +107,10 @@ class Analytics {
 
 		instance.flushInterval = setInterval(
 			() => instance.flush(),
-			config.flushInterval || FLUSH_INTERVAL
+			flushInterval || FLUSH_INTERVAL
 		);
+
+		this._ensureIntegrity();
 
 		return instance;
 	}
@@ -77,12 +128,37 @@ class Analytics {
 			.forEach(disposer => disposer());
 	}
 
+	_ensureIntegrity() {
+		const userId = getItem(STORAGE_KEY_USER_ID);
+
+		if (userId) {
+			this._setCookie(STORAGE_KEY_USER_ID, userId);
+		}
+	}
+
+	_isNewUserIdRequired() {
+		const identityHash = getItem(STORAGE_KEY_IDENTITY_HASH);
+		const storedUserId = getItem(STORAGE_KEY_USER_ID);
+
+		let newUserIdRequired = false;
+
+		// During logout or session expiration, identiy object becomes undefined
+		// because the client object is being instatiated on every page navigation,
+		// in such cases, we force a new user ID token.
+
+		if (!storedUserId || (identityHash && !this.config.identity)) {
+			newUserIdRequired = true;
+		}
+
+		return newUserIdRequired;
+	}
+
 	/**
 	 * Persists the event queue to the LocalStorage
 	 * @protected
 	 */
 	_persist(key, data) {
-		storage.set(key, data);
+		setItem(key, data);
 
 		return data;
 	}
@@ -96,15 +172,28 @@ class Analytics {
 	 * @protected
 	 * @return {object}
 	 */
-	_serialize(eventId, applicationId, properties) {
+	_serialize(eventId, applicationId, properties, contextHash) {
 		const eventDate = new Date().toISOString();
 
 		return {
 			applicationId,
+			contextHash,
 			eventDate,
 			eventId,
-			properties,
+			properties
 		};
+	}
+
+	/**
+	 * Sets a browser cookie
+	 * @protected
+	 */
+	_setCookie(key, data) {
+		const expirationDate = new Date();
+
+		expirationDate.setDate(expirationDate.getDate() + 365);
+
+		document.cookie = `${key}=${data}; expires= ${expirationDate.toUTCString()}; path=/`;
 	}
 
 	/**
@@ -126,21 +215,72 @@ class Analytics {
 	}
 
 	/**
+	 * Returns an unique identifier for an user, additionaly it stores
+	 * the generated token to the local storage cache and clears
+	 * previously stored identiy hash.
+	 * @return {string} The generated id
+	 */
+	_generateUserId() {
+		const userId = uuidv1();
+
+		this._persist(STORAGE_KEY_USER_ID, userId);
+		this._setCookie(STORAGE_KEY_USER_ID, userId);
+
+		localStorage.removeItem(STORAGE_KEY_IDENTITY_HASH);
+
+		return userId;
+	}
+
+	_getContext() {
+		const {context} = middlewares.reduce(
+			(request, middleware) => middleware(request, this),
+			{context: {}}
+		);
+
+		return context;
+	}
+
+	/**
 	 * Gets the userId for the existing analytics user. Previously generated ids
-	 * are stored and retrieved before attempting to query the Identity Service
-	 * for a new id based on the current machine fingerprint.
+	 * are stored and retrieved before generating a new one. If a anonymous
+	 * navigation is started after a identified navigation, the user ID token
+	 * is regenerated.
 	 * @return {Promise} A promise resolved with the stored or generated userId
 	 */
 	_getUserId() {
-		const userId = storage.get(STORAGE_KEY_USER_ID);
+		const newUserIdRequired = this._isNewUserIdRequired();
 
-		if (userId) {
-			return Promise.resolve(userId);
-		} else {
-			const bodyData = {
-				...this.config.identity,
-				...fingerprint(),
-			};
+		let userId = Promise.resolve(getItem(STORAGE_KEY_USER_ID));
+
+		if (newUserIdRequired) {
+			userId = Promise.resolve(this._generateUserId());
+		}
+
+		return userId;
+	}
+
+	/**
+	 * Sends the identity information and user id to the Identity Service.
+	 * @param {Object} identity The identity information about an user.
+	 * @param {String} userId The unique user id.
+	 * @return {Promise} A promise returned by the fetch request.
+	 */
+	_sendIdentity(identity, userId) {
+		const {dataSourceId} = this.config;
+
+		const bodyData = {
+			dataSourceId,
+			identity,
+			userId
+		};
+
+		const newIdentityHash = hash(bodyData);
+		const storedIdentityHash = getItem(STORAGE_KEY_IDENTITY_HASH);
+
+		let identyHash = Promise.resolve(storedIdentityHash);
+
+		if (newIdentityHash !== storedIdentityHash) {
+			instance._persist(STORAGE_KEY_IDENTITY_HASH, newIdentityHash);
 
 			const body = JSON.stringify(bodyData);
 			const headers = new Headers();
@@ -153,13 +293,15 @@ class Analytics {
 				credentials: 'same-origin',
 				headers,
 				method: 'POST',
-				mode: 'cors',
+				mode: 'cors'
 			};
 
-			return fetch(this.identityEndpoint, request)
-				.then(resp => resp.text())
-				.then(userId => this._persist(STORAGE_KEY_USER_ID, userId));
+			identyHash = fetch(this.identityEndpoint, request).then(
+				() => newIdentityHash
+			);
 		}
+
+		return identyHash;
 	}
 
 	/**
@@ -179,8 +321,8 @@ class Analytics {
 			);
 
 			result = Promise.race([
-				this._getUserId().then(instance._sendData),
-				this._timeout(REQUEST_TIMEOUT),
+				this._getUserId().then(userId => instance._sendData(userId)),
+				this._timeout(REQUEST_TIMEOUT)
 			])
 				.then(() => {
 					const events = this.events.filter(
@@ -190,8 +332,12 @@ class Analytics {
 
 					this.reset(events);
 				})
-				.catch(console.error)
-				.then(() => (this.isFlushInProgress = false));
+				.catch()
+				.then(() => {
+					this.isFlushInProgress = false;
+
+					return this.isFlushInProgress;
+				});
 		} else {
 			result = Promise.resolve();
 		}
@@ -244,7 +390,16 @@ class Analytics {
 			this.events.length = 0;
 		}
 
+		if (!this.events.length) {
+			const context = this._getContext();
+
+			this.contexts = this.contexts.filter(
+				storedContext => hash(context) == hash(storedContext)
+			);
+		}
+
 		this._persist(STORAGE_KEY_EVENTS, this.events);
+		this._persist(STORAGE_KEY_CONTEXTS, this.contexts);
 	}
 
 	/**
@@ -254,29 +409,45 @@ class Analytics {
 	 * @param {object} eventProps Complementary information about the event
 	 */
 	send(eventId, applicationId, eventProps) {
+		const currentContext = this._getContext();
+		const currentContextHash = hash(currentContext);
+
+		const hasStoredContext = this.contexts.find(
+			storedContext => hash(storedContext) === currentContextHash
+		);
+
+		if (!hasStoredContext) {
+			this.contexts = [...this.contexts, currentContext];
+		}
+
 		this.events = [
 			...this.events,
-			this._serialize(eventId, applicationId, eventProps),
+			this._serialize(
+				eventId,
+				applicationId,
+				eventProps,
+				currentContextHash
+			)
 		];
 
 		this._persist(STORAGE_KEY_EVENTS, this.events);
+		this._persist(STORAGE_KEY_CONTEXTS, this.contexts);
 	}
 
 	/**
 	 * Sets the current user identity in the system. This is meant to be invoked
-	 * by consumers every time an identity change is detected. This will trigger
-	 * an automatic reconciliation between the previous identity and the new one
+	 * by consumers every time an identity change is detected. If the identity is
+	 * different than the previously stored one, we will save this new identity and
+	 * send a request updating the Identity Service.
 	 * @param {object} identity A key-value pair object that identifies the user
+	 * @return {Promise} A promise resolved with the generated identity hash
 	 */
 	setIdentity(identity) {
-		const userId = storage.get(STORAGE_KEY_USER_ID);
+		this.config.identity = identity;
 
-		storage.remove(STORAGE_KEY_USER_ID);
-
-		instance.config.identity = {
-			identity,
-			userId,
-		};
+		return this._getUserId().then(userId =>
+			this._sendIdentity(identity, userId)
+		);
 	}
 
 	/**
@@ -285,21 +456,21 @@ class Analytics {
 	 * @example
 	 * Analytics.create(
 	 *   {
+	 *	   endpointUrl: 'https://osbasahcerebropublisher-projectname.lfr.io'
 	 *	   flushInterval: 2000,
-	 *	   uri: 'https://ec-dev.liferay.com:8095/api/analyticsgateway/send-analytics-events'
 	 *	   userId: 'id-s7uatimmxgo',
-	 *     analyticsKey: 'MyAnalyticsKey',
+	 *     dataSourceId: 'MyDataSourceId',
 	 *   }
 	 * );
 	 */
 	static create(config = {}) {
-		const instance = new Analytics(config);
+		const self = new Analytics(config);
 
-		ENV.Analytics = instance;
+		ENV.Analytics = self;
 		ENV.Analytics.create = Analytics.create;
 		ENV.Analytics.dispose = Analytics.dispose;
 
-		return instance;
+		return self;
 	}
 
 	/**
@@ -308,17 +479,18 @@ class Analytics {
 	 * Analytics.dispose();
 	 */
 	static dispose() {
-		const instance = ENV.Analytics;
+		const self = ENV.Analytics;
 
-		if (instance) {
-			instance.disposeInternal();
+		if (self) {
+			self.disposeInternal();
 		}
 	}
 }
 
 // Exposes Analytics.create to the global scope
+
 ENV.Analytics = {
-	create: Analytics.create,
+	create: Analytics.create
 };
 
 export {Analytics};

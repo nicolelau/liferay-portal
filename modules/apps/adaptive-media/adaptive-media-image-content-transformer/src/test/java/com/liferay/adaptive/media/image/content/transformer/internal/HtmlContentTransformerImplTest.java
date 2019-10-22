@@ -18,10 +18,11 @@ import com.liferay.adaptive.media.content.transformer.constants.ContentTransform
 import com.liferay.adaptive.media.image.html.AMImageHTMLTagFactory;
 import com.liferay.document.library.kernel.service.DLAppLocalService;
 import com.liferay.petra.string.CharPool;
+import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.repository.model.FileEntry;
-import com.liferay.portal.kernel.util.StringBundler;
+import com.liferay.portal.kernel.test.ReflectionTestUtil;
 import com.liferay.portal.kernel.util.StringUtil;
 
 import org.junit.Assert;
@@ -42,7 +43,8 @@ public class HtmlContentTransformerImplTest {
 
 	@Before
 	public void setUp() throws PortalException {
-		_htmlContentTransformer.setAMImageHTMLTagFactory(
+		ReflectionTestUtil.setFieldValue(
+			_htmlContentTransformerImpl, "_amImageHTMLTagFactory",
 			_amImageHTMLTagFactory);
 
 		Mockito.when(
@@ -51,7 +53,9 @@ public class HtmlContentTransformerImplTest {
 			_fileEntry
 		);
 
-		_htmlContentTransformer.setDLAppLocalService(_dlAppLocalService);
+		ReflectionTestUtil.setFieldValue(
+			_htmlContentTransformerImpl, "_dlAppLocalService",
+			_dlAppLocalService);
 	}
 
 	@Test
@@ -60,7 +64,7 @@ public class HtmlContentTransformerImplTest {
 
 		Mockito.when(
 			_amImageHTMLTagFactory.create(
-				"<img data-fileEntryId=\"1989\" src=\"adaptable\"/>",
+				"<img data-fileentryid=\"1989\" src=\"adaptable\"/>",
 				_fileEntry)
 		).thenReturn(
 			"<whatever></whatever>"
@@ -75,13 +79,13 @@ public class HtmlContentTransformerImplTest {
 		StringBundler originalSB = new StringBundler(4);
 
 		originalSB.append("<div><div>");
-		originalSB.append("<img data-fileEntryId=\"1989\" ");
+		originalSB.append("<img data-fileentryid=\"1989\" ");
 		originalSB.append("src=\"adaptable\"/>");
 		originalSB.append("</div></div><br/>");
 
 		Assert.assertEquals(
 			_duplicateWithNewLine(expectedSB.toString()),
-			_htmlContentTransformer.transform(
+			_htmlContentTransformerImpl.transform(
 				_duplicateWithNewLine(originalSB.toString())));
 	}
 
@@ -89,16 +93,16 @@ public class HtmlContentTransformerImplTest {
 	public void testContentTypeIsHTML() throws Exception {
 		Assert.assertEquals(
 			ContentTransformerContentTypes.HTML,
-			_htmlContentTransformer.getContentTransformerContentType());
+			_htmlContentTransformerImpl.getContentTransformerContentType());
 	}
 
 	@Test
-	public void testReplacesAnAdaptableImgAfterANonAdaptableOne()
+	public void testReplacesAnAdaptableImgAfterANonadaptableOne()
 		throws Exception {
 
 		Mockito.when(
 			_amImageHTMLTagFactory.create(
-				"<img data-fileEntryId=\"1989\" src=\"adaptable\"/>",
+				"<img data-fileentryid=\"1989\" src=\"adaptable\"/>",
 				_fileEntry)
 		).thenReturn(
 			"<whatever></whatever>"
@@ -106,9 +110,9 @@ public class HtmlContentTransformerImplTest {
 
 		Assert.assertEquals(
 			"<img src=\"not-adaptable\"/><whatever></whatever>",
-			_htmlContentTransformer.transform(
+			_htmlContentTransformerImpl.transform(
 				"<img src=\"not-adaptable\"/>" +
-					"<img data-fileEntryId=\"1989\" src=\"adaptable\"/>"));
+					"<img data-fileentryid=\"1989\" src=\"adaptable\"/>"));
 	}
 
 	@Test
@@ -117,7 +121,7 @@ public class HtmlContentTransformerImplTest {
 
 		Mockito.when(
 			_amImageHTMLTagFactory.create(
-				"<img data-fileEntryId=\"1989\" src=\"adaptable\"/>",
+				"<img data-fileentryid=\"1989\" src=\"adaptable\"/>",
 				_fileEntry)
 		).thenReturn(
 			"<whatever></whatever>"
@@ -125,15 +129,15 @@ public class HtmlContentTransformerImplTest {
 
 		Assert.assertEquals(
 			"<whatever></whatever>",
-			_htmlContentTransformer.transform(
-				"<img data-fileEntryId=\"1989\" src=\"adaptable\"/>"));
+			_htmlContentTransformerImpl.transform(
+				"<img data-fileentryid=\"1989\" src=\"adaptable\"/>"));
 	}
 
 	@Test
 	public void testReplacesTwoConsecutiveImageTags() throws Exception {
 		Mockito.when(
 			_amImageHTMLTagFactory.create(
-				"<img data-fileEntryId=\"1989\" src=\"adaptable\"/>",
+				"<img data-fileentryid=\"1989\" src=\"adaptable\"/>",
 				_fileEntry)
 		).thenReturn(
 			"<whatever></whatever>"
@@ -141,21 +145,21 @@ public class HtmlContentTransformerImplTest {
 
 		Assert.assertEquals(
 			"<whatever></whatever><whatever></whatever>",
-			_htmlContentTransformer.transform(
-				"<img data-fileEntryId=\"1989\" src=\"adaptable\"/>" +
-					"<img data-fileEntryId=\"1989\" src=\"adaptable\"/>"));
+			_htmlContentTransformerImpl.transform(
+				"<img data-fileentryid=\"1989\" src=\"adaptable\"/>" +
+					"<img data-fileentryid=\"1989\" src=\"adaptable\"/>"));
 	}
 
 	@Test
 	public void testReturnsNullForNullContent() throws Exception {
-		Assert.assertNull(_htmlContentTransformer.transform(null));
+		Assert.assertNull(_htmlContentTransformerImpl.transform(null));
 	}
 
 	@Test
 	public void testReturnsTheSameHTMLIfNoImagesArePresent() throws Exception {
 		Assert.assertEquals(
 			"<div><div>some <a>stuff</a></div></div>",
-			_htmlContentTransformer.transform(
+			_htmlContentTransformerImpl.transform(
 				"<div><div>some <a>stuff</a></div></div>"));
 	}
 
@@ -165,7 +169,7 @@ public class HtmlContentTransformerImplTest {
 
 		Assert.assertEquals(
 			"<div><div><img src=\"no.adaptable\"/></div></div>",
-			_htmlContentTransformer.transform(
+			_htmlContentTransformerImpl.transform(
 				"<div><div><img src=\"no.adaptable\"/></div></div>"));
 	}
 
@@ -173,7 +177,7 @@ public class HtmlContentTransformerImplTest {
 	public void testSupportsImageTagsWithNewLineCharacters() throws Exception {
 		Mockito.when(
 			_amImageHTMLTagFactory.create(
-				"<img data-fileEntryId=\"1989\" \nsrc=\"adaptable\"/>",
+				"<img data-fileentryid=\"1989\" \nsrc=\"adaptable\"/>",
 				_fileEntry)
 		).thenReturn(
 			"<whatever></whatever>"
@@ -181,13 +185,13 @@ public class HtmlContentTransformerImplTest {
 
 		StringBundler originalSB = new StringBundler(3);
 
-		originalSB.append("<img data-fileEntryId=\"1989\" ");
+		originalSB.append("<img data-fileentryid=\"1989\" ");
 		originalSB.append(CharPool.NEW_LINE);
 		originalSB.append("src=\"adaptable\"/>");
 
 		Assert.assertEquals(
 			"<whatever></whatever>",
-			_htmlContentTransformer.transform(originalSB.toString()));
+			_htmlContentTransformerImpl.transform(originalSB.toString()));
 	}
 
 	@Test
@@ -207,13 +211,13 @@ public class HtmlContentTransformerImplTest {
 		StringBundler originalSB = new StringBundler(4);
 
 		originalSB.append("<div><div>");
-		originalSB.append("<img data-fileEntryId=\"1989\" ");
+		originalSB.append("<img data-fileentryid=\"1989\" ");
 		originalSB.append("src=\"adaptable\"/>");
 		originalSB.append("</div></div><br/>");
 
 		Assert.assertEquals(
 			expectedSB.toString(),
-			_htmlContentTransformer.transform(
+			_htmlContentTransformerImpl.transform(
 				StringUtil.toLowerCase(originalSB.toString())));
 	}
 
@@ -230,7 +234,7 @@ public class HtmlContentTransformerImplTest {
 	@Mock
 	private FileEntry _fileEntry;
 
-	private final HtmlContentTransformerImpl _htmlContentTransformer =
+	private final HtmlContentTransformerImpl _htmlContentTransformerImpl =
 		new HtmlContentTransformerImpl();
 
 }

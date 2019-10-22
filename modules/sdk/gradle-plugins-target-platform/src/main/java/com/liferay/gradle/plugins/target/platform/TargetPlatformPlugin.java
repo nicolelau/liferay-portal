@@ -16,27 +16,22 @@ package com.liferay.gradle.plugins.target.platform;
 
 import com.liferay.gradle.plugins.target.platform.extensions.TargetPlatformExtension;
 import com.liferay.gradle.plugins.target.platform.internal.util.GradleUtil;
-import com.liferay.gradle.plugins.target.platform.internal.util.SkipIfExecutingParentTaskSpec;
+import com.liferay.gradle.plugins.target.platform.internal.util.TargetPlatformPluginUtil;
 import com.liferay.gradle.plugins.target.platform.tasks.ResolveTask;
 
 import groovy.lang.Closure;
 
 import io.spring.gradle.dependencymanagement.DependencyManagementPlugin;
-import io.spring.gradle.dependencymanagement.dsl.DependencyManagementExtension;
-import io.spring.gradle.dependencymanagement.dsl.ImportsHandler;
 
+import java.io.File;
+
+import java.util.Arrays;
 import java.util.Set;
-import java.util.concurrent.Callable;
 
 import org.gradle.api.Action;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
-import org.gradle.api.Task;
 import org.gradle.api.artifacts.Configuration;
-import org.gradle.api.artifacts.Dependency;
-import org.gradle.api.artifacts.DependencySet;
-import org.gradle.api.artifacts.dsl.DependencyHandler;
-import org.gradle.api.file.FileCollection;
 import org.gradle.api.invocation.Gradle;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.plugins.JavaBasePlugin;
@@ -44,13 +39,15 @@ import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.plugins.PluginContainer;
 import org.gradle.api.specs.Spec;
 import org.gradle.api.tasks.TaskContainer;
-import org.gradle.api.tasks.bundling.Jar;
 
 /**
  * @author Gregory Amerson
  * @author Andrea Di Giorgi
+ * @author Raymond Augé
  */
 public class TargetPlatformPlugin implements Plugin<Project> {
+
+	public static final String PLATFORM_BNDRUN_FILE_NAME = "platform.bndrun";
 
 	public static final String PLUGIN_NAME = "targetPlatform";
 
@@ -59,16 +56,11 @@ public class TargetPlatformPlugin implements Plugin<Project> {
 	public static final String TARGET_PLATFORM_BOMS_CONFIGURATION_NAME =
 		"targetPlatformBoms";
 
-	public static final String TARGET_PLATFORM_BUNDLES_CONFIGURATION_NAME =
-		"targetPlatformBundles";
-
 	public static final String TARGET_PLATFORM_DISTRO_CONFIGURATION_NAME =
 		"targetPlatformDistro";
 
-	public static final String TARGET_PLATFORM_REQUIREMENTS_CONFIGURATION_NAME =
-		"targetPlatformRequirements";
-
 	@Override
+	@SuppressWarnings("serial")
 	public void apply(final Project project) {
 		GradleUtil.applyPlugin(project, DependencyManagementPlugin.class);
 
@@ -78,21 +70,9 @@ public class TargetPlatformPlugin implements Plugin<Project> {
 
 		final Configuration targetPlatformBomsConfiguration =
 			_addConfigurationTargetPlatformBoms(project);
-		final Configuration targetPlatformBundlesConfiguration =
-			_addConfigurationTargetPlatformBundles(project);
+
 		final Configuration targetPlatformDistroConfiguration =
 			_addConfigurationTargetPlatformDistro(project);
-		final Configuration targetPlatformRequirementsConfiguration =
-			_addConfigurationTargetPlatformRequirements(project);
-
-		_addTaskResolve(
-			project, targetPlatformBundlesConfiguration,
-			targetPlatformDistroConfiguration,
-			targetPlatformRequirementsConfiguration);
-
-		_configureDependencyManagement(
-			project, targetPlatformBomsConfiguration);
-		_configureTasksResolve(project, targetPlatformExtension);
 
 		PluginContainer pluginContainer = project.getPlugins();
 
@@ -102,14 +82,35 @@ public class TargetPlatformPlugin implements Plugin<Project> {
 
 				@Override
 				public void execute(JavaPlugin javaPlugin) {
-					_addDependenciesBundleAndRequirement(
-						project, JavaPlugin.JAR_TASK_NAME,
-						project.getDependencies(),
-						targetPlatformBundlesConfiguration,
-						targetPlatformRequirementsConfiguration);
+					TargetPlatformPluginUtil.configureDependencyManagement(
+						project, targetPlatformBomsConfiguration,
+						_configurationNames);
 				}
 
 			});
+
+		final Spec<Project> spec = targetPlatformExtension.getOnlyIf();
+
+		final Set<Project> subprojects =
+			targetPlatformExtension.getSubprojects();
+
+		for (final Project subproject : subprojects) {
+			PluginContainer subprojectPluginContainer = subproject.getPlugins();
+
+			subprojectPluginContainer.withType(
+				JavaPlugin.class,
+				new Action<JavaPlugin>() {
+
+					@Override
+					public void execute(JavaPlugin javaPlugin) {
+						if (spec.isSatisfiedBy(subproject)) {
+							GradleUtil.applyPlugin(
+								subproject, DependencyManagementPlugin.class);
+						}
+					}
+
+				});
+		}
 
 		Gradle gradle = project.getGradle();
 
@@ -117,18 +118,16 @@ public class TargetPlatformPlugin implements Plugin<Project> {
 			new Closure<Void>(project) {
 
 				@SuppressWarnings("unused")
-				public void doCall(Project subproject) {
-					Set<Project> subprojects =
-						targetPlatformExtension.getSubprojects();
+				public void doCall(Project afterProject) {
+					boolean hasSubprojects = !subprojects.isEmpty();
 
-					if (subprojects.contains(subproject)) {
-						_configureSubproject(
-							subproject, project.getDependencies(),
-							project.getLogger(),
+					if ((afterProject.equals(project) && !hasSubprojects) ||
+						subprojects.contains(afterProject)) {
+
+						_configureAfterProject(
+							afterProject, project.getLogger(),
 							targetPlatformBomsConfiguration,
-							targetPlatformBundlesConfiguration,
 							targetPlatformDistroConfiguration,
-							targetPlatformRequirementsConfiguration,
 							targetPlatformExtension);
 					}
 				}
@@ -150,21 +149,6 @@ public class TargetPlatformPlugin implements Plugin<Project> {
 		return configuration;
 	}
 
-	private static Configuration _addConfigurationTargetPlatformBundles(
-		Project project) {
-
-		Configuration configuration = GradleUtil.addConfiguration(
-			project, TARGET_PLATFORM_BUNDLES_CONFIGURATION_NAME);
-
-		configuration.setDescription(
-			"Configures all the bundles in addition to the distro to resolve " +
-				"against.");
-		configuration.setTransitive(false);
-		configuration.setVisible(false);
-
-		return configuration;
-	}
-
 	private static Configuration _addConfigurationTargetPlatformDistro(
 		Project project) {
 
@@ -180,205 +164,80 @@ public class TargetPlatformPlugin implements Plugin<Project> {
 		return configuration;
 	}
 
-	private static Configuration _addConfigurationTargetPlatformRequirements(
-		Project project) {
-
-		Configuration configuration = GradleUtil.addConfiguration(
-			project, TARGET_PLATFORM_REQUIREMENTS_CONFIGURATION_NAME);
-
-		configuration.setDescription(
-			"Configures the list of JAR files to use as run requirements for " +
-				"resolving.");
-		configuration.setTransitive(false);
-		configuration.setVisible(false);
-
-		return configuration;
-	}
-
-	private void _addDependenciesBundleAndRequirement(
-		Object object, DependencyHandler dependencyHandler,
-		Configuration targetPlatformBundlesConfiguration,
-		Configuration targetPlatformRequirementsConfiguration) {
-
-		Dependency dependency = dependencyHandler.create(object);
-
-		GradleUtil.addDependency(
-			targetPlatformRequirementsConfiguration, dependency);
-		GradleUtil.addDependency(
-			targetPlatformBundlesConfiguration, dependency);
-	}
-
-	private void _addDependenciesBundleAndRequirement(
-		Project project, String taskName, DependencyHandler dependencyHandler,
-		Configuration targetPlatformBundlesConfiguration,
-		Configuration targetPlatformRequirementsConfiguration) {
-
-		Task task = GradleUtil.getTask(project, taskName);
-
-		FileCollection fileCollection = project.files(task);
-
-		_addDependenciesBundleAndRequirement(
-			fileCollection, dependencyHandler,
-			targetPlatformBundlesConfiguration,
-			targetPlatformRequirementsConfiguration);
-	}
-
-	private ResolveTask _addTaskResolve(
-		Project project, FileCollection bundles, FileCollection distro,
-		FileCollection requirements) {
-
+	private ResolveTask _addTaskResolve(Project project) {
 		final ResolveTask resolveTask = GradleUtil.addTask(
 			project, RESOLVE_TASK_NAME, ResolveTask.class);
 
-		resolveTask.onlyIf(_skipIfExecutingParentTaskSpec);
-		resolveTask.setBundles(bundles);
-		resolveTask.setDistro(distro);
 		resolveTask.setDescription(
-			"Checks whether a set of OSGi bundles can be found to meet all " +
-				"the requirements of the current project.");
+			"Checks whether the project and its runtime dependencies will " +
+				"have their requirements met when installed into the Liferay " +
+					"portal instance defined by the configured distro.");
 		resolveTask.setGroup(JavaBasePlugin.VERIFICATION_GROUP);
-		resolveTask.setRequirements(requirements);
 
 		return resolveTask;
 	}
 
-	private void _configureDependencyManagement(
-		Project project, Configuration targetPlatformBomsConfiguration) {
-
-		final DependencyManagementExtension dependencyManagementExtension =
-			GradleUtil.getExtension(
-				project, DependencyManagementExtension.class);
-
-		DependencySet dependencySet =
-			targetPlatformBomsConfiguration.getAllDependencies();
-
-		dependencySet.all(
-			new Action<Dependency>() {
-
-				@Override
-				public void execute(Dependency dependency) {
-					_configureDependencyManagementImportsHandler(
-						dependencyManagementExtension, dependency);
-				}
-
-			});
-	}
-
-	private void _configureDependencyManagementImportsHandler(
-		DependencyManagementExtension dependencyManagementExtension,
-		final Dependency dependency) {
-
-		dependencyManagementExtension.imports(
-			new Action<ImportsHandler>() {
-
-				@Override
-				public void execute(ImportsHandler importsHandler) {
-					StringBuilder sb = new StringBuilder();
-
-					sb.append(dependency.getGroup());
-					sb.append(':');
-					sb.append(dependency.getName());
-					sb.append(':');
-					sb.append(dependency.getVersion());
-
-					importsHandler.mavenBom(sb.toString());
-				}
-
-			});
-	}
-
-	private void _configureSubproject(
-		Project subproject, DependencyHandler dependencyHandler, Logger logger,
+	private void _configureAfterProject(
+		Project afterProject, Logger logger,
 		Configuration targetPlatformBomsConfiguration,
-		Configuration targetPlatformBundlesConfiguration,
 		Configuration targetPlatformDistroConfiguration,
-		Configuration targetPlatformRequirementsConfiguration,
 		TargetPlatformExtension targetPlatformExtension) {
-
-		TaskContainer taskContainer = subproject.getTasks();
-
-		Task jarTask = taskContainer.findByName(JavaPlugin.JAR_TASK_NAME);
-
-		if (!(jarTask instanceof Jar)) {
-			if (logger.isInfoEnabled()) {
-				logger.info(
-					"Excluding {} because it is not a valid Java project",
-					subproject);
-			}
-
-			return;
-		}
 
 		Spec<Project> spec = targetPlatformExtension.getOnlyIf();
 
-		if (!spec.isSatisfiedBy(subproject)) {
+		if (!spec.isSatisfiedBy(afterProject)) {
 			if (logger.isInfoEnabled()) {
-				logger.info("Explicitly excluding {}", subproject);
+				logger.info("Explicitly excluding {}", afterProject);
 			}
 
 			return;
 		}
 
-		GradleUtil.applyPlugin(subproject, DependencyManagementPlugin.class);
+		TargetPlatformPluginUtil.configureDependencyManagement(
+			afterProject, targetPlatformBomsConfiguration, _configurationNames);
 
-		_configureDependencyManagement(
-			subproject, targetPlatformBomsConfiguration);
+		Spec<Project> resolveSpec = targetPlatformExtension.getResolveOnlyIf();
 
-		spec = targetPlatformExtension.getResolveOnlyIf();
+		if (resolveSpec.isSatisfiedBy(afterProject)) {
+			ResolveTask resolveTask = _addTaskResolve(afterProject);
 
-		if (spec.isSatisfiedBy(subproject)) {
-			_addDependenciesBundleAndRequirement(
-				subproject, dependencyHandler,
-				targetPlatformBundlesConfiguration,
-				targetPlatformRequirementsConfiguration);
+			Project rootProject = afterProject.getRootProject();
 
-			FileCollection requirements = subproject.files(jarTask);
+			File bndrunFile = rootProject.file(PLATFORM_BNDRUN_FILE_NAME);
 
-			_addTaskResolve(
-				subproject, targetPlatformBundlesConfiguration,
-				targetPlatformDistroConfiguration, requirements);
-
-			_configureTasksResolve(subproject, targetPlatformExtension);
+			_configureTaskResolve(
+				afterProject, resolveTask, bndrunFile,
+				targetPlatformDistroConfiguration);
 		}
 		else if (logger.isInfoEnabled()) {
-			logger.info("Explicitly excluding {} from resolution", subproject);
+			logger.info(
+				"Explicitly excluding {} from resolution", afterProject);
 		}
 	}
 
 	private void _configureTaskResolve(
-		ResolveTask resolveTask,
-		final TargetPlatformExtension targetPlatformExtension) {
-
-		resolveTask.setIgnoreFailures(
-			new Callable<Boolean>() {
-
-				@Override
-				public Boolean call() throws Exception {
-					return targetPlatformExtension.isIgnoreResolveFailures();
-				}
-
-			});
-	}
-
-	private void _configureTasksResolve(
-		Project project,
-		final TargetPlatformExtension targetPlatformExtension) {
+		Project project, ResolveTask resolveTask, File bndrunFile,
+		Configuration targetPlatformDistroConfiguration) {
 
 		TaskContainer taskContainer = project.getTasks();
 
-		taskContainer.withType(
-			ResolveTask.class,
-			new Action<ResolveTask>() {
+		resolveTask.dependsOn(taskContainer.findByName("assemble"));
 
-				@Override
-				public void execute(ResolveTask resolveTask) {
-					_configureTaskResolve(resolveTask, targetPlatformExtension);
-				}
-
-			});
+		resolveTask.setBndrunFile(bndrunFile);
+		resolveTask.setDescription(
+			"Resolve a project against the Liferay distro.");
+		resolveTask.setDistro(targetPlatformDistroConfiguration);
+		resolveTask.setFailOnChanges(false);
+		resolveTask.setGroup("verification");
+		resolveTask.setReportOptional(false);
 	}
 
-	private static final Spec<Task> _skipIfExecutingParentTaskSpec =
-		new SkipIfExecutingParentTaskSpec();
+	private static final Iterable<String> _configurationNames = Arrays.asList(
+		"compile", "compileClasspath", "compileInclude", "compileOnly",
+		"default", "implementation", "originalModule", "parentThemes",
+		"portalCommonCSS", "runtime", "runtimeClasspath",
+		"runtimeImplementation", "runtimeOnly", "testCompileClasspath",
+		"testCompileOnly", "testIntegration", "testImplementation",
+		"testRuntime", "testRuntimeClasspath", "testRuntimeOnly");
 
 }

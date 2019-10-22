@@ -15,8 +15,8 @@
 package com.liferay.util;
 
 import com.liferay.petra.string.CharPool;
+import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
-import com.liferay.portal.kernel.util.StringBundler;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.UnicodeFormatter;
 
@@ -75,7 +75,7 @@ public class JS {
 	}
 
 	/**
-	 * @deprecated As of 6.2.0, replaced by {@link #encodeURIComponent}
+	 * @deprecated As of Bunyan (6.0.x), replaced by {@link #encodeURIComponent}
 	 */
 	@Deprecated
 	public static String escape(String s) {
@@ -111,9 +111,8 @@ public class JS {
 		if (sb == null) {
 			return name;
 		}
-		else {
-			return sb.toString();
-		}
+
+		return sb.toString();
 	}
 
 	public static String toScript(String[] array) {
@@ -137,7 +136,7 @@ public class JS {
 	}
 
 	/**
-	 * @deprecated As of 6.2.0, replaced by {@link #decodeURIComponent}
+	 * @deprecated As of Bunyan (6.0.x), replaced by {@link #decodeURIComponent}
 	 */
 	@Deprecated
 	public static String unescape(String s) {

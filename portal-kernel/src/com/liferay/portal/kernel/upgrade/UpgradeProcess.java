@@ -14,6 +14,7 @@
 
 package com.liferay.portal.kernel.upgrade;
 
+import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.dao.db.BaseDBProcess;
 import com.liferay.portal.kernel.dao.db.DB;
@@ -33,7 +34,6 @@ import com.liferay.portal.kernel.util.ClassUtil;
 import com.liferay.portal.kernel.util.LoggingTimer;
 import com.liferay.portal.kernel.util.ObjectValuePair;
 import com.liferay.portal.kernel.util.PortalClassLoaderUtil;
-import com.liferay.portal.kernel.util.StringBundler;
 import com.liferay.portal.kernel.util.StringUtil;
 
 import java.io.IOException;
@@ -82,12 +82,16 @@ public abstract class UpgradeProcess
 
 		String message = "Completed upgrade process ";
 
-		if (_log.isInfoEnabled()) {
-			_log.info("Upgrading " + ClassUtil.getClassName(this));
-		}
-
-		try (Connection con = DataAccess.getUpgradeOptimizedConnection()) {
+		try (Connection con = DataAccess.getConnection()) {
 			connection = con;
+
+			if (isSkipUpgradeProcess()) {
+				return;
+			}
+
+			if (_log.isInfoEnabled()) {
+				_log.info("Upgrading " + ClassUtil.getClassName(this));
+			}
 
 			doUpgrade();
 		}
@@ -103,27 +107,9 @@ public abstract class UpgradeProcess
 				_log.info(
 					StringBundler.concat(
 						message, ClassUtil.getClassName(this), " in ",
-						String.valueOf(System.currentTimeMillis() - start),
-						"ms"));
+						System.currentTimeMillis() - start, " ms"));
 			}
 		}
-	}
-
-	/**
-	 * @deprecated As of 7.0.0, replaced by {@link #upgrade(UpgradeProcess)}
-	 */
-	@Deprecated
-	public void upgrade(Class<?> upgradeProcessClass) throws UpgradeException {
-		UpgradeProcess upgradeProcess = null;
-
-		try {
-			upgradeProcess = (UpgradeProcess)upgradeProcessClass.newInstance();
-		}
-		catch (Exception e) {
-			throw new UpgradeException(e);
-		}
-
-		upgradeProcess.upgrade();
 	}
 
 	@Override
@@ -151,12 +137,6 @@ public abstract class UpgradeProcess
 			return false;
 		}
 
-		/**
-		 * @deprecated As of 7.0.0, with no direct replacement
-		 */
-		@Deprecated
-		public String getIndexedColumnName();
-
 		public String getSQL(String tableName);
 
 		public boolean shouldAddIndex(Collection<String> columnNames);
@@ -180,15 +160,6 @@ public abstract class UpgradeProcess
 			else {
 				_newColumnName = _newColumn;
 			}
-		}
-
-		/**
-		 * @deprecated As of 7.0.0, with no direct replacement
-		 */
-		@Deprecated
-		@Override
-		public String getIndexedColumnName() {
-			return null;
 		}
 
 		@Override
@@ -228,15 +199,6 @@ public abstract class UpgradeProcess
 			_newType = newType;
 		}
 
-		/**
-		 * @deprecated As of 7.0.0, with no direct replacement
-		 */
-		@Deprecated
-		@Override
-		public String getIndexedColumnName() {
-			return null;
-		}
-
 		@Override
 		public String getSQL(String tableName) {
 			StringBundler sb = new StringBundler(6);
@@ -272,15 +234,6 @@ public abstract class UpgradeProcess
 			_columnName = columnName;
 		}
 
-		/**
-		 * @deprecated As of 7.0.0, with no direct replacement
-		 */
-		@Deprecated
-		@Override
-		public String getIndexedColumnName() {
-			return null;
-		}
-
 		@Override
 		public String getSQL(String tableName) {
 			StringBundler sb = new StringBundler(4);
@@ -311,15 +264,6 @@ public abstract class UpgradeProcess
 
 		public AlterTableDropColumn(String columnName) {
 			_columnName = columnName;
-		}
-
-		/**
-		 * @deprecated As of 7.0.0, with no direct replacement
-		 */
-		@Deprecated
-		@Override
-		public String getIndexedColumnName() {
-			return null;
 		}
 
 		@Override
@@ -473,35 +417,41 @@ public abstract class UpgradeProcess
 		throws IOException {
 
 		if (!PortalClassLoaderUtil.isPortalClassLoader(classLoader)) {
-			List<ObjectValuePair<String, IndexMetadata>> objectValuePairs =
-				new ArrayList<>();
-
 			try (InputStream is = classLoader.getResourceAsStream(
-					"META-INF/sql/indexes.sql");
-				Reader reader = new InputStreamReader(is);
-				UnsyncBufferedReader unsyncBufferedReader =
-					new UnsyncBufferedReader(reader)) {
+					"META-INF/sql/indexes.sql")) {
 
-				String line = null;
+				if (is == null) {
+					return null;
+				}
 
-				while ((line = unsyncBufferedReader.readLine()) != null) {
-					line = line.trim();
+				List<ObjectValuePair<String, IndexMetadata>> objectValuePairs =
+					new ArrayList<>();
 
-					if (line.isEmpty()) {
-						continue;
-					}
+				try (Reader reader = new InputStreamReader(is);
+					UnsyncBufferedReader unsyncBufferedReader =
+						new UnsyncBufferedReader(reader)) {
 
-					IndexMetadata indexMetadata =
-						IndexMetadataFactoryUtil.createIndexMetadata(line);
+					String line = null;
 
-					if (tableName.equals(indexMetadata.getTableName())) {
-						objectValuePairs.add(
-							new ObjectValuePair<>(line, indexMetadata));
+					while ((line = unsyncBufferedReader.readLine()) != null) {
+						line = line.trim();
+
+						if (line.isEmpty()) {
+							continue;
+						}
+
+						IndexMetadata indexMetadata =
+							IndexMetadataFactoryUtil.createIndexMetadata(line);
+
+						if (tableName.equals(indexMetadata.getTableName())) {
+							objectValuePairs.add(
+								new ObjectValuePair<>(line, indexMetadata));
+						}
 					}
 				}
-			}
 
-			return objectValuePairs;
+				return objectValuePairs;
+			}
 		}
 
 		if (!_portalIndexesSQL.isEmpty()) {
@@ -544,6 +494,14 @@ public abstract class UpgradeProcess
 		return _portalIndexesSQL.get(tableName);
 	}
 
+	protected Map<String, Integer> getTableColumnsMap(Class<?> tableClass)
+		throws Exception {
+
+		Field tableNameField = tableClass.getField("TABLE_COLUMNS_MAP");
+
+		return (Map<String, Integer>)tableNameField.get(null);
+	}
+
 	protected String getTableName(Class<?> tableClass) throws Exception {
 		Field tableNameField = tableClass.getField("TABLE_NAME");
 
@@ -568,6 +526,14 @@ public abstract class UpgradeProcess
 		return db.increment(name, size);
 	}
 
+	protected boolean isPortal62TableName(String tableName) {
+		return _portal62TableNames.contains(StringUtil.toLowerCase(tableName));
+	}
+
+	protected boolean isSkipUpgradeProcess() throws Exception {
+		return false;
+	}
+
 	protected boolean isSupportsAlterColumnName() {
 		DB db = DBManagerUtil.getDB();
 
@@ -590,20 +556,6 @@ public abstract class UpgradeProcess
 		DB db = DBManagerUtil.getDB();
 
 		return db.isSupportsUpdateWithInnerJoin();
-	}
-
-	/**
-	 * @deprecated As of 7.0.0, replaced by {@link
-	 *             DBInspector#normalizeName(String, DatabaseMetaData)}
-	 */
-	@Deprecated
-	protected String normalizeName(
-			String name, DatabaseMetaData databaseMetaData)
-		throws SQLException {
-
-		DBInspector dbInspector = new DBInspector(connection);
-
-		return dbInspector.normalizeName(name, databaseMetaData);
 	}
 
 	protected void upgradeTable(String tableName, Object[][] tableColumns)
@@ -633,6 +585,52 @@ public abstract class UpgradeProcess
 
 	private static final Log _log = LogFactoryUtil.getLog(UpgradeProcess.class);
 
+	private static final Set<String> _portal62TableNames = new HashSet<>(
+		Arrays.asList(
+			"account_", "address", "announcementsdelivery",
+			"announcementsentry", "announcementsflag", "assetcategory",
+			"assetcategoryproperty", "assetentries_assetcategories",
+			"assetentries_assettags", "assetentry", "assetlink", "assettag",
+			"assettagstats", "assetvocabulary", "backgroundtask", "blogsentry",
+			"blogsstatsuser", "bookmarksentry", "bookmarksfolder",
+			"browsertracker", "calevent", "classname_", "clustergroup",
+			"company", "contact_", "counter", "country", "ddlrecord",
+			"ddlrecordset", "ddlrecordversion", "ddmcontent", "ddmstoragelink",
+			"ddmstructure", "ddmstructurelink", "ddmtemplate", "dlcontent",
+			"dlfileentry", "dlfileentrymetadata", "dlfileentrytype",
+			"dlfileentrytypes_dlfolders", "dlfilerank", "dlfileshortcut",
+			"dlfileversion", "dlfolder", "dlsyncevent", "emailaddress",
+			"expandocolumn", "expandorow", "expandotable", "expandovalue",
+			"exportimportconfiguration", "group_", "groups_orgs",
+			"groups_roles", "groups_usergroups", "image", "journalarticle",
+			"journalarticleimage", "journalarticleresource",
+			"journalcontentsearch", "journalfeed", "journalfolder",
+			"journalstructure", "journaltemplate", "layout", "layoutbranch",
+			"layoutfriendlyurl", "layoutprototype", "layoutrevision",
+			"layoutset", "layoutsetbranch", "layoutsetprototype", "listtype",
+			"lock_", "mbban", "mbcategory", "mbdiscussion", "mbmailinglist",
+			"mbmessage", "mbstatsuser", "mbthread", "mbthreadflag", "mdraction",
+			"mdrrule", "mdrrulegroup", "mdrulegroupinstance",
+			"membershiprequest", "organization_", "orggrouprole", "orglabor",
+			"passwordpolicy", "passwordpolicyrel", "passwordtracker", "phone",
+			"pluginsetting", "pollschoice", "pollsquestion", "pollsvote",
+			"portalpreferences", "portlet", "portletitem", "portletpreferences",
+			"ratingsentry", "ratingsstats", "recentlayoutbranch",
+			"recentlayoutrevision", "recentlayoutsetbranch", "region",
+			"release_", "repository", "repositoryentry", "resourceaction",
+			"resourceblock", "resourceblockpermission", "resourcepermission",
+			"resourcetypepermission", "role_", "servicecomponent",
+			"socialactivity", "socialactivityachievement",
+			"socialactivitycounter", "socialactivitylimit", "socialactivityset",
+			"socialactivitysetting", "socialrelation", "socialrequest",
+			"subscription", "systemevent", "team", "ticket", "trashentry",
+			"trashversion", "usernotificationdelivery", "user_", "usergroup",
+			"usergroupgrouprole", "usergrouprole", "usergroups_teams",
+			"useridmapper", "usernotificationevent", "users_groups",
+			"users_orgs", "users_roles", "users_teams", "users_usergroups",
+			"usertracker", "usertrackerpath", "virtualhost", "webdavprops",
+			"website", "wikinode", "wikipage", "wikipageresource",
+			"workflowdefinitionlink", "workflowinstancelink"));
 	private static final Map
 		<String, List<ObjectValuePair<String, IndexMetadata>>>
 			_portalIndexesSQL = new HashMap<>();

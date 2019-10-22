@@ -14,6 +14,7 @@
 
 package com.liferay.source.formatter.checks;
 
+import com.liferay.petra.string.CharPool;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.util.StringUtil;
 
@@ -27,8 +28,7 @@ public class PropertiesLiferayPluginPackageFileCheck extends BaseFileCheck {
 
 	@Override
 	protected String doProcess(
-			String fileName, String absolutePath, String content)
-		throws Exception {
+		String fileName, String absolutePath, String content) {
 
 		if (fileName.endsWith("/liferay-plugin-package.properties")) {
 			return _formatPluginPackageProperties(absolutePath, content);
@@ -71,7 +71,7 @@ public class PropertiesLiferayPluginPackageFileCheck extends BaseFileCheck {
 		content = StringUtil.replace(content, "\n\n", "\n");
 
 		content = StringUtil.replace(
-			content, StringPool.TAB, StringPool.FOUR_SPACES);
+			content, CharPool.TAB, StringPool.FOUR_SPACES);
 
 		Matcher matcher = _singleValueOnMultipleLinesPattern.matcher(content);
 
@@ -83,9 +83,9 @@ public class PropertiesLiferayPluginPackageFileCheck extends BaseFileCheck {
 		return _fixIncorrectLicenses(absolutePath, content);
 	}
 
-	private final Pattern _licensesPattern = Pattern.compile(
+	private static final Pattern _licensesPattern = Pattern.compile(
 		"\nlicenses=(\\w+)\n");
-	private final Pattern _singleValueOnMultipleLinesPattern = Pattern.compile(
-		"\n.*=(\\\\\n *).*(\n[^ ]|\\Z)");
+	private static final Pattern _singleValueOnMultipleLinesPattern =
+		Pattern.compile("\n.*=(\\\\\n *).*(\n[^ ]|\\Z)");
 
 }

@@ -14,10 +14,11 @@
 
 package com.liferay.portal.fabric.netty.fileserver;
 
+import com.liferay.petra.io.BigEndianCodec;
+import com.liferay.petra.io.unsync.UnsyncByteArrayInputStream;
 import com.liferay.petra.reflect.ReflectionUtil;
+import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.fabric.netty.fileserver.handlers.FileServerTestUtil;
-import com.liferay.portal.kernel.io.BigEndianCodec;
-import com.liferay.portal.kernel.io.unsync.UnsyncByteArrayInputStream;
 import com.liferay.portal.kernel.nio.FileSystemProviderWrapper;
 import com.liferay.portal.kernel.nio.FileSystemWrapper;
 import com.liferay.portal.kernel.nio.PathWrapper;
@@ -25,8 +26,6 @@ import com.liferay.portal.kernel.test.CaptureHandler;
 import com.liferay.portal.kernel.test.JDKLoggerTestUtil;
 import com.liferay.portal.kernel.test.SwappableSecurityManager;
 import com.liferay.portal.kernel.test.rule.CodeCoverageAssertor;
-import com.liferay.portal.kernel.util.JavaDetector;
-import com.liferay.portal.kernel.util.StringBundler;
 
 import java.io.File;
 import java.io.IOException;
@@ -142,12 +141,7 @@ public class FileHelperUtilTest {
 			Assert.fail();
 		}
 		catch (Exception e) {
-			if (JavaDetector.isJDK8()) {
-				Assert.assertSame(ioException, e.getCause());
-			}
-			else {
-				Assert.assertSame(ioException, e);
-			}
+			Assert.assertSame(ioException, e.getCause());
 		}
 		finally {
 			Files.delete(undeleteableFilePath);
@@ -570,9 +564,8 @@ public class FileHelperUtilTest {
 		catch (IOException ioe) {
 			Assert.assertEquals(
 				StringBundler.concat(
-					"Zip stream for entry ", fileEntryName, " is ",
-					String.valueOf(actualSize), " bytes but should ",
-					String.valueOf(annotatedSize), " bytes"),
+					"Zip stream for entry ", fileEntryName, " is ", actualSize,
+					" bytes but should ", annotatedSize, " bytes"),
 				ioe.getMessage());
 		}
 	}
@@ -581,17 +574,17 @@ public class FileHelperUtilTest {
 	public void testUnzipImpossibleScenario() throws IOException {
 		FileSystem fileSystem = FileSystems.getDefault();
 
-		FileSystemProvider fileSystemProvider =
-			new FileSystemProviderWrapper(fileSystem.provider()) {
+		FileSystemProvider fileSystemProvider = new FileSystemProviderWrapper(
+			fileSystem.provider()) {
 
-				@Override
-				public InputStream newInputStream(
-					Path path, OpenOption... options) {
+			@Override
+			public InputStream newInputStream(
+				Path path, OpenOption... options) {
 
-					return null;
-				}
+				return null;
+			}
 
-			};
+		};
 
 		Path impossiableSourceFilePath = Paths.get("ImpossibleSourceFilePath");
 
@@ -746,17 +739,17 @@ public class FileHelperUtilTest {
 	public void testZipImpossibleScenario() throws IOException {
 		FileSystem fileSystem = FileSystems.getDefault();
 
-		FileSystemProvider fileSystemProvider =
-			new FileSystemProviderWrapper(fileSystem.provider()) {
+		FileSystemProvider fileSystemProvider = new FileSystemProviderWrapper(
+			fileSystem.provider()) {
 
-				@Override
-				public OutputStream newOutputStream(
-					Path path, OpenOption... options) {
+			@Override
+			public OutputStream newOutputStream(
+				Path path, OpenOption... options) {
 
-					return null;
-				}
+				return null;
+			}
 
-			};
+		};
 
 		Path impossiableDestDirPath = new PathWrapper(
 			FileHelperUtil.TEMP_DIR_PATH,

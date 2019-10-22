@@ -98,9 +98,8 @@ public class DLFileShortcutImpl extends DLFileShortcutBaseImpl {
 			Repository repository = RepositoryLocalServiceUtil.getRepository(
 				repositoryId);
 
-			long dlFolderId = repository.getDlFolderId();
-
-			DLFolder dlFolder = DLFolderLocalServiceUtil.getFolder(dlFolderId);
+			DLFolder dlFolder = DLFolderLocalServiceUtil.getFolder(
+				repository.getDlFolderId());
 
 			return dlFolder.isHidden();
 		}
@@ -108,6 +107,15 @@ public class DLFileShortcutImpl extends DLFileShortcutBaseImpl {
 			if (_log.isWarnEnabled()) {
 				_log.warn(pe, pe);
 			}
+		}
+
+		return false;
+	}
+
+	@Override
+	public boolean isInTrash() {
+		if (super.isInTrash() || !isActive()) {
+			return true;
 		}
 
 		return false;

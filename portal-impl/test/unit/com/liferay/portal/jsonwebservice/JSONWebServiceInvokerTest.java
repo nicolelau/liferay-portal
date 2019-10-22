@@ -14,6 +14,7 @@
 
 package com.liferay.portal.jsonwebservice;
 
+import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.jsonwebservice.action.JSONWebServiceInvokerAction;
 import com.liferay.portal.kernel.jsonwebservice.JSONWebServiceAction;
 import com.liferay.portal.kernel.service.LayoutLocalService;
@@ -21,10 +22,8 @@ import com.liferay.portal.kernel.service.LayoutLocalServiceUtil;
 import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.service.ServiceContextFactory;
 import com.liferay.portal.kernel.test.ReflectionTestUtil;
-import com.liferay.portal.kernel.util.PropsKeys;
-import com.liferay.portal.kernel.util.PropsUtil;
+import com.liferay.portal.kernel.test.util.PropsTestUtil;
 import com.liferay.portal.kernel.util.ProxyUtil;
-import com.liferay.portal.kernel.util.StringBundler;
 import com.liferay.portal.kernel.util.StringUtil;
 
 import java.lang.reflect.InvocationHandler;
@@ -52,7 +51,7 @@ import org.springframework.mock.web.MockHttpServletRequest;
 /**
  * @author Igor Spasic
  */
-@PrepareForTest({ServiceContextFactory.class, PropsUtil.class})
+@PrepareForTest(ServiceContextFactory.class)
 @RunWith(PowerMockRunner.class)
 public class JSONWebServiceInvokerTest extends BaseJSONWebServiceTestCase {
 
@@ -81,14 +80,7 @@ public class JSONWebServiceInvokerTest extends BaseJSONWebServiceTestCase {
 
 				}));
 
-		mockStatic(PropsUtil.class);
-
-		when(
-			PropsUtil.getArray(
-				PropsKeys.JSONWS_WEB_SERVICE_INVALID_HTTP_METHODS)
-		).thenReturn(
-			null
-		);
+		PropsTestUtil.setProps(Collections.emptyMap());
 
 		initPortalServices();
 
@@ -101,7 +93,11 @@ public class JSONWebServiceInvokerTest extends BaseJSONWebServiceTestCase {
 			ServiceContextFactory.class, "getInstance",
 			HttpServletRequest.class);
 
-		stub(method).toReturn(new ServiceContext());
+		stub(
+			method
+		).toReturn(
+			new ServiceContext()
+		);
 	}
 
 	@Test
@@ -650,7 +646,7 @@ public class JSONWebServiceInvokerTest extends BaseJSONWebServiceTestCase {
 		params.put("longs", new long[] {1, 2, 3});
 		params.put("ints", new int[] {1, 2});
 
-		Map<String, Integer> map2 = new HashMap<>(1);
+		Map<String, Integer> map2 = new HashMap<>();
 
 		map2.put("key", Integer.valueOf(122));
 

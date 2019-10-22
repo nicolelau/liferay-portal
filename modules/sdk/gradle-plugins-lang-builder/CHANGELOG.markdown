@@ -74,6 +74,54 @@ http://titlecapitalization.com.
 ### Changed
 - [LPS-78845]: Update the [Liferay Lang Builder] dependency to version 1.0.24.
 
+## 2.2.2 - 2018-06-11
+
+### Changed
+- [LPS-82209]: Update the [Liferay Lang Builder] dependency to version 1.0.25.
+
+### Removed
+- [LPS-82343]: Removed the `BuildLangTask`'s `plugin` and
+`portalLanguagePropertiesFile` properties.
+
+## 3.0.0 - 2018-06-28
+
+*No changes.*
+
+## 3.0.1 - 2018-07-05
+
+### Changed
+- [LPS-82343]: Update the [Liferay Lang Builder] dependency to version 1.0.26.
+
+## 3.0.2 - 2018-09-04
+
+### Changed
+- [LPS-85092]: Update the [Liferay Lang Builder] dependency to version 1.0.27.
+
+## 3.0.3 - 2018-11-16
+
+### Changed
+- [LPS-87466]: Update the [Liferay Gradle Util] dependency to version 1.0.32.
+
+## 3.0.4 - 2018-11-19
+
+### Changed
+- [LPS-87466]: Update the [Liferay Gradle Util] dependency to version 1.0.33.
+
+## 3.0.5 - 2018-12-17
+
+### Changed
+- [LPS-87590]: Update the [Liferay Lang Builder] dependency to version 1.0.28.
+
+## 3.0.6 - 2019-01-22
+
+### Changed
+- [LPS-89388]: Update the [Liferay Lang Builder] dependency to version 1.0.29.
+
+### Fixed
+- [LPS-89388]: The `BuildLangTask` did not remove keys from the
+`Language_xx.properties` files when the `Language.properties` file was empty.
+
+[Liferay Gradle Util]: https://github.com/liferay/liferay-portal/tree/master/modules/sdk/gradle-util
 [Liferay Lang Builder]: https://github.com/liferay/liferay-portal/tree/master/modules/util/lang-builder
 [LPS-67573]: https://issues.liferay.com/browse/LPS-67573
 [LPS-71375]: https://issues.liferay.com/browse/LPS-71375
@@ -82,3 +130,9 @@ http://titlecapitalization.com.
 [LPS-76221]: https://issues.liferay.com/browse/LPS-76221
 [LPS-78493]: https://issues.liferay.com/browse/LPS-78493
 [LPS-78845]: https://issues.liferay.com/browse/LPS-78845
+[LPS-82209]: https://issues.liferay.com/browse/LPS-82209
+[LPS-82343]: https://issues.liferay.com/browse/LPS-82343
+[LPS-85092]: https://issues.liferay.com/browse/LPS-85092
+[LPS-87466]: https://issues.liferay.com/browse/LPS-87466
+[LPS-87590]: https://issues.liferay.com/browse/LPS-87590
+[LPS-89388]: https://issues.liferay.com/browse/LPS-89388

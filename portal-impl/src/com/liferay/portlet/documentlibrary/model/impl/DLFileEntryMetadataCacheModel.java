@@ -14,13 +14,11 @@
 
 package com.liferay.portlet.documentlibrary.model.impl;
 
-import aQute.bnd.annotation.ProviderType;
-
 import com.liferay.document.library.kernel.model.DLFileEntryMetadata;
-
+import com.liferay.petra.lang.HashUtil;
+import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.model.CacheModel;
-import com.liferay.portal.kernel.util.HashUtil;
-import com.liferay.portal.kernel.util.StringBundler;
+import com.liferay.portal.kernel.model.MVCCModel;
 
 import java.io.Externalizable;
 import java.io.IOException;
@@ -31,12 +29,11 @@ import java.io.ObjectOutput;
  * The cache model class for representing DLFileEntryMetadata in entity cache.
  *
  * @author Brian Wing Shun Chan
- * @see DLFileEntryMetadata
  * @generated
  */
-@ProviderType
-public class DLFileEntryMetadataCacheModel implements CacheModel<DLFileEntryMetadata>,
-	Externalizable {
+public class DLFileEntryMetadataCacheModel
+	implements CacheModel<DLFileEntryMetadata>, Externalizable, MVCCModel {
+
 	@Override
 	public boolean equals(Object obj) {
 		if (this == obj) {
@@ -47,9 +44,13 @@ public class DLFileEntryMetadataCacheModel implements CacheModel<DLFileEntryMeta
 			return false;
 		}
 
-		DLFileEntryMetadataCacheModel dlFileEntryMetadataCacheModel = (DLFileEntryMetadataCacheModel)obj;
+		DLFileEntryMetadataCacheModel dlFileEntryMetadataCacheModel =
+			(DLFileEntryMetadataCacheModel)obj;
 
-		if (fileEntryMetadataId == dlFileEntryMetadataCacheModel.fileEntryMetadataId) {
+		if ((fileEntryMetadataId ==
+				dlFileEntryMetadataCacheModel.fileEntryMetadataId) &&
+			(mvccVersion == dlFileEntryMetadataCacheModel.mvccVersion)) {
+
 			return true;
 		}
 
@@ -58,14 +59,28 @@ public class DLFileEntryMetadataCacheModel implements CacheModel<DLFileEntryMeta
 
 	@Override
 	public int hashCode() {
-		return HashUtil.hash(0, fileEntryMetadataId);
+		int hashCode = HashUtil.hash(0, fileEntryMetadataId);
+
+		return HashUtil.hash(hashCode, mvccVersion);
+	}
+
+	@Override
+	public long getMvccVersion() {
+		return mvccVersion;
+	}
+
+	@Override
+	public void setMvccVersion(long mvccVersion) {
+		this.mvccVersion = mvccVersion;
 	}
 
 	@Override
 	public String toString() {
-		StringBundler sb = new StringBundler(15);
+		StringBundler sb = new StringBundler(17);
 
-		sb.append("{uuid=");
+		sb.append("{mvccVersion=");
+		sb.append(mvccVersion);
+		sb.append(", uuid=");
 		sb.append(uuid);
 		sb.append(", fileEntryMetadataId=");
 		sb.append(fileEntryMetadataId);
@@ -86,7 +101,10 @@ public class DLFileEntryMetadataCacheModel implements CacheModel<DLFileEntryMeta
 
 	@Override
 	public DLFileEntryMetadata toEntityModel() {
-		DLFileEntryMetadataImpl dlFileEntryMetadataImpl = new DLFileEntryMetadataImpl();
+		DLFileEntryMetadataImpl dlFileEntryMetadataImpl =
+			new DLFileEntryMetadataImpl();
+
+		dlFileEntryMetadataImpl.setMvccVersion(mvccVersion);
 
 		if (uuid == null) {
 			dlFileEntryMetadataImpl.setUuid("");
@@ -109,6 +127,7 @@ public class DLFileEntryMetadataCacheModel implements CacheModel<DLFileEntryMeta
 
 	@Override
 	public void readExternal(ObjectInput objectInput) throws IOException {
+		mvccVersion = objectInput.readLong();
 		uuid = objectInput.readUTF();
 
 		fileEntryMetadataId = objectInput.readLong();
@@ -125,8 +144,9 @@ public class DLFileEntryMetadataCacheModel implements CacheModel<DLFileEntryMeta
 	}
 
 	@Override
-	public void writeExternal(ObjectOutput objectOutput)
-		throws IOException {
+	public void writeExternal(ObjectOutput objectOutput) throws IOException {
+		objectOutput.writeLong(mvccVersion);
+
 		if (uuid == null) {
 			objectOutput.writeUTF("");
 		}
@@ -147,6 +167,7 @@ public class DLFileEntryMetadataCacheModel implements CacheModel<DLFileEntryMeta
 		objectOutput.writeLong(fileVersionId);
 	}
 
+	public long mvccVersion;
 	public String uuid;
 	public long fileEntryMetadataId;
 	public long companyId;
@@ -154,4 +175,5 @@ public class DLFileEntryMetadataCacheModel implements CacheModel<DLFileEntryMeta
 	public long DDMStructureId;
 	public long fileEntryId;
 	public long fileVersionId;
+
 }

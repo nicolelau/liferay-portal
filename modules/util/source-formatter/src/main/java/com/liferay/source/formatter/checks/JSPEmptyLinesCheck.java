@@ -36,6 +36,8 @@ public class JSPEmptyLinesCheck extends EmptyLinesCheck {
 
 		content = fixRedundantEmptyLines(content);
 
+		content = fixIncorrectEmptyLineAfterOpenCurlyBrace(content);
+
 		content = fixIncorrectEmptyLineBeforeCloseCurlyBrace(content);
 
 		content = fixMissingEmptyLineAfterSettingVariable(content);
@@ -59,86 +61,78 @@ public class JSPEmptyLinesCheck extends EmptyLinesCheck {
 	}
 
 	private String _fixMissingEmptyLines(String content) {
-		while (true) {
-			Matcher matcher = _missingEmptyLinePattern1.matcher(content);
+		Matcher matcher = _missingEmptyLinePattern1.matcher(content);
 
-			if (matcher.find()) {
-				content = StringUtil.replaceFirst(
+		while (matcher.find()) {
+			if (!JSPSourceUtil.isJSSource(content, matcher.start())) {
+				return StringUtil.replaceFirst(
 					content, "\n", "\n\n", matcher.start() + 1);
-
-				continue;
 			}
+		}
 
-			matcher = _missingEmptyLinePattern2.matcher(content);
+		matcher = _missingEmptyLinePattern2.matcher(content);
 
-			if (matcher.find()) {
-				content = StringUtil.replaceFirst(
+		while (matcher.find()) {
+			if (!JSPSourceUtil.isJSSource(content, matcher.start())) {
+				return StringUtil.replaceFirst(
 					content, "\n", "\n\n", matcher.start());
-
-				continue;
 			}
+		}
 
-			matcher = _missingEmptyLinePattern3.matcher(content);
+		matcher = _missingEmptyLinePattern3.matcher(content);
 
-			if (matcher.find()) {
-				content = StringUtil.replaceFirst(
+		while (matcher.find()) {
+			if (!JSPSourceUtil.isJSSource(content, matcher.start())) {
+				return StringUtil.replaceFirst(
 					content, "\n", "\n\n", matcher.start() + 1);
-
-				continue;
 			}
+		}
 
-			matcher = _missingEmptyLinePattern4.matcher(content);
+		matcher = _missingEmptyLinePattern4.matcher(content);
 
-			if (matcher.find()) {
-				content = StringUtil.replaceFirst(
+		while (matcher.find()) {
+			if (!JSPSourceUtil.isJSSource(content, matcher.start())) {
+				return StringUtil.replaceFirst(
 					content, "\n", "\n\n", matcher.start() + 1);
-
-				continue;
 			}
-
-			break;
 		}
 
 		return content;
 	}
 
 	private String _fixRedundantEmptyLines(String content) {
-		while (true) {
-			Matcher matcher = _redundantEmptyLinePattern1.matcher(content);
+		Matcher matcher = _redundantEmptyLinePattern1.matcher(content);
 
-			if (matcher.find()) {
-				content = StringUtil.replaceFirst(
+		while (matcher.find()) {
+			if (!JSPSourceUtil.isJSSource(content, matcher.start())) {
+				return StringUtil.replaceFirst(
 					content, "\n", StringPool.BLANK, matcher.start() + 1);
-
-				continue;
 			}
+		}
 
-			matcher = _redundantEmptyLinePattern2.matcher(content);
+		matcher = _redundantEmptyLinePattern2.matcher(content);
 
-			if (matcher.find()) {
-				content = StringUtil.replaceFirst(
+		while (matcher.find()) {
+			if (!JSPSourceUtil.isJSSource(content, matcher.start())) {
+				return StringUtil.replaceFirst(
 					content, "\n", StringPool.BLANK, matcher.start() + 1);
-
-				continue;
 			}
-
-			break;
 		}
 
 		return content;
 	}
 
-	private final Pattern _missingEmptyLinePattern1 = Pattern.compile(
+	private static final Pattern _missingEmptyLinePattern1 = Pattern.compile(
 		"[\t\n](--)?%>\n\t*(?!-->)\\S");
-	private final Pattern _missingEmptyLinePattern2 = Pattern.compile(
+	private static final Pattern _missingEmptyLinePattern2 = Pattern.compile(
 		"\\S(?!<\\!--)\n\t*<%(--)?\n");
-	private final Pattern _missingEmptyLinePattern3 = Pattern.compile(
+	private static final Pattern _missingEmptyLinePattern3 = Pattern.compile(
 		"[\t\n]<%\n\t*//");
-	private final Pattern _missingEmptyLinePattern4 = Pattern.compile(
+	private static final Pattern _missingEmptyLinePattern4 = Pattern.compile(
 		"[\t\n]//.*\n\t*%>\n");
-	private final Pattern _redundantEmptyLinePattern1 = Pattern.compile(
+	private static final Pattern _redundantEmptyLinePattern1 = Pattern.compile(
 		"[\n\t]<%\n\n(\t*)[^/\n\t]");
-	private final Pattern _redundantEmptyLinePattern2 = Pattern.compile(
+	private static final Pattern _redundantEmptyLinePattern2 = Pattern.compile(
 		"[\n\t][^/\n\t].*\n\n\t*%>");
 
 }

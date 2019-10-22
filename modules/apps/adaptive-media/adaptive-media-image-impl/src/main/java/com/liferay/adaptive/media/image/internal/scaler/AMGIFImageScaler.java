@@ -21,18 +21,16 @@ import com.liferay.adaptive.media.image.internal.util.RenderedImageUtil;
 import com.liferay.adaptive.media.image.internal.util.Tuple;
 import com.liferay.adaptive.media.image.scaler.AMImageScaledImage;
 import com.liferay.adaptive.media.image.scaler.AMImageScaler;
+import com.liferay.petra.process.CollectorOutputProcessor;
+import com.liferay.petra.process.ProcessException;
+import com.liferay.petra.process.ProcessUtil;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.configuration.metatype.bnd.util.ConfigurableUtil;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.io.unsync.UnsyncByteArrayInputStream;
-import com.liferay.portal.kernel.process.CollectorOutputProcessor;
-import com.liferay.portal.kernel.process.ProcessException;
-import com.liferay.portal.kernel.process.ProcessUtil;
 import com.liferay.portal.kernel.repository.model.FileVersion;
 import com.liferay.portal.kernel.util.FileUtil;
 import com.liferay.portal.kernel.util.GetterUtil;
-import com.liferay.portal.kernel.util.ObjectValuePair;
-import com.liferay.portal.repository.liferayrepository.model.LiferayFileVersion;
 
 import java.awt.image.RenderedImage;
 
@@ -54,7 +52,7 @@ import org.osgi.service.component.annotations.Modified;
 @Component(
 	configurationPid = "com.liferay.adaptive.media.image.internal.configuration.AMImageConfiguration",
 	immediate = true, property = "mime.type=image/gif",
-	service = {AMGIFImageScaler.class, AMImageScaler.class}
+	service = AMImageScaler.class
 )
 public class AMGIFImageScaler implements AMImageScaler {
 
@@ -71,13 +69,16 @@ public class AMGIFImageScaler implements AMImageScaler {
 		try {
 			File file = _getFile(fileVersion);
 
-			Future<ObjectValuePair<byte[], byte[]>> future =
+			Future<Map.Entry<byte[], byte[]>> collectorFuture =
 				ProcessUtil.execute(
-					new CollectorOutputProcessor(), "gifsicle", "--resize-fit",
+					CollectorOutputProcessor.INSTANCE, "gifsicle",
+					"--resize-fit",
 					getResizeFitValues(amImageConfigurationEntry), "--output",
 					"-", file.getAbsolutePath());
 
-			ObjectValuePair<byte[], byte[]> objectValuePair = future.get();
+			Map.Entry<byte[], byte[]> objectValuePair = collectorFuture.get();
+
+			file.delete();
 
 			byte[] bytes = objectValuePair.getKey();
 
@@ -134,18 +135,15 @@ public class AMGIFImageScaler implements AMImageScaler {
 			maxWidthString = String.valueOf(maxWidth);
 		}
 
-		return maxWidthString.concat("x").concat(maxHeightString);
+		return maxWidthString.concat(
+			"x"
+		).concat(
+			maxHeightString
+		);
 	}
 
 	private File _getFile(FileVersion fileVersion)
 		throws IOException, PortalException {
-
-		if (fileVersion instanceof LiferayFileVersion) {
-			LiferayFileVersion liferayFileVersion =
-				(LiferayFileVersion)fileVersion;
-
-			return liferayFileVersion.getFile(false);
-		}
 
 		try (InputStream inputStream = fileVersion.getContentStream(false)) {
 			return FileUtil.createTempFile(inputStream);

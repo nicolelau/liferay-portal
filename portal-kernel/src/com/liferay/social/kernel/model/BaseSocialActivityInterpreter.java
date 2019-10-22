@@ -17,6 +17,7 @@ package com.liferay.social.kernel.model;
 import com.liferay.asset.kernel.AssetRendererFactoryRegistryUtil;
 import com.liferay.asset.kernel.model.AssetRenderer;
 import com.liferay.asset.kernel.model.AssetRendererFactory;
+import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.json.JSONException;
@@ -40,8 +41,6 @@ import com.liferay.portal.kernel.util.HtmlUtil;
 import com.liferay.portal.kernel.util.HttpUtil;
 import com.liferay.portal.kernel.util.PortalUtil;
 import com.liferay.portal.kernel.util.ResourceBundleLoader;
-import com.liferay.portal.kernel.util.StringBundler;
-import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.social.kernel.service.SocialActivityLocalServiceUtil;
 import com.liferay.social.kernel.service.SocialActivitySetLocalServiceUtil;
@@ -151,34 +150,15 @@ public abstract class BaseSocialActivityInterpreter
 		return sb.toString();
 	}
 
-	/**
-	 * @deprecated As of 6.2.0
-	 */
-	@Deprecated
-	protected String cleanContent(String content) {
-		return StringUtil.shorten(HtmlUtil.extractText(content), 200);
-	}
-
 	protected SocialActivityFeedEntry doInterpret(
 			SocialActivity activity, ServiceContext serviceContext)
 		throws Exception {
 
 		ThemeDisplay themeDisplay = serviceContext.getThemeDisplay();
 
-		SocialActivityFeedEntry socialActivityFeedEntry = doInterpret(
-			activity, themeDisplay);
-
-		if (socialActivityFeedEntry !=
-				_deprecatedMarkerSocialActivityFeedEntry) {
-
-			return socialActivityFeedEntry;
-		}
-
-		PermissionChecker permissionChecker =
-			themeDisplay.getPermissionChecker();
-
 		if (!hasPermissions(
-				permissionChecker, activity, ActionKeys.VIEW, serviceContext)) {
+				themeDisplay.getPermissionChecker(), activity, ActionKeys.VIEW,
+				serviceContext)) {
 
 			return null;
 		}
@@ -194,17 +174,6 @@ public abstract class BaseSocialActivityInterpreter
 		String body = getBody(activity, serviceContext);
 
 		return new SocialActivityFeedEntry(link, title, body);
-	}
-
-	/**
-	 * @deprecated As of 6.2.0
-	 */
-	@Deprecated
-	protected SocialActivityFeedEntry doInterpret(
-			SocialActivity activity, ThemeDisplay themeDisplay)
-		throws Exception {
-
-		return _deprecatedMarkerSocialActivityFeedEntry;
 	}
 
 	protected SocialActivityFeedEntry doInterpret(
@@ -265,48 +234,6 @@ public abstract class BaseSocialActivityInterpreter
 			else if (group.hasPrivateLayouts()) {
 				groupDisplayURL = group.getDisplayURL(
 					serviceContext.getThemeDisplay(), true);
-			}
-			else {
-				return HtmlUtil.escape(groupName);
-			}
-
-			groupName = StringBundler.concat(
-				"<a class=\"group\" href=\"", groupDisplayURL, "\">",
-				HtmlUtil.escape(groupName), "</a>");
-
-			return groupName;
-		}
-		catch (Exception e) {
-			return StringPool.BLANK;
-		}
-	}
-
-	/**
-	 * @deprecated As of 6.2.0, replaced by {@link #getGroupName(long,
-	 *             ServiceContext)}
-	 */
-	@Deprecated
-	protected String getGroupName(long groupId, ThemeDisplay themeDisplay) {
-		try {
-			if (groupId <= 0) {
-				return StringPool.BLANK;
-			}
-
-			Group group = GroupLocalServiceUtil.getGroup(groupId);
-
-			String groupName = group.getDescriptiveName();
-
-			if (group.getGroupId() == themeDisplay.getScopeGroupId()) {
-				return HtmlUtil.escape(groupName);
-			}
-
-			String groupDisplayURL = StringPool.BLANK;
-
-			if (group.hasPublicLayouts()) {
-				groupDisplayURL = group.getDisplayURL(themeDisplay, false);
-			}
-			else if (group.hasPrivateLayouts()) {
-				groupDisplayURL = group.getDisplayURL(themeDisplay, true);
 			}
 			else {
 				return HtmlUtil.escape(groupName);
@@ -489,53 +416,6 @@ public abstract class BaseSocialActivityInterpreter
 		}
 	}
 
-	/**
-	 * @deprecated As of 6.2.0, replaced by {@link #getUserName(long,
-	 *             ServiceContext)}
-	 */
-	@Deprecated
-	protected String getUserName(long userId, ThemeDisplay themeDisplay) {
-		try {
-			if (userId <= 0) {
-				return StringPool.BLANK;
-			}
-
-			User user = UserLocalServiceUtil.getUserById(userId);
-
-			if (user.getUserId() == themeDisplay.getUserId()) {
-				return HtmlUtil.escape(user.getFirstName());
-			}
-
-			String userName = user.getFullName();
-
-			Group group = user.getGroup();
-
-			if (group.getGroupId() == themeDisplay.getScopeGroupId()) {
-				return HtmlUtil.escape(userName);
-			}
-
-			String userDisplayURL = user.getDisplayURL(themeDisplay);
-
-			userName = StringBundler.concat(
-				"<a class=\"user\" href=\"", userDisplayURL, "\">",
-				HtmlUtil.escape(userName), "</a>");
-
-			return userName;
-		}
-		catch (Exception e) {
-			return StringPool.BLANK;
-		}
-	}
-
-	/**
-	 * @deprecated As of 6.2.0, replaced by {@link #getJSONValue(String, String,
-	 *             String)}
-	 */
-	@Deprecated
-	protected String getValue(String json, String key, String defaultValue) {
-		return getJSONValue(json, key, defaultValue);
-	}
-
 	protected String getViewEntryInTrashURL(
 			String className, long classPK, ServiceContext serviceContext)
 		throws Exception {
@@ -627,9 +507,5 @@ public abstract class BaseSocialActivityInterpreter
 
 	private static final Log _log = LogFactoryUtil.getLog(
 		BaseSocialActivityInterpreter.class);
-
-	private final SocialActivityFeedEntry
-		_deprecatedMarkerSocialActivityFeedEntry = new SocialActivityFeedEntry(
-			StringPool.BLANK, StringPool.BLANK);
 
 }

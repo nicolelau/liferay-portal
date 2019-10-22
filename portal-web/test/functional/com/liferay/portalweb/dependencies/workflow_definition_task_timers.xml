@@ -70,8 +70,12 @@
 			<action>
 				<name>my action</name>
 				<description>MMyy acction</description>
-				<script>aaa</script>
-				<script-language>javascript</script-language>
+				<script>
+					<![CDATA[
+						println "aaa";
+					]]>
+				</script>
+				<script-language>groovy</script-language>
 				<priority>5</priority>
 				<execution-type>onAssignment</execution-type>
 			</action>
@@ -137,13 +141,18 @@
 					<timer-action>
 						<name>timer 1 action</name>
 						<description>timer 1 action desc</description>
-						<script>console.log('lol');</script>
-						<script-language>javascript</script-language>
+						<script>
+							<![CDATA[
+								println "lol";
+							]]>
+						</script>
+						<script-language>groovy</script-language>
 						<priority>5</priority>
 					</timer-action>
 					<reassignments>
 						<roles>
 							<role>
+								<role-type>organization</role-type>
 								<name>Organization Content Reviewer</name>
 								<auto-create>true</auto-create>
 							</role>
@@ -158,6 +167,7 @@
 						<recipients>
 							<roles>
 								<role>
+									<role-type></role-type>
 									<name>Portal Content Reviewer</name>
 									<auto-create>true</auto-create>
 								</role>
@@ -175,8 +185,12 @@
 				<timer-actions>
 					<timer-action>
 						<name>timer 2 action</name>
-						<script>script</script>
-						<script-language>beanshell</script-language>
+						<script>
+							<![CDATA[
+								println "script";
+							]]>
+						</script>
+						<script-language>groovy</script-language>
 					</timer-action>
 				</timer-actions>
 			</task-timer>
@@ -196,6 +210,7 @@
 					<reassignments>
 						<roles>
 							<role>
+								<role-type>site</role-type>
 								<name>Site Content Reviewer</name>
 								<auto-create>true</auto-create>
 							</role>
@@ -224,6 +239,7 @@
 						<recipients>
 							<roles>
 								<role>
+									<role-type>organization</role-type>
 									<name>Organization Content Reviewer</name>
 								</role>
 							</roles>
@@ -247,20 +263,29 @@
 					<timer-action>
 						<name>timer 5 action 1</name>
 						<description>timer action</description>
-						<script>console.log('lol');</script>
-						<script-language>javascript</script-language>
+						<script>
+							<![CDATA[
+								println "lol";
+							]]>
+						</script>
+						<script-language>groovy</script-language>
 						<priority>5</priority>
 					</timer-action>
 					<timer-action>
 						<name>timer 5 action 2</name>
 						<description>timer action</description>
-						<script>console.log('lol');</script>
-						<script-language>javascript</script-language>
+						<script>
+							<![CDATA[
+								println "lol";
+							]]>
+						</script>
+						<script-language>groovy</script-language>
 						<priority>5</priority>
 					</timer-action>
 					<reassignments>
 						<roles>
 							<role>
+								<role-type>organization</role-type>
 								<name>Organization Content Reviewer</name>
 								<auto-create>true</auto-create>
 							</role>
@@ -269,6 +294,7 @@
 					<reassignments>
 						<roles>
 							<role>
+								<role-type>organization</role-type>
 								<name>Organization Content Reviewer</name>
 								<auto-create>true</auto-create>
 							</role>
@@ -283,6 +309,7 @@
 						<recipients>
 							<roles>
 								<role>
+									<role-type></role-type>
 									<name>Portal Content Reviewer</name>
 									<auto-create>true</auto-create>
 								</role>
@@ -298,6 +325,7 @@
 						<recipients>
 							<roles>
 								<role>
+									<role-type></role-type>
 									<name>Portal Content Reviewer</name>
 									<auto-create>true</auto-create>
 								</role>

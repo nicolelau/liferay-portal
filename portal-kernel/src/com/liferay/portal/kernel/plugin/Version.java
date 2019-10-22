@@ -15,9 +15,9 @@
 package com.liferay.portal.kernel.plugin;
 
 import com.liferay.petra.string.CharPool;
+import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.util.GetterUtil;
-import com.liferay.portal.kernel.util.StringBundler;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
 
@@ -264,27 +264,24 @@ public class Version implements Comparable<Version>, Serializable {
 		if (compareTo(getInstance(version)) > 0) {
 			return true;
 		}
-		else {
-			return false;
-		}
+
+		return false;
 	}
 
 	public boolean isPreviousVersionThan(String version) {
 		if (compareTo(getInstance(version)) < 0) {
 			return true;
 		}
-		else {
-			return false;
-		}
+
+		return false;
 	}
 
 	public boolean isSameVersionAs(String version) {
 		if (compareTo(getInstance(version)) == 0) {
 			return true;
 		}
-		else {
-			return false;
-		}
+
+		return false;
 	}
 
 	@Override
@@ -388,9 +385,8 @@ public class Version implements Comparable<Version>, Serializable {
 		else if (firstInteger == secondInteger) {
 			return 0;
 		}
-		else {
-			return 1;
-		}
+
+		return 1;
 	}
 
 	private int _compareAsQualifiers(String first, String second) {

@@ -15,6 +15,7 @@
 package com.liferay.portal.repository.capabilities;
 
 import com.liferay.document.library.kernel.model.DLFolderConstants;
+import com.liferay.document.library.kernel.model.DLVersionNumberIncrease;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.lock.Lock;
 import com.liferay.portal.kernel.repository.Repository;
@@ -26,7 +27,6 @@ import com.liferay.portal.kernel.repository.model.FileShortcut;
 import com.liferay.portal.kernel.repository.model.FileVersion;
 import com.liferay.portal.kernel.repository.model.Folder;
 import com.liferay.portal.kernel.repository.model.RepositoryEntry;
-import com.liferay.portal.kernel.repository.util.RepositoryUserUtil;
 import com.liferay.portal.kernel.search.Hits;
 import com.liferay.portal.kernel.search.Query;
 import com.liferay.portal.kernel.search.SearchContext;
@@ -92,41 +92,6 @@ public class CapabilityRepository
 		return fileEntry;
 	}
 
-	/**
-	 * @deprecated As of 7.0.0, see {@link #addFileEntry(long, long, String,
-	 *             String, String, String, String, File, ServiceContext)}
-	 */
-	@Deprecated
-	@Override
-	public FileEntry addFileEntry(
-			long folderId, String sourceFileName, String mimeType, String title,
-			String description, String changeLog, File file,
-			ServiceContext serviceContext)
-		throws PortalException {
-
-		return addFileEntry(
-			RepositoryUserUtil.getUserId(), folderId, sourceFileName, mimeType,
-			title, description, changeLog, file, serviceContext);
-	}
-
-	/**
-	 * @deprecated As of 7.0.0, see {@link #addFileEntry(long, long, String,
-	 *             String, String, String, String, InputStream, long,
-	 *             ServiceContext)}
-	 */
-	@Deprecated
-	@Override
-	public FileEntry addFileEntry(
-			long folderId, String sourceFileName, String mimeType, String title,
-			String description, String changeLog, InputStream is, long size,
-			ServiceContext serviceContext)
-		throws PortalException {
-
-		return addFileEntry(
-			RepositoryUserUtil.getUserId(), folderId, sourceFileName, mimeType,
-			title, description, changeLog, is, size, serviceContext);
-	}
-
 	@Override
 	public FileShortcut addFileShortcut(
 			long userId, long folderId, long toFileEntryId,
@@ -161,22 +126,6 @@ public class CapabilityRepository
 		return folder;
 	}
 
-	/**
-	 * @deprecated As of 7.0.0, replaced by {@link #addFolder(long, long,
-	 *             String, String, ServiceContext)}
-	 */
-	@Deprecated
-	@Override
-	public Folder addFolder(
-			long parentFolderId, String name, String description,
-			ServiceContext serviceContext)
-		throws PortalException {
-
-		return addFolder(
-			RepositoryUserUtil.getUserId(), parentFolderId, name, description,
-			serviceContext);
-	}
-
 	@Override
 	public FileVersion cancelCheckOut(long fileEntryId) throws PortalException {
 		Repository repository = getRepository();
@@ -192,37 +141,22 @@ public class CapabilityRepository
 		return fileVersion;
 	}
 
-	/**
-	 * @deprecated As of 7.0.0, replaced by {@link #checkInFileEntry(long, long,
-	 *             boolean, String, ServiceContext)}
-	 */
-	@Deprecated
 	@Override
 	public void checkInFileEntry(
-			long fileEntryId, boolean major, String changeLog,
+			long userId, long fileEntryId,
+			DLVersionNumberIncrease dlVersionNumberIncrease, String changeLog,
 			ServiceContext serviceContext)
-		throws PortalException {
-
-		checkInFileEntry(
-			RepositoryUserUtil.getUserId(), fileEntryId, major, changeLog,
-			serviceContext);
-	}
-
-	@Override
-	public void checkInFileEntry(
-			long userId, long fileEntryId, boolean majorVersion,
-			String changeLog, ServiceContext serviceContext)
 		throws PortalException {
 
 		Repository repository = getRepository();
 
 		repository.checkInFileEntry(
-			userId, fileEntryId, majorVersion, changeLog, serviceContext);
-
-		FileEntry fileEntry = repository.getFileEntry(fileEntryId);
+			userId, fileEntryId, dlVersionNumberIncrease, changeLog,
+			serviceContext);
 
 		_repositoryEventTrigger.trigger(
-			RepositoryEventType.Update.class, FileEntry.class, fileEntry);
+			RepositoryEventType.Update.class, FileEntry.class,
+			repository.getFileEntry(fileEntryId));
 	}
 
 	@Override
@@ -236,25 +170,9 @@ public class CapabilityRepository
 		repository.checkInFileEntry(
 			userId, fileEntryId, lockUuid, serviceContext);
 
-		FileEntry fileEntry = repository.getFileEntry(fileEntryId);
-
 		_repositoryEventTrigger.trigger(
-			RepositoryEventType.Update.class, FileEntry.class, fileEntry);
-	}
-
-	/**
-	 * @deprecated As of 7.0.0, replaced by {@link #checkInFileEntry(long, long,
-	 *             String, ServiceContext)}
-	 */
-	@Deprecated
-	@Override
-	public void checkInFileEntry(
-			long fileEntryId, String lockUuid, ServiceContext serviceContext)
-		throws PortalException {
-
-		checkInFileEntry(
-			RepositoryUserUtil.getUserId(), fileEntryId, lockUuid,
-			serviceContext);
+			RepositoryEventType.Update.class, FileEntry.class,
+			repository.getFileEntry(fileEntryId));
 	}
 
 	@Override
@@ -307,22 +225,6 @@ public class CapabilityRepository
 		return fileEntry;
 	}
 
-	/**
-	 * @deprecated As of 7.0.0, replaced by {@link #copyFileEntry(long, long,
-	 *             long, long, ServiceContext)}
-	 */
-	@Deprecated
-	@Override
-	public FileEntry copyFileEntry(
-			long groupId, long fileEntryId, long destFolderId,
-			ServiceContext serviceContext)
-		throws PortalException {
-
-		return copyFileEntry(
-			RepositoryUserUtil.getUserId(), groupId, fileEntryId, destFolderId,
-			serviceContext);
-	}
-
 	@Override
 	public void deleteAll() throws PortalException {
 		Repository repository = getRepository();
@@ -337,10 +239,9 @@ public class CapabilityRepository
 	public void deleteFileEntry(long fileEntryId) throws PortalException {
 		Repository repository = getRepository();
 
-		FileEntry fileEntry = repository.getFileEntry(fileEntryId);
-
 		_repositoryEventTrigger.trigger(
-			RepositoryEventType.Delete.class, FileEntry.class, fileEntry);
+			RepositoryEventType.Delete.class, FileEntry.class,
+			repository.getFileEntry(fileEntryId));
 
 		repository.deleteFileEntry(fileEntryId);
 	}
@@ -363,10 +264,9 @@ public class CapabilityRepository
 	public void deleteFileShortcut(long fileShortcutId) throws PortalException {
 		Repository repository = getRepository();
 
-		FileShortcut fileShortcut = repository.getFileShortcut(fileShortcutId);
-
 		_repositoryEventTrigger.trigger(
-			RepositoryEventType.Delete.class, FileShortcut.class, fileShortcut);
+			RepositoryEventType.Delete.class, FileShortcut.class,
+			repository.getFileShortcut(fileShortcutId));
 
 		repository.deleteFileShortcut(fileShortcutId);
 	}
@@ -389,15 +289,25 @@ public class CapabilityRepository
 	}
 
 	@Override
+	public void deleteFileVersion(long fileVersionId) throws PortalException {
+		Repository repository = getRepository();
+
+		_repositoryEventTrigger.trigger(
+			RepositoryEventType.Delete.class, FileVersion.class,
+			repository.getFileVersion(fileVersionId));
+
+		repository.deleteFileVersion(fileVersionId);
+	}
+
+	@Override
 	public void deleteFileVersion(long fileEntryId, String version)
 		throws PortalException {
 
 		Repository repository = getRepository();
 
-		FileEntry fileEntry = repository.getFileEntry(fileEntryId);
-
 		_repositoryEventTrigger.trigger(
-			RepositoryEventType.Update.class, FileEntry.class, fileEntry);
+			RepositoryEventType.Update.class, FileEntry.class,
+			repository.getFileEntry(fileEntryId));
 
 		repository.deleteFileVersion(fileEntryId, version);
 	}
@@ -406,10 +316,9 @@ public class CapabilityRepository
 	public void deleteFolder(long folderId) throws PortalException {
 		Repository repository = getRepository();
 
-		Folder folder = repository.getFolder(folderId);
-
 		_repositoryEventTrigger.trigger(
-			RepositoryEventType.Delete.class, Folder.class, folder);
+			RepositoryEventType.Delete.class, Folder.class,
+			repository.getFolder(folderId));
 
 		repository.deleteFolder(folderId);
 	}
@@ -789,21 +698,6 @@ public class CapabilityRepository
 		return fileEntry;
 	}
 
-	/**
-	 * @deprecated As of 7.0.0, replaced by {@link #moveFileEntry(long, long,
-	 *             long, ServiceContext)}
-	 */
-	@Deprecated
-	@Override
-	public FileEntry moveFileEntry(
-			long fileEntryId, long newFolderId, ServiceContext serviceContext)
-		throws PortalException {
-
-		return moveFileEntry(
-			RepositoryUserUtil.getUserId(), fileEntryId, newFolderId,
-			serviceContext);
-	}
-
 	@Override
 	public Folder moveFolder(
 			long userId, long folderId, long parentFolderId,
@@ -819,22 +713,6 @@ public class CapabilityRepository
 			RepositoryEventType.Move.class, Folder.class, folder);
 
 		return folder;
-	}
-
-	/**
-	 * @deprecated As of 7.0.0, replaced by {@link #moveFolder(long, long, long,
-	 *             ServiceContext)}
-	 */
-	@Deprecated
-	@Override
-	public Folder moveFolder(
-			long folderId, long newParentFolderId,
-			ServiceContext serviceContext)
-		throws PortalException {
-
-		return moveFolder(
-			RepositoryUserUtil.getUserId(), folderId, newParentFolderId,
-			serviceContext);
 	}
 
 	@Override
@@ -866,30 +744,9 @@ public class CapabilityRepository
 		repository.revertFileEntry(
 			userId, fileEntryId, version, serviceContext);
 
-		FileEntry fileEntry = getFileEntry(fileEntryId);
-
 		_repositoryEventTrigger.trigger(
-			RepositoryEventType.Update.class, FileEntry.class, fileEntry);
-	}
-
-	/**
-	 * @deprecated As of 7.0.0, replaced by {@link #revertFileEntry(long, long,
-	 *             String, ServiceContext)}
-	 */
-	@Deprecated
-	@Override
-	public void revertFileEntry(
-			long fileEntryId, String version, ServiceContext serviceContext)
-		throws PortalException {
-
-		Repository repository = getRepository();
-
-		repository.revertFileEntry(fileEntryId, version, serviceContext);
-
-		FileEntry fileEntry = getFileEntry(fileEntryId);
-
-		_repositoryEventTrigger.trigger(
-			RepositoryEventType.Update.class, FileEntry.class, fileEntry);
+			RepositoryEventType.Update.class, FileEntry.class,
+			getFileEntry(fileEntryId));
 	}
 
 	@Override
@@ -939,14 +796,15 @@ public class CapabilityRepository
 	public FileEntry updateFileEntry(
 			long userId, long fileEntryId, String sourceFileName,
 			String mimeType, String title, String description, String changeLog,
-			boolean majorVersion, File file, ServiceContext serviceContext)
+			DLVersionNumberIncrease dlVersionNumberIncrease, File file,
+			ServiceContext serviceContext)
 		throws PortalException {
 
 		Repository repository = getRepository();
 
 		FileEntry fileEntry = repository.updateFileEntry(
 			userId, fileEntryId, sourceFileName, mimeType, title, description,
-			changeLog, majorVersion, file, serviceContext);
+			changeLog, dlVersionNumberIncrease, file, serviceContext);
 
 		_repositoryEventTrigger.trigger(
 			RepositoryEventType.Update.class, FileEntry.class, fileEntry);
@@ -958,66 +816,15 @@ public class CapabilityRepository
 	public FileEntry updateFileEntry(
 			long userId, long fileEntryId, String sourceFileName,
 			String mimeType, String title, String description, String changeLog,
-			boolean majorVersion, InputStream is, long size,
-			ServiceContext serviceContext)
+			DLVersionNumberIncrease dlVersionNumberIncrease, InputStream is,
+			long size, ServiceContext serviceContext)
 		throws PortalException {
 
 		Repository repository = getRepository();
 
 		FileEntry fileEntry = repository.updateFileEntry(
 			userId, fileEntryId, sourceFileName, mimeType, title, description,
-			changeLog, majorVersion, is, size, serviceContext);
-
-		_repositoryEventTrigger.trigger(
-			RepositoryEventType.Update.class, FileEntry.class, fileEntry);
-
-		return fileEntry;
-	}
-
-	/**
-	 * @deprecated As of 7.0.0, replaced by {@link #updateFileEntry(long, long,
-	 *             String, String, String, String, String, boolean, File,
-	 *             ServiceContext)}
-	 */
-	@Deprecated
-	@Override
-	public FileEntry updateFileEntry(
-			long fileEntryId, String sourceFileName, String mimeType,
-			String title, String description, String changeLog,
-			boolean majorVersion, File file, ServiceContext serviceContext)
-		throws PortalException {
-
-		Repository repository = getRepository();
-
-		FileEntry fileEntry = repository.updateFileEntry(
-			fileEntryId, sourceFileName, mimeType, title, description,
-			changeLog, majorVersion, file, serviceContext);
-
-		_repositoryEventTrigger.trigger(
-			RepositoryEventType.Update.class, FileEntry.class, fileEntry);
-
-		return fileEntry;
-	}
-
-	/**
-	 * @deprecated As of 7.0.0, replaced by {@link #updateFileEntry(long, long,
-	 *             String, String, String, String, String, boolean, InputStream,
-	 *             long, ServiceContext)}
-	 */
-	@Deprecated
-	@Override
-	public FileEntry updateFileEntry(
-			long fileEntryId, String sourceFileName, String mimeType,
-			String title, String description, String changeLog,
-			boolean majorVersion, InputStream is, long size,
-			ServiceContext serviceContext)
-		throws PortalException {
-
-		Repository repository = getRepository();
-
-		FileEntry fileEntry = repository.updateFileEntry(
-			fileEntryId, sourceFileName, mimeType, title, description,
-			changeLog, majorVersion, is, size, serviceContext);
+			changeLog, dlVersionNumberIncrease, is, size, serviceContext);
 
 		_repositoryEventTrigger.trigger(
 			RepositoryEventType.Update.class, FileEntry.class, fileEntry);

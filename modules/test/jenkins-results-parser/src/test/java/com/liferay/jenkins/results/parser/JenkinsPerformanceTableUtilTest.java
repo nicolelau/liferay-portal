@@ -31,6 +31,7 @@ public class JenkinsPerformanceTableUtilTest
 	extends com.liferay.jenkins.results.parser.Test {
 
 	@Before
+	@Override
 	public void setUp() throws Exception {
 		downloadSample(
 			"master-success-1", "1682",
@@ -107,7 +108,7 @@ public class JenkinsPerformanceTableUtilTest
 				urlSuffix = "/api/json";
 			}
 			else {
-				fileSuffix = Integer.toString(count);
+				fileSuffix = String.valueOf(count);
 				urlSuffix = "/testReport/api/json";
 			}
 

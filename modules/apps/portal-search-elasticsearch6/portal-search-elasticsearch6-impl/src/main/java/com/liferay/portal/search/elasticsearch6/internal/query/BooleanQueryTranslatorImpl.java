@@ -14,11 +14,11 @@
 
 package com.liferay.portal.search.elasticsearch6.internal.query;
 
-import com.liferay.portal.kernel.search.BooleanClause;
-import com.liferay.portal.kernel.search.BooleanClauseOccur;
-import com.liferay.portal.kernel.search.BooleanQuery;
-import com.liferay.portal.kernel.search.Query;
-import com.liferay.portal.kernel.search.query.QueryVisitor;
+import com.liferay.portal.search.query.BooleanQuery;
+import com.liferay.portal.search.query.Query;
+import com.liferay.portal.search.query.QueryVisitor;
+
+import java.util.List;
 
 import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilder;
@@ -27,10 +27,9 @@ import org.elasticsearch.index.query.QueryBuilders;
 import org.osgi.service.component.annotations.Component;
 
 /**
- * @author André de Oliveira
- * @author Miguel Angelo Caldas Gallindo
+ * @author Michael C. Han
  */
-@Component(immediate = true, service = BooleanQueryTranslator.class)
+@Component(service = BooleanQueryTranslator.class)
 public class BooleanQueryTranslatorImpl implements BooleanQueryTranslator {
 
 	@Override
@@ -39,43 +38,52 @@ public class BooleanQueryTranslatorImpl implements BooleanQueryTranslator {
 
 		BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
 
-		for (BooleanClause<Query> clause : booleanQuery.clauses()) {
-			_addClause(clause, boolQueryBuilder, queryVisitor);
+		processQueryClause(
+			booleanQuery.getMustQueryClauses(), queryVisitor,
+			boolQueryBuilder::must);
+
+		processQueryClause(
+			booleanQuery.getMustNotQueryClauses(), queryVisitor,
+			boolQueryBuilder::mustNot);
+
+		processQueryClause(
+			booleanQuery.getShouldQueryClauses(), queryVisitor,
+			boolQueryBuilder::should);
+
+		processQueryClause(
+			booleanQuery.getFilterQueryClauses(), queryVisitor,
+			boolQueryBuilder::filter);
+
+		if (booleanQuery.getAdjustPureNegative() != null) {
+			boolQueryBuilder.adjustPureNegative(
+				booleanQuery.getAdjustPureNegative());
 		}
 
-		if (!booleanQuery.isDefaultBoost()) {
-			boolQueryBuilder.boost(booleanQuery.getBoost());
+		if (booleanQuery.getMinimumShouldMatch() != null) {
+			boolQueryBuilder.minimumShouldMatch(
+				booleanQuery.getMinimumShouldMatch());
 		}
+
+		boolQueryBuilder.queryName(booleanQuery.getQueryName());
 
 		return boolQueryBuilder;
 	}
 
-	private void _addClause(
-		BooleanClause<Query> clause, BoolQueryBuilder boolQuery,
-		QueryVisitor<QueryBuilder> queryVisitor) {
+	protected void processQueryClause(
+		List<Query> queryClauses, QueryVisitor<QueryBuilder> queryVisitor,
+		QueryBuilderConsumer queryBuilderConsumer) {
 
-		BooleanClauseOccur booleanClauseOccur = clause.getBooleanClauseOccur();
+		for (Query queryClause : queryClauses) {
+			QueryBuilder queryBuilder = queryClause.accept(queryVisitor);
 
-		Query query = clause.getClause();
-
-		QueryBuilder queryBuilder = query.accept(queryVisitor);
-
-		if (booleanClauseOccur.equals(BooleanClauseOccur.MUST)) {
-			boolQuery.must(queryBuilder);
-			return;
+			queryBuilderConsumer.accept(queryBuilder);
 		}
+	}
 
-		if (booleanClauseOccur.equals(BooleanClauseOccur.MUST_NOT)) {
-			boolQuery.mustNot(queryBuilder);
-			return;
-		}
+	protected interface QueryBuilderConsumer {
 
-		if (booleanClauseOccur.equals(BooleanClauseOccur.SHOULD)) {
-			boolQuery.should(queryBuilder);
-			return;
-		}
+		public void accept(QueryBuilder queryBuilder);
 
-		throw new IllegalArgumentException();
 	}
 
 }

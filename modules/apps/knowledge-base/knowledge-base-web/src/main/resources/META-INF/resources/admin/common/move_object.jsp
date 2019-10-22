@@ -110,9 +110,12 @@ if (portletTitleBasedNavigation) {
 </div>
 
 <aui:script>
-	AUI.$('#<portlet:namespace />selectKBObjectButton').on(
-		'click',
-		function(event) {
+	var selectKBObjectButton = document.getElementById(
+		'<portlet:namespace />selectKBObjectButton'
+	);
+
+	if (selectKBObjectButton) {
+		selectKBObjectButton.addEventListener('click', function(event) {
 			Liferay.Util.selectEntity(
 				{
 					dialog: {
@@ -139,8 +142,10 @@ if (portletTitleBasedNavigation) {
 					uri: '<%= HtmlUtil.escapeJS(selectKBObjectURL) %>'
 				},
 				function(event) {
-					document.<portlet:namespace />fm.<portlet:namespace />parentPriority.value = event.priority;
-					document.<portlet:namespace />fm.<portlet:namespace />parentResourceClassNameId.value = event.resourceclassnameid;
+					Liferay.Util.setFormValues(document.<portlet:namespace />fm, {
+						parentPriority: event.priority,
+						parentResourceClassNameId: event.resourceclassnameid
+					});
 
 					var folderData = {
 						idString: 'parentResourcePrimKey',
@@ -152,6 +157,6 @@ if (portletTitleBasedNavigation) {
 					Liferay.Util.selectFolder(folderData, '<portlet:namespace />');
 				}
 			);
-		}
-	);
+		});
+	}
 </aui:script>

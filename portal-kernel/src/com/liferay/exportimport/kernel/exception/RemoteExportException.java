@@ -14,14 +14,11 @@
 
 package com.liferay.exportimport.kernel.exception;
 
-import aQute.bnd.annotation.ProviderType;
-
 import com.liferay.portal.kernel.exception.PortalException;
 
 /**
  * @author Raymond Augé
  */
-@ProviderType
 public class RemoteExportException extends PortalException {
 
 	public static final int BAD_CONNECTION = 1;
@@ -32,10 +29,6 @@ public class RemoteExportException extends PortalException {
 
 	public static final int NO_PERMISSIONS = 5;
 
-	/**
-	 * @deprecated As of 7.0.0, with no direct replacement
-	 */
-	@Deprecated
 	public static final int SAME_GROUP = 4;
 
 	public RemoteExportException(int type) {

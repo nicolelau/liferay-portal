@@ -16,6 +16,7 @@ package com.liferay.util.resiliency.spi.provider;
 
 import com.liferay.petra.process.ClassPathUtil;
 import com.liferay.petra.string.CharPool;
+import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.resiliency.mpi.MPIHelperUtil;
@@ -27,19 +28,13 @@ import com.liferay.portal.kernel.test.CaptureHandler;
 import com.liferay.portal.kernel.test.JDKLoggerTestUtil;
 import com.liferay.portal.kernel.test.ReflectionTestUtil;
 import com.liferay.portal.kernel.test.rule.CodeCoverageAssertor;
+import com.liferay.portal.kernel.test.util.PropsTestUtil;
 import com.liferay.portal.kernel.util.PortalClassLoaderUtil;
-import com.liferay.portal.kernel.util.Props;
 import com.liferay.portal.kernel.util.PropsKeys;
-import com.liferay.portal.kernel.util.PropsUtil;
-import com.liferay.portal.kernel.util.ProxyUtil;
-import com.liferay.portal.kernel.util.StringBundler;
 import com.liferay.portal.kernel.util.StringUtil;
 
 import java.io.File;
 import java.io.IOException;
-
-import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.Method;
 
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -157,31 +152,15 @@ public class SPIClassPathContextListenerTest {
 		putResource(
 			resources, _portalServiceJarFile, PortalException.class.getName());
 
-		final Method getMethod = Props.class.getMethod("get", String.class);
+		Map<String, Object> properties = new HashMap<>();
 
-		PropsUtil.setProps(
-			(Props)ProxyUtil.newProxyInstance(
-				Props.class.getClassLoader(), new Class<?>[] {Props.class},
-				new InvocationHandler() {
+		properties.put(PropsKeys.INTRABAND_IMPL, StringPool.BLANK);
+		properties.put(PropsKeys.INTRABAND_TIMEOUT_DEFAULT, StringPool.BLANK);
+		properties.put(PropsKeys.INTRABAND_WELDER_IMPL, StringPool.BLANK);
+		properties.put(
+			PropsKeys.JDBC_DEFAULT_DRIVER_CLASS_NAME, driverClassName);
 
-					@Override
-					public Object invoke(
-						Object proxy, Method method, Object[] args) {
-
-						if (getMethod.equals(method)) {
-							if (args[0].equals(
-									PropsKeys.JDBC_DEFAULT_DRIVER_CLASS_NAME)) {
-
-								return driverClassName;
-							}
-
-							return StringPool.BLANK;
-						}
-
-						throw new UnsupportedOperationException();
-					}
-
-				}));
+		PropsTestUtil.setProps(properties);
 
 		PortalClassLoaderUtil.setClassLoader(
 			new ClassLoader() {
@@ -379,8 +358,7 @@ public class SPIClassPathContextListenerTest {
 
 			Assert.assertEquals(
 				StringBundler.concat(
-					"Duplicate SPI provider ",
-					String.valueOf(spiProviderReference.get()),
+					"Duplicate SPI provider ", spiProviderReference.get(),
 					" is already registered in servlet context ",
 					_mockServletContext.getContextPath()),
 				logRecord.getMessage());
@@ -463,8 +441,8 @@ public class SPIClassPathContextListenerTest {
 			Map<String, URL> resources, File jarFile, String className)
 		throws MalformedURLException {
 
-		String resourceName = className.replace(
-			CharPool.PERIOD, CharPool.SLASH);
+		String resourceName = StringUtil.replace(
+			className, CharPool.PERIOD, CharPool.SLASH);
 
 		resourceName = resourceName.concat(".class");
 
@@ -539,7 +517,6 @@ public class SPIClassPathContextListenerTest {
 
 	private final MockServletContext _mockServletContext =
 		new MockServletContext() {
-
 			{
 				addInitParameter("spiEmbeddedLibDir", _EMBEDDED_LIB_DIR_NAME);
 			}

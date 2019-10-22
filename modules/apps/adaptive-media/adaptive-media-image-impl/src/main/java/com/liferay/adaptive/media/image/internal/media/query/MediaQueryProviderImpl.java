@@ -26,11 +26,11 @@ import com.liferay.adaptive.media.image.media.query.MediaQueryProvider;
 import com.liferay.adaptive.media.image.processor.AMImageAttribute;
 import com.liferay.adaptive.media.image.processor.AMImageProcessor;
 import com.liferay.adaptive.media.image.url.AMImageURLFactory;
+import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.repository.model.FileEntry;
-import com.liferay.portal.kernel.util.StringBundler;
 
 import java.net.URI;
 
@@ -51,7 +51,7 @@ import org.osgi.service.component.annotations.Reference;
 /**
  * @author Alejandro Tardín
  */
-@Component
+@Component(service = MediaQueryProvider.class)
 public class MediaQueryProviderImpl implements MediaQueryProvider {
 
 	@Override
@@ -79,23 +79,6 @@ public class MediaQueryProviderImpl implements MediaQueryProvider {
 		return mediaQueries;
 	}
 
-	@Reference(unbind = "-")
-	protected void setAMImageConfigurationHelper(
-		AMImageConfigurationHelper amImageConfigurationHelper) {
-
-		_amImageConfigurationHelper = amImageConfigurationHelper;
-	}
-
-	@Reference(unbind = "-")
-	protected void setAMImageFinder(AMImageFinder amImageFinder) {
-		_amImageFinder = amImageFinder;
-	}
-
-	@Reference(unbind = "-")
-	protected void setAMImageURLFactory(AMImageURLFactory amImageURLFactory) {
-		_amImageURLFactory = amImageURLFactory;
-	}
-
 	private Optional<AdaptiveMedia<AMImageProcessor>> _findAdaptiveMedia(
 		FileEntry fileEntry,
 		AMImageConfigurationEntry amImageConfigurationEntry) {
@@ -113,7 +96,7 @@ public class MediaQueryProviderImpl implements MediaQueryProvider {
 		}
 		catch (PortalException pe) {
 			if (_log.isWarnEnabled()) {
-				_log.warn(pe);
+				_log.warn(pe, pe);
 			}
 
 			return Optional.empty();
@@ -307,9 +290,15 @@ public class MediaQueryProviderImpl implements MediaQueryProvider {
 	private static final Log _log = LogFactoryUtil.getLog(
 		MediaQueryProviderImpl.class);
 
+	@Reference
 	private AMImageConfigurationHelper _amImageConfigurationHelper;
+
+	@Reference
 	private AMImageFinder _amImageFinder;
+
+	@Reference
 	private AMImageURLFactory _amImageURLFactory;
+
 	private final Comparator<AdaptiveMedia<AMImageProcessor>> _comparator =
 		Comparator.comparingInt(this::_getWidth);
 

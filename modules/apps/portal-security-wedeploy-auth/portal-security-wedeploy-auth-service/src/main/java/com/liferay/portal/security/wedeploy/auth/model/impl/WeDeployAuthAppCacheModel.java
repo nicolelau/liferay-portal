@@ -14,11 +14,9 @@
 
 package com.liferay.portal.security.wedeploy.auth.model.impl;
 
-import aQute.bnd.annotation.ProviderType;
-
+import com.liferay.petra.lang.HashUtil;
+import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.model.CacheModel;
-import com.liferay.portal.kernel.util.HashUtil;
-import com.liferay.portal.kernel.util.StringBundler;
 import com.liferay.portal.security.wedeploy.auth.model.WeDeployAuthApp;
 
 import java.io.Externalizable;
@@ -32,12 +30,11 @@ import java.util.Date;
  * The cache model class for representing WeDeployAuthApp in entity cache.
  *
  * @author Supritha Sundaram
- * @see WeDeployAuthApp
  * @generated
  */
-@ProviderType
-public class WeDeployAuthAppCacheModel implements CacheModel<WeDeployAuthApp>,
-	Externalizable {
+public class WeDeployAuthAppCacheModel
+	implements CacheModel<WeDeployAuthApp>, Externalizable {
+
 	@Override
 	public boolean equals(Object obj) {
 		if (this == obj) {
@@ -48,7 +45,8 @@ public class WeDeployAuthAppCacheModel implements CacheModel<WeDeployAuthApp>,
 			return false;
 		}
 
-		WeDeployAuthAppCacheModel weDeployAuthAppCacheModel = (WeDeployAuthAppCacheModel)obj;
+		WeDeployAuthAppCacheModel weDeployAuthAppCacheModel =
+			(WeDeployAuthAppCacheModel)obj;
 
 		if (weDeployAuthAppId == weDeployAuthAppCacheModel.weDeployAuthAppId) {
 			return true;
@@ -170,8 +168,7 @@ public class WeDeployAuthAppCacheModel implements CacheModel<WeDeployAuthApp>,
 	}
 
 	@Override
-	public void writeExternal(ObjectOutput objectOutput)
-		throws IOException {
+	public void writeExternal(ObjectOutput objectOutput) throws IOException {
 		objectOutput.writeLong(weDeployAuthAppId);
 
 		objectOutput.writeLong(companyId);
@@ -227,4 +224,5 @@ public class WeDeployAuthAppCacheModel implements CacheModel<WeDeployAuthApp>,
 	public String redirectURI;
 	public String clientId;
 	public String clientSecret;
+
 }

@@ -18,6 +18,7 @@ import com.liferay.oauth2.provider.exception.NoSuchOAuth2AuthorizationException;
 import com.liferay.oauth2.provider.model.OAuth2Authorization;
 import com.liferay.oauth2.provider.model.OAuth2ScopeGrant;
 import com.liferay.oauth2.provider.service.base.OAuth2AuthorizationLocalServiceBaseImpl;
+import com.liferay.portal.aop.AopService;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.util.OrderByComparator;
 
@@ -25,18 +26,46 @@ import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 
+import org.osgi.service.component.annotations.Component;
+
 /**
  * @author Brian Wing Shun Chan
  */
+@Component(
+	property = "model.class.name=com.liferay.oauth2.provider.model.OAuth2Authorization",
+	service = AopService.class
+)
 public class OAuth2AuthorizationLocalServiceImpl
 	extends OAuth2AuthorizationLocalServiceBaseImpl {
 
+	/**
+	 * @deprecated As of Mueller (7.2.x), replaced by {@link
+	 *             #addOAuth2Authorization(long, long, String, long,long,
+	 *             String, Date, Date, String, String, String, Date, Date)}
+	 */
+	@Deprecated
 	@Override
 	public OAuth2Authorization addOAuth2Authorization(
 		long companyId, long userId, String userName, long oAuth2ApplicationId,
 		long oAuth2ApplicationScopeAliasesId, String accessTokenContent,
 		Date accessTokenCreateDate, Date accessTokenExpirationDate,
 		String remoteIPInfo, String refreshTokenContent,
+		Date refreshTokenCreateDate, Date refreshTokenExpirationDate) {
+
+		return addOAuth2Authorization(
+			companyId, userId, userName, oAuth2ApplicationId,
+			oAuth2ApplicationScopeAliasesId, accessTokenContent,
+			accessTokenCreateDate, accessTokenExpirationDate, null,
+			remoteIPInfo, refreshTokenContent, refreshTokenCreateDate,
+			refreshTokenExpirationDate);
+	}
+
+	@Override
+	public OAuth2Authorization addOAuth2Authorization(
+		long companyId, long userId, String userName, long oAuth2ApplicationId,
+		long oAuth2ApplicationScopeAliasesId, String accessTokenContent,
+		Date accessTokenCreateDate, Date accessTokenExpirationDate,
+		String remoteHostInfo, String remoteIPInfo, String refreshTokenContent,
 		Date refreshTokenCreateDate, Date refreshTokenExpirationDate) {
 
 		long oAuth2AuthorizationId = counterLocalService.increment(
@@ -56,6 +85,7 @@ public class OAuth2AuthorizationLocalServiceImpl
 		oAuth2Authorization.setAccessTokenCreateDate(accessTokenCreateDate);
 		oAuth2Authorization.setAccessTokenExpirationDate(
 			accessTokenExpirationDate);
+		oAuth2Authorization.setRemoteHostInfo(remoteHostInfo);
 		oAuth2Authorization.setRemoteIPInfo(remoteIPInfo);
 		oAuth2Authorization.setRefreshTokenContent(refreshTokenContent);
 		oAuth2Authorization.setRefreshTokenCreateDate(refreshTokenCreateDate);
@@ -70,15 +100,6 @@ public class OAuth2AuthorizationLocalServiceImpl
 			long oAuth2AuthorizationId)
 		throws PortalException {
 
-		Collection<OAuth2ScopeGrant> oAuth2ScopeGrants =
-			oAuth2AuthorizationLocalService.getOAuth2ScopeGrants(
-				oAuth2AuthorizationId);
-
-		for (OAuth2ScopeGrant oAuth2ScopeGrant : oAuth2ScopeGrants) {
-			oAuth2ScopeGrantLocalService.deleteOAuth2ScopeGrant(
-				oAuth2ScopeGrant);
-		}
-
 		return oAuth2AuthorizationPersistence.remove(oAuth2AuthorizationId);
 	}
 
@@ -86,16 +107,38 @@ public class OAuth2AuthorizationLocalServiceImpl
 	public OAuth2Authorization fetchOAuth2AuthorizationByAccessTokenContent(
 		String accessTokenContent) {
 
-		return oAuth2AuthorizationPersistence.fetchByAccessTokenContent(
-			accessTokenContent);
+		List<OAuth2Authorization> oAuth2Authorizations =
+			oAuth2AuthorizationPersistence.findByAccessTokenContentHash(
+				accessTokenContent.hashCode());
+
+		for (OAuth2Authorization oAuth2Authorization : oAuth2Authorizations) {
+			if (accessTokenContent.equals(
+					oAuth2Authorization.getAccessTokenContent())) {
+
+				return oAuth2Authorization;
+			}
+		}
+
+		return null;
 	}
 
 	@Override
 	public OAuth2Authorization fetchOAuth2AuthorizationByRefreshTokenContent(
 		String refreshTokenContent) {
 
-		return oAuth2AuthorizationPersistence.fetchByRefreshTokenContent(
-			refreshTokenContent);
+		List<OAuth2Authorization> oAuth2Authorizations =
+			oAuth2AuthorizationPersistence.findByRefreshTokenContentHash(
+				refreshTokenContent.hashCode());
+
+		for (OAuth2Authorization oAuth2Authorization : oAuth2Authorizations) {
+			if (refreshTokenContent.equals(
+					oAuth2Authorization.getRefreshTokenContent())) {
+
+				return oAuth2Authorization;
+			}
+		}
+
+		return null;
 	}
 
 	@Override
@@ -103,8 +146,16 @@ public class OAuth2AuthorizationLocalServiceImpl
 			String accessTokenContent)
 		throws NoSuchOAuth2AuthorizationException {
 
-		return oAuth2AuthorizationPersistence.findByAccessTokenContent(
-			accessTokenContent);
+		OAuth2Authorization oAuth2Authorization =
+			fetchOAuth2AuthorizationByAccessTokenContent(accessTokenContent);
+
+		if (oAuth2Authorization == null) {
+			throw new NoSuchOAuth2AuthorizationException(
+				"No OAuth2 authorization exists with access token content " +
+					accessTokenContent);
+		}
+
+		return oAuth2Authorization;
 	}
 
 	@Override
@@ -112,8 +163,16 @@ public class OAuth2AuthorizationLocalServiceImpl
 			String refreshTokenContent)
 		throws NoSuchOAuth2AuthorizationException {
 
-		return oAuth2AuthorizationPersistence.findByRefreshTokenContent(
-			refreshTokenContent);
+		OAuth2Authorization oAuth2Authorization =
+			fetchOAuth2AuthorizationByRefreshTokenContent(refreshTokenContent);
+
+		if (oAuth2Authorization == null) {
+			throw new NoSuchOAuth2AuthorizationException(
+				"No OAuth2 authorization exists with refresh token content " +
+					refreshTokenContent);
+		}
+
+		return oAuth2Authorization;
 	}
 
 	@Override
@@ -135,8 +194,8 @@ public class OAuth2AuthorizationLocalServiceImpl
 	public Collection<OAuth2ScopeGrant> getOAuth2ScopeGrants(
 		long oAuth2AuthorizationId) {
 
-		return oAuth2AuthorizationPersistence.getOAuth2ScopeGrants(
-			oAuth2AuthorizationId);
+		return oAuth2ScopeGrantPersistence.
+			getOAuth2AuthorizationOAuth2ScopeGrants(oAuth2AuthorizationId);
 	}
 
 	@Override

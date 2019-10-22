@@ -31,7 +31,7 @@ import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 
 /**
- * @author Eduardo Garcia
+ * @author Eduardo García
  */
 @Component(
 	immediate = true,
@@ -39,7 +39,7 @@ import org.osgi.service.component.annotations.Reference;
 		"com.liferay.portlet.display-category=category.sample",
 		"com.liferay.portlet.instanceable=true",
 		"javax.portlet.display-name=Analytics Client Demo Portlet",
-		"javax.portlet.init-param.template-path=/",
+		"javax.portlet.init-param.template-path=/META-INF/resources/",
 		"javax.portlet.security-role-ref=power-user,user"
 	},
 	service = Portlet.class
@@ -71,14 +71,10 @@ public class AnalyticsClientDemoPortlet extends MVCPortlet {
 		}
 	}
 
-	@Reference(unbind = "-")
-	protected void setAnalyticsClient(AnalyticsClient analyticsClient) {
-		_analyticsClient = analyticsClient;
-	}
-
 	private static final Log _log = LogFactoryUtil.getLog(
 		AnalyticsClientDemoPortlet.class);
 
+	@Reference
 	private AnalyticsClient _analyticsClient;
 
 }

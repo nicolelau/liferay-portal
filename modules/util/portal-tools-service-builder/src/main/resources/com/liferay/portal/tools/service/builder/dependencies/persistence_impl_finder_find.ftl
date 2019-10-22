@@ -1,4 +1,7 @@
-<#assign entityColumns = entityFinder.entityColumns />
+<#assign
+	entityColumns = entityFinder.entityColumns
+	entityFinderArrayableColsList = entityFinder.getArrayableColumns()
+/>
 
 <#--
 Basic Cases Table:
@@ -184,7 +187,7 @@ that may or may not be enforced with a unique index at the database level. Case
 	 * @param start the lower bound of the range of ${entity.humanNames}
 	 * @param end the upper bound of the range of ${entity.humanNames} (not inclusive)
 	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
-	 * @param retrieveFromCache whether to retrieve from the finder cache
+	 * @param useFinderCache whether to use the finder cache
 	 * @return the ordered range of matching ${entity.humanNames}
 	 */
 	@Override
@@ -194,32 +197,50 @@ that may or may not be enforced with a unique index at the database level. Case
 		${entityColumn.type} ${entityColumn.name},
 	</#list>
 
-	int start, int end, OrderByComparator<${entity.name}> orderByComparator, boolean retrieveFromCache) {
-		boolean pagination = true;
+	int start, int end, OrderByComparator<${entity.name}> orderByComparator, boolean useFinderCache) {
+		<#list entityColumns as entityColumn>
+			<#if stringUtil.equals(entityColumn.type, "String") && entityColumn.isConvertNull()>
+				${entityColumn.name} = Objects.toString(${entityColumn.name}, "");
+			</#if>
+		</#list>
+
+		<#if entity.isChangeTrackingEnabled()>
+			boolean productionMode = ${ctPersistenceHelper}.isProductionMode(${entity.name}.class);
+		</#if>
+
 		FinderPath finderPath = null;
 		Object[] finderArgs = null;
 
 		<#if !entityFinder.hasCustomComparator()>
 			if ((start == QueryUtil.ALL_POS) && (end == QueryUtil.ALL_POS) && (orderByComparator == null)) {
-				pagination = false;
-				finderPath = FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_${entityFinder.name?upper_case};
-				finderArgs = new Object[] {
-					<#list entityColumns as entityColumn>
-						${entityColumn.name}
+				if (${useCache}) {
+					finderPath = _finderPathWithoutPaginationFindBy${entityFinder.name};
+					finderArgs = new Object[] {
+						<#list entityColumns as entityColumn>
+							<#if stringUtil.equals(entityColumn.type, "Date")>
+								_getTime(${entityColumn.name})
+							<#else>
+								${entityColumn.name}
+							</#if>
 
-						<#if entityColumn_has_next>
-							,
-						</#if>
-					</#list>
-				};
+							<#if entityColumn_has_next>
+								,
+							</#if>
+						</#list>
+					};
+				}
 			}
-			else {
+			else if (${useCache}) {
 		</#if>
 
-		finderPath = FINDER_PATH_WITH_PAGINATION_FIND_BY_${entityFinder.name?upper_case};
+		finderPath = _finderPathWithPaginationFindBy${entityFinder.name};
 		finderArgs = new Object[] {
 			<#list entityColumns as entityColumn>
-				${entityColumn.name},
+				<#if stringUtil.equals(entityColumn.type, "Date")>
+					_getTime(${entityColumn.name}),
+				<#else>
+					${entityColumn.name},
+				</#if>
 			</#list>
 
 			start, end, orderByComparator
@@ -231,8 +252,8 @@ that may or may not be enforced with a unique index at the database level. Case
 
 		List<${entity.name}> list = null;
 
-		if (retrieveFromCache) {
-			list = (List<${entity.name}>)finderCache.getResult(finderPath, finderArgs, this);
+		if (${useCache}) {
+			list = (List<${entity.name}>)${finderCache}.getResult(finderPath, finderArgs, this);
 
 			if ((list != null) && !list.isEmpty()) {
 				for (${entity.name} ${entity.varName} : list) {
@@ -254,11 +275,7 @@ that may or may not be enforced with a unique index at the database level. Case
 		}
 
 		if (list == null) {
-			<#assign checkPagination = true />
-
 			<#include "persistence_impl_find_by_query.ftl">
-
-			<#assign checkPagination = false />
 
 			String sql = query.toString();
 
@@ -273,23 +290,18 @@ that may or may not be enforced with a unique index at the database level. Case
 
 				<@finderQPos />
 
-				if (!pagination) {
-					list = (List<${entity.name}>)QueryUtil.list(q, getDialect(), start, end, false);
-
-					Collections.sort(list);
-
-					list = Collections.unmodifiableList(list);
-				}
-				else {
-					list = (List<${entity.name}>)QueryUtil.list(q, getDialect(), start, end);
-				}
+				list = (List<${entity.name}>)QueryUtil.list(q, getDialect(), start, end);
 
 				cacheResult(list);
 
-				finderCache.putResult(finderPath, finderArgs, list);
+				if (${useCache}) {
+					${finderCache}.putResult(finderPath, finderArgs, list);
+				}
 			}
 			catch (Exception e) {
-				finderCache.removeResult(finderPath, finderArgs);
+				if (${useCache}) {
+					${finderCache}.removeResult(finderPath, finderArgs);
+				}
 
 				throw processException(e);
 			}
@@ -336,7 +348,7 @@ that may or may not be enforced with a unique index at the database level. Case
 		msg.append(_NO_SUCH_ENTITY_WITH_KEY);
 
 		<#list entityColumns as entityColumn>
-			msg.append("<#if entityColumn_index != 0>, </#if>${entityColumn.name}=");
+			msg.append("<#if entityColumn_index != 0>, </#if>${entityColumn.name}${entityColumn.comparator}");
 			msg.append(${entityColumn.name});
 
 			<#if !entityColumn_has_next>
@@ -414,7 +426,7 @@ that may or may not be enforced with a unique index at the database level. Case
 		msg.append(_NO_SUCH_ENTITY_WITH_KEY);
 
 		<#list entityColumns as entityColumn>
-			msg.append("<#if entityColumn_index != 0>, </#if>${entityColumn.name}=");
+			msg.append("<#if entityColumn_index != 0>, </#if>${entityColumn.name}${entityColumn.comparator}");
 			msg.append(${entityColumn.name});
 
 			<#if !entityColumn_has_next>
@@ -493,6 +505,12 @@ that may or may not be enforced with a unique index at the database level. Case
 		</#list>
 
 		OrderByComparator<${entity.name}> orderByComparator) throws ${noSuchEntity}Exception {
+			<#list entityColumns as entityColumn>
+				<#if stringUtil.equals(entityColumn.type, "String") && entityColumn.isConvertNull()>
+					${entityColumn.name} = Objects.toString(${entityColumn.name}, "");
+				</#if>
+			</#list>
+
 			${entity.name} ${entity.varName} = findByPrimaryKey(${entity.PKVarName});
 
 			Session session = null;
@@ -557,10 +575,8 @@ that may or may not be enforced with a unique index at the database level. Case
 			<@finderQPos />
 
 			if (orderByComparator != null) {
-				Object[] values = orderByComparator.getOrderByConditionValues(${entity.varName});
-
-				for (Object value : values) {
-					qPos.add(value);
+				for (Object orderByConditionValue : orderByComparator.getOrderByConditionValues(${entity.varName})) {
+					qPos.add(orderByConditionValue);
 				}
 			}
 
@@ -675,6 +691,12 @@ that may or may not be enforced with a unique index at the database level. Case
 
 				start, end, orderByComparator);
 			}
+
+			<#list entityColumns as entityColumn>
+				<#if stringUtil.equals(entityColumn.type, "String") && entityColumn.isConvertNull()>
+					${entityColumn.name} = Objects.toString(${entityColumn.name}, "");
+				</#if>
+			</#list>
 
 			<#if entity.isPermissionedModel()>
 				<#include "persistence_impl_find_by_query.ftl">
@@ -812,6 +834,12 @@ that may or may not be enforced with a unique index at the database level. Case
 					orderByComparator);
 				}
 
+				<#list entityColumns as entityColumn>
+					<#if stringUtil.equals(entityColumn.type, "String") && entityColumn.isConvertNull()>
+						${entityColumn.name} = Objects.toString(${entityColumn.name}, "");
+					</#if>
+				</#list>
+
 				${entity.name} ${entity.varName} = findByPrimaryKey(${entity.PKVarName});
 
 				Session session = null;
@@ -877,10 +905,8 @@ that may or may not be enforced with a unique index at the database level. Case
 					<@finderQPos />
 
 					if (orderByComparator != null) {
-						Object[] values = orderByComparator.getOrderByConditionValues(${entity.varName});
-
-						for (Object value : values) {
-							qPos.add(value);
+						for (Object orderByConditionValue : orderByComparator.getOrderByConditionValues(${entity.varName})) {
+							qPos.add(orderByConditionValue);
 						}
 					}
 
@@ -928,13 +954,11 @@ that may or may not be enforced with a unique index at the database level. Case
 
 						for (int i = 0; i < orderByConditionFields.length; i++) {
 							if (getDB().isSupportsInlineDistinct()) {
-								query.append(_ORDER_BY_ENTITY_ALIAS);
+								query.append(getColumnName(_ORDER_BY_ENTITY_ALIAS, orderByConditionFields[i], true));
 							}
 							else {
-								query.append(_ORDER_BY_ENTITY_TABLE);
+								query.append(getColumnName(_ORDER_BY_ENTITY_TABLE, orderByConditionFields[i], true));
 							}
-
-							query.append(orderByConditionFields[i]);
 
 							if ((i + 1) < orderByConditionFields.length) {
 								if (orderByComparator.isAscending() ^ previous) {
@@ -960,13 +984,11 @@ that may or may not be enforced with a unique index at the database level. Case
 
 						for (int i = 0; i < orderByFields.length; i++) {
 							if (getDB().isSupportsInlineDistinct()) {
-								query.append(_ORDER_BY_ENTITY_ALIAS);
+								query.append(getColumnName(_ORDER_BY_ENTITY_ALIAS, orderByFields[i], true));
 							}
 							else {
-								query.append(_ORDER_BY_ENTITY_TABLE);
+								query.append(getColumnName(_ORDER_BY_ENTITY_TABLE, orderByFields[i], true));
 							}
-
-							query.append(orderByFields[i]);
 
 							if ((i + 1) < orderByFields.length) {
 								if (orderByComparator.isAscending() ^ previous) {
@@ -1014,10 +1036,8 @@ that may or may not be enforced with a unique index at the database level. Case
 					<@finderQPos />
 
 					if (orderByComparator != null) {
-						Object[] values = orderByComparator.getOrderByConditionValues(${entity.varName});
-
-						for (Object value : values) {
-							qPos.add(value);
+						for (Object orderByConditionValue : orderByComparator.getOrderByConditionValues(${entity.varName})) {
+							qPos.add(orderByConditionValue);
 						}
 					}
 
@@ -1182,19 +1202,31 @@ that may or may not be enforced with a unique index at the database level. Case
 							${entityColumn.names} = new ${entityColumn.type}[0];
 						}
 						else if (${entityColumn.names}.length > 1) {
-							${entityColumn.names} =
-								<#if stringUtil.equals(entityColumn.type, "String")>
-									ArrayUtil.distinct(${entityColumn.names}, NULL_SAFE_STRING_COMPARATOR);
-								<#else>
-									ArrayUtil.unique(${entityColumn.names});
-								</#if>
+							<#if stringUtil.equals(entityColumn.type, "String") && entityColumn.isConvertNull()>
+								for (int i = 0; i < ${entityColumn.names}.length; i++) {
+									${entityColumn.names}[i] = Objects.toString(${entityColumn.names}[i], "");
+								}
+							</#if>
 
-							<#if stringUtil.equals(entityColumn.type, "String")>
-								Arrays.sort(${entityColumn.names}, NULL_SAFE_STRING_COMPARATOR);
+							<#if serviceBuilder.isVersionGTE_7_2_0()>
+								${entityColumn.names} = ArrayUtil.sortedUnique(${entityColumn.names});
 							<#else>
-								Arrays.sort(${entityColumn.names});
+								${entityColumn.names} =
+									<#if stringUtil.equals(entityColumn.type, "String") && !entityColumn.isConvertNull()>
+										ArrayUtil.distinct(${entityColumn.names}, NULL_SAFE_STRING_COMPARATOR);
+									<#else>
+										ArrayUtil.unique(${entityColumn.names});
+									</#if>
+
+								<#if stringUtil.equals(entityColumn.type, "String") && !entityColumn.isConvertNull()>
+									Arrays.sort(${entityColumn.names}, NULL_SAFE_STRING_COMPARATOR);
+								<#else>
+									Arrays.sort(${entityColumn.names});
+								</#if>
 							</#if>
 						}
+					<#elseif stringUtil.equals(entityColumn.type, "String") && entityColumn.isConvertNull()>
+						${entityColumn.name} = Objects.toString(${entityColumn.name}, "");
 					</#if>
 				</#list>
 
@@ -1328,249 +1360,619 @@ that may or may not be enforced with a unique index at the database level. Case
 <#if !entityFinder.isUnique()>
 </#if>
 
-<#-- Case 7: entityFinder.isCollection() -->
+<#-- Case 7: entityFinder.isCollection() && entityFinder.hasArrayableOperator() && !entityFinder.hasArrayablePagination() -->
 
-<#if entityFinder.isCollection()>
-	<#if entityFinder.hasArrayableOperator()>
-		/**
-		 * Returns all the ${entity.humanNames} where ${entityFinder.getHumanConditions(true)}.
-		 *
-		 * <p>
-		 * <#include "range_comment.ftl">
-		 * </p>
-		 *
-		<#list entityColumns as entityColumn>
-			<#if entityColumn.hasArrayableOperator()>
-		 * @param ${entityColumn.names} the ${entityColumn.humanNames}
-			<#else>
-		 * @param ${entityColumn.name} the ${entityColumn.humanName}
-			</#if>
-		</#list>
-		 * @return the matching ${entity.humanNames}
-		 */
-		@Override
-		public List<${entity.name}> findBy${entityFinder.name}(
+<#if entityFinder.isCollection() && entityFinder.hasArrayableOperator() && !entityFinder.hasArrayablePagination()>
+	/**
+	 * Returns all the ${entity.humanNames} where ${entityFinder.getHumanConditions(true)}.
+	 *
+	 * <p>
+	 * <#include "range_comment.ftl">
+	 * </p>
+	 *
+	<#list entityColumns as entityColumn>
+		<#if entityColumn.hasArrayableOperator()>
+	 * @param ${entityColumn.names} the ${entityColumn.humanNames}
+		<#else>
+	 * @param ${entityColumn.name} the ${entityColumn.humanName}
+		</#if>
+	</#list>
+	 * @return the matching ${entity.humanNames}
+	 */
+	@Override
+	public List<${entity.name}> findBy${entityFinder.name}(
 
-		<#list entityColumns as entityColumn>
-			<#if entityColumn.hasArrayableOperator()>
-				${entityColumn.type}[] ${entityColumn.names}
-			<#else>
-				${entityColumn.type} ${entityColumn.name}
-			</#if>
+	<#list entityColumns as entityColumn>
+		<#if entityColumn.hasArrayableOperator()>
+			${entityColumn.type}[] ${entityColumn.names}
+		<#else>
+			${entityColumn.type} ${entityColumn.name}
+		</#if>
 
-			<#if entityColumn_has_next>
-				,
-			</#if>
-		</#list>
+		<#if entityColumn_has_next>
+			,
+		</#if>
+	</#list>
 
-		) {
-			return findBy${entityFinder.name}(
-
-			<#list entityColumns as entityColumn>
-				<#if entityColumn.hasArrayableOperator()>
-					${entityColumn.names},
-				<#else>
-					${entityColumn.name},
-				</#if>
-			</#list>
-
-			QueryUtil.ALL_POS, QueryUtil.ALL_POS, null);
-		}
-
-		/**
-		 * Returns a range of all the ${entity.humanNames} where ${entityFinder.getHumanConditions(true)}.
-		 *
-		 * <p>
-		 * <#include "range_comment.ftl">
-		 * </p>
-		 *
-		<#list entityColumns as entityColumn>
-			<#if entityColumn.hasArrayableOperator()>
-		 * @param ${entityColumn.names} the ${entityColumn.humanNames}
-			<#else>
-		 * @param ${entityColumn.name} the ${entityColumn.humanName}
-			</#if>
-		</#list>
-		 * @param start the lower bound of the range of ${entity.humanNames}
-		 * @param end the upper bound of the range of ${entity.humanNames} (not inclusive)
-		 * @return the range of matching ${entity.humanNames}
-		 */
-		@Override
-		public List<${entity.name}> findBy${entityFinder.name}(
+	) {
+		return findBy${entityFinder.name}(
 
 		<#list entityColumns as entityColumn>
 			<#if entityColumn.hasArrayableOperator()>
-				${entityColumn.type}[] ${entityColumn.names},
+				${entityColumn.names},
 			<#else>
-				${entityColumn.type} ${entityColumn.name},
+				${entityColumn.name},
 			</#if>
 		</#list>
 
-		int start, int end) {
-			return findBy${entityFinder.name}(
+		QueryUtil.ALL_POS, QueryUtil.ALL_POS, null);
+	}
 
-			<#list entityColumns as entityColumn>
-				<#if entityColumn.hasArrayableOperator()>
-					${entityColumn.names},
-				<#else>
-					${entityColumn.name},
-				</#if>
-			</#list>
+	/**
+	 * Returns a range of all the ${entity.humanNames} where ${entityFinder.getHumanConditions(true)}.
+	 *
+	 * <p>
+	 * <#include "range_comment.ftl">
+	 * </p>
+	 *
+	<#list entityColumns as entityColumn>
+		<#if entityColumn.hasArrayableOperator()>
+	 * @param ${entityColumn.names} the ${entityColumn.humanNames}
+		<#else>
+	 * @param ${entityColumn.name} the ${entityColumn.humanName}
+		</#if>
+	</#list>
+	 * @param start the lower bound of the range of ${entity.humanNames}
+	 * @param end the upper bound of the range of ${entity.humanNames} (not inclusive)
+	 * @return the range of matching ${entity.humanNames}
+	 */
+	@Override
+	public List<${entity.name}> findBy${entityFinder.name}(
 
-			start, end, null);
-		}
+	<#list entityColumns as entityColumn>
+		<#if entityColumn.hasArrayableOperator()>
+			${entityColumn.type}[] ${entityColumn.names},
+		<#else>
+			${entityColumn.type} ${entityColumn.name},
+		</#if>
+	</#list>
 
-		/**
-		 * Returns an ordered range of all the ${entity.humanNames} where ${entityFinder.getHumanConditions(true)}.
-		 *
-		 * <p>
-		 * <#include "range_comment.ftl">
-		 * </p>
-		 *
-		<#list entityColumns as entityColumn>
-			<#if entityColumn.hasArrayableOperator()>
-		 * @param ${entityColumn.names} the ${entityColumn.humanNames}
-			<#else>
-		 * @param ${entityColumn.name} the ${entityColumn.humanName}
-			</#if>
-		</#list>
-		 * @param start the lower bound of the range of ${entity.humanNames}
-		 * @param end the upper bound of the range of ${entity.humanNames} (not inclusive)
-		 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
-		 * @return the ordered range of matching ${entity.humanNames}
-		 */
-		@Override
-		public List<${entity.name}> findBy${entityFinder.name}(
-
-		<#list entityColumns as entityColumn>
-			<#if entityColumn.hasArrayableOperator()>
-				${entityColumn.type}[] ${entityColumn.names},
-			<#else>
-				${entityColumn.type} ${entityColumn.name},
-			</#if>
-		</#list>
-
-		int start, int end, OrderByComparator<${entity.name}> orderByComparator) {
-			return findBy${entityFinder.name}(
-
-			<#list entityColumns as entityColumn>
-				<#if entityColumn.hasArrayableOperator()>
-					${entityColumn.names},
-				<#else>
-					${entityColumn.name},
-				</#if>
-			</#list>
-
-			start, end, orderByComparator, true);
-		}
-
-		/**
-		 * Returns an ordered range of all the ${entity.humanNames} where ${entityFinder.getHumanConditions(false)}, optionally using the finder cache.
-		 *
-		 * <p>
-		 * <#include "range_comment.ftl">
-		 * </p>
-		 *
-		<#list entityColumns as entityColumn>
-		 * @param ${entityColumn.name} the ${entityColumn.humanName}
-		</#list>
-		 * @param start the lower bound of the range of ${entity.humanNames}
-		 * @param end the upper bound of the range of ${entity.humanNames} (not inclusive)
-		 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
-		 * @param retrieveFromCache whether to retrieve from the finder cache
-		 * @return the ordered range of matching ${entity.humanNames}
-		 */
-		@Override
-		public List<${entity.name}> findBy${entityFinder.name}(
+	int start, int end) {
+		return findBy${entityFinder.name}(
 
 		<#list entityColumns as entityColumn>
 			<#if entityColumn.hasArrayableOperator()>
-				${entityColumn.type}[] ${entityColumn.names},
+				${entityColumn.names},
 			<#else>
-				${entityColumn.type} ${entityColumn.name},
+				${entityColumn.name},
 			</#if>
 		</#list>
 
-		int start, int end, OrderByComparator<${entity.name}> orderByComparator, boolean retrieveFromCache) {
-			<#list entityColumns as entityColumn>
-				<#if entityColumn.hasArrayableOperator()>
-					if (${entityColumn.names} == null) {
-						${entityColumn.names} = new ${entityColumn.type}[0];
-					}
-					else if (${entityColumn.names}.length > 1) {
+		start, end, null);
+	}
+
+	/**
+	 * Returns an ordered range of all the ${entity.humanNames} where ${entityFinder.getHumanConditions(true)}.
+	 *
+	 * <p>
+	 * <#include "range_comment.ftl">
+	 * </p>
+	 *
+	<#list entityColumns as entityColumn>
+		<#if entityColumn.hasArrayableOperator()>
+	 * @param ${entityColumn.names} the ${entityColumn.humanNames}
+		<#else>
+	 * @param ${entityColumn.name} the ${entityColumn.humanName}
+		</#if>
+	</#list>
+	 * @param start the lower bound of the range of ${entity.humanNames}
+	 * @param end the upper bound of the range of ${entity.humanNames} (not inclusive)
+	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
+	 * @return the ordered range of matching ${entity.humanNames}
+	 */
+	@Override
+	public List<${entity.name}> findBy${entityFinder.name}(
+
+	<#list entityColumns as entityColumn>
+		<#if entityColumn.hasArrayableOperator()>
+			${entityColumn.type}[] ${entityColumn.names},
+		<#else>
+			${entityColumn.type} ${entityColumn.name},
+		</#if>
+	</#list>
+
+	int start, int end, OrderByComparator<${entity.name}> orderByComparator) {
+		return findBy${entityFinder.name}(
+
+		<#list entityColumns as entityColumn>
+			<#if entityColumn.hasArrayableOperator()>
+				${entityColumn.names},
+			<#else>
+				${entityColumn.name},
+			</#if>
+		</#list>
+
+		start, end, orderByComparator, true);
+	}
+
+	/**
+	 * Returns an ordered range of all the ${entity.humanNames} where ${entityFinder.getHumanConditions(false)}, optionally using the finder cache.
+	 *
+	 * <p>
+	 * <#include "range_comment.ftl">
+	 * </p>
+	 *
+	<#list entityColumns as entityColumn>
+	 * @param ${entityColumn.name} the ${entityColumn.humanName}
+	</#list>
+	 * @param start the lower bound of the range of ${entity.humanNames}
+	 * @param end the upper bound of the range of ${entity.humanNames} (not inclusive)
+	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
+	 * @param useFinderCache whether to use the finder cache
+	 * @return the ordered range of matching ${entity.humanNames}
+	 */
+	@Override
+	public List<${entity.name}> findBy${entityFinder.name}(
+
+	<#list entityColumns as entityColumn>
+		<#if entityColumn.hasArrayableOperator()>
+			${entityColumn.type}[] ${entityColumn.names},
+		<#else>
+			${entityColumn.type} ${entityColumn.name},
+		</#if>
+	</#list>
+
+	int start, int end, OrderByComparator<${entity.name}> orderByComparator, boolean useFinderCache) {
+		<#list entityColumns as entityColumn>
+			<#if entityColumn.hasArrayableOperator()>
+				if (${entityColumn.names} == null) {
+					${entityColumn.names} = new ${entityColumn.type}[0];
+				}
+				else if (${entityColumn.names}.length > 1) {
+					<#if stringUtil.equals(entityColumn.type, "String") && entityColumn.isConvertNull()>
+						for (int i = 0; i < ${entityColumn.names}.length; i++) {
+							${entityColumn.names}[i] = Objects.toString(${entityColumn.names}[i], "");
+						}
+					</#if>
+
+					<#if serviceBuilder.isVersionGTE_7_2_0()>
+						${entityColumn.names} = ArrayUtil.sortedUnique(${entityColumn.names});
+					<#else>
 						${entityColumn.names} =
-							<#if stringUtil.equals(entityColumn.type, "String")>
+							<#if stringUtil.equals(entityColumn.type, "String") && !entityColumn.isConvertNull()>
 								ArrayUtil.distinct(${entityColumn.names}, NULL_SAFE_STRING_COMPARATOR);
 							<#else>
 								ArrayUtil.unique(${entityColumn.names});
 							</#if>
 
-						<#if stringUtil.equals(entityColumn.type, "String")>
+						<#if stringUtil.equals(entityColumn.type, "String") && !entityColumn.isConvertNull()>
 							Arrays.sort(${entityColumn.names}, NULL_SAFE_STRING_COMPARATOR);
 						<#else>
 							Arrays.sort(${entityColumn.names});
 						</#if>
-					}
-				</#if>
-			</#list>
-
-			if (
-			<#assign firstCol = true />
-			<#list entityColumns as entityColumn>
-				<#if entityColumn.hasArrayableOperator()>
-					<#if firstCol>
-						<#assign firstCol = false />
-					<#else>
-						&&
 					</#if>
+				}
+			<#elseif stringUtil.equals(entityColumn.type, "String") && entityColumn.isConvertNull()>
+				${entityColumn.name} = Objects.toString(${entityColumn.name}, "");
+			</#if>
+		</#list>
 
-					${entityColumn.names}.length == 1
+		if (
+		<#assign firstCol = true />
+		<#list entityColumns as entityColumn>
+			<#if entityColumn.hasArrayableOperator()>
+				<#if firstCol>
+					<#assign firstCol = false />
+				<#else>
+					&&
 				</#if>
-			</#list>
-			) {
-				<#if entityFinder.isUnique()>
-					${entity.name} ${entity.varName} = fetchBy${entityFinder.name}(
+
+				${entityColumn.names}.length == 1
+			</#if>
+		</#list>
+		) {
+			<#if entityFinder.isUnique()>
+				${entity.name} ${entity.varName} = fetchBy${entityFinder.name}(
+					<#list entityColumns as entityColumn>
+						<#if entityColumn.hasArrayableOperator()>
+							${entityColumn.names}[0]
+						<#else>
+							${entityColumn.name}
+						</#if>
+
+						<#if entityColumn_has_next>
+							,
+						</#if>
+					</#list>);
+
+				if (${entity.varName} == null) {
+					return Collections.emptyList();
+				}
+				else {
+					List<${entity.name}> list = new ArrayList<${entity.name}>(1);
+
+					list.add(${entity.varName});
+
+					return list;
+				}
+			<#else>
+				return findBy${entityFinder.name}(
+					<#list entityColumns as entityColumn>
+						<#if entityColumn.hasArrayableOperator()>
+							${entityColumn.names}[0],
+						<#else>
+							${entityColumn.name},
+						</#if>
+					</#list>
+
+					start, end, orderByComparator);
+			</#if>
+		}
+
+		<#if entity.isChangeTrackingEnabled()>
+			boolean productionMode = ${ctPersistenceHelper}.isProductionMode(${entity.name}.class);
+		</#if>
+
+		Object[] finderArgs = null;
+
+		if ((start == QueryUtil.ALL_POS) && (end == QueryUtil.ALL_POS) && (orderByComparator == null)) {
+			if (${useCache}) {
+				finderArgs = new Object[] {
+					<#list entityColumns as entityColumn>
+						<#if entityColumn.hasArrayableOperator()>
+							StringUtil.merge(${entityColumn.names})
+						<#elseif stringUtil.equals(entityColumn.type, "Date")>
+							_getTime(${entityColumn.name})
+						<#else>
+							${entityColumn.name}
+						</#if>
+
+						<#if entityColumn_has_next>
+							,
+						</#if>
+					</#list>
+				};
+			}
+		}
+		else if (${useCache}) {
+			finderArgs = new Object[] {
+				<#list entityColumns as entityColumn>
+					<#if entityColumn.hasArrayableOperator()>
+						StringUtil.merge(${entityColumn.names}),
+					<#elseif stringUtil.equals(entityColumn.type, "Date")>
+						_getTime(${entityColumn.name}),
+					<#else>
+						${entityColumn.name},
+					</#if>
+				</#list>
+
+				start, end, orderByComparator
+			};
+		}
+
+		List<${entity.name}> list = null;
+
+		if (${useCache}) {
+			list = (List<${entity.name}>)${finderCache}.getResult(_finderPathWithPaginationFindBy${entityFinder.name}, finderArgs, this);
+
+			if ((list != null) && !list.isEmpty()) {
+				for (${entity.name} ${entity.varName} : list) {
+					if (
 						<#list entityColumns as entityColumn>
 							<#if entityColumn.hasArrayableOperator()>
-								${entityColumn.names}[0]
+								!ArrayUtil.contains(${entityColumn.names}, ${entity.varName}.get${entityColumn.methodName}())
 							<#else>
-								${entityColumn.name}
+								<#include "persistence_impl_finder_field_comparator.ftl">
 							</#if>
 
 							<#if entityColumn_has_next>
-								,
-							</#if>
-						</#list>);
-
-					if (${entity.varName} == null) {
-						return Collections.emptyList();
-					}
-					else {
-						List<${entity.name}> list = new ArrayList<${entity.name}>(1);
-
-						list.add(${entity.varName});
-
-						return list;
-					}
-				<#else>
-					return findBy${entityFinder.name}(
-						<#list entityColumns as entityColumn>
-							<#if entityColumn.hasArrayableOperator()>
-								${entityColumn.names}[0],
-							<#else>
-								${entityColumn.name},
+								||
 							</#if>
 						</#list>
+					) {
+						list = null;
 
-						start, end, orderByComparator);
-				</#if>
+						break;
+					}
+				}
 			}
+		}
 
-			boolean pagination = true;
-			Object[] finderArgs = null;
+		if (list == null) {
+			<#include "persistence_impl_find_by_arrayable_query.ftl">
 
-			if ((start == QueryUtil.ALL_POS) && (end == QueryUtil.ALL_POS) && (orderByComparator == null)) {
-				pagination = false;
+			String sql = query.toString();
+
+			Session session = null;
+
+			try {
+				session = openSession();
+
+				Query q = session.createQuery(sql);
+
+				<#if bindParameter(entityColumns)>
+					QueryPos qPos = QueryPos.getInstance(q);
+				</#if>
+
+				<@finderQPos _arrayable=true />
+
+				list = (List<${entity.name}>)QueryUtil.list(q, getDialect(), start, end);
+
+				cacheResult(list);
+
+				if (${useCache}) {
+					${finderCache}.putResult(_finderPathWithPaginationFindBy${entityFinder.name}, finderArgs, list);
+				}
+			}
+			catch (Exception e) {
+				if (${useCache}) {
+					${finderCache}.removeResult(_finderPathWithPaginationFindBy${entityFinder.name}, finderArgs);
+				}
+
+				throw processException(e);
+			}
+			finally {
+				closeSession(session);
+			}
+		}
+
+		return list;
+	}
+</#if>
+
+<#-- Case 7.1: entityFinder.isCollection() && entityFinder.hasArrayableOperator() && entityFinder.hasArrayablePagination() -->
+
+<#if entityFinder.isCollection() && entityFinder.hasArrayableOperator() && entityFinder.hasArrayablePagination()>
+	/**
+	 * Returns all the ${entity.humanNames} where ${entityFinder.getHumanConditions(true)}.
+	 *
+	 * <p>
+	 * <#include "range_comment.ftl">
+	 * </p>
+	 *
+	<#list entityColumns as entityColumn>
+		<#if entityColumn.hasArrayableOperator()>
+	 * @param ${entityColumn.names} the ${entityColumn.humanNames}
+		<#else>
+	 * @param ${entityColumn.name} the ${entityColumn.humanName}
+		</#if>
+	</#list>
+	 * @return the matching ${entity.humanNames}
+	 */
+	@Override
+	public List<${entity.name}> findBy${entityFinder.name}(
+
+	<#list entityColumns as entityColumn>
+		<#if entityColumn.hasArrayableOperator()>
+			${entityColumn.type}[] ${entityColumn.names}
+		<#else>
+			${entityColumn.type} ${entityColumn.name}
+		</#if>
+
+		<#if entityColumn_has_next>
+			,
+		</#if>
+	</#list>
+
+	) {
+		return findBy${entityFinder.name}(
+
+		<#list entityColumns as entityColumn>
+			<#if entityColumn.hasArrayableOperator()>
+				${entityColumn.names},
+			<#else>
+				${entityColumn.name},
+			</#if>
+		</#list>
+
+		QueryUtil.ALL_POS, QueryUtil.ALL_POS, null);
+	}
+
+	/**
+	 * Returns a range of all the ${entity.humanNames} where ${entityFinder.getHumanConditions(true)}.
+	 *
+	 * <p>
+	 * <#include "range_comment.ftl">
+	 * </p>
+	 *
+	<#list entityColumns as entityColumn>
+		<#if entityColumn.hasArrayableOperator()>
+	 * @param ${entityColumn.names} the ${entityColumn.humanNames}
+		<#else>
+	 * @param ${entityColumn.name} the ${entityColumn.humanName}
+		</#if>
+	</#list>
+	 * @param start the lower bound of the range of ${entity.humanNames}
+	 * @param end the upper bound of the range of ${entity.humanNames} (not inclusive)
+	 * @return the range of matching ${entity.humanNames}
+	 */
+	@Override
+	public List<${entity.name}> findBy${entityFinder.name}(
+
+	<#list entityColumns as entityColumn>
+		<#if entityColumn.hasArrayableOperator()>
+			${entityColumn.type}[] ${entityColumn.names},
+		<#else>
+			${entityColumn.type} ${entityColumn.name},
+		</#if>
+	</#list>
+
+	int start, int end) {
+		return findBy${entityFinder.name}(
+
+		<#list entityColumns as entityColumn>
+			<#if entityColumn.hasArrayableOperator()>
+				${entityColumn.names},
+			<#else>
+				${entityColumn.name},
+			</#if>
+		</#list>
+
+		start, end, null);
+	}
+
+	/**
+	 * Returns an ordered range of all the ${entity.humanNames} where ${entityFinder.getHumanConditions(true)}.
+	 *
+	 * <p>
+	 * <#include "range_comment.ftl">
+	 * </p>
+	 *
+	<#list entityColumns as entityColumn>
+		<#if entityColumn.hasArrayableOperator()>
+	 * @param ${entityColumn.names} the ${entityColumn.humanNames}
+		<#else>
+	 * @param ${entityColumn.name} the ${entityColumn.humanName}
+		</#if>
+	</#list>
+	 * @param start the lower bound of the range of ${entity.humanNames}
+	 * @param end the upper bound of the range of ${entity.humanNames} (not inclusive)
+	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
+	 * @return the ordered range of matching ${entity.humanNames}
+	 */
+	@Override
+	public List<${entity.name}> findBy${entityFinder.name}(
+
+	<#list entityColumns as entityColumn>
+		<#if entityColumn.hasArrayableOperator()>
+			${entityColumn.type}[] ${entityColumn.names},
+		<#else>
+			${entityColumn.type} ${entityColumn.name},
+		</#if>
+	</#list>
+
+	int start, int end, OrderByComparator<${entity.name}> orderByComparator) {
+		return findBy${entityFinder.name}(
+
+		<#list entityColumns as entityColumn>
+			<#if entityColumn.hasArrayableOperator()>
+				${entityColumn.names},
+			<#else>
+				${entityColumn.name},
+			</#if>
+		</#list>
+
+		start, end, orderByComparator, true);
+	}
+
+	/**
+	 * Returns an ordered range of all the ${entity.humanNames} where ${entityFinder.getHumanConditions(false)}, optionally using the finder cache.
+	 *
+	 * <p>
+	 * <#include "range_comment.ftl">
+	 * </p>
+	 *
+	<#list entityColumns as entityColumn>
+	 * @param ${entityColumn.name} the ${entityColumn.humanName}
+	</#list>
+	 * @param start the lower bound of the range of ${entity.humanNames}
+	 * @param end the upper bound of the range of ${entity.humanNames} (not inclusive)
+	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
+	 * @param useFinderCache whether to use the finder cache
+	 * @return the ordered range of matching ${entity.humanNames}
+	 */
+	@Override
+	public List<${entity.name}> findBy${entityFinder.name}(
+
+	<#list entityColumns as entityColumn>
+		<#if entityColumn.hasArrayableOperator()>
+			${entityColumn.type}[] ${entityColumn.names},
+		<#else>
+			${entityColumn.type} ${entityColumn.name},
+		</#if>
+	</#list>
+
+	int start, int end, OrderByComparator<${entity.name}> orderByComparator, boolean useFinderCache) {
+		<#list entityColumns as entityColumn>
+			<#if entityColumn.hasArrayableOperator()>
+				if (${entityColumn.names} == null) {
+					${entityColumn.names} = new ${entityColumn.type}[0];
+				}
+				else if (${entityColumn.names}.length > 1) {
+					<#if stringUtil.equals(entityColumn.type, "String") && entityColumn.isConvertNull()>
+						for (int i = 0; i < ${entityColumn.names}.length; i++) {
+							${entityColumn.names}[i] = Objects.toString(${entityColumn.names}[i], "");
+						}
+					</#if>
+
+					<#if serviceBuilder.isVersionGTE_7_2_0()>
+						${entityColumn.names} = ArrayUtil.sortedUnique(${entityColumn.names});
+					<#else>
+						${entityColumn.names} =
+							<#if stringUtil.equals(entityColumn.type, "String") && !entityColumn.isConvertNull()>
+								ArrayUtil.distinct(${entityColumn.names}, NULL_SAFE_STRING_COMPARATOR);
+							<#else>
+								ArrayUtil.unique(${entityColumn.names});
+							</#if>
+
+						<#if stringUtil.equals(entityColumn.type, "String") && !entityColumn.isConvertNull()>
+							Arrays.sort(${entityColumn.names}, NULL_SAFE_STRING_COMPARATOR);
+						<#else>
+							Arrays.sort(${entityColumn.names});
+						</#if>
+					</#if>
+				}
+			<#elseif stringUtil.equals(entityColumn.type, "String") && entityColumn.isConvertNull()>
+				${entityColumn.name} = Objects.toString(${entityColumn.name}, "");
+			</#if>
+		</#list>
+
+		if (
+		<#assign firstCol = true />
+		<#list entityColumns as entityColumn>
+			<#if entityColumn.hasArrayableOperator()>
+				<#if firstCol>
+					<#assign firstCol = false />
+				<#else>
+					&&
+				</#if>
+
+				${entityColumn.names}.length == 1
+			</#if>
+		</#list>
+		) {
+			<#if entityFinder.isUnique()>
+				${entity.name} ${entity.varName} = fetchBy${entityFinder.name}(
+					<#list entityColumns as entityColumn>
+						<#if entityColumn.hasArrayableOperator()>
+							${entityColumn.names}[0]
+						<#else>
+							${entityColumn.name}
+						</#if>
+
+						<#if entityColumn_has_next>
+							,
+						</#if>
+					</#list>);
+
+				if (${entity.varName} == null) {
+					return Collections.emptyList();
+				}
+				else {
+					return Collections.singletonList(${entity.varName});
+				}
+			<#else>
+				return findBy${entityFinder.name}(
+					<#list entityColumns as entityColumn>
+						<#if entityColumn.hasArrayableOperator()>
+							${entityColumn.names}[0],
+						<#else>
+							${entityColumn.name},
+						</#if>
+					</#list>
+
+					start, end, orderByComparator);
+			</#if>
+		}
+
+		<#if entity.isChangeTrackingEnabled()>
+			boolean productionMode = ${ctPersistenceHelper}.isProductionMode(${entity.name}.class);
+		</#if>
+
+		Object[] finderArgs = null;
+
+		if ((start == QueryUtil.ALL_POS) && (end == QueryUtil.ALL_POS) && (orderByComparator == null)) {
+			if (${useCache}) {
 				finderArgs = new Object[] {
 					<#list entityColumns as entityColumn>
 						<#if entityColumn.hasArrayableOperator()>
@@ -1585,98 +1987,161 @@ that may or may not be enforced with a unique index at the database level. Case
 					</#list>
 				};
 			}
-			else {
-				finderArgs = new Object[] {
+		}
+		else if (${useCache}) {
+			finderArgs = new Object[] {
+				<#list entityColumns as entityColumn>
+					<#if entityColumn.hasArrayableOperator()>
+						StringUtil.merge(${entityColumn.names}),
+					<#else>
+						${entityColumn.name},
+					</#if>
+				</#list>
+
+				start, end, orderByComparator
+			};
+		}
+
+		List<${entity.name}> list = null;
+
+		if (${useCache}) {
+			list = (List<${entity.name}>)${finderCache}.getResult(_finderPathWithPaginationFindBy${entityFinder.name}, finderArgs, this);
+
+			if ((list != null) && !list.isEmpty()) {
+				for (${entity.name} ${entity.varName} : list) {
+					if (
+						<#list entityColumns as entityColumn>
+							<#if entityColumn.hasArrayableOperator()>
+								!ArrayUtil.contains(${entityColumn.names}, ${entity.varName}.get${entityColumn.methodName}())
+							<#else>
+								<#include "persistence_impl_finder_field_comparator.ftl">
+							</#if>
+
+							<#if entityColumn_has_next>
+								||
+							</#if>
+						</#list>
+					) {
+						list = null;
+
+						break;
+					}
+				}
+			}
+		}
+
+		if (list == null) {
+			try {
+				if ((start == QueryUtil.ALL_POS) && (end == QueryUtil.ALL_POS) && (databaseInMaxParameters > 0) && (<#list entityFinderArrayableColsList as arrayableentityColumn>
+						(${arrayableentityColumn.names}.length > databaseInMaxParameters)
+
+						<#if arrayableentityColumn_has_next>
+							||
+						</#if>
+					</#list>)) {
+
+					list = new ArrayList<${entity.name}>();
+
+					<#list entityFinderArrayableColsList as arrayableentityColumn>
+						${arrayableentityColumn.type}[][] ${arrayableentityColumn.names}Pages = (${arrayableentityColumn.type}[][])ArrayUtil.split(${arrayableentityColumn.names}, databaseInMaxParameters);
+					</#list>
+
+					<#list entityFinderArrayableColsList as arrayableentityColumn>
+						for (${arrayableentityColumn.type}[] ${arrayableentityColumn.names}Page : ${arrayableentityColumn.names}Pages) {
+					</#list>
+
+						list.addAll(_findBy${entityFinder.name}(
+
+						<#list entityColumns as entityColumn>
+							<#if entityColumn.hasArrayableOperator()>
+								${entityColumn.names}Page,
+							<#else>
+								${entityColumn.name},
+							</#if>
+						</#list>
+
+						start, end, orderByComparator));
+					<#list entityFinderArrayableColsList as arrayableentityColumn>
+						}
+					</#list>
+
+					Collections.sort(list, orderByComparator);
+
+					list = Collections.unmodifiableList(list);
+				}
+				else {
+					list = _findBy${entityFinder.name}(
+
 					<#list entityColumns as entityColumn>
 						<#if entityColumn.hasArrayableOperator()>
-							StringUtil.merge(${entityColumn.names}),
+							${entityColumn.names},
 						<#else>
 							${entityColumn.name},
 						</#if>
 					</#list>
 
-					start, end, orderByComparator
-				};
-			}
+					start, end, orderByComparator);
+				}
 
-			List<${entity.name}> list = null;
+				cacheResult(list);
 
-			if (retrieveFromCache) {
-				list = (List<${entity.name}>)finderCache.getResult(FINDER_PATH_WITH_PAGINATION_FIND_BY_${entityFinder.name?upper_case}, finderArgs, this);
-
-				if ((list != null) && !list.isEmpty()) {
-					for (${entity.name} ${entity.varName} : list) {
-						if (
-							<#list entityColumns as entityColumn>
-								<#if entityColumn.hasArrayableOperator()>
-									!ArrayUtil.contains(${entityColumn.names}, ${entity.varName}.get${entityColumn.methodName}())
-								<#else>
-									<#include "persistence_impl_finder_field_comparator.ftl">
-								</#if>
-
-								<#if entityColumn_has_next>
-									||
-								</#if>
-							</#list>
-						) {
-							list = null;
-
-							break;
-						}
-					}
+				if (${useCache}) {
+					${finderCache}.putResult(_finderPathWithPaginationFindBy${entityFinder.name}, finderArgs, list);
 				}
 			}
-
-			if (list == null) {
-				<#assign checkPagination = true />
-
-				<#include "persistence_impl_find_by_arrayable_query.ftl">
-
-				<#assign checkPagination = false />
-
-				String sql = query.toString();
-
-				Session session = null;
-
-				try {
-					session = openSession();
-
-					Query q = session.createQuery(sql);
-
-					<#if bindParameter(entityColumns)>
-						QueryPos qPos = QueryPos.getInstance(q);
-					</#if>
-
-					<@finderQPos _arrayable=true />
-
-					if (!pagination) {
-						list = (List<${entity.name}>)QueryUtil.list(q, getDialect(), start, end, false);
-
-						Collections.sort(list);
-
-						list = Collections.unmodifiableList(list);
-					}
-					else {
-						list = (List<${entity.name}>)QueryUtil.list(q, getDialect(), start, end);
-					}
-
-					cacheResult(list);
-
-					finderCache.putResult(FINDER_PATH_WITH_PAGINATION_FIND_BY_${entityFinder.name?upper_case}, finderArgs, list);
+			catch (Exception e) {
+				if (${useCache}) {
+					${finderCache}.removeResult(_finderPathWithPaginationFindBy${entityFinder.name}, finderArgs);
 				}
-				catch (Exception e) {
-					finderCache.removeResult(FINDER_PATH_WITH_PAGINATION_FIND_BY_${entityFinder.name?upper_case}, finderArgs);
 
-					throw processException(e);
-				}
-				finally {
-					closeSession(session);
-				}
+				throw processException(e);
 			}
-
-			return list;
 		}
-	</#if>
+
+		return list;
+	}
+
+	private List<${entity.name}> _findBy${entityFinder.name}(
+
+	<#list entityColumns as entityColumn>
+		<#if entityColumn.hasArrayableOperator()>
+			${entityColumn.type}[] ${entityColumn.names},
+		<#else>
+			${entityColumn.type} ${entityColumn.name},
+		</#if>
+	</#list>
+
+	int start, int end, OrderByComparator<${entity.name}> orderByComparator) {
+		List<${entity.name}> list = null;
+
+		<#include "persistence_impl_find_by_arrayable_query.ftl">
+
+		String sql = query.toString();
+
+		Session session = null;
+
+		try {
+			session = openSession();
+
+			Query q = session.createQuery(sql);
+
+			<#if bindParameter(entityColumns)>
+				QueryPos qPos = QueryPos.getInstance(q);
+			</#if>
+
+			<@finderQPos _arrayable=true />
+
+			list = (List<${entity.name}>)QueryUtil.list(q, getDialect(), start, end);
+		}
+		catch (Exception e) {
+			throw processException(e);
+		}
+		finally {
+			closeSession(session);
+		}
+
+		return list;
+	}
 </#if>
 
 <#-- Case 8: !entityFinder.isCollection() -->
@@ -1688,7 +2153,7 @@ that may or may not be enforced with a unique index at the database level. Case
 
 <#if !entityFinder.isCollection() || entityFinder.isUnique()>
 	/**
-	 * Returns the ${entity.humanName} where ${entityFinder.getHumanConditions(false)} or throws a {@link ${noSuchEntity}Exception} if it could not be found.
+	 * Returns the ${entity.humanName} where ${entityFinder.getHumanConditions(false)} or throws a <code>${noSuchEntity}Exception</code> if it could not be found.
 	 *
 	<#list entityColumns as entityColumn>
 	 * @param ${entityColumn.name} the ${entityColumn.humanName}
@@ -1726,7 +2191,7 @@ that may or may not be enforced with a unique index at the database level. Case
 			msg.append(_NO_SUCH_ENTITY_WITH_KEY);
 
 			<#list entityColumns as entityColumn>
-				msg.append("<#if entityColumn_index != 0>, </#if>${entityColumn.name}=");
+				msg.append("<#if entityColumn_index != 0>, </#if>${entityColumn.name}${entityColumn.comparator}");
 				msg.append(${entityColumn.name});
 
 				<#if !entityColumn_has_next>
@@ -1779,7 +2244,7 @@ that may or may not be enforced with a unique index at the database level. Case
 	<#list entityColumns as entityColumn>
 	 * @param ${entityColumn.name} the ${entityColumn.humanName}
 	</#list>
-	 * @param retrieveFromCache whether to retrieve from the finder cache
+	 * @param useFinderCache whether to use the finder cache
 	 * @return the matching ${entity.humanName}, or <code>null</code> if a matching ${entity.humanName} could not be found
 	 */
 	@Override
@@ -1791,21 +2256,39 @@ that may or may not be enforced with a unique index at the database level. Case
 		,
 	</#list>
 
-	boolean retrieveFromCache) {
-		Object[] finderArgs = new Object[] {
-			<#list entityColumns as entityColumn>
-				${entityColumn.name}
+	boolean useFinderCache) {
+		<#list entityColumns as entityColumn>
+			<#if stringUtil.equals(entityColumn.type, "String") && entityColumn.isConvertNull()>
+				${entityColumn.name} = Objects.toString(${entityColumn.name}, "");
+			</#if>
+		</#list>
 
-				<#if entityColumn_has_next>
-					,
-				</#if>
-			</#list>
-		};
+		<#if entity.isChangeTrackingEnabled()>
+			boolean productionMode = ${ctPersistenceHelper}.isProductionMode(${entity.name}.class);
+		</#if>
+
+		Object[] finderArgs = null;
+
+		if (${useCache}) {
+			finderArgs = new Object[] {
+				<#list entityColumns as entityColumn>
+					<#if stringUtil.equals(entityColumn.type, "Date")>
+						_getTime(${entityColumn.name})
+					<#else>
+						${entityColumn.name}
+					</#if>
+
+					<#if entityColumn_has_next>
+						,
+					</#if>
+				</#list>
+			};
+		}
 
 		Object result = null;
 
-		if (retrieveFromCache) {
-			result = finderCache.getResult(FINDER_PATH_FETCH_BY_${entityFinder.name?upper_case}, finderArgs, this);
+		if (${useCache}) {
+			result = ${finderCache}.getResult(_finderPathFetchBy${entityFinder.name}, finderArgs, this);
 		}
 
 		if (result instanceof ${entity.name}) {
@@ -1814,7 +2297,11 @@ that may or may not be enforced with a unique index at the database level. Case
 			if (
 				<#list entityColumns as entityColumn>
 					<#if entityColumn.isPrimitiveType(false)>
-						(${entityColumn.name} != ${entity.varName}.get${entityColumn.methodName}())
+						<#if stringUtil.equals(entityColumn.type, "boolean")>
+							(${entityColumn.name} != ${entity.varName}.is${entityColumn.methodName}())
+						<#else>
+							(${entityColumn.name} != ${entity.varName}.get${entityColumn.methodName}())
+						</#if>
 					<#else>
 						!Objects.equals(${entityColumn.name}, ${entity.varName}.get${entityColumn.methodName}())
 					</#if>
@@ -1851,7 +2338,9 @@ that may or may not be enforced with a unique index at the database level. Case
 				List<${entity.name}> list = q.list();
 
 				if (list.isEmpty()) {
-					finderCache.putResult(FINDER_PATH_FETCH_BY_${entityFinder.name?upper_case}, finderArgs, list);
+					if (${useCache}) {
+						${finderCache}.putResult(_finderPathFetchBy${entityFinder.name}, finderArgs, list);
+					}
 				}
 				else {
 					<#if !entityFinder.isUnique()>
@@ -1859,6 +2348,26 @@ that may or may not be enforced with a unique index at the database level. Case
 							Collections.sort(list, Collections.reverseOrder());
 
 							if (_log.isWarnEnabled()) {
+								<#if entity.isChangeTrackingEnabled()>
+									if (!productionMode || !useFinderCache) {
+								<#else>
+									if (!useFinderCache) {
+								</#if>
+									finderArgs = new Object[] {
+										<#list entityColumns as entityColumn>
+											<#if stringUtil.equals(entityColumn.type, "Date")>
+												_getTime(${entityColumn.name})
+											<#else>
+												${entityColumn.name}
+											</#if>
+
+											<#if entityColumn_has_next>
+												,
+											</#if>
+										</#list>
+									};
+								}
+
 								_log.warn("${entity.name}PersistenceImpl.fetchBy${entityFinder.name}(<#list entityColumns as entityColumn>${entityColumn.type}, </#list>boolean) with parameters (" + StringUtil.merge(finderArgs) + ") yields a result set with more than 1 result. This violates the logical unique restriction. There is no order guarantee on which result is returned by this finder.");
 							}
 						}
@@ -1869,26 +2378,12 @@ that may or may not be enforced with a unique index at the database level. Case
 					result = ${entity.varName};
 
 					cacheResult(${entity.varName});
-
-					if (
-						<#list entityColumns as entityColumn>
-							<#if entityColumn.isPrimitiveType()>
-								(${entity.varName}.get${entityColumn.methodName}() != ${entityColumn.name})
-							<#else>
-								(${entity.varName}.get${entityColumn.methodName}() == null) || !${entity.varName}.get${entityColumn.methodName}().equals(${entityColumn.name})
-							</#if>
-
-							<#if entityColumn_has_next>
-								||
-							</#if>
-						</#list>
-					) {
-						finderCache.putResult(FINDER_PATH_FETCH_BY_${entityFinder.name?upper_case}, finderArgs, ${entity.varName});
-					}
 				}
 			}
 			catch (Exception e) {
-				finderCache.removeResult(FINDER_PATH_FETCH_BY_${entityFinder.name?upper_case}, finderArgs);
+				if (${useCache}) {
+					${finderCache}.removeResult(_finderPathFetchBy${entityFinder.name}, finderArgs);
+				}
 
 				throw processException(e);
 			}

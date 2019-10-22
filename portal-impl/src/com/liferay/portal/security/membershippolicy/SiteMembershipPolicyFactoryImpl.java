@@ -37,7 +37,7 @@ public class SiteMembershipPolicyFactoryImpl
 
 	@Override
 	public SiteMembershipPolicy getSiteMembershipPolicy() {
-		return _instance._serviceTracker.getService();
+		return _siteMembershipPolicyFactoryImpl._serviceTracker.getService();
 	}
 
 	private SiteMembershipPolicyFactoryImpl() {
@@ -53,15 +53,15 @@ public class SiteMembershipPolicyFactoryImpl
 	private static final Log _log = LogFactoryUtil.getLog(
 		SiteMembershipPolicyFactoryImpl.class);
 
-	private static final SiteMembershipPolicyFactoryImpl _instance =
-		new SiteMembershipPolicyFactoryImpl();
+	private static final SiteMembershipPolicyFactoryImpl
+		_siteMembershipPolicyFactoryImpl =
+			new SiteMembershipPolicyFactoryImpl();
 
 	private final ServiceTracker<?, SiteMembershipPolicy> _serviceTracker;
 
 	private static class SiteMembershipPolicyTrackerCustomizer
-		implements
-			ServiceTrackerCustomizer
-				<SiteMembershipPolicy, SiteMembershipPolicy> {
+		implements ServiceTrackerCustomizer
+			<SiteMembershipPolicy, SiteMembershipPolicy> {
 
 		@Override
 		public SiteMembershipPolicy addingService(

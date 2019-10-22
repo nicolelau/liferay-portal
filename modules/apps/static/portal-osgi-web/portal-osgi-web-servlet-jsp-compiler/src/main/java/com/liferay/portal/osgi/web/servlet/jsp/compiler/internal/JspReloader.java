@@ -14,11 +14,11 @@
 
 package com.liferay.portal.osgi.web.servlet.jsp.compiler.internal;
 
+import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.util.FileUtil;
-import com.liferay.portal.kernel.util.StringBundler;
 import com.liferay.portal.util.PropsValues;
 
 import java.io.File;
@@ -34,7 +34,7 @@ import org.osgi.service.component.annotations.Deactivate;
 /**
  * @author Matthew Tambara
  */
-@Component(immediate = true)
+@Component(immediate = true, service = {})
 public class JspReloader {
 
 	@Activate
@@ -98,11 +98,18 @@ public class JspReloader {
 				if (file.exists()) {
 					FileUtil.deltree(file);
 
-					if (_log.isDebugEnabled()) {
+					if (PropsValues.WORK_DIR_OVERRIDE_ENABLED &&
+						_log.isInfoEnabled()) {
+
+						_log.info(
+							StringBundler.concat(
+								"Removed Jasper work dir ", file, " on event ",
+								_toString(bundleEvent)));
+					}
+					else if (_log.isDebugEnabled()) {
 						_log.debug(
 							StringBundler.concat(
-								"Removed Jasper work dir ",
-								String.valueOf(file), " on event ",
+								"Removed Jasper work dir ", file, " on event ",
 								_toString(bundleEvent)));
 					}
 				}

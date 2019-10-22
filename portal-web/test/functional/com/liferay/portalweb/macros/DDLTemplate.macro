@@ -1,496 +1,403 @@
-<definition>
-	<var name="ddlDataDefinitionDescription" value="Data Definition Description" />
-	<var name="ddlDataDefinitionName" value="Data Definition Name" />
-	<var name="ddlListName" value="List Name" />
+definition {
 
-	<command name="_showDetails">
-		<if>
-			<condition function="IsElementNotPresent#isNotVisible" locator1="DDMEditTemplate#DETAILS_LANGUAGE_SELECT" />
-			<then>
-				<execute function="Click" locator1="DDMEditTemplate#DETAILS_TOGGLE" />
+	var ddlDataDefinitionDescription = "Data Definition Description";
+	var ddlDataDefinitionName = "Data Definition Name";
+	var ddlListName = "List Name";
 
-				<if>
-					<condition function="IsElementNotPresent#isNotVisible" locator1="DDMEditTemplate#DETAILS_LANGUAGE_SELECT" />
-					<then>
-						<execute function="Click" locator1="DDMEditTemplate#DETAILS_TOGGLE" />
-					</then>
-				</if>
-			</then>
-		</if>
+	macro _showDetails {
+		if (IsElementNotPresent.isNotVisible(locator1 = "DDMEditTemplate#DETAILS_LANGUAGE_SELECT")) {
+			Click(locator1 = "DDMEditTemplate#DETAILS_TOGGLE");
 
-		<execute function="AssertVisible" locator1="DDMEditTemplate#DETAILS_LANGUAGE_SELECT" />
-	</command>
+			if (IsElementNotPresent.isNotVisible(locator1 = "DDMEditTemplate#DETAILS_LANGUAGE_SELECT")) {
+				Click(locator1 = "DDMEditTemplate#DETAILS_TOGGLE");
+			}
+		}
 
-	<command name="addDisplayTemplateCP">
-		<execute macro="DDLNavigator#gotoManageDataDefinitions" />
+		AssertVisible(locator1 = "DDMEditTemplate#DETAILS_LANGUAGE_SELECT");
+	}
 
-		<execute function="Click" locator1="NavBar#BASIC_SEARCH_FIELD" />
+	macro addDisplayTemplateCP {
+		DDLNavigator.gotoManageDataDefinitions();
 
-		<execute macro="Search#searchCP">
-			<var name="searchTerm" value="${ddlDataDefinitionName}" />
-		</execute>
+		Click(locator1 = "TextInput#SEARCH");
 
-		<execute function="Click#waitForMenuToggleJSClick" locator1="DDMSelectStructure#DDM_STRUCTURE_ELLIPSIS_1" />
+		Search.searchCP(searchTerm = "${ddlDataDefinitionName}");
 
-		<execute function="AssertClick" locator1="MenuItem#ANY_MENU_ITEM" value1="Manage Templates">
-			<var name="key_menuItem" value="Manage Templates" />
-		</execute>
+		Click.waitForMenuToggleJSClick(locator1 = "DDMSelectStructure#DDM_STRUCTURE_ELLIPSIS_1");
 
-		<execute function="AssertElementPresent#assertVisible" locator1="Portlet#HEADER" value1="Templates for Structure: ${ddlDataDefinitionName}" />
+		MenuItem.click(menuItem = "Manage Templates");
 
-		<var name="key_assetTitle" value="Templates" />
+		AssertElementPresent.assertVisible(
+			locator1 = "Portlet#HEADER",
+			value1 = "Templates for Structure: ${ddlDataDefinitionName}");
 
-		<execute function="AssertElementPresent#assertVisible" locator1="NavBar#ASSET_TITLE" value1="Templates" />
+		var key_assetTitle = "Templates";
 
-		<execute macro="DDLNavigator#gotoAddDisplayTemplate" />
+		AssertElementPresent.assertVisible(
+			locator1 = "NavBar#ASSET_TITLE",
+			value1 = "Templates");
 
-		<execute function="Click" locator1="TextInput#NAME" />
+		LexiconEntry.gotoAddMenuItem(menuItem = "Add Display Template");
 
-		<execute macro="PortletEntry#inputName">
-			<var name="name" value="${ddlDisplayTemplateName}" />
-		</execute>
+		Click(locator1 = "TextInput#NAME");
 
-		<execute macro="DDLTemplate#_showDetails" />
+		PortletEntry.inputName(name = "${ddlDisplayTemplateName}");
 
-		<execute function="Select" locator1="DDMEditTemplate#DETAILS_LANGUAGE_SELECT" value1="${ddlDisplayTemplateLanguage}" />
+		DDLTemplate._showDetails();
 
-		<execute function="Pause" locator1="5000" />
+		Select(
+			locator1 = "DDMEditTemplate#DETAILS_LANGUAGE_SELECT",
+			value1 = "${ddlDisplayTemplateLanguage}");
 
-		<if>
-			<isset var="ddlDisplayTemplateTextFieldScript" />
-			<then>
-				<execute function="AssertClick" locator1="DDMEditTemplate#DATA_LIST_RECORD_FIELDS_TEXT" value1="${ddlDisplayTemplateTextFieldScript}" />
-			</then>
-		</if>
+		Pause(locator1 = "5000");
 
-		<if>
-			<isset var="ddlDisplayTemplateScript" />
-			<then>
-				<execute function="Type#typeAceEditor" locator1="DDMEditTemplate#SCRIPT_CONTENT_FIELD_TEXT_AREA" value1="${ddlDisplayTemplateScript}" />
-			</then>
-		</if>
+		if (isSet(ddlDisplayTemplateTextFieldScript)) {
+			AssertClick(
+				locator1 = "DDMEditTemplate#DATA_LIST_RECORD_FIELDS_TEXT",
+				value1 = "${ddlDisplayTemplateTextFieldScript}");
+		}
 
-		<if>
-			<isset var="ddlDisplayTemplateScriptFile" />
-			<then>
-				<execute function="UploadCommonFile" locator1="DDMEditTemplate#SCRIPT_FILE_FIELD" value1="${ddlDisplayTemplateScriptFile}" />
-			</then>
-		</if>
+		if (isSet(ddlDisplayTemplateScript)) {
+			Type.typeAceEditor(
+				locator1 = "DDMEditTemplate#SCRIPT_CONTENT_FIELD_TEXT_AREA",
+				value1 = "${ddlDisplayTemplateScript}");
+		}
 
-		<execute function="Pause" locator1="3000" />
+		if (isSet(ddlDisplayTemplateScriptFile)) {
+			UploadCommonFile(
+				locator1 = "DDMEditTemplate#SCRIPT_FILE_FIELD",
+				value1 = "${ddlDisplayTemplateScriptFile}");
+		}
 
-		<execute function="SelectFrameTop" />
+		Pause(locator1 = "3000");
 
-		<execute function="ScrollBy" value1="0, 400" />
+		SelectFrameTop();
 
-		<execute macro="PortletEntry#save" />
-	</command>
+		ScrollBy(value1 = "0, 400");
 
-	<command name="addDisplayTemplateTemplateViaDDLDisplayPG">
-		<execute function="Click" locator1="DDL#PORTLET_ACTIONS_ADD_DISPLAY_TEMPLATE" />
+		PortletEntry.save();
+	}
 
-		<execute function="SelectFrame" locator1="IFrame#DIALOG" />
+	macro addDisplayTemplateTemplateViaDDLDisplayPG {
+		Click(locator1 = "DDL#PORTLET_ACTIONS_ADD_DISPLAY_TEMPLATE");
 
-		<execute macro="PortletEntry#inputName">
-			<var name="name" value="${ddlDisplayTemplateName}" />
-		</execute>
+		SelectFrame(locator1 = "IFrame#DIALOG");
 
-		<execute macro="DDLTemplate#_showDetails" />
+		PortletEntry.inputName(name = "${ddlDisplayTemplateName}");
 
-		<execute function="Select" locator1="DDMEditTemplate#DETAILS_LANGUAGE_SELECT" value1="${ddlDisplayTemplateLanguage}" />
+		DDLTemplate._showDetails();
 
-		<execute function="Pause" locator1="5000" />
+		Select(
+			locator1 = "DDMEditTemplate#DETAILS_LANGUAGE_SELECT",
+			value1 = "${ddlDisplayTemplateLanguage}");
 
-		<execute function="Type#typeAceEditor" locator1="DDMEditTemplate#SCRIPT_CONTENT_FIELD_TEXT_AREA" value1="${ddlDisplayTemplateScript}" />
+		Pause(locator1 = "5000");
 
-		<execute macro="Button#clickSave" />
+		Type.typeAceEditor(
+			locator1 = "DDMEditTemplate#SCRIPT_CONTENT_FIELD_TEXT_AREA",
+			value1 = "${ddlDisplayTemplateScript}");
 
-		<execute function="SelectFrame" value1="relative=top" />
-	</command>
+		Button.clickSave();
 
-	<command name="addFormTemplateCP">
-		<execute macro="DDLNavigator#gotoManageDataDefinitions" />
+		SelectFrame(value1 = "relative=top");
+	}
 
-		<execute macro="Search#searchCP">
-			<var name="searchTerm" value="${ddlDataDefinitionName}" />
-		</execute>
+	macro addFormTemplateCP {
+		DDLNavigator.gotoManageDataDefinitions();
 
-		<execute function="Click#waitForMenuToggleJSClick" locator1="DDMSelectStructure#DDM_STRUCTURE_ELLIPSIS_1" />
+		Search.searchCP(searchTerm = "${ddlDataDefinitionName}");
 
-		<execute function="AssertClick" locator1="MenuItem#ANY_MENU_ITEM" value1="Manage Templates">
-			<var name="key_menuItem" value="Manage Templates" />
-		</execute>
+		Click.waitForMenuToggleJSClick(locator1 = "DDMSelectStructure#DDM_STRUCTURE_ELLIPSIS_1");
 
-		<execute function="AssertElementPresent#assertVisible" locator1="Portlet#HEADER" value1="Templates for Structure: Data Definition" />
+		MenuItem.click(menuItem = "Manage Templates");
 
-		<var name="key_assetTitle" value="Templates" />
+		AssertElementPresent.assertVisible(
+			locator1 = "Portlet#HEADER",
+			value1 = "Templates for Structure: Data Definition");
 
-		<execute function="AssertElementPresent#assertVisible" locator1="NavBar#ASSET_TITLE" value1="Templates" />
+		var key_assetTitle = "Templates";
 
-		<execute macro="LexiconEntry#gotoAdd" />
+		AssertElementPresent.assertVisible(
+			locator1 = "NavBar#ASSET_TITLE",
+			value1 = "Templates");
 
-		<execute function="AssertClick" locator1="MenuItem#ANY_MENU_ITEM" value1="Add Form Template">
-			<var name="key_menuItem" value="Add Form Template" />
-		</execute>
+		LexiconEntry.gotoAdd();
 
-		<execute function="Type#clickAtType" locator1="TextInput#NAME" value1="${ddlFormTemplateName}" />
-	</command>
+		MenuItem.click(menuItem = "Add Form Template");
 
-	<command name="addFormTemplateViaBackButton">
-		<execute macro="DynamicDataMapping#selectDynamicDataMappingFrame" />
+		Type.clickAtType(
+			locator1 = "TextInput#NAME",
+			value1 = "${ddlFormTemplateName}");
+	}
 
-		<execute function="Click" locator1="Icon#ANGLE_LEFT_BACK" />
+	macro addFormTemplateViaBackButton {
+		DynamicDataMapping.selectDynamicDataMappingFrame();
 
-		<execute macro="LexiconEntry#gotoAdd" />
+		Click(locator1 = "Icon#ANGLE_LEFT_BACK");
 
-		<execute function="AssertClick" locator1="MenuItem#ANY_MENU_ITEM" value1="Add Form Template">
-			<var name="key_menuItem" value="Add Form Template" />
-		</execute>
+		LexiconEntry.gotoAdd();
 
-		<execute function="Type#clickAtType" locator1="TextInput#NAME" value1="${ddlFormTemplateName}" />
-	</command>
+		MenuItem.click(menuItem = "Add Form Template");
 
-	<command name="addFormTemplateViaDDLDisplayPG">
-		<execute function="Click" locator1="DDL#PORTLET_ACTIONS_ADD_FORM_TEMPLATE" />
+		Type.clickAtType(
+			locator1 = "TextInput#NAME",
+			value1 = "${ddlFormTemplateName}");
+	}
 
-		<execute function="SelectFrame" locator1="IFrame#DIALOG" />
+	macro addFormTemplateViaDDLDisplayPG {
+		Click(locator1 = "DDL#PORTLET_ACTIONS_ADD_FORM_TEMPLATE");
 
-		<execute macro="PortletEntry#inputName">
-			<var name="name" value="${ddlFormTemplateName}" />
-		</execute>
-	</command>
+		SelectFrame(locator1 = "IFrame#DIALOG");
 
-	<command name="copyCP">
-		<execute macro="DDLNavigator#gotoManageDataDefinitions" />
+		PortletEntry.inputName(name = "${ddlFormTemplateName}");
+	}
 
-		<execute macro="Search#searchCP">
-			<var name="searchTerm" value="${ddlDataDefinitionName}" />
-		</execute>
+	macro deleteTemplateCP {
+		DDLNavigator.gotoManageDataDefinitions();
 
-		<execute function="Click#waitForMenuToggleJSClick" locator1="DDMSelectStructure#DDM_STRUCTURE_ELLIPSIS_1" />
+		Search.searchCP(searchTerm = "${ddlDataDefinitionName}");
 
-		<execute function="AssertClick" locator1="MenuItem#ANY_MENU_ITEM" value1="Manage Templates">
-			<var name="key_menuItem" value="Manage Templates" />
-		</execute>
+		Click.waitForMenuToggleJSClick(locator1 = "DDMSelectStructure#DDM_STRUCTURE_ELLIPSIS_1");
 
-		<var name="key_ddlTemplateName" value="${ddlTemplateName}" />
+		MenuItem.click(menuItem = "Manage Templates");
 
-		<execute function="Click" locator1="DDMSelectTemplate#TEMPLATE_TABLE_ELLIPSIS" />
+		Search.searchCP(searchTerm = "${ddlTemplateName}");
 
-		<execute function="AssertClick" locator1="MenuItem#ANY_MENU_ITEM" value1="Copy">
-			<var name="key_menuItem" value="Copy" />
-		</execute>
+		PortletEntry.selectAll();
 
-		<execute function="SelectFrame" locator1="IFrame#COPY_STRUCTURE" />
+		ClickNoError(locator1 = "Icon#TIMES");
 
-		<execute macro="PortletEntry#inputName">
-			<var name="name" value="${dataDefinitionTemplateCopyName}" />
-		</execute>
+		AssertConfirm(value1 = "Are you sure you want to delete this? It will be deleted immediately.");
 
-		<execute function="AssertClick" locator1="Button#COPY" value1="Copy" />
+		Alert.viewSuccessMessage();
 
-		<execute function="AssertElementPresent" locator1="Message#SUCCESS" />
+		Navigator.openURL();
 
-		<execute function="AssertClick" locator1="Button#CLOSE" value1="Close" />
+		ProductMenu.gotoPortlet(
+			category = "Content &amp; Data",
+			panel = "Site Administration",
+			portlet = "Dynamic Data Lists");
 
-		<var name="key_ddlTemplateName" value="${dataDefinitionTemplateCopyName}" />
+		DDLNavigator.gotoManageDataDefinitions();
 
-		<execute function="AssertTextEquals" locator1="DDMSelectTemplate#TEMPLATE_TABLE_NAME_LINK" value1="${dataDefinitionTemplateCopyName}" />
+		Search.searchCP(searchTerm = "${ddlDataDefinitionName}");
 
-		<execute function="SelectFrame" value1="relative=top" />
-	</command>
+		Click.waitForMenuToggleJSClick(locator1 = "DDMSelectStructure#DDM_STRUCTURE_ELLIPSIS_1");
 
-	<command name="deleteTemplateCP">
-		<execute macro="DDLNavigator#gotoManageDataDefinitions" />
+		MenuItem.click(menuItem = "Manage Templates");
 
-		<execute macro="Search#searchCP">
-			<var name="searchTerm" value="${ddlDataDefinitionName}" />
-		</execute>
+		Portlet.viewEmptyMessage(message = "There are no templates.");
+	}
 
-		<execute function="Click#waitForMenuToggleJSClick" locator1="DDMSelectStructure#DDM_STRUCTURE_ELLIPSIS_1" />
+	macro editDisplayTemplateCP {
+		DDLNavigator.gotoManageDataDefinitions();
 
-		<execute function="AssertClick" locator1="MenuItem#ANY_MENU_ITEM" value1="Manage Templates">
-			<var name="key_menuItem" value="Manage Templates" />
-		</execute>
+		Search.searchCP(searchTerm = "${ddlDataDefinitionName}");
 
-		<execute macro="Search#searchCP">
-			<var name="searchTerm" value="${ddlTemplateName}" />
-		</execute>
+		Click.waitForMenuToggleJSClick(locator1 = "DDMSelectStructure#DDM_STRUCTURE_ELLIPSIS_1");
 
-		<execute function="Check#checkAll" locator1="Checkbox#SELECT_ALL" />
+		MenuItem.click(menuItem = "Manage Templates");
 
-		<execute function="ClickNoError" locator1="Icon#DELETE" />
+		var key_ddlTemplateName = "${ddlDisplayTemplateName}";
 
-		<execute function="Confirm" value1="Are you sure you want to delete this? It will be deleted immediately." />
+		Click(locator1 = "DDMSelectTemplate#TEMPLATE_TABLE_ELLIPSIS");
 
-		<execute macro="Alert#viewSuccessMessage" />
+		MenuItem.click(menuItem = "Edit");
 
-		<execute macro="Navigator#openURL" />
+		Pause(locator1 = "1000");
 
-		<execute macro="ProductMenu#gotoPortlet">
-			<var name="category" value="Content" />
-			<var name="panel" value="Site Administration" />
-			<var name="portlet" value="Dynamic Data Lists" />
-		</execute>
+		PortletEntry.inputName(name = "${ddlDisplayTemplateNameEdit}");
 
-		<execute macro="DDLNavigator#gotoManageDataDefinitions" />
+		DDLTemplate._showDetails();
 
-		<execute macro="Search#searchCP">
-			<var name="searchTerm" value="${ddlDataDefinitionName}" />
-		</execute>
+		Select(
+			locator1 = "DDMEditTemplate#DETAILS_LANGUAGE_SELECT",
+			value1 = "${ddlDisplayTemplateLanguage}");
 
-		<execute function="Click#waitForMenuToggleJSClick" locator1="DDMSelectStructure#DDM_STRUCTURE_ELLIPSIS_1" />
+		AssertClick(
+			locator1 = "DDMEditTemplate#DATA_LIST_RECORD_FIELDS_TEXT",
+			value1 = "${ddlDisplayTemplateTextFieldScriptEdit}");
 
-		<execute function="AssertClick" locator1="MenuItem#ANY_MENU_ITEM" value1="Manage Templates">
-			<var name="key_menuItem" value="Manage Templates" />
-		</execute>
+		PortletEntry.save();
+	}
 
-		<execute macro="Search#searchCP">
-			<var name="searchTerm" value="${ddlTemplateName}" />
-		</execute>
+	macro editFormTemplateCP {
+		DDLNavigator.gotoManageDataDefinitions();
 
-		<execute function="AssertTextEquals" locator1="Message#DDM_TEMPLATE_INFO" value1="There are no results." />
-	</command>
+		Search.searchCP(searchTerm = "${ddlDataDefinitionName}");
 
-	<command name="editDisplayTemplateCP">
-		<execute macro="DDLNavigator#gotoManageDataDefinitions" />
+		Click.waitForMenuToggleJSClick(locator1 = "DDMSelectStructure#DDM_STRUCTURE_ELLIPSIS_1");
 
-		<execute macro="Search#searchCP">
-			<var name="searchTerm" value="${ddlDataDefinitionName}" />
-		</execute>
+		MenuItem.click(menuItem = "Manage Templates");
 
-		<execute function="Click#waitForMenuToggleJSClick" locator1="DDMSelectStructure#DDM_STRUCTURE_ELLIPSIS_1" />
+		Search.searchCP(searchTerm = "${ddlFormTemplateName}");
 
-		<execute function="AssertClick" locator1="MenuItem#ANY_MENU_ITEM" value1="Manage Templates">
-			<var name="key_menuItem" value="Manage Templates" />
-		</execute>
+		Click(locator1 = "DDMSelectTemplate#TEMPLATE_TABLE_ELLIPSIS_1");
 
-		<var name="key_ddlTemplateName" value="${ddlDisplayTemplateName}" />
+		MenuItem.click(menuItem = "Edit");
 
-		<execute function="Click" locator1="DDMSelectTemplate#TEMPLATE_TABLE_ELLIPSIS" />
+		PortletEntry.inputName(name = "${ddlFormTemplateNameEdit}");
+	}
 
-		<execute function="AssertClick" locator1="MenuItem#ANY_MENU_ITEM" value1="Edit">
-			<var name="key_menuItem" value="Edit" />
-		</execute>
+	macro editFormTemplateModeCP {
+		if (IsElementNotPresent.isNotVisible(locator1 = "DDMEditStructure#DETAILS_MODE_SELECT")) {
+			Click(locator1 = "DDMEditTemplate#DETAILS_TOGGLE");
+		}
 
-		<execute function="Pause" locator1="1000" />
+		Pause(locator1 = "3000");
 
-		<execute macro="PortletEntry#inputName">
-			<var name="name" value="${ddlDisplayTemplateNameEdit}" />
-		</execute>
+		Select(
+			locator1 = "DDMEditStructure#DETAILS_MODE_SELECT",
+			value1 = "${ddlFormTemplateMode}");
 
-		<execute macro="DDLTemplate#_showDetails" />
+		Pause(locator1 = "3000");
+	}
 
-		<execute function="Select" locator1="DDMEditTemplate#DETAILS_LANGUAGE_SELECT" value1="${ddlDisplayTemplateLanguage}" />
+	macro saveAndContinueFormTemplateCP {
+		AssertClick(
+			locator1 = "Button#SAVE_AND_CONTINUE",
+			value1 = "Save and Continue");
 
-		<execute function="AssertClick" locator1="DDMEditTemplate#DATA_LIST_RECORD_FIELDS_TEXT" value1="${ddlDisplayTemplateTextFieldScriptEdit}" />
+		Alert.viewSuccessMessage();
+	}
 
-		<execute macro="PortletEntry#save" />
-	</command>
+	macro saveFormTemplateViaDDLDisplayPG {
+		DynamicDataMapping.selectDynamicDataMappingFrame();
 
-	<command name="editFormTemplateCP">
-		<execute macro="DDLNavigator#gotoManageDataDefinitions" />
+		Button.clickSave();
 
-		<execute macro="Search#searchCP">
-			<var name="searchTerm" value="${ddlDataDefinitionName}" />
-		</execute>
+		SelectFrame(value1 = "relative=top");
+	}
 
-		<execute function="Click#waitForMenuToggleJSClick" locator1="DDMSelectStructure#DDM_STRUCTURE_ELLIPSIS_1" />
+	macro selectDisplayTemplateViaDDLDisplayPG {
+		DDLNavigator.gotoOptionalConfiguration();
 
-		<execute function="AssertClick" locator1="MenuItem#ANY_MENU_ITEM" value1="Manage Templates">
-			<var name="key_menuItem" value="Manage Templates" />
-		</execute>
+		Select(
+			locator1 = "DDLConfiguration#TEMPLATES_DISPLAY_TEMPLATE_SELECT",
+			value1 = "${ddlDisplayTemplateName}");
 
-		<execute macro="Search#searchCP">
-			<var name="searchTerm" value="${ddlFormTemplateName}" />
-		</execute>
+		PortletEntry.save();
 
-		<execute function="Click" locator1="DDMSelectTemplate#TEMPLATE_TABLE_ELLIPSIS_1" />
+		AssertClick(
+			locator1 = "DDLConfiguration#NAVIGATION_OPTIONAL_CONFIGURATION",
+			value1 = "Optional Configuration");
 
-		<execute function="AssertClick" locator1="MenuItem#ANY_MENU_ITEM" value1="Edit">
-			<var name="key_menuItem" value="Edit" />
-		</execute>
+		AssertSelectedLabel(
+			locator1 = "DDLConfiguration#TEMPLATES_DISPLAY_TEMPLATE_SELECT",
+			value1 = "${ddlDisplayTemplateName}");
 
-		<execute macro="PortletEntry#inputName">
-			<var name="name" value="${ddlFormTemplateNameEdit}" />
-		</execute>
-	</command>
+		SelectFrameTop();
+	}
 
-	<command name="editFormTemplateModeCP">
-		<if>
-			<condition function="IsElementNotPresent#isNotVisible" locator1="DDMEditStructure#DETAILS_MODE_SELECT" />
-			<then>
-				<execute function="Click" locator1="DDMEditTemplate#DETAILS_TOGGLE" />
-			</then>
-		</if>
+	macro selectFormTemplateViaDDLDisplayPG {
+		DDLNavigator.gotoOptionalConfiguration();
 
-		<execute function="Pause" locator1="3000" />
+		Select(
+			locator1 = "DDLConfiguration#TEMPLATES_FORM_TEMPLATE_SELECT",
+			value1 = "${ddlFormTemplateName}");
 
-		<execute function="Select" locator1="DDMEditStructure#DETAILS_MODE_SELECT" value1="${ddlFormTemplateMode}" />
+		PortletEntry.save();
 
-		<execute function="Pause" locator1="3000" />
-	</command>
+		AssertClick(
+			locator1 = "DDLConfiguration#NAVIGATION_OPTIONAL_CONFIGURATION",
+			value1 = "Optional Configuration");
 
-	<command name="editFormTemplatePG">
-		<execute function="Click" locator1="DDL#PORTLET_ACTIONS_EDIT_FORM_TEMPLATE" />
+		AssertSelectedLabel(
+			locator1 = "DDLConfiguration#TEMPLATES_FORM_TEMPLATE_SELECT",
+			value1 = "${ddlFormTemplateName}");
 
-		<execute macro="PortletEntry#inputName">
-			<var name="name" value="${ddlFormTemplateNameEdit}" />
-		</execute>
-	</command>
+		SelectFrameTop();
+	}
 
-	<command name="saveAndContinueFormTemplateCP">
-		<execute function="AssertClick" locator1="Button#SAVE_AND_CONTINUE" value1="Save and Continue" />
+	macro tearDownTemplateCP {
+		Navigator.openURL();
 
-		<execute macro="Alert#viewSuccessMessage" />
-	</command>
+		ProductMenu.gotoPortlet(
+			category = "Content &amp; Data",
+			panel = "Site Administration",
+			portlet = "Dynamic Data Lists");
 
-	<command name="saveFormTemplateViaDDLDisplayPG">
-		<execute macro="DynamicDataMapping#selectDynamicDataMappingFrame" />
+		DDLNavigator.gotoManageDataDefinitions();
 
-		<execute macro="Button#clickSave" />
+		if (!(isSet(ddlDataDefinitionName))) {
+			var ddlDataDefinitionName = "Data Definition";
+		}
 
-		<execute function="SelectFrame" value1="relative=top" />
-	</command>
+		var key_ddlDataDefinitionName = "${ddlDataDefinitionName}";
 
-	<command name="selectDisplayTemplateViaDDLDisplayPG">
-		<execute macro="DDLNavigator#gotoOptionalConfiguration" />
+		if (IsElementPresent(locator1 = "DDMSelectStructure#DDM_STRUCTURE_ELLIPSIS")) {
+			Click.waitForMenuToggleJSClick(locator1 = "DDMSelectStructure#DDM_STRUCTURE_ELLIPSIS");
 
-		<execute function="Select" locator1="DDLConfiguration#TEMPLATES_DISPLAY_TEMPLATE_SELECT" value1="${ddlDisplayTemplateName}" />
+			MenuItem.click(menuItem = "Manage Templates");
 
-		<execute macro="PortletEntry#save" />
+			if (IsElementPresent(locator1 = "DDMSelectTemplate#TEMPLATE_TABLE_ELLIPSIS_1")) {
+				Check.checkAll(locator1 = "DDMSelectTemplate#TEMPLATE_TABLE_ALL_CHECKBOX");
 
-		<execute function="AssertClick" locator1="DDLConfiguration#NAVIGATION_OPTIONAL_CONFIGURATION" value1="Optional Configuration" />
+				ClickNoError(locator1 = "Icon#TIMES");
 
-		<execute function="AssertSelectedLabel" locator1="DDLConfiguration#TEMPLATES_DISPLAY_TEMPLATE_SELECT" value1="${ddlDisplayTemplateName}" />
+				AssertConfirm(value1 = "Are you sure you want to delete this? It will be deleted immediately.");
 
-		<execute function="SelectFrameTop" />
-	</command>
+				Alert.viewSuccessMessage();
+			}
+		}
+	}
 
-	<command name="selectFormTemplateViaDDLDisplayPG">
-		<execute macro="DDLNavigator#gotoOptionalConfiguration" />
+	macro viewDisplayTemplateCP {
+		DDLNavigator.gotoManageTemplates(ddlDataDefinitionName = "${ddlDataDefinitionName}");
 
-		<execute function="Select" locator1="DDLConfiguration#TEMPLATES_FORM_TEMPLATE_SELECT" value1="${ddlFormTemplateName}" />
+		var key_ddlTemplateName = "${ddlTemplateName}";
 
-		<execute macro="PortletEntry#save" />
+		ScrollWebElementIntoView(locator1 = "DDMSelectTemplate#TEMPLATE_TABLE_ELLIPSIS");
 
-		<execute function="AssertClick" locator1="DDLConfiguration#NAVIGATION_OPTIONAL_CONFIGURATION" value1="Optional Configuration" />
+		Click(locator1 = "DDMSelectTemplate#TEMPLATE_TABLE_ELLIPSIS");
 
-		<execute function="AssertSelectedLabel" locator1="DDLConfiguration#TEMPLATES_FORM_TEMPLATE_SELECT" value1="${ddlFormTemplateName}" />
+		MenuItem.click(menuItem = "Edit");
 
-		<execute function="SelectFrameTop" />
-	</command>
+		AssertTextEquals(
+			locator1 = "Portlet#HEADER",
+			value1 = "${ddlTemplateName} (${ddlDataDefinitionName})");
 
-	<command name="tearDownTemplateCP">
-		<execute macro="Navigator#openURL" />
+		AssertTextEquals(
+			locator1 = "TextInput#NAME",
+			value1 = "${ddlTemplateName}");
+	}
 
-		<execute macro="ProductMenu#gotoPortlet">
-			<var name="category" value="Content" />
-			<var name="panel" value="Site Administration" />
-			<var name="portlet" value="Dynamic Data Lists" />
-		</execute>
+	macro viewFormTemplateCP {
+		DDLNavigator.gotoManageTemplates(ddlDataDefinitionName = "${ddlDataDefinitionName}");
 
-		<execute macro="DDLNavigator#gotoManageDataDefinitions" />
+		var key_ddlTemplateName = "${ddlTemplateName}";
 
-		<if>
-			<not>
-				<isset var="ddlDataDefinitionName" />
-			</not>
-			<then>
-				<var name="ddlDataDefinitionName" value="Data Definition" />
-			</then>
-		</if>
+		AssertClick(
+			locator1 = "DDMSelectTemplate#TEMPLATE_TABLE_NAME_LINK",
+			value1 = "${ddlTemplateName}");
 
-		<var name="key_ddlDataDefinitionName" value="${ddlDataDefinitionName}" />
+		AssertTextEquals.assertPartialText(
+			locator1 = "Portlet#HEADER",
+			value1 = "${ddlTemplateName} (${ddlDataDefinitionName})");
 
-		<if>
-			<condition function="IsElementPresent" locator1="DDMSelectStructure#DDM_STRUCTURE_ELLIPSIS" />
-			<then>
-				<execute function="Click#waitForMenuToggleJSClick" locator1="DDMSelectStructure#DDM_STRUCTURE_ELLIPSIS" />
+		AssertTextEquals(
+			locator1 = "TextInput#NAME",
+			value1 = "${ddlTemplateName}");
+	}
 
-				<execute function="AssertClick" locator1="MenuItem#ANY_MENU_ITEM" value1="Manage Templates">
-					<var name="key_menuItem" value="Manage Templates" />
-				</execute>
+	macro viewNoDuplicateTemplateCP {
+		DDLNavigator.gotoManageTemplates(ddlDataDefinitionName = "${ddlDataDefinitionName}");
 
-				<if>
-					<condition function="IsElementPresent" locator1="DDMSelectTemplate#TEMPLATE_TABLE_ELLIPSIS_1" />
-					<then>
-						<execute function="Check#checkAll" locator1="DDMSelectTemplate#TEMPLATE_TABLE_ALL_CHECKBOX" />
+		var key_ddlTemplateName = "${ddlTemplateName}";
 
-						<execute function="ClickNoError" locator1="Icon#DELETE" />
+		AssertTextPresent(
+			locator1 = "DDMSelectTemplate#TEMPLATE_TABLE_NAME_LINK",
+			value1 = "${ddlTemplateName}");
 
-						<execute function="Confirm" value1="Are you sure you want to delete this? It will be deleted immediately." />
+		AssertElementNotPresent(locator1 = "DDMSelectTemplate#TEMPLATE_TABLE_DUPLICATE_TEMPLATE_NAME");
+	}
 
-						<execute macro="Alert#viewSuccessMessage" />
-					</then>
-				</if>
-			</then>
-		</if>
-	</command>
+	macro viewNoTemplateCP {
+		DDLNavigator.gotoManageTemplates(ddlDataDefinitionName = "${ddlDataDefinitionName}");
 
-	<command name="viewDefaultNoTemplatesCP">
-		<execute macro="DDLNavigator#gotoManageTemplates">
-			<var name="ddlDataDefinitionName" value="${ddlDataDefinitionName}" />
-		</execute>
+		var key_ddlTemplateName = "${ddlTemplateName}";
 
-		<execute function="AssertTextEquals" locator1="Message#DDM_TEMPLATE_INFO" value1="There are no results." />
-	</command>
+		AssertElementNotPresent(locator1 = "DDMSelectTemplate#TEMPLATE_TABLE_NAME_LINK");
+	}
 
-	<command name="viewDisplayTemplateCP">
-		<execute macro="DDLNavigator#gotoManageTemplates">
-			<var name="ddlDataDefinitionName" value="${ddlDataDefinitionName}" />
-		</execute>
-
-		<var name="key_ddlTemplateName" value="${ddlTemplateName}" />
-
-		<execute function="ScrollWebElementIntoView" locator1="DDMSelectTemplate#TEMPLATE_TABLE_ELLIPSIS" />
-
-		<execute function="Click" locator1="DDMSelectTemplate#TEMPLATE_TABLE_ELLIPSIS" />
-
-		<execute function="AssertClick" locator1="MenuItem#ANY_MENU_ITEM" value1="Edit">
-			<var name="key_menuItem" value="Edit" />
-		</execute>
-
-		<execute function="AssertTextEquals" locator1="Portlet#HEADER" value1="${ddlTemplateName} (${ddlDataDefinitionName})" />
-		<execute function="AssertTextEquals" locator1="TextInput#NAME" value1="${ddlTemplateName}" />
-	</command>
-
-	<command name="viewFormTemplateCP">
-		<execute macro="DDLNavigator#gotoManageTemplates">
-			<var name="ddlDataDefinitionName" value="${ddlDataDefinitionName}" />
-		</execute>
-
-		<var name="key_ddlTemplateName" value="${ddlTemplateName}" />
-
-		<execute function="AssertClick" locator1="DDMSelectTemplate#TEMPLATE_TABLE_NAME_LINK" value1="${ddlTemplateName}" />
-
-		<execute function="AssertTextEquals#assertPartialText" locator1="Portlet#HEADER" value1="${ddlTemplateName} (${ddlDataDefinitionName})" />
-
-		<execute function="AssertTextEquals" locator1="TextInput#NAME" value1="${ddlTemplateName}" />
-	</command>
-
-	<command name="viewNoDuplicateTemplateCP">
-		<execute macro="DDLNavigator#gotoManageTemplates">
-			<var name="ddlDataDefinitionName" value="${ddlDataDefinitionName}" />
-		</execute>
-
-		<var name="key_ddlTemplateName" value="${ddlTemplateName}" />
-
-		<execute function="AssertTextPresent" locator1="DDMSelectTemplate#TEMPLATE_TABLE_NAME_LINK" value1="${ddlTemplateName}" />
-		<execute function="AssertElementNotPresent" locator1="DDMSelectTemplate#TEMPLATE_TABLE_DUPLICATE_TEMPLATE_NAME" />
-	</command>
-
-	<command name="viewNoTemplateCP">
-		<execute macro="DDLNavigator#gotoManageTemplates">
-			<var name="ddlDataDefinitionName" value="${ddlDataDefinitionName}" />
-		</execute>
-
-		<var name="key_ddlTemplateName" value="${ddlTemplateName}" />
-
-		<execute function="AssertElementNotPresent" locator1="DDMSelectTemplate#TEMPLATE_TABLE_NAME_LINK" />
-	</command>
-
-	<command name="viewWithNoPermissions">
-		<execute function="AssertTextEquals" locator1="Message#ERROR" value1="You do not have the required permissions." />
-	</command>
-</definition>
+}

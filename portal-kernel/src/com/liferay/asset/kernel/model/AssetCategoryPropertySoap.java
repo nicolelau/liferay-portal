@@ -14,8 +14,6 @@
 
 package com.liferay.asset.kernel.model;
 
-import aQute.bnd.annotation.ProviderType;
-
 import java.io.Serializable;
 
 import java.util.ArrayList;
@@ -26,17 +24,18 @@ import java.util.List;
  * This class is used by SOAP remote services, specifically {@link com.liferay.portlet.asset.service.http.AssetCategoryPropertyServiceSoap}.
  *
  * @author Brian Wing Shun Chan
- * @see com.liferay.portlet.asset.service.http.AssetCategoryPropertyServiceSoap
  * @deprecated
  * @generated
  */
 @Deprecated
-@ProviderType
 public class AssetCategoryPropertySoap implements Serializable {
+
 	public static AssetCategoryPropertySoap toSoapModel(
 		AssetCategoryProperty model) {
+
 		AssetCategoryPropertySoap soapModel = new AssetCategoryPropertySoap();
 
+		soapModel.setMvccVersion(model.getMvccVersion());
 		soapModel.setCategoryPropertyId(model.getCategoryPropertyId());
 		soapModel.setCompanyId(model.getCompanyId());
 		soapModel.setUserId(model.getUserId());
@@ -52,7 +51,9 @@ public class AssetCategoryPropertySoap implements Serializable {
 
 	public static AssetCategoryPropertySoap[] toSoapModels(
 		AssetCategoryProperty[] models) {
-		AssetCategoryPropertySoap[] soapModels = new AssetCategoryPropertySoap[models.length];
+
+		AssetCategoryPropertySoap[] soapModels =
+			new AssetCategoryPropertySoap[models.length];
 
 		for (int i = 0; i < models.length; i++) {
 			soapModels[i] = toSoapModel(models[i]);
@@ -63,10 +64,12 @@ public class AssetCategoryPropertySoap implements Serializable {
 
 	public static AssetCategoryPropertySoap[][] toSoapModels(
 		AssetCategoryProperty[][] models) {
+
 		AssetCategoryPropertySoap[][] soapModels = null;
 
 		if (models.length > 0) {
-			soapModels = new AssetCategoryPropertySoap[models.length][models[0].length];
+			soapModels =
+				new AssetCategoryPropertySoap[models.length][models[0].length];
 		}
 		else {
 			soapModels = new AssetCategoryPropertySoap[0][0];
@@ -81,13 +84,16 @@ public class AssetCategoryPropertySoap implements Serializable {
 
 	public static AssetCategoryPropertySoap[] toSoapModels(
 		List<AssetCategoryProperty> models) {
-		List<AssetCategoryPropertySoap> soapModels = new ArrayList<AssetCategoryPropertySoap>(models.size());
+
+		List<AssetCategoryPropertySoap> soapModels =
+			new ArrayList<AssetCategoryPropertySoap>(models.size());
 
 		for (AssetCategoryProperty model : models) {
 			soapModels.add(toSoapModel(model));
 		}
 
-		return soapModels.toArray(new AssetCategoryPropertySoap[soapModels.size()]);
+		return soapModels.toArray(
+			new AssetCategoryPropertySoap[soapModels.size()]);
 	}
 
 	public AssetCategoryPropertySoap() {
@@ -99,6 +105,14 @@ public class AssetCategoryPropertySoap implements Serializable {
 
 	public void setPrimaryKey(long pk) {
 		setCategoryPropertyId(pk);
+	}
+
+	public long getMvccVersion() {
+		return _mvccVersion;
+	}
+
+	public void setMvccVersion(long mvccVersion) {
+		_mvccVersion = mvccVersion;
 	}
 
 	public long getCategoryPropertyId() {
@@ -173,6 +187,7 @@ public class AssetCategoryPropertySoap implements Serializable {
 		_value = value;
 	}
 
+	private long _mvccVersion;
 	private long _categoryPropertyId;
 	private long _companyId;
 	private long _userId;
@@ -182,4 +197,5 @@ public class AssetCategoryPropertySoap implements Serializable {
 	private long _categoryId;
 	private String _key;
 	private String _value;
+
 }

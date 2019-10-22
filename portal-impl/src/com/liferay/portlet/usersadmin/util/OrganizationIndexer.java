@@ -14,8 +14,8 @@
 
 package com.liferay.portlet.usersadmin.util;
 
+import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
-import com.liferay.portal.kernel.dao.orm.ActionableDynamicQuery;
 import com.liferay.portal.kernel.dao.orm.IndexableActionableDynamicQuery;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.log.Log;
@@ -38,11 +38,9 @@ import com.liferay.portal.kernel.search.filter.TermsFilter;
 import com.liferay.portal.kernel.search.generic.TermQueryImpl;
 import com.liferay.portal.kernel.search.generic.WildcardQueryImpl;
 import com.liferay.portal.kernel.service.OrganizationLocalServiceUtil;
-import com.liferay.portal.kernel.spring.osgi.OSGiBeanProperties;
 import com.liferay.portal.kernel.util.ArrayUtil;
 import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.ListUtil;
-import com.liferay.portal.kernel.util.StringBundler;
 import com.liferay.portal.kernel.util.Validator;
 
 import java.util.ArrayList;
@@ -54,12 +52,13 @@ import javax.portlet.PortletRequest;
 import javax.portlet.PortletResponse;
 
 /**
- * @author Raymond Augé
- * @author Zsigmond Rab
- * @author Hugo Huijser
- * @author Marco Leo
+ * @author     Raymond Augé
+ * @author     Zsigmond Rab
+ * @author     Hugo Huijser
+ * @author     Marco Leo
+ * @deprecated As of Judson (7.1.x)
  */
-@OSGiBeanProperties
+@Deprecated
 public class OrganizationIndexer extends BaseIndexer<Organization> {
 
 	public static final String CLASS_NAME = Organization.class.getName();
@@ -96,8 +95,7 @@ public class OrganizationIndexer extends BaseIndexer<Organization> {
 
 			termsFilter.addValues(
 				ArrayUtil.toStringArray(
-					excludedOrganizationIds.toArray(
-						new Long[excludedOrganizationIds.size()])));
+					excludedOrganizationIds.toArray(new Long[0])));
 
 			contextBooleanFilter.add(termsFilter, BooleanClauseOccur.MUST_NOT);
 		}
@@ -235,9 +233,8 @@ public class OrganizationIndexer extends BaseIndexer<Organization> {
 		else if (orderByCol.equals("type")) {
 			return "type";
 		}
-		else {
-			return orderByCol;
-		}
+
+		return orderByCol;
 	}
 
 	@Override
@@ -254,19 +251,14 @@ public class OrganizationIndexer extends BaseIndexer<Organization> {
 
 	@Override
 	protected void doReindex(Organization organization) throws Exception {
-		Document document = getDocument(organization);
-
 		IndexWriterHelperUtil.updateDocument(
-			getSearchEngineId(), organization.getCompanyId(), document,
-			isCommitImmediately());
+			getSearchEngineId(), organization.getCompanyId(),
+			getDocument(organization), isCommitImmediately());
 	}
 
 	@Override
 	protected void doReindex(String className, long classPK) throws Exception {
-		Organization organization =
-			OrganizationLocalServiceUtil.getOrganization(classPK);
-
-		doReindex(organization);
+		doReindex(OrganizationLocalServiceUtil.getOrganization(classPK));
 	}
 
 	@Override
@@ -282,25 +274,19 @@ public class OrganizationIndexer extends BaseIndexer<Organization> {
 
 		indexableActionableDynamicQuery.setCompanyId(companyId);
 		indexableActionableDynamicQuery.setPerformActionMethod(
-			new ActionableDynamicQuery.PerformActionMethod<Organization>() {
-
-				@Override
-				public void performAction(Organization organization) {
-					try {
-						Document document = getDocument(organization);
-
-						indexableActionableDynamicQuery.addDocuments(document);
-					}
-					catch (PortalException pe) {
-						if (_log.isWarnEnabled()) {
-							_log.warn(
-								"Unable to index organization " +
-									organization.getOrganizationId(),
-								pe);
-						}
+			(Organization organization) -> {
+				try {
+					indexableActionableDynamicQuery.addDocuments(
+						getDocument(organization));
+				}
+				catch (PortalException pe) {
+					if (_log.isWarnEnabled()) {
+						_log.warn(
+							"Unable to index organization " +
+								organization.getOrganizationId(),
+							pe);
 					}
 				}
-
 			});
 		indexableActionableDynamicQuery.setSearchEngineId(getSearchEngineId());
 

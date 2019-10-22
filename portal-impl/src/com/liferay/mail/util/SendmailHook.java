@@ -18,13 +18,14 @@ import com.liferay.mail.kernel.model.Filter;
 import com.liferay.mail.kernel.util.Hook;
 import com.liferay.petra.process.LoggingOutputProcessor;
 import com.liferay.petra.process.ProcessUtil;
+import com.liferay.petra.string.StringBundler;
+import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.io.unsync.UnsyncBufferedReader;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.util.FileUtil;
 import com.liferay.portal.kernel.util.ListUtil;
 import com.liferay.portal.kernel.util.PropsKeys;
-import com.liferay.portal.kernel.util.StringBundler;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.util.PropsUtil;
 
@@ -49,8 +50,7 @@ public class SendmailHook implements Hook {
 				String home = PropsUtil.get(PropsKeys.MAIL_HOOK_SENDMAIL_HOME);
 
 				File file = new File(
-					StringBundler.concat(
-						home, "/", String.valueOf(userId), "/.forward"));
+					StringBundler.concat(home, "/", userId, "/.forward"));
 
 				if (!emailAddresses.isEmpty()) {
 					StringBundler sb = new StringBundler(
@@ -99,7 +99,7 @@ public class SendmailHook implements Hook {
 							_log.info(line);
 						}
 					}),
-				addUserCmd);
+				StringUtil.split(addUserCmd, StringPool.SPACE));
 
 			future.get();
 		}
@@ -147,7 +147,7 @@ public class SendmailHook implements Hook {
 							_log.info(line);
 						}
 					}),
-				deleteUserCmd);
+				StringUtil.split(deleteUserCmd, StringPool.SPACE));
 
 			future.get();
 		}
@@ -163,8 +163,7 @@ public class SendmailHook implements Hook {
 		String home = PropsUtil.get(PropsKeys.MAIL_HOOK_SENDMAIL_HOME);
 
 		File file = new File(
-			StringBundler.concat(
-				home, "/", String.valueOf(userId), "/.procmailrc"));
+			StringBundler.concat(home, "/", userId, "/.procmailrc"));
 
 		if (ListUtil.isEmpty(blocked)) {
 			file.delete();
@@ -213,7 +212,7 @@ public class SendmailHook implements Hook {
 					new UnsyncBufferedReader(fileReader)) {
 
 				for (String s = unsyncBufferedReader.readLine(); s != null;
-					s = unsyncBufferedReader.readLine()) {
+					 s = unsyncBufferedReader.readLine()) {
 
 					if (!s.endsWith(" " + userId)) {
 						sb.append(s);
@@ -244,7 +243,7 @@ public class SendmailHook implements Hook {
 							_log.info(line);
 						}
 					}),
-				virtusertableRefreshCmd);
+				StringUtil.split(virtusertableRefreshCmd, StringPool.SPACE));
 
 			future.get();
 		}
@@ -261,15 +260,19 @@ public class SendmailHook implements Hook {
 		String changePasswordCmd = PropsUtil.get(
 			PropsKeys.MAIL_HOOK_SENDMAIL_CHANGE_PASSWORD);
 
-		// Replace userId
+		// Replace user ID and password
 
-		changePasswordCmd = StringUtil.replace(
-			changePasswordCmd, "%1%", String.valueOf(userId));
+		String[] arguments = StringUtil.split(
+			changePasswordCmd, StringPool.SPACE);
 
-		// Replace password
-
-		changePasswordCmd = StringUtil.replace(
-			changePasswordCmd, "%2%", password);
+		for (int i = 0; i < arguments.length; i++) {
+			if (arguments[i].equals("%1%")) {
+				arguments[i] = String.valueOf(userId);
+			}
+			else if (arguments[i].equals("%2%")) {
+				arguments[i] = password;
+			}
+		}
 
 		try {
 			Future<?> future = ProcessUtil.execute(
@@ -282,7 +285,7 @@ public class SendmailHook implements Hook {
 							_log.info(line);
 						}
 					}),
-				changePasswordCmd);
+				arguments);
 
 			future.get();
 		}

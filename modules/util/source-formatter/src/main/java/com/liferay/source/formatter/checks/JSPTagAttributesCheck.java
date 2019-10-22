@@ -15,31 +15,30 @@
 package com.liferay.source.formatter.checks;
 
 import com.liferay.petra.string.CharPool;
+import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.io.unsync.UnsyncBufferedReader;
 import com.liferay.portal.kernel.io.unsync.UnsyncStringReader;
 import com.liferay.portal.kernel.util.ArrayUtil;
-import com.liferay.portal.kernel.util.ListUtil;
 import com.liferay.portal.kernel.util.SetUtil;
-import com.liferay.portal.kernel.util.StringBundler;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.TextFormatter;
 import com.liferay.portal.kernel.util.Validator;
-import com.liferay.portal.tools.ToolsUtil;
 import com.liferay.source.formatter.checks.util.SourceUtil;
+import com.liferay.source.formatter.checks.util.TaglibUtil;
 import com.liferay.source.formatter.parser.JavaClass;
 import com.liferay.source.formatter.parser.JavaClassParser;
 import com.liferay.source.formatter.parser.JavaMethod;
 import com.liferay.source.formatter.parser.JavaParameter;
 import com.liferay.source.formatter.parser.JavaSignature;
 import com.liferay.source.formatter.parser.JavaTerm;
+import com.liferay.source.formatter.parser.ParseException;
 import com.liferay.source.formatter.util.FileUtil;
-import com.liferay.source.formatter.util.SourceFormatterUtil;
 
 import java.io.File;
+import java.io.IOException;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -54,11 +53,6 @@ import org.dom4j.Element;
  * @author Hugo Huijser
  */
 public class JSPTagAttributesCheck extends TagAttributesCheck {
-
-	@Override
-	public void init() throws Exception {
-		_primitiveTagAttributeDataTypes = _getPrimitiveTagAttributeDataTypes();
-	}
 
 	@Override
 	public void setAllFileNames(List<String> allFileNames) {
@@ -135,7 +129,10 @@ public class JSPTagAttributesCheck extends TagAttributesCheck {
 				continue;
 			}
 
-			if (_primitiveTagAttributeDataTypes.contains(dataType)) {
+			Set<String> primitiveTagAttributeDataType =
+				_getPrimitiveTagAttributeDataTypes();
+
+			if (primitiveTagAttributeDataType.contains(dataType)) {
 				if (!_isValidTagAttributeValue(attributeValue, dataType)) {
 					continue;
 				}
@@ -156,36 +153,6 @@ public class JSPTagAttributesCheck extends TagAttributesCheck {
 
 				tag.putAttribute(attributeName, attributeValue);
 			}
-		}
-
-		return tag;
-	}
-
-	@Override
-	protected Tag sortHTMLTagAttributes(Tag tag) {
-		String tagName = tag.getName();
-
-		if (tagName.equals("liferay-ui:tabs")) {
-			return tag;
-		}
-
-		Map<String, String> attributesMap = tag.getAttributesMap();
-
-		for (Map.Entry<String, String> entry : attributesMap.entrySet()) {
-			String attributeValue = entry.getValue();
-
-			if (!attributeValue.matches("([-a-z0-9]+ )+[-a-z0-9]+")) {
-				continue;
-			}
-
-			List<String> htmlAttributes = ListUtil.fromArray(
-				StringUtil.split(attributeValue, StringPool.SPACE));
-
-			Collections.sort(htmlAttributes);
-
-			tag.putAttribute(
-				entry.getKey(),
-				StringUtil.merge(htmlAttributes, StringPool.SPACE));
 		}
 
 		return tag;
@@ -243,54 +210,6 @@ public class JSPTagAttributesCheck extends TagAttributesCheck {
 		return content;
 	}
 
-	private String _getExtendedFileName(
-		String content, String fileName, List<String> imports,
-		String utilTaglibSrcDirName) {
-
-		Matcher matcher = _extendedClassPattern.matcher(content);
-
-		if (!matcher.find()) {
-			return null;
-		}
-
-		String extendedClassName = matcher.group(1);
-
-		if (!extendedClassName.contains(StringPool.PERIOD)) {
-			for (String importName : imports) {
-				if (importName.endsWith(
-						StringPool.PERIOD + extendedClassName)) {
-
-					extendedClassName = importName;
-
-					break;
-				}
-			}
-		}
-
-		StringBundler sb = new StringBundler(3);
-
-		if (extendedClassName.startsWith("com.liferay.taglib")) {
-			sb.append(utilTaglibSrcDirName);
-			sb.append(
-				StringUtil.replace(
-					extendedClassName, CharPool.PERIOD, CharPool.SLASH));
-		}
-		else if (!extendedClassName.contains(StringPool.PERIOD)) {
-			int pos = fileName.lastIndexOf(CharPool.SLASH);
-
-			sb.append(fileName.substring(0, pos + 1));
-
-			sb.append(extendedClassName);
-		}
-		else {
-			return null;
-		}
-
-		sb.append(".java");
-
-		return sb.toString();
-	}
-
 	private List<String> _getJSPTag(String line) {
 		List<String> jspTags = new ArrayList<>();
 
@@ -309,13 +228,17 @@ public class JSPTagAttributesCheck extends TagAttributesCheck {
 		return jspTags;
 	}
 
-	private Set<String> _getPrimitiveTagAttributeDataTypes() {
-		return SetUtil.fromArray(
-			new String[] {
-				"java.lang.Boolean", "Boolean", "boolean", "java.lang.Double",
-				"Double", "double", "java.lang.Integer", "Integer", "int",
-				"java.lang.Long", "Long", "long"
-			});
+	private synchronized Set<String> _getPrimitiveTagAttributeDataTypes() {
+		if (_primitiveTagAttributeDataTypes == null) {
+			_primitiveTagAttributeDataTypes = SetUtil.fromArray(
+				new String[] {
+					"java.lang.Boolean", "Boolean", "boolean",
+					"java.lang.Double", "Double", "double", "java.lang.Integer",
+					"Integer", "int", "java.lang.Long", "Long", "long"
+				});
+		}
+
+		return _primitiveTagAttributeDataTypes;
 	}
 
 	private synchronized Map<String, String> _getSetMethodsMap(String tagName)
@@ -327,13 +250,16 @@ public class JSPTagAttributesCheck extends TagAttributesCheck {
 
 		_tagSetMethodsMap = new HashMap<>();
 
-		List<String> tldFileNames = _getTLDFileNames();
+		List<String> tldFileNames = TaglibUtil.getTLDFileNames(
+			getBaseDirName(), _allFileNames, getSourceFormatterExcludes(),
+			isPortalSource());
 
 		if (tldFileNames.isEmpty()) {
 			return _tagSetMethodsMap.get(tagName);
 		}
 
-		String utilTaglibSrcDirName = _getUtilTaglibSrcDirName();
+		String utilTaglibSrcDirName = TaglibUtil.getUtilTaglibSrcDirName(
+			getBaseDirName());
 
 		outerLoop:
 		for (String tldFileName : tldFileNames) {
@@ -381,7 +307,7 @@ public class JSPTagAttributesCheck extends TagAttributesCheck {
 
 						srcDir =
 							srcDir.substring(0, srcDir.lastIndexOf("/src/")) +
-								"/src/main/java/";
+								"/src/";
 					}
 					else {
 						srcDir = utilTaglibSrcDirName;
@@ -417,7 +343,7 @@ public class JSPTagAttributesCheck extends TagAttributesCheck {
 
 	private Map<String, String> _getSetMethodsMap(
 			String tagFileName, String utilTaglibSrcDirName)
-		throws Exception {
+		throws IOException, ParseException {
 
 		if (_classSetMethodsMap.containsKey(tagFileName)) {
 			return _classSetMethodsMap.get(tagFileName);
@@ -462,13 +388,12 @@ public class JSPTagAttributesCheck extends TagAttributesCheck {
 			setMethodsMap.put(methodName, javaParameter.getParameterType());
 		}
 
-		String extendedFileName = _getExtendedFileName(
-			tagFileContent, tagFileName, javaClass.getImports(),
-			utilTaglibSrcDirName);
+		List<String> extendedTagFileNames = TaglibUtil.getExtendedTagFileNames(
+			javaClass, tagFileName, utilTaglibSrcDirName);
 
-		if (extendedFileName != null) {
+		for (String extendedTagFileName : extendedTagFileNames) {
 			setMethodsMap.putAll(
-				_getSetMethodsMap(extendedFileName, utilTaglibSrcDirName));
+				_getSetMethodsMap(extendedTagFileName, utilTaglibSrcDirName));
 		}
 
 		_classSetMethodsMap.put(tagFileName, setMethodsMap);
@@ -492,49 +417,6 @@ public class JSPTagAttributesCheck extends TagAttributesCheck {
 				return part;
 			}
 		}
-	}
-
-	private List<String> _getTLDFileNames() throws Exception {
-		String[] excludes =
-			{"**/dependencies/**", "**/util-taglib/**", "**/portal-web/**"};
-
-		List<String> tldFileNames = SourceFormatterUtil.filterFileNames(
-			_allFileNames, excludes, new String[] {"**/*.tld"},
-			getSourceFormatterExcludes(), true);
-
-		if (!isPortalSource()) {
-			return tldFileNames;
-		}
-
-		String tldDirLocation = "portal-web/docroot/WEB-INF/tld/";
-
-		for (int i = 0; i < ToolsUtil.PORTAL_MAX_DIR_LEVEL - 1; i++) {
-			File file = new File(getBaseDirName() + tldDirLocation);
-
-			if (file.exists()) {
-				tldFileNames.addAll(
-					getFileNames(
-						getBaseDirName() + tldDirLocation, new String[0],
-						new String[] {"**/*.tld"}));
-
-				break;
-			}
-
-			tldDirLocation = "../" + tldDirLocation;
-		}
-
-		return tldFileNames;
-	}
-
-	private String _getUtilTaglibSrcDirName() {
-		File utilTaglibDir = getFile(
-			"util-taglib/src", ToolsUtil.PORTAL_MAX_DIR_LEVEL);
-
-		if (utilTaglibDir == null) {
-			return StringPool.BLANK;
-		}
-
-		return SourceUtil.getAbsolutePath(utilTaglibDir) + StringPool.SLASH;
 	}
 
 	private boolean _isValidTagAttributeValue(String value, String dataType) {
@@ -572,13 +454,12 @@ public class JSPTagAttributesCheck extends TagAttributesCheck {
 		"liferay-util:include", "liferay-util:param"
 	};
 
+	private static final Pattern _jspTaglibPattern = Pattern.compile(
+		"\t*<[-\\w]+:[-\\w]+ .");
+
 	private List<String> _allFileNames;
 	private final Map<String, Map<String, String>> _classSetMethodsMap =
 		new HashMap<>();
-	private final Pattern _extendedClassPattern = Pattern.compile(
-		"\\sextends\\s+(\\w+)\\W");
-	private final Pattern _jspTaglibPattern = Pattern.compile(
-		"\t*<[-\\w]+:[-\\w]+ .");
 	private Set<String> _primitiveTagAttributeDataTypes;
 	private Map<String, Map<String, String>> _tagSetMethodsMap;
 

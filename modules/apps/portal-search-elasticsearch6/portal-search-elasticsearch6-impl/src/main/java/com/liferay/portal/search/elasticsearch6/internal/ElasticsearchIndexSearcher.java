@@ -15,7 +15,6 @@
 package com.liferay.portal.search.elasticsearch6.internal;
 
 import com.liferay.petra.string.StringBundler;
-import com.liferay.petra.string.StringPool;
 import com.liferay.portal.configuration.metatype.bnd.util.ConfigurableUtil;
 import com.liferay.portal.kernel.dao.orm.QueryUtil;
 import com.liferay.portal.kernel.dao.search.SearchPaginationUtil;
@@ -23,78 +22,40 @@ import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.search.BaseIndexSearcher;
 import com.liferay.portal.kernel.search.Document;
-import com.liferay.portal.kernel.search.DocumentImpl;
-import com.liferay.portal.kernel.search.Field;
-import com.liferay.portal.kernel.search.GeoDistanceSort;
-import com.liferay.portal.kernel.search.GroupBy;
 import com.liferay.portal.kernel.search.Hits;
 import com.liferay.portal.kernel.search.HitsImpl;
 import com.liferay.portal.kernel.search.IndexSearcher;
 import com.liferay.portal.kernel.search.Query;
 import com.liferay.portal.kernel.search.QueryConfig;
 import com.liferay.portal.kernel.search.SearchContext;
-import com.liferay.portal.kernel.search.SearchException;
-import com.liferay.portal.kernel.search.Sort;
-import com.liferay.portal.kernel.search.Stats;
-import com.liferay.portal.kernel.search.StatsResults;
-import com.liferay.portal.kernel.search.facet.Facet;
-import com.liferay.portal.kernel.search.facet.collector.FacetCollector;
-import com.liferay.portal.kernel.search.filter.FilterTranslator;
-import com.liferay.portal.kernel.search.geolocation.GeoLocationPoint;
-import com.liferay.portal.kernel.search.highlight.HighlightUtil;
-import com.liferay.portal.kernel.search.query.QueryTranslator;
 import com.liferay.portal.kernel.search.suggest.QuerySuggester;
-import com.liferay.portal.kernel.util.ArrayUtil;
 import com.liferay.portal.kernel.util.GetterUtil;
-import com.liferay.portal.kernel.util.MapUtil;
 import com.liferay.portal.kernel.util.Props;
 import com.liferay.portal.kernel.util.PropsKeys;
-import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
+import com.liferay.portal.search.aggregation.Aggregation;
+import com.liferay.portal.search.aggregation.pipeline.PipelineAggregation;
+import com.liferay.portal.search.constants.SearchContextAttributes;
 import com.liferay.portal.search.elasticsearch6.configuration.ElasticsearchConfiguration;
 import com.liferay.portal.search.elasticsearch6.constants.ElasticsearchSearchContextAttributes;
-import com.liferay.portal.search.elasticsearch6.internal.connection.ElasticsearchConnectionManager;
-import com.liferay.portal.search.elasticsearch6.internal.facet.CompositeFacetProcessor;
-import com.liferay.portal.search.elasticsearch6.internal.facet.FacetCollectorFactory;
-import com.liferay.portal.search.elasticsearch6.internal.facet.FacetProcessor;
-import com.liferay.portal.search.elasticsearch6.internal.groupby.GroupByTranslator;
-import com.liferay.portal.search.elasticsearch6.internal.index.IndexNameBuilder;
-import com.liferay.portal.search.elasticsearch6.internal.stats.StatsTranslator;
-import com.liferay.portal.search.elasticsearch6.internal.util.DocumentTypes;
+import com.liferay.portal.search.engine.adapter.SearchEngineAdapter;
+import com.liferay.portal.search.engine.adapter.search.BaseSearchRequest;
+import com.liferay.portal.search.engine.adapter.search.BaseSearchResponse;
+import com.liferay.portal.search.engine.adapter.search.CountSearchRequest;
+import com.liferay.portal.search.engine.adapter.search.CountSearchResponse;
+import com.liferay.portal.search.engine.adapter.search.SearchSearchRequest;
+import com.liferay.portal.search.engine.adapter.search.SearchSearchResponse;
+import com.liferay.portal.search.index.IndexNameBuilder;
+import com.liferay.portal.search.legacy.searcher.SearchRequestBuilderFactory;
+import com.liferay.portal.search.legacy.searcher.SearchResponseBuilderFactory;
+import com.liferay.portal.search.searcher.SearchRequest;
+import com.liferay.portal.search.searcher.SearchRequestBuilder;
+import com.liferay.portal.search.searcher.SearchResponseBuilder;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
 
 import org.apache.commons.lang.time.StopWatch;
-
-import org.elasticsearch.action.search.SearchRequestBuilder;
-import org.elasticsearch.action.search.SearchResponse;
-import org.elasticsearch.client.Client;
-import org.elasticsearch.common.geo.GeoDistance;
-import org.elasticsearch.common.geo.GeoPoint;
-import org.elasticsearch.common.unit.TimeValue;
-import org.elasticsearch.index.query.BoolQueryBuilder;
-import org.elasticsearch.index.query.QueryBuilder;
-import org.elasticsearch.index.query.QueryBuilders;
-import org.elasticsearch.search.SearchHit;
-import org.elasticsearch.search.SearchHits;
-import org.elasticsearch.search.aggregations.Aggregation;
-import org.elasticsearch.search.aggregations.Aggregations;
-import org.elasticsearch.search.aggregations.bucket.terms.Terms;
-import org.elasticsearch.search.aggregations.metrics.tophits.TopHits;
-import org.elasticsearch.search.fetch.subphase.highlight.HighlightBuilder;
-import org.elasticsearch.search.fetch.subphase.highlight.HighlightField;
-import org.elasticsearch.search.sort.FieldSortBuilder;
-import org.elasticsearch.search.sort.GeoDistanceSortBuilder;
-import org.elasticsearch.search.sort.SortBuilder;
-import org.elasticsearch.search.sort.SortBuilders;
-import org.elasticsearch.search.sort.SortOrder;
 
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
@@ -114,23 +75,32 @@ public class ElasticsearchIndexSearcher extends BaseIndexSearcher {
 
 	@Override
 	public String getQueryString(SearchContext searchContext, Query query) {
-		QueryBuilder queryBuilder = queryTranslator.translate(
-			query, searchContext);
-
-		return queryBuilder.toString();
+		return _searchEngineAdapter.getQueryString(query);
 	}
 
 	@Override
-	public Hits search(SearchContext searchContext, Query query)
-		throws SearchException {
-
+	public Hits search(SearchContext searchContext, Query query) {
 		StopWatch stopWatch = new StopWatch();
 
 		stopWatch.start();
 
 		try {
-			int start = searchContext.getStart();
 			int end = searchContext.getEnd();
+			int start = searchContext.getStart();
+
+			SearchRequest searchRequest = getSearchRequest(searchContext);
+
+			Integer from = searchRequest.getFrom();
+			Integer size = searchRequest.getSize();
+
+			if ((from == null) && (size != null)) {
+				end = size;
+				start = 0;
+			}
+			else if ((from != null) && (size != null)) {
+				end = from + size;
+				start = from;
+			}
 
 			if (start == QueryUtil.ALL_POS) {
 				start = 0;
@@ -141,16 +111,40 @@ public class ElasticsearchIndexSearcher extends BaseIndexSearcher {
 
 			if (end == QueryUtil.ALL_POS) {
 				end = GetterUtil.getInteger(
-					props.get(PropsKeys.INDEX_SEARCH_LIMIT));
+					_props.get(PropsKeys.INDEX_SEARCH_LIMIT));
 			}
 			else if (end < 0) {
 				throw new IllegalArgumentException("Invalid end " + end);
 			}
 
+			SearchResponseBuilder searchResponseBuilder =
+				_getSearchResponseBuilder(searchContext);
+
 			Hits hits = null;
 
 			while (true) {
-				hits = doSearchHits(searchContext, query, start, end);
+				SearchSearchRequest searchSearchRequest =
+					createSearchSearchRequest(
+						searchRequest, searchContext, query, start, end);
+
+				SearchSearchResponse searchSearchResponse =
+					_searchEngineAdapter.execute(searchSearchRequest);
+
+				if (_log.isInfoEnabled()) {
+					_log.info(
+						StringBundler.concat(
+							"The search engine processed ",
+							searchSearchResponse.getSearchRequestString(),
+							" in ", searchSearchResponse.getExecutionTime(),
+							" ms"));
+				}
+
+				populateResponse(searchSearchResponse, searchResponseBuilder);
+
+				searchResponseBuilder.searchHits(
+					searchSearchResponse.getSearchHits());
+
+				hits = searchSearchResponse.getHits();
 
 				Document[] documents = hits.getDocs();
 
@@ -169,13 +163,14 @@ public class ElasticsearchIndexSearcher extends BaseIndexSearcher {
 
 			return hits;
 		}
-		catch (Exception e) {
-			if (_log.isWarnEnabled()) {
-				_log.warn(e, e);
-			}
-
-			if (!_logExceptionsOnly) {
-				throw new SearchException(e.getMessage(), e);
+		catch (RuntimeException re) {
+			if (!handle(re)) {
+				if (_logExceptionsOnly) {
+					_log.error(re, re);
+				}
+				else {
+					throw re;
+				}
 			}
 
 			return new HitsImpl();
@@ -186,30 +181,46 @@ public class ElasticsearchIndexSearcher extends BaseIndexSearcher {
 
 				_log.info(
 					StringBundler.concat(
-						"Searching ", query.toString(), " took ",
-						String.valueOf(stopWatch.getTime()), " ms"));
+						"Searching ", query, " took ", stopWatch.getTime(),
+						" ms"));
 			}
 		}
 	}
 
 	@Override
-	public long searchCount(SearchContext searchContext, Query query)
-		throws SearchException {
-
+	public long searchCount(SearchContext searchContext, Query query) {
 		StopWatch stopWatch = new StopWatch();
 
 		stopWatch.start();
 
 		try {
-			return doSearchCount(searchContext, query);
-		}
-		catch (Exception e) {
-			if (_log.isWarnEnabled()) {
-				_log.warn(e, e);
+			CountSearchRequest countSearchRequest = createCountSearchRequest(
+				searchContext, query);
+
+			CountSearchResponse countSearchResponse =
+				_searchEngineAdapter.execute(countSearchRequest);
+
+			if (_log.isInfoEnabled()) {
+				_log.info(
+					StringBundler.concat(
+						"The search engine processed ",
+						countSearchResponse.getSearchRequestString(), " in ",
+						countSearchResponse.getExecutionTime(), " ms"));
 			}
 
-			if (!_logExceptionsOnly) {
-				throw new SearchException(e.getMessage(), e);
+			populateResponse(
+				countSearchResponse, _getSearchResponseBuilder(searchContext));
+
+			return countSearchResponse.getCount();
+		}
+		catch (RuntimeException re) {
+			if (!handle(re)) {
+				if (_logExceptionsOnly) {
+					_log.error(re, re);
+				}
+				else {
+					throw re;
+				}
 			}
 
 			return 0;
@@ -221,7 +232,7 @@ public class ElasticsearchIndexSearcher extends BaseIndexSearcher {
 				_log.info(
 					StringBundler.concat(
 						"Searching ", query.toString(), " took ",
-						String.valueOf(stopWatch.getTime()), " ms"));
+						stopWatch.getTime(), " ms"));
 			}
 		}
 	}
@@ -241,565 +252,279 @@ public class ElasticsearchIndexSearcher extends BaseIndexSearcher {
 		_logExceptionsOnly = _elasticsearchConfiguration.logExceptionsOnly();
 	}
 
-	protected void addFacets(
-		SearchRequestBuilder searchRequestBuilder,
-		SearchContext searchContext) {
+	protected CountSearchRequest createCountSearchRequest(
+		SearchContext searchContext, Query query) {
 
-		Map<String, Facet> facetsMap = searchContext.getFacets();
+		CountSearchRequest countSearchRequest = new CountSearchRequest();
 
-		for (Facet facet : facetsMap.values()) {
-			if (facet.isStatic()) {
-				continue;
-			}
+		prepare(
+			countSearchRequest, getSearchRequest(searchContext), query,
+			searchContext);
 
-			facetProcessor.processFacet(searchRequestBuilder, facet);
-		}
+		return countSearchRequest;
 	}
 
-	protected void addGroupBy(
-		SearchRequestBuilder searchRequestBuilder, SearchContext searchContext,
+	protected SearchSearchRequest createSearchSearchRequest(
+		SearchRequest searchRequest, SearchContext searchContext, Query query,
 		int start, int end) {
 
-		GroupBy groupBy = searchContext.getGroupBy();
+		SearchSearchRequest searchSearchRequest = new SearchSearchRequest();
 
-		if (groupBy == null) {
-			return;
-		}
+		prepare(searchSearchRequest, searchRequest, query, searchContext);
 
-		groupByTranslator.translate(
-			searchRequestBuilder, searchContext, start, end);
-	}
+		QueryConfig queryConfig = searchContext.getQueryConfig();
 
-	protected void addHighlightedField(
-		HighlightBuilder highlightBuilder, QueryConfig queryConfig,
-		String fieldName) {
+		searchSearchRequest.setAlternateUidFieldName(
+			queryConfig.getAlternateUidFieldName());
 
-		highlightBuilder.field(
-			fieldName, queryConfig.getHighlightFragmentSize(),
+		searchSearchRequest.setBasicFacetSelection(
+			searchRequest.isBasicFacetSelection());
+
+		searchSearchRequest.putAllFacets(searchContext.getFacets());
+
+		searchSearchRequest.setGroupBy(searchContext.getGroupBy());
+		searchSearchRequest.setGroupByRequests(
+			searchRequest.getGroupByRequests());
+		searchSearchRequest.setHighlightEnabled(
+			queryConfig.isHighlightEnabled());
+		searchSearchRequest.setHighlightFieldNames(
+			queryConfig.getHighlightFieldNames());
+		searchSearchRequest.setHighlightFragmentSize(
+			queryConfig.getHighlightFragmentSize());
+		searchSearchRequest.setHighlightSnippetSize(
 			queryConfig.getHighlightSnippetSize());
-
-		String localizedFieldName = DocumentImpl.getLocalizedName(
-			queryConfig.getLocale(), fieldName);
-
-		highlightBuilder.field(
-			localizedFieldName, queryConfig.getHighlightFragmentSize(),
-			queryConfig.getHighlightSnippetSize());
-	}
-
-	protected void addHighlights(
-		SearchRequestBuilder searchRequestBuilder, SearchContext searchContext,
-		QueryConfig queryConfig) {
-
-		if (!queryConfig.isHighlightEnabled()) {
-			return;
-		}
-
-		HighlightBuilder highlightBuilder = new HighlightBuilder();
-
-		for (String highlightFieldName : queryConfig.getHighlightFieldNames()) {
-			addHighlightedField(
-				highlightBuilder, queryConfig, highlightFieldName);
-		}
-
-		highlightBuilder.postTags(HighlightUtil.HIGHLIGHT_TAG_CLOSE);
-		highlightBuilder.preTags(HighlightUtil.HIGHLIGHT_TAG_OPEN);
-
-		boolean highlighterRequireFieldMatch =
-			queryConfig.isHighlightRequireFieldMatch();
+		searchSearchRequest.setLocale(queryConfig.getLocale());
+		searchSearchRequest.setHighlightRequireFieldMatch(
+			queryConfig.isHighlightRequireFieldMatch());
 
 		boolean luceneSyntax = GetterUtil.getBoolean(
-			searchContext.getAttribute("luceneSyntax"));
+			searchContext.getAttribute(
+				SearchContextAttributes.ATTRIBUTE_KEY_LUCENE_SYNTAX));
 
-		if (luceneSyntax) {
-			highlighterRequireFieldMatch = false;
-		}
-
-		highlightBuilder.requireFieldMatch(highlighterRequireFieldMatch);
-
-		searchRequestBuilder.highlighter(highlightBuilder);
-	}
-
-	protected void addPagination(
-		SearchRequestBuilder searchRequestBuilder, int start, int end) {
-
-		searchRequestBuilder.setFrom(start);
-		searchRequestBuilder.setSize(end - start);
-	}
-
-	protected void addPreference(
-		SearchRequestBuilder searchRequestBuilder,
-		SearchContext searchContext) {
+		searchSearchRequest.setLuceneSyntax(luceneSyntax);
 
 		String preference = (String)searchContext.getAttribute(
 			ElasticsearchSearchContextAttributes.
 				ATTRIBUTE_KEY_SEARCH_REQUEST_PREFERENCE);
 
 		if (!Validator.isBlank(preference)) {
-			searchRequestBuilder.setPreference(preference);
+			searchSearchRequest.setPreference(preference);
 		}
+
+		searchSearchRequest.setScoreEnabled(queryConfig.isScoreEnabled());
+		searchSearchRequest.setSelectedFieldNames(
+			queryConfig.getSelectedFieldNames());
+
+		int size = end - start;
+
+		searchSearchRequest.setSize(size);
+
+		searchSearchRequest.setStart(start);
+
+		searchSearchRequest.setSorts(searchContext.getSorts());
+		searchSearchRequest.setSorts(searchRequest.getSorts());
+		searchSearchRequest.setStats(searchContext.getStats());
+
+		return searchSearchRequest;
 	}
 
-	protected void addSelectedFields(
-		SearchRequestBuilder searchRequestBuilder, QueryConfig queryConfig) {
+	protected String[] getIndexes(
+		SearchRequest searchRequest, SearchContext searchContext) {
 
-		String[] selectedFieldNames = queryConfig.getSelectedFieldNames();
+		List<String> indexes = searchRequest.getIndexes();
 
-		if (ArrayUtil.isEmpty(selectedFieldNames)) {
-			searchRequestBuilder.addStoredField(StringPool.STAR);
-		}
-		else {
-			searchRequestBuilder.storedFields(selectedFieldNames);
-		}
-	}
-
-	protected void addSnippets(
-		Document document, Map<String, HighlightField> highlightFields,
-		String fieldName, Locale locale) {
-
-		String snippetFieldName = DocumentImpl.getLocalizedName(
-			locale, fieldName);
-
-		HighlightField highlightField = highlightFields.get(snippetFieldName);
-
-		if (highlightField == null) {
-			highlightField = highlightFields.get(fieldName);
-
-			snippetFieldName = fieldName;
+		if (!indexes.isEmpty()) {
+			return indexes.toArray(new String[0]);
 		}
 
-		if (highlightField == null) {
-			return;
-		}
-
-		Object[] array = highlightField.fragments();
-
-		document.addText(
-			Field.SNIPPET.concat(StringPool.UNDERLINE).concat(snippetFieldName),
-			StringUtil.merge(array, StringPool.TRIPLE_PERIOD));
-	}
-
-	protected void addSnippets(
-		SearchHit hit, Document document, QueryConfig queryConfig) {
-
-		Map<String, HighlightField> highlightFields = hit.getHighlightFields();
-
-		if (MapUtil.isEmpty(highlightFields)) {
-			return;
-		}
-
-		for (String highlightFieldName : queryConfig.getHighlightFieldNames()) {
-			addSnippets(
-				document, highlightFields, highlightFieldName,
-				queryConfig.getLocale());
-		}
-	}
-
-	protected void addSort(
-		SearchRequestBuilder searchRequestBuilder, Sort[] sorts) {
-
-		if (ArrayUtil.isEmpty(sorts)) {
-			return;
-		}
-
-		Set<String> sortFieldNames = new HashSet<>(sorts.length);
-
-		for (Sort sort : sorts) {
-			if (sort == null) {
-				continue;
-			}
-
-			String sortFieldName = getSortFieldName(sort, "_score");
-
-			if (sortFieldNames.contains(sortFieldName)) {
-				continue;
-			}
-
-			sortFieldNames.add(sortFieldName);
-
-			SortOrder sortOrder = SortOrder.ASC;
-
-			if (sort.isReverse() || sortFieldName.equals("_score")) {
-				sortOrder = SortOrder.DESC;
-			}
-
-			SortBuilder<?> sortBuilder = null;
-
-			if (sortFieldName.equals("_score")) {
-				sortBuilder = SortBuilders.scoreSort();
-			}
-			else if (sort.getType() == Sort.GEO_DISTANCE_TYPE) {
-				GeoDistanceSort geoDistanceSort = (GeoDistanceSort)sort;
-
-				List<GeoPoint> geoPoints = new ArrayList<>();
-
-				for (GeoLocationPoint geoLocationPoint :
-						geoDistanceSort.getGeoLocationPoints()) {
-
-					geoPoints.add(
-						new GeoPoint(
-							geoLocationPoint.getLatitude(),
-							geoLocationPoint.getLongitude()));
-				}
-
-				GeoDistanceSortBuilder geoDistanceSortBuilder =
-					SortBuilders.geoDistanceSort(
-						sortFieldName,
-						geoPoints.toArray(new GeoPoint[geoPoints.size()]));
-
-				geoDistanceSortBuilder.geoDistance(GeoDistance.ARC);
-
-				Collection<String> geoHashes = geoDistanceSort.getGeoHashes();
-
-				if (!geoHashes.isEmpty()) {
-					geoDistanceSort.addGeoHash(
-						geoHashes.toArray(new String[geoHashes.size()]));
-				}
-
-				sortBuilder = geoDistanceSortBuilder;
-			}
-			else {
-				FieldSortBuilder fieldSortBuilder = SortBuilders.fieldSort(
-					sortFieldName);
-
-				fieldSortBuilder.unmappedType("string");
-
-				sortBuilder = fieldSortBuilder;
-			}
-
-			sortBuilder.order(sortOrder);
-
-			searchRequestBuilder.addSort(sortBuilder);
-		}
-	}
-
-	protected void addStats(
-		SearchRequestBuilder searchRequestBuilder,
-		SearchContext searchContext) {
-
-		Map<String, Stats> statsMap = searchContext.getStats();
-
-		for (Stats stats : statsMap.values()) {
-			statsTranslator.translate(searchRequestBuilder, stats);
-		}
-	}
-
-	protected SearchResponse doSearch(
-			SearchContext searchContext, Query query, int start, int end,
-			boolean count)
-		throws Exception {
-
-		Client client = elasticsearchConnectionManager.getClient();
-
-		QueryConfig queryConfig = query.getQueryConfig();
-
-		SearchRequestBuilder searchRequestBuilder = client.prepareSearch(
-			getSelectedIndexNames(queryConfig, searchContext));
-
-		searchRequestBuilder.setTypes(getSelectedTypes(queryConfig));
-
-		addStats(searchRequestBuilder, searchContext);
-
-		if (!count) {
-			addFacets(searchRequestBuilder, searchContext);
-			addGroupBy(searchRequestBuilder, searchContext, start, end);
-			addHighlights(searchRequestBuilder, searchContext, queryConfig);
-			addPagination(searchRequestBuilder, start, end);
-			addPreference(searchRequestBuilder, searchContext);
-			addSelectedFields(searchRequestBuilder, queryConfig);
-			addSort(searchRequestBuilder, searchContext.getSorts());
-
-			searchRequestBuilder.setTrackScores(queryConfig.isScoreEnabled());
-		}
-		else {
-			searchRequestBuilder.setSize(0);
-		}
-
-		if (query.getPostFilter() != null) {
-			QueryBuilder postFilterQueryBuilder = filterTranslator.translate(
-				query.getPostFilter(), searchContext);
-
-			searchRequestBuilder.setPostFilter(postFilterQueryBuilder);
-		}
-
-		QueryBuilder queryBuilder = queryTranslator.translate(
-			query, searchContext);
-
-		if (query.getPreBooleanFilter() != null) {
-			QueryBuilder preFilterQueryBuilder = filterTranslator.translate(
-				query.getPreBooleanFilter(), searchContext);
-
-			BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
-
-			boolQueryBuilder.filter(preFilterQueryBuilder);
-			boolQueryBuilder.must(queryBuilder);
-
-			queryBuilder = boolQueryBuilder;
-		}
-
-		searchRequestBuilder.setQuery(queryBuilder);
-
-		String searchRequestBuilderString = searchRequestBuilder.toString();
-
-		searchContext.setAttribute("queryString", searchRequestBuilderString);
-
-		if (_log.isDebugEnabled()) {
-			_log.debug("Search query " + searchRequestBuilderString);
-		}
-
-		SearchResponse searchResponse = searchRequestBuilder.get();
-
-		if (_log.isInfoEnabled()) {
-			_log.info(
-				StringBundler.concat(
-					"The search engine processed ", searchRequestBuilderString,
-					" in ", String.valueOf(searchResponse.getTook())));
-		}
-
-		return searchResponse;
-	}
-
-	protected long doSearchCount(SearchContext searchContext, Query query)
-		throws Exception {
-
-		SearchResponse searchResponse = doSearch(
-			searchContext, query, searchContext.getStart(),
-			searchContext.getEnd(), true);
-
-		SearchHits searchHits = searchResponse.getHits();
-
-		return searchHits.getTotalHits();
-	}
-
-	protected Hits doSearchHits(
-			SearchContext searchContext, Query query, int start, int end)
-		throws Exception {
-
-		SearchResponse searchResponse = doSearch(
-			searchContext, query, start, end, false);
-
-		return processResponse(searchResponse, searchContext, query);
-	}
-
-	protected String[] getSelectedIndexNames(
-		QueryConfig queryConfig, SearchContext searchContext) {
-
-		String[] selectedIndexNames = queryConfig.getSelectedIndexNames();
-
-		if (ArrayUtil.isNotEmpty(selectedIndexNames)) {
-			return selectedIndexNames;
-		}
-
-		String indexName = indexNameBuilder.getIndexName(
+		String indexName = _indexNameBuilder.getIndexName(
 			searchContext.getCompanyId());
 
 		return new String[] {indexName};
 	}
 
-	protected String[] getSelectedTypes(QueryConfig queryConfig) {
-		String[] selectedTypes = queryConfig.getSelectedTypes();
+	protected SearchRequest getSearchRequest(SearchContext searchContext) {
+		SearchRequestBuilder searchRequestBuilder = _getSearchRequestBuilder(
+			searchContext);
 
-		if (ArrayUtil.isNotEmpty(selectedTypes)) {
-			return selectedTypes;
+		return searchRequestBuilder.build();
+	}
+
+	protected boolean handle(Exception e) {
+		Throwable throwable = e.getCause();
+
+		if (throwable == null) {
+			return false;
 		}
 
-		return new String[] {DocumentTypes.LIFERAY};
-	}
+		String message = throwable.getMessage();
 
-	protected String getSortFieldName(Sort sort, String scoreFieldName) {
-		String sortFieldName = sort.getFieldName();
-
-		if (Objects.equals(sortFieldName, Field.PRIORITY)) {
-			return sortFieldName;
+		if (message == null) {
+			return false;
 		}
 
-		return DocumentImpl.getSortFieldName(sort, scoreFieldName);
-	}
+		if (message.contains(
+				"Fielddata is disabled on text fields by default.")) {
 
-	protected Hits processResponse(
-		SearchResponse searchResponse, SearchContext searchContext,
-		Query query) {
+			_log.error("Unable to aggregate facet on a nonkeyword field", e);
 
-		SearchHits searchHits = searchResponse.getHits();
-
-		Hits hits = new HitsImpl();
-
-		updateFacetCollectors(searchContext, searchResponse);
-		updateGroupedHits(searchResponse, searchContext, query, hits);
-		updateStatsResults(searchContext, searchResponse, hits);
-
-		TimeValue timeValue = searchResponse.getTook();
-
-		hits.setSearchTime((float)timeValue.getSecondsFrac());
-
-		return processSearchHits(searchHits, query, hits);
-	}
-
-	protected Document processSearchHit(
-		SearchHit searchHit, QueryConfig queryConfig) {
-
-		Document document = searchHitDocumentTranslator.translate(searchHit);
-
-		populateUID(document, queryConfig);
-
-		return document;
-	}
-
-	protected Hits processSearchHits(
-		SearchHits searchHits, Query query, Hits hits) {
-
-		List<Document> documents = new ArrayList<>();
-		List<Float> scores = new ArrayList<>();
-
-		if (searchHits.getTotalHits() > 0) {
-			SearchHit[] searchHitsArray = searchHits.getHits();
-
-			for (SearchHit searchHit : searchHitsArray) {
-				Document document = processSearchHit(
-					searchHit, query.getQueryConfig());
-
-				documents.add(document);
-
-				scores.add(searchHit.getScore());
-
-				addSnippets(searchHit, document, query.getQueryConfig());
-			}
+			return true;
 		}
 
-		hits.setDocs(documents.toArray(new Document[documents.size()]));
-		hits.setLength((int)searchHits.getTotalHits());
-		hits.setQuery(query);
-		hits.setQueryTerms(new String[0]);
-		hits.setScores(ArrayUtil.toFloatArray(scores));
-
-		return hits;
+		return false;
 	}
 
-	protected void updateFacetCollectors(
-		SearchContext searchContext, SearchResponse searchResponse) {
+	protected void populateResponse(
+		BaseSearchResponse baseSearchResponse,
+		SearchResponseBuilder searchResponseBuilder) {
 
-		Aggregations aggregations = searchResponse.getAggregations();
+		searchResponseBuilder.aggregationResultsMap(
+			baseSearchResponse.getAggregationResultsMap()
+		).count(
+			baseSearchResponse.getCount()
+		).requestString(
+			baseSearchResponse.getSearchRequestString()
+		).responseString(
+			baseSearchResponse.getSearchResponseString()
+		).statsResponseMap(
+			baseSearchResponse.getStatsResponseMap()
+		);
+	}
 
-		if (aggregations == null) {
-			return;
-		}
+	protected void populateResponse(
+		SearchSearchResponse searchSearchResponse,
+		SearchResponseBuilder searchResponseBuilder) {
 
-		Map<String, Aggregation> aggregationsMap = aggregations.getAsMap();
+		populateResponse(
+			(BaseSearchResponse)searchSearchResponse, searchResponseBuilder);
 
-		Map<String, Facet> facetsMap = searchContext.getFacets();
+		searchResponseBuilder.groupByResponses(
+			searchSearchResponse.getGroupByResponses());
+	}
 
-		for (Facet facet : facetsMap.values()) {
-			if (facet.isStatic()) {
-				continue;
-			}
+	protected void prepare(
+		BaseSearchRequest baseSearchRequest, SearchRequest searchRequest,
+		Query query, SearchContext searchContext) {
 
-			FacetCollectorFactory facetCollectorFactory =
-				new FacetCollectorFactory();
+		baseSearchRequest.addComplexQueryParts(
+			searchRequest.getComplexQueryParts());
+		baseSearchRequest.setExplain(searchRequest.isExplain());
+		baseSearchRequest.setIncludeResponseString(
+			searchRequest.isIncludeResponseString());
+		baseSearchRequest.setPostFilterQuery(
+			searchRequest.getPostFilterQuery());
+		baseSearchRequest.setRescores(searchRequest.getRescores());
+		baseSearchRequest.setStatsRequests(searchRequest.getStatsRequests());
 
-			FacetCollector facetCollector =
-				facetCollectorFactory.getFacetCollector(
-					aggregationsMap.get(facet.getFieldName()));
+		setAggregations(baseSearchRequest, searchRequest);
+		setIndexNames(baseSearchRequest, searchRequest, searchContext);
+		setLegacyQuery(baseSearchRequest, query);
+		setLegacyPostFilter(baseSearchRequest, query);
+		setPipelineAggregations(baseSearchRequest, searchRequest);
+		setQuery(baseSearchRequest, searchRequest);
+	}
 
-			facet.setFacetCollector(facetCollector);
+	protected void setAggregations(
+		BaseSearchRequest baseSearchRequest, SearchRequest searchRequest) {
+
+		Map<String, Aggregation> map = searchRequest.getAggregationsMap();
+
+		for (Aggregation aggregation : map.values()) {
+			baseSearchRequest.addAggregation(aggregation);
 		}
 	}
 
-	protected void updateGroupedHits(
-		SearchResponse searchResponse, SearchContext searchContext, Query query,
-		Hits hits) {
+	@Reference(unbind = "-")
+	protected void setIndexNameBuilder(IndexNameBuilder indexNameBuilder) {
+		_indexNameBuilder = indexNameBuilder;
+	}
 
-		GroupBy groupBy = searchContext.getGroupBy();
+	protected void setIndexNames(
+		BaseSearchRequest baseSearchRequest, SearchRequest searchRequest,
+		SearchContext searchContext) {
 
-		if (groupBy == null) {
-			return;
-		}
+		baseSearchRequest.setIndexNames(
+			getIndexes(searchRequest, searchContext));
+	}
 
-		Aggregations aggregations = searchResponse.getAggregations();
+	protected void setLegacyPostFilter(
+		BaseSearchRequest baseSearchRequest, Query query) {
 
-		Map<String, Aggregation> aggregationsMap = aggregations.getAsMap();
-
-		Terms terms = (Terms)aggregationsMap.get(
-			GroupByTranslator.GROUP_BY_AGGREGATION_PREFIX + groupBy.getField());
-
-		List<? extends Terms.Bucket> buckets = terms.getBuckets();
-
-		for (Terms.Bucket bucket : buckets) {
-			Aggregations bucketAggregations = bucket.getAggregations();
-
-			TopHits topHits = bucketAggregations.get(
-				GroupByTranslator.TOP_HITS_AGGREGATION_NAME);
-
-			SearchHits groupedSearchHits = topHits.getHits();
-
-			Hits groupedHits = new HitsImpl();
-
-			processSearchHits(groupedSearchHits, query, groupedHits);
-
-			groupedHits.setLength((int)groupedSearchHits.getTotalHits());
-
-			hits.addGroupedHits(bucket.getKeyAsString(), groupedHits);
+		if (query != null) {
+			baseSearchRequest.setPostFilter(query.getPostFilter());
 		}
 	}
 
-	protected void updateStatsResults(
-		SearchContext searchContext, SearchResponse searchResponse, Hits hits) {
+	protected void setLegacyQuery(
+		BaseSearchRequest baseSearchRequest, Query query) {
 
-		Map<String, Stats> statsMap = searchContext.getStats();
+		baseSearchRequest.setQuery(query);
+	}
 
-		if (statsMap.isEmpty()) {
-			return;
-		}
+	protected void setPipelineAggregations(
+		BaseSearchRequest baseSearchRequest, SearchRequest searchRequest) {
 
-		Aggregations aggregations = searchResponse.getAggregations();
+		Map<String, PipelineAggregation> map =
+			searchRequest.getPipelineAggregationsMap();
 
-		if (aggregations == null) {
-			return;
-		}
-
-		Map<String, Aggregation> aggregationsMap = aggregations.getAsMap();
-
-		for (Stats stats : statsMap.values()) {
-			if (!stats.isEnabled()) {
-				continue;
-			}
-
-			StatsResults statsResults = statsTranslator.translate(
-				aggregationsMap, stats);
-
-			hits.addStatsResults(statsResults);
+		for (PipelineAggregation aggregation : map.values()) {
+			baseSearchRequest.addPipelineAggregation(aggregation);
 		}
 	}
 
-	@Reference
-	protected ElasticsearchConnectionManager elasticsearchConnectionManager;
+	@Reference(unbind = "-")
+	protected void setProps(Props props) {
+		_props = props;
+	}
 
-	@Reference(service = CompositeFacetProcessor.class)
-	protected FacetProcessor<SearchRequestBuilder> facetProcessor;
+	protected void setQuery(
+		BaseSearchRequest baseSearchRequest, SearchRequest searchRequest) {
 
-	@Reference(target = "(search.engine.impl=Elasticsearch)")
-	protected FilterTranslator<QueryBuilder> filterTranslator;
+		baseSearchRequest.setQuery(searchRequest.getQuery());
+	}
 
-	@Reference
-	protected GroupByTranslator groupByTranslator;
+	@Reference(target = "(search.engine.impl=Elasticsearch)", unbind = "-")
+	protected void setSearchEngineAdapter(
+		SearchEngineAdapter searchEngineAdapter) {
 
-	@Reference
-	protected IndexNameBuilder indexNameBuilder;
+		_searchEngineAdapter = searchEngineAdapter;
+	}
 
-	@Reference
-	protected Props props;
+	@Reference(unbind = "-")
+	protected void setSearchRequestBuilderFactory(
+		SearchRequestBuilderFactory searchRequestBuilderFactory) {
 
-	@Reference(target = "(search.engine.impl=Elasticsearch)")
-	protected QueryTranslator<QueryBuilder> queryTranslator;
+		_searchRequestBuilderFactory = searchRequestBuilderFactory;
+	}
 
-	@Reference
-	protected SearchHitDocumentTranslator searchHitDocumentTranslator;
+	@Reference(unbind = "-")
+	protected void setSearchResponseBuilderFactory(
+		SearchResponseBuilderFactory searchResponseBuilderFactory) {
 
-	@Reference
-	protected StatsTranslator statsTranslator;
+		_searchResponseBuilderFactory = searchResponseBuilderFactory;
+	}
+
+	private SearchRequestBuilder _getSearchRequestBuilder(
+		SearchContext searchContext) {
+
+		return _searchRequestBuilderFactory.builder(searchContext);
+	}
+
+	private SearchResponseBuilder _getSearchResponseBuilder(
+		SearchContext searchContext) {
+
+		return _searchResponseBuilderFactory.builder(searchContext);
+	}
 
 	private static final Log _log = LogFactoryUtil.getLog(
 		ElasticsearchIndexSearcher.class);
 
 	private volatile ElasticsearchConfiguration _elasticsearchConfiguration;
+	private IndexNameBuilder _indexNameBuilder;
 	private boolean _logExceptionsOnly;
+	private Props _props;
+	private SearchEngineAdapter _searchEngineAdapter;
+	private SearchRequestBuilderFactory _searchRequestBuilderFactory;
+	private SearchResponseBuilderFactory _searchResponseBuilderFactory;
 
 }

@@ -44,6 +44,7 @@ import org.elasticsearch.client.AdminClient;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.client.ClusterAdminClient;
 import org.elasticsearch.client.IndicesAdminClient;
+import org.elasticsearch.cluster.health.ClusterHealthStatus;
 import org.elasticsearch.common.unit.TimeValue;
 
 import org.mockito.Mockito;
@@ -53,7 +54,11 @@ import org.osgi.framework.BundleContext;
 /**
  * @author André de Oliveira
  */
-public class ElasticsearchFixture implements IndicesAdminClientSupplier {
+public class ElasticsearchFixture implements ElasticsearchClientResolver {
+
+	public ElasticsearchFixture(Class clazz) {
+		this(getSimpleName(clazz));
+	}
 
 	public ElasticsearchFixture(String subdirName) {
 		this(subdirName, Collections.<String, Object>emptyMap());
@@ -93,6 +98,7 @@ public class ElasticsearchFixture implements IndicesAdminClientSupplier {
 		return client.admin();
 	}
 
+	@Override
 	public Client getClient() {
 		return _embeddedElasticsearchConnection.getClient();
 	}
@@ -112,16 +118,16 @@ public class ElasticsearchFixture implements IndicesAdminClientSupplier {
 
 		clusterHealthRequest.timeout(new TimeValue(10, TimeUnit.MINUTES));
 		clusterHealthRequest.waitForActiveShards(
-			healthExpectations.activeShards);
+			healthExpectations.getActiveShards());
 		clusterHealthRequest.waitForNodes(
-			String.valueOf(healthExpectations.numberOfNodes));
+			String.valueOf(healthExpectations.getNumberOfNodes()));
 		clusterHealthRequest.waitForNoRelocatingShards(true);
-		clusterHealthRequest.waitForStatus(healthExpectations.status);
+		clusterHealthRequest.waitForStatus(healthExpectations.getStatus());
 
-		ActionFuture<ClusterHealthResponse> health = clusterAdminClient.health(
-			clusterHealthRequest);
+		ActionFuture<ClusterHealthResponse> healthActionFuture =
+			clusterAdminClient.health(clusterHealthRequest);
 
-		return health.actionGet();
+		return healthActionFuture.actionGet();
 	}
 
 	public Map<String, Object> getElasticsearchConfigurationProperties() {
@@ -145,7 +151,6 @@ public class ElasticsearchFixture implements IndicesAdminClientSupplier {
 		return getIndexRequestBuilder.get();
 	}
 
-	@Override
 	public IndicesAdminClient getIndicesAdminClient() {
 		AdminClient adminClient = getAdminClient();
 
@@ -164,6 +169,28 @@ public class ElasticsearchFixture implements IndicesAdminClientSupplier {
 
 	public void tearDown() throws Exception {
 		destroyNode();
+	}
+
+	public void waitForElasticsearchToStart() {
+		getClusterHealthResponse(
+			new HealthExpectations() {
+				{
+					setActivePrimaryShards(0);
+					setActiveShards(0);
+					setNumberOfDataNodes(1);
+					setNumberOfNodes(1);
+					setStatus(ClusterHealthStatus.GREEN);
+					setUnassignedShards(0);
+				}
+			});
+	}
+
+	protected static String getSimpleName(Class clazz) {
+		while (clazz.isAnonymousClass()) {
+			clazz = clazz.getEnclosingClass();
+		}
+
+		return clazz.getSimpleName();
 	}
 
 	protected void addClusterLoggingThresholdContributor(
@@ -224,12 +251,13 @@ public class ElasticsearchFixture implements IndicesAdminClientSupplier {
 	protected Map<String, Object> createElasticsearchConfigurationProperties(
 		Map<String, Object> elasticsearchConfigurationProperties) {
 
-		Map<String, Object> map = new HashMap<>(
-			elasticsearchConfigurationProperties);
+		Map<String, Object> map = new HashMap<>();
 
 		map.put("configurationPid", ElasticsearchConfiguration.class.getName());
 		map.put("httpCORSAllowOrigin", "*");
 		map.put("logExceptionsOnly", false);
+
+		map.putAll(elasticsearchConfigurationProperties);
 
 		return map;
 	}

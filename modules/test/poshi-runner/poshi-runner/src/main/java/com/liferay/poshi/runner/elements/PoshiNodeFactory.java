@@ -14,22 +14,28 @@
 
 package com.liferay.poshi.runner.elements;
 
+import com.google.common.reflect.ClassPath;
+
+import com.liferay.poshi.runner.script.PoshiScriptParserException;
+import com.liferay.poshi.runner.script.UnbalancedCodeException;
 import com.liferay.poshi.runner.util.Dom4JUtil;
 import com.liferay.poshi.runner.util.FileUtil;
 
-import java.io.File;
 import java.io.IOException;
 
-import java.net.URISyntaxException;
+import java.lang.reflect.Modifier;
+
 import java.net.URL;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
 
 import org.dom4j.Comment;
 import org.dom4j.Document;
+import org.dom4j.DocumentException;
 import org.dom4j.Element;
 import org.dom4j.Node;
 
@@ -37,6 +43,10 @@ import org.dom4j.Node;
  * @author Kenji Heigel
  */
 public abstract class PoshiNodeFactory {
+
+	public static boolean getValidatePoshiScript() {
+		return _validatePoshiScript;
+	}
 
 	public static PoshiNode<?, ?> newPoshiNode(Node node) {
 		PoshiNode<?, ?> newPoshiNode = null;
@@ -66,49 +76,117 @@ public abstract class PoshiNodeFactory {
 	}
 
 	public static PoshiNode<?, ?> newPoshiNode(
-		PoshiNode<?, ?> parentPoshiNode, String readableSyntax) {
+			PoshiNode<?, ?> parentPoshiNode, String poshiScript)
+		throws PoshiScriptParserException {
 
 		PoshiNode<?, ?> newPoshiNode = null;
 
-		newPoshiNode = _newPoshiComment(readableSyntax);
+		newPoshiNode = _newPoshiComment(poshiScript);
 
 		if (newPoshiNode != null) {
 			return newPoshiNode;
 		}
 
 		newPoshiNode = _newPoshiElement(
-			(PoshiElement)parentPoshiNode, readableSyntax);
+			(PoshiElement)parentPoshiNode, poshiScript);
 
 		if (newPoshiNode != null) {
 			return newPoshiNode;
 		}
 
-		throw new RuntimeException("Unknown readble syntax\n" + readableSyntax);
+		throw new PoshiScriptParserException(
+			"Invalid Poshi Script syntax", poshiScript, parentPoshiNode);
 	}
 
-	public static PoshiNode<?, ?> newPoshiNodeFromFile(String filePath) {
-		File file = new File(filePath);
-
+	public static PoshiNode<?, ?> newPoshiNode(String content, URL url) {
 		try {
-			String content = FileUtil.read(file);
+			content = content.trim();
 
-			if (content.contains("<definition")) {
+			if (content.startsWith("<definition")) {
 				Document document = Dom4JUtil.parse(content);
 
-				Element rootElement = document.getRootElement();
-
-				return newPoshiNode(rootElement);
+				return _definitionPoshiElement.clone(
+					document.getRootElement(), url);
 			}
 
-			return newPoshiNode(null, content);
+			if (_definitionPoshiElement.isBalancedPoshiScript(content, true)) {
+				return _definitionPoshiElement.clone(content, url);
+			}
 		}
-		catch (Exception e) {
-			System.out.println("Unable to generate the Poshi element");
+		catch (DocumentException de) {
+			throw new RuntimeException(
+				"Unable to parse Poshi XML file: " + url.getFile(),
+				de.getCause());
+		}
+		catch (PoshiScriptParserException pspe) {
+			if (pspe instanceof UnbalancedCodeException) {
+				pspe.setFilePath(url.getFile());
+			}
 
-			e.printStackTrace();
+			System.out.println(pspe.getMessage());
 		}
 
 		return null;
+	}
+
+	public static PoshiNode<?, ?> newPoshiNodeFromFile(URL url) {
+		try {
+			String content = FileUtil.read(url);
+
+			return newPoshiNode(content, url);
+		}
+		catch (IOException ioe) {
+			throw new RuntimeException(
+				"Unable to read file: " + url.getFile(), ioe.getCause());
+		}
+	}
+
+	public static void setValidatePoshiScript(boolean validate) {
+		_validatePoshiScript = validate;
+	}
+
+	protected static boolean hasPoshiScriptParserException(URL url) {
+		Set<String> failingFilePaths =
+			PoshiScriptParserException.getUniqueErrorPaths();
+
+		return failingFilePaths.contains(url.getFile());
+	}
+
+	protected static void validatePoshiScriptContent(
+			PoshiElement poshiElement, URL url)
+		throws DocumentException, IOException, PoshiScriptParserException {
+
+		if (!_validatePoshiScript) {
+			return;
+		}
+
+		String poshiXMLString = Dom4JUtil.format(poshiElement);
+
+		PoshiNode newPoshiElement = newPoshiNode(poshiXMLString, url);
+
+		String newPoshiScript = newPoshiElement.toPoshiScript();
+
+		String poshiScript = FileUtil.read(url);
+
+		poshiScript = poshiScript.replaceAll("\\s+", "");
+
+		if (!poshiScript.equals(newPoshiScript.replaceAll("\\s+", ""))) {
+			PoshiScriptParserException pspe = new PoshiScriptParserException(
+				"Data loss has occurred while parsing Poshi Script",
+				newPoshiElement);
+
+			throw pspe;
+		}
+	}
+
+	private static DefinitionPoshiElement _getDefinitionPoshiElement() {
+		for (PoshiElement poshiElement : _poshiElements) {
+			if (poshiElement instanceof DefinitionPoshiElement) {
+				return (DefinitionPoshiElement)poshiElement;
+			}
+		}
+
+		return new DefinitionPoshiElement();
 	}
 
 	private static PoshiComment _newPoshiComment(Comment comment) {
@@ -123,9 +201,11 @@ public abstract class PoshiNodeFactory {
 		return null;
 	}
 
-	private static PoshiComment _newPoshiComment(String readableSyntax) {
+	private static PoshiComment _newPoshiComment(String poshiScript)
+		throws PoshiScriptParserException {
+
 		for (PoshiComment poshiComment : _poshiComments) {
-			PoshiComment newPoshiComment = poshiComment.clone(readableSyntax);
+			PoshiComment newPoshiComment = poshiComment.clone(poshiScript);
 
 			if (newPoshiComment != null) {
 				return newPoshiComment;
@@ -148,11 +228,12 @@ public abstract class PoshiNodeFactory {
 	}
 
 	private static PoshiElement _newPoshiElement(
-		PoshiElement parentPoshiElement, String readableSyntax) {
+			PoshiElement parentPoshiElement, String poshiScript)
+		throws PoshiScriptParserException {
 
 		for (PoshiElement poshiElement : _poshiElements) {
 			PoshiElement newPoshiElement = poshiElement.clone(
-				parentPoshiElement, readableSyntax);
+				parentPoshiElement, poshiScript);
 
 			if (newPoshiElement != null) {
 				return newPoshiElement;
@@ -162,38 +243,46 @@ public abstract class PoshiNodeFactory {
 		return null;
 	}
 
+	private static final DefinitionPoshiElement _definitionPoshiElement;
 	private static final List<PoshiComment> _poshiComments = new ArrayList<>();
 	private static final List<PoshiElement> _poshiElements = new ArrayList<>();
+	private static boolean _validatePoshiScript = true;
 
 	static {
 		try {
-			URL url = PoshiNode.class.getResource(
-				PoshiNode.class.getSimpleName() + ".class");
+			ClassPath classPath = ClassPath.from(
+				PoshiNode.class.getClassLoader());
 
-			File poshiNodeClassFile = new File(url.toURI());
+			List<Class<?>> poshiElementClasses = new ArrayList<>();
 
-			File dir = poshiNodeClassFile.getParentFile();
+			for (ClassPath.ClassInfo classInfo :
+					classPath.getTopLevelClasses(
+						"com.liferay.poshi.runner.elements")) {
 
-			List<File> dirFiles = Arrays.asList(dir.listFiles());
+				poshiElementClasses.add(classInfo.load());
+			}
 
-			Collections.sort(dirFiles);
+			Collections.sort(
+				poshiElementClasses,
+				new Comparator<Class<?>>() {
 
-			for (File file : dirFiles) {
-				String fileName = file.getName();
+					@Override
+					public int compare(Class<?> class1, Class<?> class2) {
+						String className1 = class1.getName();
+						String className2 = class2.getName();
 
-				if (fileName.startsWith("Base") ||
-					fileName.startsWith("Poshi")) {
+						return className1.compareTo(className2);
+					}
+
+				});
+
+			for (Class<?> clazz : poshiElementClasses) {
+				if (Modifier.isAbstract(clazz.getModifiers()) ||
+					!(PoshiComment.class.isAssignableFrom(clazz) ||
+					  PoshiElement.class.isAssignableFrom(clazz))) {
 
 					continue;
 				}
-
-				Package pkg = PoshiNode.class.getPackage();
-
-				int index = fileName.indexOf(".");
-
-				String className = fileName.substring(0, index);
-
-				Class<?> clazz = Class.forName(pkg.getName() + "." + className);
 
 				PoshiNode<?, ?> poshiNode =
 					(PoshiNode<?, ?>)clazz.newInstance();
@@ -208,9 +297,11 @@ public abstract class PoshiNodeFactory {
 					_poshiElements.add((PoshiElement)poshiNode);
 				}
 			}
+
+			_definitionPoshiElement = _getDefinitionPoshiElement();
 		}
-		catch (ClassNotFoundException | IllegalAccessException |
-			   InstantiationException | URISyntaxException e) {
+		catch (IllegalAccessException | InstantiationException | IOException
+					e) {
 
 			throw new RuntimeException(e);
 		}

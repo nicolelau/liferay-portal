@@ -14,43 +14,42 @@
 
 package com.liferay.portal.search.elasticsearch6.internal;
 
-import com.liferay.petra.string.StringBundler;
+import com.liferay.portal.configuration.metatype.bnd.util.ConfigurableUtil;
+import com.liferay.portal.kernel.exception.SystemException;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.search.BaseIndexWriter;
+import com.liferay.portal.kernel.search.BooleanClauseOccur;
+import com.liferay.portal.kernel.search.BooleanQuery;
 import com.liferay.portal.kernel.search.Document;
 import com.liferay.portal.kernel.search.Field;
 import com.liferay.portal.kernel.search.IndexWriter;
+import com.liferay.portal.kernel.search.ParseException;
 import com.liferay.portal.kernel.search.SearchContext;
-import com.liferay.portal.kernel.search.SearchException;
+import com.liferay.portal.kernel.search.filter.BooleanFilter;
+import com.liferay.portal.kernel.search.filter.TermFilter;
+import com.liferay.portal.kernel.search.generic.BooleanQueryImpl;
+import com.liferay.portal.kernel.search.generic.MatchAllQuery;
 import com.liferay.portal.kernel.search.suggest.SpellCheckIndexWriter;
 import com.liferay.portal.kernel.util.PortalRunMode;
-import com.liferay.portal.search.elasticsearch6.internal.connection.ElasticsearchConnectionManager;
-import com.liferay.portal.search.elasticsearch6.internal.document.ElasticsearchUpdateDocumentCommand;
-import com.liferay.portal.search.elasticsearch6.internal.index.IndexNameBuilder;
+import com.liferay.portal.search.elasticsearch6.configuration.ElasticsearchConfiguration;
 import com.liferay.portal.search.elasticsearch6.internal.util.DocumentTypes;
-import com.liferay.portal.search.elasticsearch6.internal.util.LogUtil;
+import com.liferay.portal.search.engine.adapter.SearchEngineAdapter;
+import com.liferay.portal.search.engine.adapter.document.BulkDocumentRequest;
+import com.liferay.portal.search.engine.adapter.document.BulkDocumentResponse;
+import com.liferay.portal.search.engine.adapter.document.DeleteByQueryDocumentRequest;
+import com.liferay.portal.search.engine.adapter.document.DeleteDocumentRequest;
+import com.liferay.portal.search.engine.adapter.document.IndexDocumentRequest;
+import com.liferay.portal.search.engine.adapter.document.UpdateDocumentRequest;
+import com.liferay.portal.search.engine.adapter.index.RefreshIndexRequest;
+import com.liferay.portal.search.index.IndexNameBuilder;
 
 import java.util.Collection;
+import java.util.Map;
 
-import org.elasticsearch.action.admin.indices.refresh.RefreshRequestBuilder;
-import org.elasticsearch.action.admin.indices.refresh.RefreshResponse;
-import org.elasticsearch.action.bulk.BulkRequestBuilder;
-import org.elasticsearch.action.bulk.BulkResponse;
-import org.elasticsearch.action.delete.DeleteRequestBuilder;
-import org.elasticsearch.action.delete.DeleteResponse;
-import org.elasticsearch.action.support.WriteRequest;
-import org.elasticsearch.client.AdminClient;
-import org.elasticsearch.client.Client;
-import org.elasticsearch.client.IndicesAdminClient;
-import org.elasticsearch.common.unit.TimeValue;
-import org.elasticsearch.index.IndexNotFoundException;
-import org.elasticsearch.index.query.BoolQueryBuilder;
-import org.elasticsearch.index.query.MatchAllQueryBuilder;
-import org.elasticsearch.index.query.QueryBuilders;
-import org.elasticsearch.index.query.TermQueryBuilder;
-
+import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Modified;
 import org.osgi.service.component.annotations.Reference;
 
 /**
@@ -58,188 +57,270 @@ import org.osgi.service.component.annotations.Reference;
  * @author Milen Dyankov
  */
 @Component(
+	configurationPid = "com.liferay.portal.search.elasticsearch6.configuration.ElasticsearchConfiguration",
 	immediate = true, property = "search.engine.impl=Elasticsearch",
 	service = IndexWriter.class
 )
 public class ElasticsearchIndexWriter extends BaseIndexWriter {
 
 	@Override
-	public void addDocument(SearchContext searchContext, Document document)
-		throws SearchException {
+	public void addDocument(SearchContext searchContext, Document document) {
+		String indexName = _indexNameBuilder.getIndexName(
+			searchContext.getCompanyId());
 
-		elasticsearchUpdateDocumentCommand.updateDocument(
-			DocumentTypes.LIFERAY, searchContext, document, false);
+		IndexDocumentRequest indexDocumentRequest = new IndexDocumentRequest(
+			indexName, document);
+
+		indexDocumentRequest.setType(DocumentTypes.LIFERAY);
+
+		if (PortalRunMode.isTestMode() || searchContext.isCommitImmediately()) {
+			indexDocumentRequest.setRefresh(true);
+		}
+
+		try {
+			_searchEngineAdapter.execute(indexDocumentRequest);
+		}
+		catch (RuntimeException re) {
+			if (_logExceptionsOnly) {
+				_log.error(re, re);
+			}
+			else {
+				throw re;
+			}
+		}
 	}
 
 	@Override
 	public void addDocuments(
-			SearchContext searchContext, Collection<Document> documents)
-		throws SearchException {
+		SearchContext searchContext, Collection<Document> documents) {
 
-		elasticsearchUpdateDocumentCommand.updateDocuments(
-			DocumentTypes.LIFERAY, searchContext, documents, false);
-	}
-
-	@Override
-	public void commit(SearchContext searchContext) throws SearchException {
-		try {
-			AdminClient adminClient =
-				elasticsearchConnectionManager.getAdminClient();
-
-			IndicesAdminClient indicesAdminClient = adminClient.indices();
-
-			RefreshRequestBuilder refreshRequestBuilder =
-				indicesAdminClient.prepareRefresh(
-					indexNameBuilder.getIndexName(
-						searchContext.getCompanyId()));
-
-			RefreshResponse refreshResponse = refreshRequestBuilder.get();
-
-			LogUtil.logActionResponse(_log, refreshResponse);
-		}
-		catch (Exception e) {
-			throw new SearchException("Unable to commit indices", e);
-		}
-	}
-
-	@Override
-	public void deleteDocument(SearchContext searchContext, String uid)
-		throws SearchException {
-
-		String indexName = indexNameBuilder.getIndexName(
+		String indexName = _indexNameBuilder.getIndexName(
 			searchContext.getCompanyId());
 
+		BulkDocumentRequest bulkDocumentRequest = new BulkDocumentRequest();
+
+		if (PortalRunMode.isTestMode() || searchContext.isCommitImmediately()) {
+			bulkDocumentRequest.setRefresh(true);
+		}
+
+		documents.forEach(
+			document -> {
+				IndexDocumentRequest indexDocumentRequest =
+					new IndexDocumentRequest(indexName, document);
+
+				indexDocumentRequest.setType(DocumentTypes.LIFERAY);
+
+				bulkDocumentRequest.addBulkableDocumentRequest(
+					indexDocumentRequest);
+			});
+
+		BulkDocumentResponse bulkDocumentResponse =
+			_searchEngineAdapter.execute(bulkDocumentRequest);
+
+		if (bulkDocumentResponse.hasErrors()) {
+			if (_logExceptionsOnly) {
+				_log.error("Bulk add failed");
+			}
+			else {
+				throw new SystemException("Bulk add failed");
+			}
+		}
+	}
+
+	@Override
+	public void commit(SearchContext searchContext) {
+		String indexName = _indexNameBuilder.getIndexName(
+			searchContext.getCompanyId());
+
+		RefreshIndexRequest refreshIndexRequest = new RefreshIndexRequest(
+			indexName);
+
 		try {
-			Client client = elasticsearchConnectionManager.getClient();
-
-			DeleteRequestBuilder deleteRequestBuilder = client.prepareDelete(
-				indexName, DocumentTypes.LIFERAY, uid);
-
-			if (PortalRunMode.isTestMode() ||
-				searchContext.isCommitImmediately()) {
-
-				deleteRequestBuilder.setRefreshPolicy(
-					WriteRequest.RefreshPolicy.IMMEDIATE);
-			}
-
-			DeleteResponse deleteResponse = deleteRequestBuilder.get();
-
-			LogUtil.logActionResponse(_log, deleteResponse);
+			_searchEngineAdapter.execute(refreshIndexRequest);
 		}
-		catch (IndexNotFoundException infe) {
-			if (_log.isInfoEnabled()) {
-				_log.info(
-					StringBundler.concat(
-						"No index found while attempting to delete ", uid,
-						" in index ", indexName));
+		catch (RuntimeException re) {
+			if (_logExceptionsOnly) {
+				_log.error(re, re);
+			}
+			else {
+				throw re;
 			}
 		}
-		catch (Exception e) {
-			throw new SearchException("Unable to delete document " + uid, e);
+	}
+
+	@Override
+	public void deleteDocument(SearchContext searchContext, String uid) {
+		String indexName = _indexNameBuilder.getIndexName(
+			searchContext.getCompanyId());
+
+		DeleteDocumentRequest deleteDocumentRequest = new DeleteDocumentRequest(
+			indexName, uid);
+
+		if (PortalRunMode.isTestMode() || searchContext.isCommitImmediately()) {
+			deleteDocumentRequest.setRefresh(true);
+		}
+
+		deleteDocumentRequest.setType(DocumentTypes.LIFERAY);
+
+		try {
+			_searchEngineAdapter.execute(deleteDocumentRequest);
+		}
+		catch (RuntimeException re) {
+			if (_logExceptionsOnly) {
+				_log.error(re, re);
+			}
+			else {
+				throw re;
+			}
 		}
 	}
 
 	@Override
 	public void deleteDocuments(
-			SearchContext searchContext, Collection<String> uids)
-		throws SearchException {
+		SearchContext searchContext, Collection<String> uids) {
 
-		try {
-			Client client = elasticsearchConnectionManager.getClient();
+		String indexName = _indexNameBuilder.getIndexName(
+			searchContext.getCompanyId());
 
-			BulkRequestBuilder bulkRequestBuilder = client.prepareBulk();
+		BulkDocumentRequest bulkDocumentRequest = new BulkDocumentRequest();
 
-			for (String uid : uids) {
-				DeleteRequestBuilder deleteRequestBuilder =
-					client.prepareDelete(
-						indexNameBuilder.getIndexName(
-							searchContext.getCompanyId()),
-						DocumentTypes.LIFERAY, uid);
-
-				bulkRequestBuilder.add(deleteRequestBuilder);
-			}
-
-			if (PortalRunMode.isTestMode() ||
-				searchContext.isCommitImmediately()) {
-
-				bulkRequestBuilder.setRefreshPolicy(
-					WriteRequest.RefreshPolicy.IMMEDIATE);
-			}
-
-			BulkResponse bulkResponse = bulkRequestBuilder.get();
-
-			LogUtil.logActionResponse(_log, bulkResponse);
+		if (PortalRunMode.isTestMode() || searchContext.isCommitImmediately()) {
+			bulkDocumentRequest.setRefresh(true);
 		}
-		catch (Exception e) {
-			throw new SearchException("Unable to delete documents " + uids, e);
+
+		uids.forEach(
+			uid -> {
+				DeleteDocumentRequest deleteDocumentRequest =
+					new DeleteDocumentRequest(indexName, uid);
+
+				deleteDocumentRequest.setType(DocumentTypes.LIFERAY);
+
+				bulkDocumentRequest.addBulkableDocumentRequest(
+					deleteDocumentRequest);
+			});
+
+		BulkDocumentResponse bulkDocumentResponse =
+			_searchEngineAdapter.execute(bulkDocumentRequest);
+
+		if (bulkDocumentResponse.hasErrors()) {
+			if (_logExceptionsOnly) {
+				_log.error("Bulk delete failed");
+			}
+			else {
+				throw new SystemException("Bulk delete failed");
+			}
 		}
 	}
 
 	@Override
 	public void deleteEntityDocuments(
-			SearchContext searchContext, String className)
-		throws SearchException {
+		SearchContext searchContext, String className) {
+
+		String indexName = _indexNameBuilder.getIndexName(
+			searchContext.getCompanyId());
 
 		try {
-			Client client = elasticsearchConnectionManager.getClient();
+			BooleanQuery booleanQuery = new BooleanQueryImpl();
 
-			MatchAllQueryBuilder matchAllQueryBuilder =
-				QueryBuilders.matchAllQuery();
+			booleanQuery.add(new MatchAllQuery(), BooleanClauseOccur.MUST);
 
-			TermQueryBuilder termQueryBuilder = QueryBuilders.termQuery(
-				Field.ENTRY_CLASS_NAME, className);
+			BooleanFilter booleanFilter = new BooleanFilter();
 
-			BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
+			booleanFilter.add(
+				new TermFilter(Field.ENTRY_CLASS_NAME, className),
+				BooleanClauseOccur.MUST);
 
-			boolQueryBuilder.filter(termQueryBuilder);
-			boolQueryBuilder.must(matchAllQueryBuilder);
+			booleanQuery.setPreBooleanFilter(booleanFilter);
 
-			SearchResponseScroller searchResponseScroller =
-				new SearchResponseScroller(
-					client, searchContext, indexNameBuilder, boolQueryBuilder,
-					TimeValue.timeValueSeconds(30), DocumentTypes.LIFERAY);
+			DeleteByQueryDocumentRequest deleteByQueryDocumentRequest =
+				new DeleteByQueryDocumentRequest(booleanQuery, indexName);
 
-			try {
-				searchResponseScroller.prepare();
+			if (PortalRunMode.isTestMode() ||
+				searchContext.isCommitImmediately()) {
 
-				searchResponseScroller.scroll(_searchHitsProcessor);
+				deleteByQueryDocumentRequest.setRefresh(true);
 			}
-			finally {
-				searchResponseScroller.close();
-			}
+
+			_searchEngineAdapter.execute(deleteByQueryDocumentRequest);
 		}
-		catch (IndexNotFoundException infe) {
-			if (_log.isInfoEnabled()) {
-				_log.info(
-					StringBundler.concat(
-						"No index found while attempting to delete documents ",
-						"for ", className, " in index ",
-						indexNameBuilder.getIndexName(
-							searchContext.getCompanyId())));
-			}
+		catch (ParseException pe) {
+			throw new SystemException(pe);
 		}
-		catch (Exception e) {
-			throw new SearchException(
-				"Unable to delete data for entity " + className, e);
+		catch (RuntimeException re) {
+			if (_logExceptionsOnly) {
+				_log.error(re, re);
+			}
+			else {
+				throw re;
+			}
 		}
 	}
 
 	@Override
 	public void partiallyUpdateDocument(
-			SearchContext searchContext, Document document)
-		throws SearchException {
+		SearchContext searchContext, Document document) {
 
-		elasticsearchUpdateDocumentCommand.updateDocument(
-			DocumentTypes.LIFERAY, searchContext, document, false);
+		String indexName = _indexNameBuilder.getIndexName(
+			searchContext.getCompanyId());
+
+		UpdateDocumentRequest updateDocumentRequest = new UpdateDocumentRequest(
+			indexName, document.getUID(), document);
+
+		updateDocumentRequest.setType(DocumentTypes.LIFERAY);
+
+		if (PortalRunMode.isTestMode() || searchContext.isCommitImmediately()) {
+			updateDocumentRequest.setRefresh(true);
+		}
+
+		try {
+			_searchEngineAdapter.execute(updateDocumentRequest);
+		}
+		catch (RuntimeException re) {
+			if (_logExceptionsOnly) {
+				_log.error(re, re);
+			}
+			else {
+				throw re;
+			}
+		}
 	}
 
 	@Override
 	public void partiallyUpdateDocuments(
-			SearchContext searchContext, Collection<Document> documents)
-		throws SearchException {
+		SearchContext searchContext, Collection<Document> documents) {
 
-		elasticsearchUpdateDocumentCommand.updateDocuments(
-			DocumentTypes.LIFERAY, searchContext, documents, false);
+		String indexName = _indexNameBuilder.getIndexName(
+			searchContext.getCompanyId());
+
+		BulkDocumentRequest bulkDocumentRequest = new BulkDocumentRequest();
+
+		if (PortalRunMode.isTestMode() || searchContext.isCommitImmediately()) {
+			bulkDocumentRequest.setRefresh(true);
+		}
+
+		documents.forEach(
+			document -> {
+				UpdateDocumentRequest updateDocumentRequest =
+					new UpdateDocumentRequest(
+						indexName, document.getUID(), document);
+
+				updateDocumentRequest.setType(DocumentTypes.LIFERAY);
+
+				bulkDocumentRequest.addBulkableDocumentRequest(
+					updateDocumentRequest);
+			});
+
+		BulkDocumentResponse bulkDocumentResponse =
+			_searchEngineAdapter.execute(bulkDocumentRequest);
+
+		if (bulkDocumentResponse.hasErrors()) {
+			if (_logExceptionsOnly) {
+				_log.error("Bulk partial update failed");
+			}
+			else {
+				throw new SystemException("Bulk partial update failed");
+			}
+		}
 	}
 
 	@Override
@@ -251,36 +332,115 @@ public class ElasticsearchIndexWriter extends BaseIndexWriter {
 	}
 
 	@Override
-	public void updateDocument(SearchContext searchContext, Document document)
-		throws SearchException {
+	public void updateDocument(SearchContext searchContext, Document document) {
+		String indexName = _indexNameBuilder.getIndexName(
+			searchContext.getCompanyId());
 
-		elasticsearchUpdateDocumentCommand.updateDocument(
-			DocumentTypes.LIFERAY, searchContext, document, true);
+		BulkDocumentRequest bulkDocumentRequest = new BulkDocumentRequest();
+
+		if (PortalRunMode.isTestMode() || searchContext.isCommitImmediately()) {
+			bulkDocumentRequest.setRefresh(true);
+		}
+
+		DeleteDocumentRequest deleteDocumentRequest = new DeleteDocumentRequest(
+			indexName, document.getUID());
+
+		deleteDocumentRequest.setType(DocumentTypes.LIFERAY);
+
+		bulkDocumentRequest.addBulkableDocumentRequest(deleteDocumentRequest);
+
+		IndexDocumentRequest indexDocumentRequest = new IndexDocumentRequest(
+			indexName, document);
+
+		indexDocumentRequest.setType(DocumentTypes.LIFERAY);
+
+		bulkDocumentRequest.addBulkableDocumentRequest(indexDocumentRequest);
+
+		BulkDocumentResponse bulkDocumentResponse =
+			_searchEngineAdapter.execute(bulkDocumentRequest);
+
+		if (bulkDocumentResponse.hasErrors()) {
+			if (_logExceptionsOnly) {
+				_log.error("Update failed");
+			}
+			else {
+				throw new SystemException("Update failed");
+			}
+		}
 	}
 
 	@Override
 	public void updateDocuments(
-			SearchContext searchContext, Collection<Document> documents)
-		throws SearchException {
+		SearchContext searchContext, Collection<Document> documents) {
 
-		elasticsearchUpdateDocumentCommand.updateDocuments(
-			DocumentTypes.LIFERAY, searchContext, documents, true);
+		String indexName = _indexNameBuilder.getIndexName(
+			searchContext.getCompanyId());
+
+		BulkDocumentRequest bulkDocumentRequest = new BulkDocumentRequest();
+
+		if (PortalRunMode.isTestMode() || searchContext.isCommitImmediately()) {
+			bulkDocumentRequest.setRefresh(true);
+		}
+
+		documents.forEach(
+			document -> {
+				DeleteDocumentRequest deleteDocumentRequest =
+					new DeleteDocumentRequest(indexName, document.getUID());
+
+				deleteDocumentRequest.setType(DocumentTypes.LIFERAY);
+
+				bulkDocumentRequest.addBulkableDocumentRequest(
+					deleteDocumentRequest);
+
+				IndexDocumentRequest indexDocumentRequest =
+					new IndexDocumentRequest(indexName, document);
+
+				indexDocumentRequest.setType(DocumentTypes.LIFERAY);
+
+				bulkDocumentRequest.addBulkableDocumentRequest(
+					indexDocumentRequest);
+			});
+
+		BulkDocumentResponse bulkDocumentResponse =
+			_searchEngineAdapter.execute(bulkDocumentRequest);
+
+		if (bulkDocumentResponse.hasErrors()) {
+			if (_logExceptionsOnly) {
+				_log.error("Bulk update failed");
+			}
+			else {
+				throw new SystemException("Bulk update failed");
+			}
+		}
+	}
+
+	@Activate
+	@Modified
+	protected void activate(Map<String, Object> properties) {
+		_elasticsearchConfiguration = ConfigurableUtil.createConfigurable(
+			ElasticsearchConfiguration.class, properties);
+
+		_logExceptionsOnly = _elasticsearchConfiguration.logExceptionsOnly();
 	}
 
 	@Reference(unbind = "-")
-	protected ElasticsearchConnectionManager elasticsearchConnectionManager;
+	protected void setIndexNameBuilder(IndexNameBuilder indexNameBuilder) {
+		_indexNameBuilder = indexNameBuilder;
+	}
 
-	@Reference(unbind = "-")
-	protected ElasticsearchUpdateDocumentCommand
-		elasticsearchUpdateDocumentCommand;
+	@Reference(target = "(search.engine.impl=Elasticsearch)", unbind = "-")
+	protected void setSearchEngineAdapter(
+		SearchEngineAdapter searchEngineAdapter) {
 
-	@Reference(unbind = "-")
-	protected IndexNameBuilder indexNameBuilder;
+		_searchEngineAdapter = searchEngineAdapter;
+	}
 
 	private static final Log _log = LogFactoryUtil.getLog(
 		ElasticsearchIndexWriter.class);
 
-	private final SearchHitsProcessor _searchHitsProcessor =
-		new DeleteDocumentsSearchHitsProcessor(this);
+	private volatile ElasticsearchConfiguration _elasticsearchConfiguration;
+	private IndexNameBuilder _indexNameBuilder;
+	private boolean _logExceptionsOnly;
+	private SearchEngineAdapter _searchEngineAdapter;
 
 }

@@ -38,13 +38,15 @@ public interface Build {
 
 	public List<String> getBadBuildURLs();
 
-	public String getBaseRepositoryName();
+	public String getBaseGitRepositoryName();
 
-	public String getBaseRepositorySHA(String repositoryName);
+	public String getBaseGitRepositorySHA(String gitRepositoryName);
 
 	public String getBranchName();
 
 	public String getBrowser();
+
+	public String getBuildDescription();
 
 	public JSONObject getBuildJSONObject();
 
@@ -59,6 +61,8 @@ public interface Build {
 	public String getDatabase();
 
 	public Long getDelayTime();
+
+	public int getDepth();
 
 	public String getDisplayName();
 
@@ -94,9 +98,11 @@ public interface Build {
 
 	public String getJobVariant();
 
-	public int getJobVariantsDownstreamBuildCount(List<String> jobVariants);
+	public int getJobVariantsDownstreamBuildCount(
+		List<String> jobVariants, String result, String status);
 
-	public List<Build> getJobVariantsDownstreamBuilds(List<String> jobVariants);
+	public List<Build> getJobVariantsDownstreamBuilds(
+		Iterable<String> jobVariants, String result, String status);
 
 	public Long getLatestStartTimestamp();
 
@@ -105,6 +111,12 @@ public interface Build {
 	public Build getLongestRunningDownstreamBuild();
 
 	public TestResult getLongestRunningTest();
+
+	public Map<String, String> getMetricLabels();
+
+	public List<Build> getModifiedDownstreamBuilds();
+
+	public List<Build> getModifiedDownstreamBuildsByStatus(String status);
 
 	public String getOperatingSystem();
 
@@ -124,6 +136,8 @@ public interface Build {
 
 	public long getStatusAge();
 
+	public long getStatusDuration(String status);
+
 	public String getStatusReport();
 
 	public String getStatusReport(int indentSize);
@@ -142,7 +156,23 @@ public interface Build {
 
 	public int getTotalSlavesUsedCount();
 
+	public int getTotalSlavesUsedCount(
+		String status, boolean modifiedBuildsOnly);
+
+	public int getTotalSlavesUsedCount(
+		String status, boolean modifiedBuildsOnly, boolean ignoreCurrentBuild);
+
 	public boolean hasBuildURL(String buildURL);
+
+	public boolean hasGenericCIFailure();
+
+	public boolean hasModifiedDownstreamBuilds();
+
+	public boolean isBuildModified();
+
+	public boolean isFromArchive();
+
+	public boolean isFromCompletedBuild();
 
 	public void reinvoke();
 

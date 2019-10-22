@@ -16,6 +16,11 @@ package com.liferay.talend.wizard;
 
 import com.liferay.talend.connection.LiferayConnectionProperties;
 
+import java.util.Objects;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.talend.components.api.properties.ComponentProperties;
 import org.talend.components.api.wizard.AbstractComponentWizardDefintion;
 import org.talend.components.api.wizard.ComponentWizard;
@@ -24,6 +29,7 @@ import org.talend.daikon.definition.DefinitionImageType;
 
 /**
  * @author Zoltán Takács
+ * @author Igor Beslic
  */
 @SuppressWarnings("deprecation")
 public class LiferayConnectionWizardDefinition
@@ -36,18 +42,36 @@ public class LiferayConnectionWizardDefinition
 	public ComponentWizard createWizard(
 		ComponentProperties componentProperties, String location) {
 
-		LiferayConnectionWizard liferayConnectionWizard =
-			(LiferayConnectionWizard)createWizard(location);
+		if (componentProperties != null) {
+			if (!Objects.equals("connection", componentProperties.getName())) {
+				if (_logger.isDebugEnabled()) {
+					_logger.debug(
+						"Adjust component properties name to `connection`");
+				}
 
-		liferayConnectionWizard.setupProperties(
-			(LiferayConnectionProperties)componentProperties);
+				componentProperties.setName("connection");
+			}
 
-		return liferayConnectionWizard;
+			return new LiferayConnectionWizard(
+				this, componentProperties, location);
+		}
+
+		if (_logger.isInfoEnabled()) {
+			_logger.info("Create wizard with own component properties");
+		}
+
+		LiferayConnectionProperties liferayConnectionProperties =
+			new LiferayConnectionProperties("connection");
+
+		liferayConnectionProperties.init();
+
+		return new LiferayConnectionWizard(
+			this, liferayConnectionProperties, location);
 	}
 
 	@Override
 	public ComponentWizard createWizard(String location) {
-		return new LiferayConnectionWizard(this, location);
+		return createWizard(null, location);
 	}
 
 	@Override
@@ -65,9 +89,8 @@ public class LiferayConnectionWizardDefinition
 
 			return "LiferayWizard_banner_75x66.png";
 		}
-		else {
-			return null;
-		}
+
+		return null;
 	}
 
 	@Override
@@ -78,6 +101,7 @@ public class LiferayConnectionWizardDefinition
 	/**
 	 * @see org.talend.components.api.wizard.ComponentWizardDefinition#getPngImagePath(
 	 *      WizardImageType)
+	 * @review
 	 */
 	@Override
 	public String getPngImagePath(WizardImageType wizardImageType) {
@@ -87,15 +111,15 @@ public class LiferayConnectionWizardDefinition
 		else if (wizardImageType == WizardImageType.WIZARD_BANNER_75X66) {
 			return getImagePath(DefinitionImageType.WIZARD_BANNER_75X66);
 		}
-		else {
-			return null;
-		}
+
+		return null;
 	}
 
 	/**
 	 * PropertiesTestUtils reports this as an error, but it is not.
 	 *
 	 * @see https://github.com/Talend/daikon/blob/98c09e0a25ff59a8d361c171e0ad1c1866176bc5/daikon/src/test/java/org/talend/daikon/properties/test/PropertiesTestUtils.java#L119-L121
+	 * @review
 	 */
 	@Override
 	public Class getPropertiesClass() {
@@ -114,5 +138,8 @@ public class LiferayConnectionWizardDefinition
 		return propertiesClass.isAssignableFrom(
 			LiferayConnectionProperties.class);
 	}
+
+	private static final Logger _logger = LoggerFactory.getLogger(
+		LiferayConnectionWizardDefinition.class);
 
 }

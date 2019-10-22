@@ -107,10 +107,9 @@ public abstract class BaseMVCActionCommand implements MVCActionCommand {
 		throws Exception;
 
 	protected PortletConfig getPortletConfig(PortletRequest portletRequest) {
-		String portletId = PortalUtil.getPortletId(portletRequest);
-
 		return PortletConfigFactoryUtil.get(
-			PortletIdCodec.decodePortletName(portletId));
+			PortletIdCodec.decodePortletName(
+				PortalUtil.getPortletId(portletRequest)));
 	}
 
 	protected void hideDefaultErrorMessage(PortletRequest portletRequest) {
@@ -166,22 +165,23 @@ public abstract class BaseMVCActionCommand implements MVCActionCommand {
 		throws IOException {
 
 		if (actionRequest.getRemoteUser() == null) {
-			HttpServletRequest request = PortalUtil.getHttpServletRequest(
-				actionRequest);
+			HttpServletRequest httpServletRequest =
+				PortalUtil.getHttpServletRequest(actionRequest);
 
-			SessionErrors.add(request, PrincipalException.class.getName());
+			SessionErrors.add(
+				httpServletRequest, PrincipalException.class.getName());
 
-			ThemeDisplay themeDisplay = (ThemeDisplay)request.getAttribute(
-				WebKeys.THEME_DISPLAY);
+			ThemeDisplay themeDisplay =
+				(ThemeDisplay)httpServletRequest.getAttribute(
+					WebKeys.THEME_DISPLAY);
 
 			sendRedirect(
 				actionRequest, actionResponse, themeDisplay.getURLSignIn());
 
 			return true;
 		}
-		else {
-			return false;
-		}
+
+		return false;
 	}
 
 	protected void sendRedirect(
@@ -236,11 +236,11 @@ public abstract class BaseMVCActionCommand implements MVCActionCommand {
 
 		// LPS-1928
 
-		HttpServletRequest request = PortalUtil.getHttpServletRequest(
-			actionRequest);
+		HttpServletRequest httpServletRequest =
+			PortalUtil.getHttpServletRequest(actionRequest);
 
-		if (BrowserSnifferUtil.isIe(request) &&
-			(BrowserSnifferUtil.getMajorVersion(request) == 6.0) &&
+		if (BrowserSnifferUtil.isIe(httpServletRequest) &&
+			(BrowserSnifferUtil.getMajorVersion(httpServletRequest) == 6.0) &&
 			redirect.contains(StringPool.POUND)) {
 
 			String redirectToken = "&#";

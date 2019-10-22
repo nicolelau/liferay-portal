@@ -1,7 +1,9 @@
-<definition>
-	<command name="submit">
-		<execute macro="Button#clickModalSubmit" />
+definition {
 
-		<execute macro="Alert#viewSuccessMessage" />
-	</command>
-</definition>
+	macro save {
+		Button.clickSave();
+
+		Alert.viewSuccessMessage();
+	}
+
+}

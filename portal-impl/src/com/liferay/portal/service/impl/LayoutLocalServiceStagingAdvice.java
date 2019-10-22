@@ -24,9 +24,12 @@ import com.liferay.portal.kernel.model.Layout;
 import com.liferay.portal.kernel.model.LayoutRevision;
 import com.liferay.portal.kernel.model.LayoutSet;
 import com.liferay.portal.kernel.model.LayoutStagingHandler;
+import com.liferay.portal.kernel.model.ModelWrapper;
 import com.liferay.portal.kernel.model.SystemEventConstants;
 import com.liferay.portal.kernel.model.User;
+import com.liferay.portal.kernel.module.framework.service.IdentifiableOSGiService;
 import com.liferay.portal.kernel.security.auth.PrincipalThreadLocal;
+import com.liferay.portal.kernel.service.BaseLocalService;
 import com.liferay.portal.kernel.service.LayoutFriendlyURLLocalServiceUtil;
 import com.liferay.portal.kernel.service.LayoutLocalService;
 import com.liferay.portal.kernel.service.LayoutRevisionLocalServiceUtil;
@@ -39,15 +42,15 @@ import com.liferay.portal.kernel.service.persistence.LayoutUtil;
 import com.liferay.portal.kernel.systemevent.SystemEventHierarchyEntry;
 import com.liferay.portal.kernel.systemevent.SystemEventHierarchyEntryThreadLocal;
 import com.liferay.portal.kernel.util.ArrayUtil;
-import com.liferay.portal.kernel.util.ClassLoaderUtil;
 import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.ObjectValuePair;
 import com.liferay.portal.kernel.util.ParamUtil;
+import com.liferay.portal.kernel.util.PortalClassLoaderUtil;
 import com.liferay.portal.kernel.util.PortalUtil;
 import com.liferay.portal.kernel.util.ProxyUtil;
 import com.liferay.portal.kernel.workflow.WorkflowConstants;
-import com.liferay.portal.spring.aop.ServiceBeanAopProxy;
+import com.liferay.portal.spring.aop.AopInvocationHandler;
 import com.liferay.portlet.exportimport.staging.ProxiedLayoutsThreadLocal;
 import com.liferay.portlet.exportimport.staging.StagingAdvicesThreadLocal;
 
@@ -64,8 +67,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
-import org.springframework.aop.TargetSource;
-import org.springframework.aop.framework.AdvisedSupport;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.BeanFactoryAware;
@@ -82,18 +83,21 @@ public class LayoutLocalServiceStagingAdvice implements BeanFactoryAware {
 		}
 	}
 
-	public void afterPropertiesSet() throws Exception {
-		AdvisedSupport advisedSupport = ServiceBeanAopProxy.getAdvisedSupport(
-			_beanFactory.getBean(LayoutLocalService.class.getName()));
+	public void afterPropertiesSet() throws BeansException {
+		AopInvocationHandler aopInvocationHandler =
+			ProxyUtil.fetchInvocationHandler(
+				_beanFactory.getBean(LayoutLocalService.class.getName()),
+				AopInvocationHandler.class);
 
-		TargetSource targetSource = advisedSupport.getTargetSource();
-
-		advisedSupport.setTarget(
+		aopInvocationHandler.setTarget(
 			ProxyUtil.newProxyInstance(
 				LayoutLocalServiceStagingAdvice.class.getClassLoader(),
-				new Class<?>[] {LayoutLocalService.class},
+				new Class<?>[] {
+					IdentifiableOSGiService.class, LayoutLocalService.class,
+					BaseLocalService.class
+				},
 				new LayoutLocalServiceStagingInvocationHandler(
-					targetSource.getTarget())));
+					this, aopInvocationHandler.getTarget())));
 
 		layoutLocalServiceHelper =
 			(LayoutLocalServiceHelper)_beanFactory.getBean(
@@ -102,7 +106,7 @@ public class LayoutLocalServiceStagingAdvice implements BeanFactoryAware {
 
 	public void deleteLayout(
 			LayoutLocalService layoutLocalService, Layout layout,
-			boolean updateLayoutSet, ServiceContext serviceContext)
+			ServiceContext serviceContext)
 		throws PortalException {
 
 		long layoutSetBranchId = ParamUtil.getLong(
@@ -120,14 +124,11 @@ public class LayoutLocalServiceStagingAdvice implements BeanFactoryAware {
 				LayoutRevisionLocalServiceUtil.deleteLayoutLayoutRevisions(
 					layout.getPlid());
 
-				doDeleteLayout(
-					layoutLocalService, layout, updateLayoutSet,
-					serviceContext);
+				doDeleteLayout(layoutLocalService, layout, serviceContext);
 			}
 		}
 		else {
-			doDeleteLayout(
-				layoutLocalService, layout, updateLayoutSet, serviceContext);
+			doDeleteLayout(layoutLocalService, layout, serviceContext);
 		}
 	}
 
@@ -139,7 +140,7 @@ public class LayoutLocalServiceStagingAdvice implements BeanFactoryAware {
 		Layout layout = layoutLocalService.getLayout(
 			groupId, privateLayout, layoutId);
 
-		deleteLayout(layoutLocalService, layout, true, serviceContext);
+		deleteLayout(layoutLocalService, layout, serviceContext);
 	}
 
 	@Override
@@ -153,7 +154,7 @@ public class LayoutLocalServiceStagingAdvice implements BeanFactoryAware {
 			Map<Locale, String> nameMap, Map<Locale, String> titleMap,
 			Map<Locale, String> descriptionMap, Map<Locale, String> keywordsMap,
 			Map<Locale, String> robotsMap, String type, boolean hidden,
-			Map<Locale, String> friendlyURLMap, boolean iconImage,
+			Map<Locale, String> friendlyURLMap, boolean hasIconImage,
 			byte[] iconBytes, ServiceContext serviceContext)
 		throws PortalException {
 
@@ -161,6 +162,7 @@ public class LayoutLocalServiceStagingAdvice implements BeanFactoryAware {
 
 		parentLayoutId = layoutLocalServiceHelper.getParentLayoutId(
 			groupId, privateLayout, parentLayoutId);
+
 		String name = nameMap.get(LocaleUtil.getSiteDefault());
 
 		Map<Locale, String> layoutFriendlyURLMap =
@@ -191,7 +193,7 @@ public class LayoutLocalServiceStagingAdvice implements BeanFactoryAware {
 			return layoutLocalService.updateLayout(
 				groupId, privateLayout, layoutId, parentLayoutId, nameMap,
 				titleMap, descriptionMap, keywordsMap, robotsMap, type, hidden,
-				friendlyURLMap, iconImage, iconBytes, serviceContext);
+				friendlyURLMap, hasIconImage, iconBytes, serviceContext);
 		}
 
 		layoutLocalService.updateAsset(
@@ -217,13 +219,13 @@ public class LayoutLocalServiceStagingAdvice implements BeanFactoryAware {
 		layout.setHidden(hidden);
 		layout.setFriendlyURL(friendlyURL);
 
-		if (!iconImage) {
+		if (!hasIconImage) {
 			layout.setIconImageId(0);
 			layoutRevision.setIconImageId(0);
 		}
 		else {
 			PortalUtil.updateImageId(
-				layout, iconImage, iconBytes, "iconImageId", 0, 0, 0);
+				layout, hasIconImage, iconBytes, "iconImageId", 0, 0, 0);
 		}
 
 		boolean layoutPrototypeLinkEnabled = ParamUtil.getBoolean(
@@ -411,21 +413,21 @@ public class LayoutLocalServiceStagingAdvice implements BeanFactoryAware {
 
 	protected void doDeleteLayout(
 			LayoutLocalService layoutLocalService, Layout layout,
-			boolean updateLayoutSet, ServiceContext serviceContext)
+			ServiceContext serviceContext)
 		throws PortalException {
 
-		if (SystemEventHierarchyEntryThreadLocal.push(
-				Layout.class, layout.getPlid()) == null) {
+		SystemEventHierarchyEntry systemEventHierarchyEntry =
+			SystemEventHierarchyEntryThreadLocal.push(
+				Layout.class, layout.getPlid());
 
-			layoutLocalService.deleteLayout(
-				layout, updateLayoutSet, serviceContext);
+		if (systemEventHierarchyEntry == null) {
+			layoutLocalService.deleteLayout(layout, serviceContext);
 		}
 		else {
 			try {
-				layoutLocalService.deleteLayout(
-					layout, updateLayoutSet, serviceContext);
+				layoutLocalService.deleteLayout(layout, serviceContext);
 
-				SystemEventHierarchyEntry systemEventHierarchyEntry =
+				systemEventHierarchyEntry =
 					SystemEventHierarchyEntryThreadLocal.peek();
 
 				SystemEventLocalServiceUtil.addSystemEvent(
@@ -457,12 +459,20 @@ public class LayoutLocalServiceStagingAdvice implements BeanFactoryAware {
 				Object proxiedLayout = proxiedLayouts.get(layout);
 
 				if (proxiedLayout != null) {
-					return (Layout)proxiedLayout;
+					Layout cachedProxiedLayout = (Layout)proxiedLayout;
+
+					if (layout.getMvccVersion() ==
+							cachedProxiedLayout.getMvccVersion()) {
+
+						return cachedProxiedLayout;
+					}
+
+					proxiedLayouts.remove(layout);
 				}
 
 				proxiedLayout = ProxyUtil.newProxyInstance(
-					ClassLoaderUtil.getPortalClassLoader(),
-					new Class<?>[] {Layout.class},
+					PortalClassLoaderUtil.getClassLoader(),
+					new Class<?>[] {Layout.class, ModelWrapper.class},
 					new LayoutStagingHandler(layout));
 
 				proxiedLayouts.put(layout, proxiedLayout);
@@ -472,8 +482,9 @@ public class LayoutLocalServiceStagingAdvice implements BeanFactoryAware {
 		}
 
 		Object proxiedLayout = ProxyUtil.newProxyInstance(
-			ClassLoaderUtil.getPortalClassLoader(),
-			new Class<?>[] {Layout.class}, new LayoutStagingHandler(layout));
+			PortalClassLoaderUtil.getClassLoader(),
+			new Class<?>[] {Layout.class, ModelWrapper.class},
+			new LayoutStagingHandler(layout));
 
 		Map<Layout, Object> proxiedLayouts = new HashMap<>();
 
@@ -552,8 +563,8 @@ public class LayoutLocalServiceStagingAdvice implements BeanFactoryAware {
 
 		List<Layout> wrappedLayouts = new ArrayList<>(layouts.size());
 
-		for (int i = 0; i < layouts.size(); i++) {
-			Layout wrappedLayout = wrapLayout(layouts.get(i));
+		for (Layout layout : layouts) {
+			Layout wrappedLayout = wrapLayout(layout);
 
 			if (showIncomplete ||
 				!StagingUtil.isIncomplete(wrappedLayout, layoutSetBranchId)) {
@@ -583,14 +594,25 @@ public class LayoutLocalServiceStagingAdvice implements BeanFactoryAware {
 				}
 			}
 		}
+		else if (returnValue instanceof Map<?, ?>) {
+			Map<Object, Object> map = (Map<Object, Object>)returnValue;
+
+			if (map.isEmpty()) {
+				return returnValue;
+			}
+
+			map.replaceAll(
+				(key, value) -> wrapReturnValue(value, showIncomplete));
+		}
 
 		return returnValue;
 	}
 
 	protected LayoutLocalServiceHelper layoutLocalServiceHelper;
 
-	private static final Class<?>[] _GET_LAYOUTS_TYPES =
-		{Long.TYPE, Boolean.TYPE, Long.TYPE};
+	private static final Class<?>[] _GET_LAYOUTS_TYPES = {
+		Long.TYPE, Boolean.TYPE, Long.TYPE
+	};
 
 	private static final Class<?>[] _UPDATE_LAYOUT_PARAMETER_TYPES = {
 		long.class, boolean.class, long.class, long.class, Map.class, Map.class,
@@ -602,16 +624,10 @@ public class LayoutLocalServiceStagingAdvice implements BeanFactoryAware {
 		LayoutLocalServiceStagingAdvice.class);
 
 	private static final Set<String>
-		_layoutLocalServiceStagingAdviceMethodNames = new HashSet<>();
-
-	static {
-		_layoutLocalServiceStagingAdviceMethodNames.add("createLayout");
-		_layoutLocalServiceStagingAdviceMethodNames.add("deleteLayout");
-		_layoutLocalServiceStagingAdviceMethodNames.add("getLayouts");
-		_layoutLocalServiceStagingAdviceMethodNames.add("updateLayout");
-		_layoutLocalServiceStagingAdviceMethodNames.add("updateLookAndFeel");
-		_layoutLocalServiceStagingAdviceMethodNames.add("updateName");
-	}
+		_layoutLocalServiceStagingAdviceMethodNames = new HashSet<>(
+			Arrays.asList(
+				"create", "createLayout", "deleteLayout", "getLayouts",
+				"updateLayout", "updateLookAndFeel", "updateName"));
 
 	private BeanFactory _beanFactory;
 
@@ -638,14 +654,23 @@ public class LayoutLocalServiceStagingAdvice implements BeanFactoryAware {
 
 			Class<?>[] parameterTypes = method.getParameterTypes();
 
-			if (methodName.equals("createLayout")) {
+			if (methodName.equals("create") ||
+				methodName.equals("createLayout")) {
+
 				return _invoke(method, arguments);
 			}
 			else if (methodName.equals("deleteLayout")) {
-				if (arguments.length == 3) {
+				if ((arguments.length == 2) &&
+					(arguments[0] instanceof Layout)) {
+
 					deleteLayout(
 						(LayoutLocalService)_targetObject, (Layout)arguments[0],
-						(Boolean)arguments[1], (ServiceContext)arguments[2]);
+						(ServiceContext)arguments[1]);
+				}
+				else if (arguments.length == 3) {
+					deleteLayout(
+						(LayoutLocalService)_targetObject, (Layout)arguments[0],
+						(ServiceContext)arguments[2]);
 				}
 				else if (arguments.length == 4) {
 					deleteLayout(
@@ -660,10 +685,14 @@ public class LayoutLocalServiceStagingAdvice implements BeanFactoryAware {
 			else if (methodName.equals("getLayouts")) {
 				boolean showIncomplete = false;
 
-				if (arguments.length == 6) {
+				if ((arguments.length == 6) &&
+					parameterTypes[3].equals(Boolean.TYPE)) {
+
 					showIncomplete = (Boolean)arguments[3];
 				}
-				else if (arguments.length == 7) {
+				else if ((arguments.length == 7) &&
+						 parameterTypes[3].equals(Boolean.TYPE)) {
+
 					showIncomplete = (Boolean)arguments[3];
 				}
 				else if (Arrays.equals(parameterTypes, _GET_LAYOUTS_TYPES)) {
@@ -704,7 +733,7 @@ public class LayoutLocalServiceStagingAdvice implements BeanFactoryAware {
 			}
 			else {
 				try {
-					Class<?> clazz = getClass();
+					Class<?> clazz = LayoutLocalServiceStagingAdvice.class;
 
 					parameterTypes = ArrayUtil.append(
 						new Class<?>[] {LayoutLocalService.class},
@@ -717,7 +746,7 @@ public class LayoutLocalServiceStagingAdvice implements BeanFactoryAware {
 						new Object[] {_targetObject}, arguments);
 
 					returnValue = layoutLocalServiceStagingAdviceMethod.invoke(
-						this, arguments);
+						_layoutLocalServiceStagingAdvice, arguments);
 				}
 				catch (InvocationTargetException ite) {
 					throw ite.getTargetException();
@@ -733,8 +762,10 @@ public class LayoutLocalServiceStagingAdvice implements BeanFactoryAware {
 		}
 
 		private LayoutLocalServiceStagingInvocationHandler(
+			LayoutLocalServiceStagingAdvice layoutLocalServiceStagingAdvice,
 			Object targetObject) {
 
+			_layoutLocalServiceStagingAdvice = layoutLocalServiceStagingAdvice;
 			_targetObject = targetObject;
 		}
 
@@ -749,6 +780,8 @@ public class LayoutLocalServiceStagingAdvice implements BeanFactoryAware {
 			}
 		}
 
+		private final LayoutLocalServiceStagingAdvice
+			_layoutLocalServiceStagingAdvice;
 		private final Object _targetObject;
 
 	}

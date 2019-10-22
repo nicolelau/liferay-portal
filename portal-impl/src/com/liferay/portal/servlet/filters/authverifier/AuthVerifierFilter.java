@@ -14,6 +14,7 @@
 
 package com.liferay.portal.servlet.filters.authverifier;
 
+import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
@@ -22,10 +23,9 @@ import com.liferay.portal.kernel.security.auth.AccessControlContext;
 import com.liferay.portal.kernel.security.auth.verifier.AuthVerifierResult;
 import com.liferay.portal.kernel.servlet.ProtectedServletRequest;
 import com.liferay.portal.kernel.util.GetterUtil;
-import com.liferay.portal.kernel.util.Http;
 import com.liferay.portal.kernel.util.HttpUtil;
 import com.liferay.portal.kernel.util.MapUtil;
-import com.liferay.portal.kernel.util.StringBundler;
+import com.liferay.portal.kernel.util.PortalUtil;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.security.auth.AuthVerifierPipeline;
@@ -83,6 +83,13 @@ public class AuthVerifierFilter extends BasePortalFilter {
 			}
 		}
 
+		if (_initParametersMap.containsKey("guest.allowed")) {
+			_guestAllowed = GetterUtil.getBoolean(
+				_initParametersMap.get("guest.allowed"), true);
+
+			_initParametersMap.remove("guest.allowed");
+		}
+
 		if (_initParametersMap.containsKey("hosts.allowed")) {
 			String hostsAllowedString = (String)_initParametersMap.get(
 				"hosts.allowed");
@@ -114,20 +121,30 @@ public class AuthVerifierFilter extends BasePortalFilter {
 
 	@Override
 	protected void processFilter(
-			HttpServletRequest request, HttpServletResponse response,
-			FilterChain filterChain)
+			HttpServletRequest httpServletRequest,
+			HttpServletResponse httpServletResponse, FilterChain filterChain)
 		throws Exception {
 
-		if (!_isAccessAllowed(request, response)) {
+		if (!_isAccessAllowed(httpServletRequest, httpServletResponse)) {
 			return;
 		}
 
-		if (_isApplySSL(request, response)) {
+		if (_isApplySSL(httpServletRequest, httpServletResponse)) {
+			return;
+		}
+
+		if (_isCORSPreflightRequest(httpServletRequest)) {
+			Class<?> clazz = getClass();
+
+			processFilter(
+				clazz.getName(), httpServletRequest, httpServletResponse,
+				filterChain);
+
 			return;
 		}
 
 		AccessControlUtil.initAccessControlContext(
-			request, response, _initParametersMap);
+			httpServletRequest, httpServletResponse, _initParametersMap);
 
 		AuthVerifierResult.State state = AccessControlUtil.verifyRequest();
 
@@ -143,13 +160,25 @@ public class AuthVerifierFilter extends BasePortalFilter {
 
 		if (state == AuthVerifierResult.State.INVALID_CREDENTIALS) {
 			if (_log.isDebugEnabled()) {
-				_log.debug("Result state doesn't allow us to continue.");
+				_log.debug("Result state does not allow us to continue");
 			}
 		}
 		else if (state == AuthVerifierResult.State.NOT_APPLICABLE) {
 			_log.error("Invalid state " + state);
 		}
-		else if (state == AuthVerifierResult.State.SUCCESS) {
+		else if (!_guestAllowed &&
+				 (state == AuthVerifierResult.State.UNSUCCESSFUL)) {
+
+			if (_log.isDebugEnabled()) {
+				_log.debug(
+					"Guest is not allowed to access " +
+						httpServletRequest.getRequestURI());
+			}
+
+			httpServletResponse.sendError(
+				HttpServletResponse.SC_FORBIDDEN, "Authorization required");
+		}
+		else if (_guestAllowed || (state == AuthVerifierResult.State.SUCCESS)) {
 			long userId = authVerifierResult.getUserId();
 
 			AccessControlUtil.initContextUser(userId);
@@ -160,14 +189,14 @@ public class AuthVerifierFilter extends BasePortalFilter {
 
 			ProtectedServletRequest protectedServletRequest =
 				new ProtectedServletRequest(
-					request, String.valueOf(userId), authType);
+					httpServletRequest, String.valueOf(userId), authType);
 
 			accessControlContext.setRequest(protectedServletRequest);
 
 			Class<?> clazz = getClass();
 
 			processFilter(
-				clazz.getName(), protectedServletRequest, response,
+				clazz.getName(), protectedServletRequest, httpServletResponse,
 				filterChain);
 		}
 		else {
@@ -176,12 +205,15 @@ public class AuthVerifierFilter extends BasePortalFilter {
 	}
 
 	private boolean _isAccessAllowed(
-			HttpServletRequest request, HttpServletResponse response)
+			HttpServletRequest httpServletRequest,
+			HttpServletResponse httpServletResponse)
 		throws IOException {
 
-		String remoteAddr = request.getRemoteAddr();
+		String remoteAddr = httpServletRequest.getRemoteAddr();
 
-		if (AccessControlUtil.isAccessAllowed(request, _hostsAllowed)) {
+		if (AccessControlUtil.isAccessAllowed(
+				httpServletRequest, _hostsAllowed)) {
+
 			if (_log.isDebugEnabled()) {
 				_log.debug("Access allowed for " + remoteAddr);
 			}
@@ -193,7 +225,7 @@ public class AuthVerifierFilter extends BasePortalFilter {
 			_log.warn("Access denied for " + remoteAddr);
 		}
 
-		response.sendError(
+		httpServletResponse.sendError(
 			HttpServletResponse.SC_FORBIDDEN,
 			"Access denied for " + remoteAddr);
 
@@ -201,44 +233,56 @@ public class AuthVerifierFilter extends BasePortalFilter {
 	}
 
 	private boolean _isApplySSL(
-			HttpServletRequest request, HttpServletResponse response)
+			HttpServletRequest httpServletRequest,
+			HttpServletResponse httpServletResponse)
 		throws IOException {
 
-		if (!_httpsRequired || request.isSecure()) {
+		if (!_httpsRequired || PortalUtil.isSecure(httpServletRequest)) {
 			return false;
 		}
 
 		if (_log.isDebugEnabled()) {
-			String completeURL = HttpUtil.getCompleteURL(request);
+			String completeURL = HttpUtil.getCompleteURL(httpServletRequest);
 
 			_log.debug("Securing " + completeURL);
 		}
 
 		StringBundler sb = new StringBundler(5);
 
-		sb.append(Http.HTTPS_WITH_SLASH);
-		sb.append(request.getServerName());
-		sb.append(request.getServletPath());
+		sb.append(PortalUtil.getPortalURL(httpServletRequest, true));
+		sb.append(PortalUtil.getPathContext(httpServletRequest));
+		sb.append(httpServletRequest.getRequestURI());
 
-		String queryString = request.getQueryString();
-
-		if (Validator.isNotNull(queryString)) {
+		if (Validator.isNotNull(httpServletRequest.getQueryString())) {
 			sb.append(StringPool.QUESTION);
-			sb.append(request.getQueryString());
+			sb.append(httpServletRequest.getQueryString());
 		}
 
 		if (_log.isDebugEnabled()) {
 			_log.debug("Redirect to " + sb.toString());
 		}
 
-		response.sendRedirect(sb.toString());
+		httpServletResponse.sendRedirect(sb.toString());
 
 		return true;
+	}
+
+	private boolean _isCORSPreflightRequest(
+		HttpServletRequest httpServletRequest) {
+
+		if (StringUtil.equals(httpServletRequest.getMethod(), "OPTIONS") &&
+			Validator.isNotNull(httpServletRequest.getHeader("Origin"))) {
+
+			return true;
+		}
+
+		return false;
 	}
 
 	private static final Log _log = LogFactoryUtil.getLog(
 		AuthVerifierFilter.class.getName());
 
+	private boolean _guestAllowed = true;
 	private final Set<String> _hostsAllowed = new HashSet<>();
 	private boolean _httpsRequired;
 	private final Map<String, Object> _initParametersMap = new HashMap<>();

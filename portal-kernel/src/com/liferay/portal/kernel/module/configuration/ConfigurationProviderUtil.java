@@ -15,8 +15,6 @@
 package com.liferay.portal.kernel.module.configuration;
 
 import com.liferay.portal.kernel.model.Layout;
-import com.liferay.portal.kernel.model.PortletInstance;
-import com.liferay.portal.kernel.security.pacl.permission.PortalRuntimePermission;
 import com.liferay.portal.kernel.settings.SettingsLocator;
 import com.liferay.registry.collections.ServiceTrackerCollections;
 import com.liferay.registry.collections.ServiceTrackerList;
@@ -88,9 +86,6 @@ public class ConfigurationProviderUtil {
 	}
 
 	public static ConfigurationProvider getConfigurationProvider() {
-		PortalRuntimePermission.checkGetBeanProperty(
-			ConfigurationProviderUtil.class);
-
 		return _configurationProvider.get(0);
 	}
 
@@ -101,19 +96,6 @@ public class ConfigurationProviderUtil {
 			getConfigurationProvider();
 
 		return configurationProvider.getGroupConfiguration(clazz, groupId);
-	}
-
-	/**
-	 * @deprecated As of 7.0.0, replaced by {@link
-	 *             #getPortletInstanceConfiguration(Class, Layout, String)}
-	 */
-	@Deprecated
-	public static <T> T getPortletInstanceConfiguration(
-			Class<T> clazz, Layout layout, PortletInstance portletInstance)
-		throws ConfigurationException {
-
-		return getPortletInstanceConfiguration(
-			clazz, layout, portletInstance.getPortletInstanceKey());
 	}
 
 	public static <T> T getPortletInstanceConfiguration(

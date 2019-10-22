@@ -14,12 +14,12 @@
 
 package com.liferay.portal.webserver.test;
 
+import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.servlet.HttpHeaders;
 import com.liferay.portal.kernel.test.util.TestPropsValues;
 import com.liferay.portal.kernel.util.ContentTypes;
-import com.liferay.portal.kernel.util.StringBundler;
 import com.liferay.portal.kernel.util.WebKeys;
 import com.liferay.portal.webserver.WebServerServlet;
 import com.liferay.portlet.documentlibrary.service.test.BaseDLAppTestCase;
@@ -34,7 +34,9 @@ import org.springframework.mock.web.MockHttpServletResponse;
 
 /**
  * @author Alexander Chow
+ * @deprecated As of Mueller (7.2.x), with no direct replacement
  */
+@Deprecated
 public abstract class BaseWebServerTestCase extends BaseDLAppTestCase {
 
 	public MockHttpServletResponse service(
@@ -80,10 +82,7 @@ public abstract class BaseWebServerTestCase extends BaseDLAppTestCase {
 		}
 
 		for (Map.Entry<String, String> entry : headers.entrySet()) {
-			String key = entry.getKey();
-			String value = entry.getValue();
-
-			mockHttpServletRequest.addHeader(key, value);
+			mockHttpServletRequest.addHeader(entry.getKey(), entry.getValue());
 		}
 
 		MockHttpServletResponse mockHttpServletResponse =

@@ -186,8 +186,7 @@ public class StringParser {
 	 * <code>
 	 * Hi {name}! How are you?
 	 * </code>
-	 * </pre>
-	 * </p>
+	 * </pre></p>
 	 *
 	 * <p>
 	 * This pattern would match the string &quot;Hi Tom! How are you?&quot;. The
@@ -202,8 +201,7 @@ public class StringParser {
 	 * <code>
 	 * Hi {name:[a-z]+}! How are you?
 	 * </code>
-	 * </pre>
-	 * </p>
+	 * </pre></p>
 	 *
 	 * <p>
 	 * By default, a fragment will match anything except a forward slash or a
@@ -221,8 +219,7 @@ public class StringParser {
 	 * <code>
 	 * /view_page/{%path:.*}
 	 * </code>
-	 * </pre>
-	 * </p>
+	 * </pre></p>
 	 *
 	 * <p>
 	 * The format of the path fragment has also been specified to match anything
@@ -235,8 +232,7 @@ public class StringParser {
 	 * <code>
 	 * /view_page/root/home/mysite/pages/index.htm
 	 * </code>
-	 * </pre>
-	 * </p>
+	 * </pre></p>
 	 *
 	 * <p>
 	 * <code>path</code> would be set to
@@ -284,10 +280,13 @@ public class StringParser {
 			pattern = StringUtil.replace(
 				pattern, chunk, stringParserFragment.getToken());
 
+			String stringParserFragmentPattern =
+				stringParserFragment.getPattern();
+
 			regex = StringUtil.replace(
 				regex, escapeRegex(chunk),
 				StringPool.OPEN_PARENTHESIS.concat(
-					stringParserFragment.getPattern().concat(
+					stringParserFragmentPattern.concat(
 						StringPool.CLOSE_PARENTHESIS)));
 		}
 
@@ -355,7 +354,7 @@ public class StringParser {
 				_parts = null;
 			}
 			else {
-				_parts = parts.toArray(new String[parts.size()]);
+				_parts = parts.toArray(new String[0]);
 			}
 		}
 

@@ -14,8 +14,10 @@
 
 package com.liferay.portal.upgrade.v7_0_0;
 
+import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.dao.db.DB;
+import com.liferay.portal.kernel.dao.db.DBInspector;
 import com.liferay.portal.kernel.dao.db.DBManagerUtil;
 import com.liferay.portal.kernel.dao.db.DBType;
 import com.liferay.portal.kernel.dao.jdbc.AutoBatchPreparedStatementUtil;
@@ -23,7 +25,6 @@ import com.liferay.portal.kernel.dao.orm.WildcardMode;
 import com.liferay.portal.kernel.upgrade.UpgradeException;
 import com.liferay.portal.kernel.upgrade.UpgradeProcess;
 import com.liferay.portal.kernel.util.LoggingTimer;
-import com.liferay.portal.kernel.util.StringBundler;
 import com.liferay.portal.kernel.util.StringUtil;
 
 import java.sql.PreparedStatement;
@@ -49,14 +50,11 @@ public class UpgradeKernelPackage extends UpgradeProcess {
 				"ResourceAction", "name", getClassNames(),
 				WildcardMode.SURROUND);
 			upgradeTable(
-				"ResourceBlock", "name", getClassNames(),
-				WildcardMode.SURROUND);
-			upgradeTable(
 				"ResourcePermission", "name", getClassNames(),
 				WildcardMode.SURROUND);
 			upgradeLongTextTable(
-				"UserNotificationEvent", "payload", getClassNames(),
-				WildcardMode.SURROUND);
+				"UserNotificationEvent", "payload", "userNotificationEventId",
+				getClassNames(), WildcardMode.SURROUND);
 
 			upgradeTable(
 				"ListType", "type_", getClassNames(), WildcardMode.TRAILING);
@@ -64,14 +62,23 @@ public class UpgradeKernelPackage extends UpgradeProcess {
 				"ResourceAction", "name", getResourceNames(),
 				WildcardMode.LEADING);
 			upgradeTable(
-				"ResourceBlock", "name", getResourceNames(),
-				WildcardMode.LEADING);
-			upgradeTable(
 				"ResourcePermission", "name", getResourceNames(),
 				WildcardMode.LEADING);
 			upgradeLongTextTable(
-				"UserNotificationEvent", "payload", getResourceNames(),
-				WildcardMode.LEADING);
+				"UserNotificationEvent", "payload", "userNotificationEventId",
+				getResourceNames(), WildcardMode.LEADING);
+
+			DBInspector dbInspector = new DBInspector(connection);
+
+			if (dbInspector.hasTable("ResourceBlock")) {
+				upgradeTable(
+					"ResourceBlock", "name", getClassNames(),
+					WildcardMode.SURROUND);
+
+				upgradeTable(
+					"ResourceBlock", "name", getResourceNames(),
+					WildcardMode.LEADING);
+			}
 		}
 		catch (Exception e) {
 			throw new UpgradeException(e);
@@ -87,8 +94,8 @@ public class UpgradeKernelPackage extends UpgradeProcess {
 	}
 
 	protected void upgradeLongTextTable(
-			String columnName, String selectSQL, String updateSQL,
-			String[] name)
+			String columnName, String primaryKeyColumnName, String selectSQL,
+			String updateSQL, String[] name)
 		throws SQLException {
 
 		try (PreparedStatement ps1 = connection.prepareStatement(selectSQL);
@@ -97,14 +104,12 @@ public class UpgradeKernelPackage extends UpgradeProcess {
 				connection.prepareStatement(updateSQL))) {
 
 			while (rs.next()) {
-				String oldValue = rs.getString(columnName);
+				ps2.setString(
+					1,
+					StringUtil.replace(
+						rs.getString(columnName), name[0], name[1]));
 
-				String newValue = StringUtil.replace(
-					oldValue, name[0], name[1]);
-
-				ps2.setString(1, newValue);
-
-				ps2.setString(2, oldValue);
+				ps2.setLong(2, rs.getLong(primaryKeyColumnName));
 
 				ps2.addBatch();
 			}
@@ -113,9 +118,25 @@ public class UpgradeKernelPackage extends UpgradeProcess {
 		}
 	}
 
+	/**
+	 * @deprecated As of Judson (7.1.x), replaced by {@link
+	 *             #upgradeLongTextTable(String, String, String, String,
+	 *             String[])}
+	 */
+	@Deprecated
 	protected void upgradeLongTextTable(
-			String tableName, String columnName, String[][] names,
-			WildcardMode wildcardMode)
+			String columnName, String selectSQL, String updateSQL,
+			String[] name)
+		throws SQLException {
+
+		throw new UnsupportedOperationException(
+			"This method is deprecated and replaced by upgradeLongTextTable(" +
+				"String, String, String, String, String[])");
+	}
+
+	protected void upgradeLongTextTable(
+			String tableName, String columnName, String primaryKeyColumnName,
+			String[][] names, WildcardMode wildcardMode)
 		throws Exception {
 
 		DB db = DBManagerUtil.getDB();
@@ -126,7 +147,9 @@ public class UpgradeKernelPackage extends UpgradeProcess {
 			return;
 		}
 
-		try (LoggingTimer loggingTimer = new LoggingTimer(tableName)) {
+		try (LoggingTimer loggingTimer = new LoggingTimer(
+				getClass(), tableName)) {
+
 			StringBundler updateSB = new StringBundler(7);
 
 			updateSB.append("update ");
@@ -134,15 +157,17 @@ public class UpgradeKernelPackage extends UpgradeProcess {
 			updateSB.append(" set ");
 			updateSB.append(columnName);
 			updateSB.append(" = ? where ");
-			updateSB.append(columnName);
+			updateSB.append(primaryKeyColumnName);
 			updateSB.append(" = ?");
 
 			String updateSQL = updateSB.toString();
 
-			StringBundler selectPrefixSB = new StringBundler(8);
+			StringBundler selectPrefixSB = new StringBundler(10);
 
 			selectPrefixSB.append("select ");
 			selectPrefixSB.append(columnName);
+			selectPrefixSB.append(", ");
+			selectPrefixSB.append(primaryKeyColumnName);
 			selectPrefixSB.append(" from ");
 			selectPrefixSB.append(tableName);
 			selectPrefixSB.append(" where ");
@@ -156,12 +181,32 @@ public class UpgradeKernelPackage extends UpgradeProcess {
 				wildcardMode.getTrailingWildcard() + StringPool.APOSTROPHE;
 
 			for (String[] name : names) {
-				String selectSQL = selectPrefix.concat(name[0]).concat(
-					selectPostfix);
-
-				upgradeLongTextTable(columnName, selectSQL, updateSQL, name);
+				upgradeLongTextTable(
+					columnName, primaryKeyColumnName,
+					selectPrefix.concat(
+						name[0]
+					).concat(
+						selectPostfix
+					),
+					updateSQL, name);
 			}
 		}
+	}
+
+	/**
+	 * @deprecated As of Judson (7.1.x), replaced by {@link
+	 *             #upgradeLongTextTable(String, String, String, String[][],
+	 *             WildcardMode)}
+	 */
+	@Deprecated
+	protected void upgradeLongTextTable(
+			String tableName, String columnName, String[][] names,
+			WildcardMode wildcardMode)
+		throws Exception {
+
+		throw new UnsupportedOperationException(
+			"This method is deprecated and replaced by upgradeLongTextTable(" +
+				"String, String, String, String[][], WildcardMode)");
 	}
 
 	protected void upgradeTable(
@@ -177,7 +222,9 @@ public class UpgradeKernelPackage extends UpgradeProcess {
 			WildcardMode wildcardMode, boolean preventDuplicates)
 		throws Exception {
 
-		try (LoggingTimer loggingTimer = new LoggingTimer(tableName)) {
+		try (LoggingTimer loggingTimer = new LoggingTimer(
+				getClass(), tableName)) {
+
 			if (preventDuplicates) {
 				_executeDelete(tableName, columnName, names, wildcardMode);
 			}
@@ -275,23 +322,14 @@ public class UpgradeKernelPackage extends UpgradeProcess {
 			"com.liferay.portal.model.BackgroundTask",
 			"com.liferay.portal.background.task.model.BackgroundTask"
 		},
-		{
-			"com.liferay.portal.model.Lock",
-			"com.liferay.portal.lock.model.Lock"
-		},
+		{"com.liferay.portal.model.Lock", "com.liferay.portal.lock.model.Lock"},
 		{"com.liferay.portal.model.", "com.liferay.portal.kernel.model."},
 		{
 			"com.liferay.portlet.announcements.model.",
 			"com.liferay.announcements.kernel.model."
 		},
-		{
-			"com.liferay.portlet.asset.model.",
-			"com.liferay.asset.kernel.model."
-		},
-		{
-			"com.liferay.portlet.blogs.model.",
-			"com.liferay.blogs.kernel.model."
-		},
+		{"com.liferay.portlet.asset.model.", "com.liferay.asset.kernel.model."},
+		{"com.liferay.portlet.blogs.model.", "com.liferay.blogs.kernel.model."},
 		{
 			"com.liferay.portlet.documentlibrary.model.",
 			"com.liferay.document.library.kernel.model."
@@ -320,10 +358,7 @@ public class UpgradeKernelPackage extends UpgradeProcess {
 			"com.liferay.portlet.social.model.",
 			"com.liferay.social.kernel.model."
 		},
-		{
-			"com.liferay.portlet.trash.model.",
-			"com.liferay.trash.kernel.model."
-		},
+		{"com.liferay.portlet.trash.model.", "com.liferay.trash.kernel.model."},
 		{
 			"com.liferay.socialnetworking.model.",
 			"com.liferay.social.networking.model."
@@ -333,10 +368,7 @@ public class UpgradeKernelPackage extends UpgradeProcess {
 	private static final String[][] _RESOURCE_NAMES = {
 		{"com.liferay.portlet.asset", "com.liferay.asset"},
 		{"com.liferay.portlet.blogs", "com.liferay.blogs"},
-		{
-			"com.liferay.portlet.documentlibrary",
-			"com.liferay.document.library"
-		},
+		{"com.liferay.portlet.documentlibrary", "com.liferay.document.library"},
 		{"com.liferay.portlet.messageboards", "com.liferay.message.boards"}
 	};
 

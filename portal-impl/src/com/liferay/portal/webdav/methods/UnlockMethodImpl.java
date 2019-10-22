@@ -36,24 +36,25 @@ public class UnlockMethodImpl implements Method {
 	public int process(WebDAVRequest webDAVRequest) throws WebDAVException {
 		WebDAVStorage storage = webDAVRequest.getWebDAVStorage();
 
-		String token = getToken(webDAVRequest.getHttpServletRequest());
-
 		if (!storage.isSupportsClassTwo()) {
 			return HttpServletResponse.SC_METHOD_NOT_ALLOWED;
 		}
 
-		if (storage.unlockResource(webDAVRequest, token)) {
+		if (storage.unlockResource(
+				webDAVRequest,
+				getToken(webDAVRequest.getHttpServletRequest()))) {
+
 			return HttpServletResponse.SC_NO_CONTENT;
 		}
-		else {
-			return HttpServletResponse.SC_PRECONDITION_FAILED;
-		}
+
+		return HttpServletResponse.SC_PRECONDITION_FAILED;
 	}
 
-	protected String getToken(HttpServletRequest request) {
+	protected String getToken(HttpServletRequest httpServletRequest) {
 		String token = StringPool.BLANK;
 
-		String value = GetterUtil.getString(request.getHeader("Lock-Token"));
+		String value = GetterUtil.getString(
+			httpServletRequest.getHeader("Lock-Token"));
 
 		if (_log.isDebugEnabled()) {
 			_log.debug("\"Lock-Token\" header is " + value);

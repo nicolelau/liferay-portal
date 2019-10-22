@@ -19,25 +19,17 @@ import com.liferay.petra.io.unsync.UnsyncByteArrayOutputStream;
 import com.liferay.petra.process.ProcessCallable;
 import com.liferay.petra.process.ProcessChannel;
 import com.liferay.petra.process.ProcessConfig;
-import com.liferay.petra.process.ProcessConfig.Builder;
 import com.liferay.petra.process.ProcessException;
 import com.liferay.petra.process.ProcessExecutor;
 import com.liferay.petra.process.ProcessLog;
-import com.liferay.petra.process.ProcessLog.Level;
 import com.liferay.petra.process.TerminationProcessException;
-import com.liferay.petra.process.local.LocalProcessLauncher.ProcessContext;
-import com.liferay.petra.process.local.LocalProcessLauncher.ShutdownHook;
 import com.liferay.petra.reflect.ReflectionUtil;
 import com.liferay.petra.string.CharPool;
 import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
+import com.liferay.petra.test.util.ThreadTestUtil;
 import com.liferay.portal.kernel.test.ReflectionTestUtil;
 import com.liferay.portal.kernel.test.rule.CodeCoverageAssertor;
-import com.liferay.portal.kernel.util.InetAddressUtil;
-import com.liferay.portal.kernel.util.SocketUtil;
-import com.liferay.portal.kernel.util.SystemProperties;
-import com.liferay.portal.kernel.util.ThreadUtil;
-import com.liferay.portal.kernel.util.Validator;
 
 import java.io.EOFException;
 import java.io.File;
@@ -55,6 +47,8 @@ import java.io.WriteAbortedException;
 
 import java.lang.reflect.Constructor;
 
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.URL;
@@ -68,6 +62,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -93,9 +88,12 @@ public class LocalProcessExecutorTest {
 			@Override
 			public void appendAssertClasses(List<Class<?>> assertClasses) {
 				assertClasses.add(ProcessConfig.class);
+
 				Collections.addAll(
 					assertClasses, ProcessConfig.class.getDeclaredClasses());
+
 				assertClasses.add(LocalProcessLauncher.class);
+
 				Collections.addAll(
 					assertClasses,
 					LocalProcessLauncher.class.getDeclaredClasses());
@@ -190,7 +188,7 @@ public class LocalProcessExecutorTest {
 
 		// Default environment
 
-		Builder builder = new Builder();
+		ProcessConfig.Builder builder = new ProcessConfig.Builder();
 
 		builder.setArguments(_createArguments(_JPDA_OPTIONS1));
 		builder.setBootstrapClassPath(System.getProperty("java.class.path"));
@@ -229,7 +227,7 @@ public class LocalProcessExecutorTest {
 	@Test
 	public void testProcessConfigBuilderJavaExecutable() throws Exception {
 		try {
-			Builder builder = new Builder();
+			ProcessConfig.Builder builder = new ProcessConfig.Builder();
 
 			builder.setJavaExecutable("javax");
 
@@ -246,7 +244,7 @@ public class LocalProcessExecutorTest {
 
 	@Test
 	public void testProcessConfigBuilderRuntimeClassPath() throws Exception {
-		Builder builder = new Builder();
+		ProcessConfig.Builder builder = new ProcessConfig.Builder();
 
 		builder.setArguments(_createArguments(_JPDA_OPTIONS1));
 
@@ -371,12 +369,15 @@ public class LocalProcessExecutorTest {
 			childController.invoke(
 				() -> {
 					try {
-						ProcessContext.attach("NullShutdownHook", 1, null);
+						LocalProcessLauncher.ProcessContext.attach(
+							"NullShutdownHook", 1, null);
 
 						return "NULL_SHUTDOWN_HOOK_ACCEPTED";
 					}
 					catch (IllegalArgumentException iae) {
-						if (!"Shutdown hook is null".equals(iae.getMessage())) {
+						if (!Objects.equals(
+								iae.getMessage(), "Shutdown hook is null")) {
+
 							return iae.getMessage();
 						}
 					}
@@ -401,14 +402,15 @@ public class LocalProcessExecutorTest {
 
 	@Test
 	public void testProcessContextConstructor() throws Exception {
-		Constructor<ProcessContext> constructor =
-			ProcessContext.class.getDeclaredConstructor();
+		Constructor<LocalProcessLauncher.ProcessContext> constructor =
+			LocalProcessLauncher.ProcessContext.class.getDeclaredConstructor();
 
 		constructor.setAccessible(true);
 
 		constructor.newInstance();
 
-		Assert.assertNotNull(ProcessContext.getAttributes());
+		Assert.assertNotNull(
+			LocalProcessLauncher.ProcessContext.getAttributes());
 	}
 
 	@Test
@@ -459,13 +461,13 @@ public class LocalProcessExecutorTest {
 	public void testSubprocessReactorAbort() throws Exception {
 		List<ProcessLog> processLogs = new ArrayList<>();
 
-		Builder builder = new Builder();
+		ProcessConfig.Builder builder = new ProcessConfig.Builder();
 
 		builder.setArguments(_createArguments(_JPDA_OPTIONS1));
 		builder.setBootstrapClassPath(System.getProperty("java.class.path"));
 		builder.setProcessLogConsumer(
 			processLog -> {
-				if (processLog.getLevel() == Level.ERROR) {
+				if (processLog.getLevel() == ProcessLog.Level.ERROR) {
 					processLogs.add(processLog);
 				}
 			});
@@ -507,7 +509,7 @@ public class LocalProcessExecutorTest {
 				_createJPDAProcessConfig(
 					_JPDA_OPTIONS1,
 					processLog -> {
-						if (processLog.getLevel() == Level.ERROR) {
+						if (processLog.getLevel() == ProcessLog.Level.ERROR) {
 							processLogs.add(processLog);
 						}
 					}),
@@ -629,7 +631,7 @@ public class LocalProcessExecutorTest {
 			_createJPDAProcessConfig(
 				_JPDA_OPTIONS1,
 				processLog -> {
-					if (processLog.getLevel() == Level.ERROR) {
+					if (processLog.getLevel() == ProcessLog.Level.ERROR) {
 						processLogs.add(processLog);
 					}
 				}),
@@ -642,7 +644,8 @@ public class LocalProcessExecutorTest {
 
 		Assert.assertTrue(controller.isAlive());
 
-		Map<String, Object> attributes = ProcessContext.getAttributes();
+		Map<String, Object> attributes =
+			LocalProcessLauncher.ProcessContext.getAttributes();
 
 		BlockingQueue<Thread> reactorThreadBlockingQueue =
 			new SynchronousQueue<>();
@@ -653,10 +656,11 @@ public class LocalProcessExecutorTest {
 		controller.invoke(
 			() -> {
 				try {
-					ProcessContext.writeProcessCallable(
+					LocalProcessLauncher.ProcessContext.writeProcessCallable(
 						() -> {
 							Map<String, Object> localAttributes =
-								ProcessContext.getAttributes();
+								LocalProcessLauncher.ProcessContext.
+									getAttributes();
 
 							BlockingQueue<Thread>
 								localReactorThreadBlockingQueue =
@@ -715,7 +719,8 @@ public class LocalProcessExecutorTest {
 
 		Assert.assertTrue(controller.isAlive());
 
-		Map<String, Object> attributes = ProcessContext.getAttributes();
+		Map<String, Object> attributes =
+			LocalProcessLauncher.ProcessContext.getAttributes();
 
 		BlockingQueue<Thread> reactorThreadBlockingQueue =
 			new SynchronousQueue<>();
@@ -726,10 +731,11 @@ public class LocalProcessExecutorTest {
 		controller.invoke(
 			() -> {
 				try {
-					ProcessContext.writeProcessCallable(
+					LocalProcessLauncher.ProcessContext.writeProcessCallable(
 						() -> {
 							Map<String, Object> localAttributes =
-								ProcessContext.getAttributes();
+								LocalProcessLauncher.ProcessContext.
+									getAttributes();
 
 							BlockingQueue<Thread>
 								localReactorThreadBlockingQueue =
@@ -750,7 +756,8 @@ public class LocalProcessExecutorTest {
 
 					Object processOutputStream =
 						ReflectionTestUtil.getFieldValue(
-							ProcessContext.class, "_processOutputStream");
+							LocalProcessLauncher.ProcessContext.class,
+							"_processOutputStream");
 
 					ReflectionTestUtil.invoke(
 						processOutputStream, "close", new Class<?>[0]);
@@ -793,11 +800,11 @@ public class LocalProcessExecutorTest {
 	public void testSubprocessReactorLeadingLog() throws Exception {
 		List<ProcessLog> processLogs = new ArrayList<>();
 
-		AtomicReference<Level> levelReference = new AtomicReference<>(
-			Level.WARN);
+		AtomicReference<ProcessLog.Level> levelReference =
+			new AtomicReference<>(ProcessLog.Level.WARN);
 
 		Consumer<ProcessLog> processLogConsumer = processLog -> {
-			Level level = processLog.getLevel();
+			ProcessLog.Level level = processLog.getLevel();
 
 			if (level.compareTo(levelReference.get()) >= 0) {
 				processLogs.add(processLog);
@@ -823,7 +830,7 @@ public class LocalProcessExecutorTest {
 
 		// Fine level
 
-		levelReference.set(Level.DEBUG);
+		levelReference.set(ProcessLog.Level.DEBUG);
 
 		processChannel = _localProcessExecutor.execute(
 			_createJPDAProcessConfig(_JPDA_OPTIONS1, processLogConsumer),
@@ -856,7 +863,7 @@ public class LocalProcessExecutorTest {
 
 		// Severe level
 
-		levelReference.set(Level.ERROR);
+		levelReference.set(ProcessLog.Level.ERROR);
 
 		processChannel = _localProcessExecutor.execute(
 			_createJPDAProcessConfig(_JPDA_OPTIONS1, processLogConsumer),
@@ -880,7 +887,7 @@ public class LocalProcessExecutorTest {
 				_createJPDAProcessConfig(
 					_JPDA_OPTIONS1,
 					processLog -> {
-						if (processLog.getLevel() == Level.ERROR) {
+						if (processLog.getLevel() == ProcessLog.Level.ERROR) {
 							processLogs.add(processLog);
 						}
 					}),
@@ -907,7 +914,7 @@ public class LocalProcessExecutorTest {
 	}
 
 	@Test
-	public void testSubprocessReactorPipingBackNonProcessCallable()
+	public void testSubprocessReactorPipingBackNonprocessCallable()
 		throws Exception {
 
 		List<ProcessLog> processLogs = new ArrayList<>();
@@ -917,7 +924,7 @@ public class LocalProcessExecutorTest {
 				_createJPDAProcessConfig(
 					_JPDA_OPTIONS1,
 					processLog -> {
-						if (processLog.getLevel() == Level.INFO) {
+						if (processLog.getLevel() == ProcessLog.Level.INFO) {
 							processLogs.add(processLog);
 						}
 					}),
@@ -947,7 +954,7 @@ public class LocalProcessExecutorTest {
 				_createJPDAProcessConfig(
 					_JPDA_OPTIONS1,
 					processLog -> {
-						if (processLog.getLevel() == Level.WARN) {
+						if (processLog.getLevel() == ProcessLog.Level.WARN) {
 							processLogs.add(processLog);
 						}
 					}),
@@ -990,8 +997,7 @@ public class LocalProcessExecutorTest {
 	private static List<String> _createArguments(String jpdaOptions) {
 		List<String> arguments = new ArrayList<>();
 
-		arguments.add(
-			"-D" + SystemProperties.SYSTEM_PROPERTIES_QUIET + "=true");
+		arguments.add("-D" + _SYSTEM_PROPERTIES_QUIET + "=true");
 
 		if (Boolean.getBoolean("jvm.debug")) {
 			arguments.add(jpdaOptions);
@@ -1003,7 +1009,7 @@ public class LocalProcessExecutorTest {
 
 		String whipAgentLine = System.getProperty("whip.agent");
 
-		if (Validator.isNotNull(whipAgentLine)) {
+		if ((whipAgentLine != null) && !whipAgentLine.isEmpty()) {
 			arguments.add(whipAgentLine);
 			arguments.add("-Dwhip.agent=" + whipAgentLine);
 		}
@@ -1031,7 +1037,7 @@ public class LocalProcessExecutorTest {
 	private static ProcessConfig _createJPDAProcessConfig(
 		String jpdaOption, Consumer<ProcessLog> processLogConsumer) {
 
-		Builder builder = new Builder();
+		ProcessConfig.Builder builder = new ProcessConfig.Builder();
 
 		builder.setArguments(_createArguments(jpdaOption));
 		builder.setBootstrapClassPath(System.getProperty("java.class.path"));
@@ -1046,9 +1052,34 @@ public class LocalProcessExecutorTest {
 		return builder.build();
 	}
 
+	private static ServerSocketChannel _createServerSocketChannel()
+		throws IOException {
+
+		ServerSocketChannel serverSocketChannel = ServerSocketChannel.open();
+
+		int port = 12342;
+
+		while (true) {
+			try {
+				ServerSocket serverSocket = serverSocketChannel.socket();
+
+				serverSocket.setReuseAddress(true);
+
+				serverSocket.bind(
+					new InetSocketAddress(
+						InetAddress.getByName("127.0.0.1"), port));
+
+				return serverSocketChannel;
+			}
+			catch (IOException ioe) {
+				port++;
+			}
+		}
+	}
+
 	private static Serializable _shutdown() {
-		for (Thread thread : ThreadUtil.getThreads()) {
-			if ((thread != null) && "main".equals(thread.getName())) {
+		for (Thread thread : ThreadTestUtil.getThreads()) {
+			if ((thread != null) && Objects.equals(thread.getName(), "main")) {
 				thread.interrupt();
 
 				try {
@@ -1074,7 +1105,8 @@ public class LocalProcessExecutorTest {
 			ReflectionUtil.throwException(cnfe);
 		}
 
-		Map<String, Object> attributes = ProcessContext.getAttributes();
+		Map<String, Object> attributes =
+			LocalProcessLauncher.ProcessContext.getAttributes();
 
 		while (true) {
 			ServerSocket serverSocket = (ServerSocket)attributes.get(
@@ -1166,10 +1198,13 @@ public class LocalProcessExecutorTest {
 
 		long startTime = System.currentTimeMillis();
 
-		while (timeUnit.convert(
-					System.currentTimeMillis() - startTime,
-					TimeUnit.MILLISECONDS) <
-						time) {
+		while (true) {
+			long value = timeUnit.convert(
+				System.currentTimeMillis() - startTime, TimeUnit.MILLISECONDS);
+
+			if (value >= time) {
+				break;
+			}
 
 			if (!supplier.get()) {
 				return;
@@ -1178,8 +1213,7 @@ public class LocalProcessExecutorTest {
 
 		Assert.assertFalse(
 			StringBundler.concat(
-				"After waited ", String.valueOf(time), " ",
-				String.valueOf(timeUnit), ". ", message),
+				"After waited ", time, " ", timeUnit, ". ", message),
 			supplier.get());
 	}
 
@@ -1188,6 +1222,9 @@ public class LocalProcessExecutorTest {
 
 	private static final String _JPDA_OPTIONS2 =
 		"-agentlib:jdwp=transport=dt_socket,address=8002,server=y,suspend=y";
+
+	private static final String _SYSTEM_PROPERTIES_QUIET =
+		"system.properties.quiet";
 
 	private final LocalProcessExecutor _localProcessExecutor =
 		new LocalProcessExecutor();
@@ -1198,7 +1235,7 @@ public class LocalProcessExecutorTest {
 			ProcessCallable<T> processCallable) {
 
 			try (Socket socket = new Socket(
-					InetAddressUtil.getLoopbackInetAddress(), _serverPort)) {
+					InetAddress.getByName("127.0.0.1"), _serverPort)) {
 
 				ObjectOutputStream objectOutputStream = new ObjectOutputStream(
 					socket.getOutputStream());
@@ -1273,7 +1310,7 @@ public class LocalProcessExecutorTest {
 
 		public static final ProcessCallable<String> DETACH = () -> {
 			try {
-				ProcessContext.detach();
+				LocalProcessLauncher.ProcessContext.detach();
 			}
 			catch (InterruptedException ie) {
 				throw new ProcessException(ie);
@@ -1283,7 +1320,8 @@ public class LocalProcessExecutorTest {
 		};
 
 		public static final ProcessCallable<Controller> GET_CONTROLLER = () -> {
-			Map<String, Object> attributes = ProcessContext.getAttributes();
+			Map<String, Object> attributes =
+				LocalProcessLauncher.ProcessContext.getAttributes();
 
 			while (true) {
 				ServerSocket serverSocket = (ServerSocket)attributes.get(
@@ -1335,8 +1373,8 @@ public class LocalProcessExecutorTest {
 				return sb.toString();
 			};
 
-		public static final ProcessCallable<Boolean> IS_ATTACHED = () ->
-			ProcessContext.isAttached();
+		public static final ProcessCallable<Boolean> IS_ATTACHED =
+			() -> LocalProcessLauncher.ProcessContext.isAttached();
 
 		public static final ProcessCallable<String> LEADING_LOG = () -> {
 			try {
@@ -1373,7 +1411,7 @@ public class LocalProcessExecutorTest {
 		public static final ProcessCallable<Serializable>
 			PIPING_BACK_EXCEPTION_PROCESS_CALLABLE = () -> {
 				try {
-					ProcessContext.writeProcessCallable(
+					LocalProcessLauncher.ProcessContext.writeProcessCallable(
 						() -> {
 							throw new ProcessException(
 								"Exception ProcessCallable");
@@ -1430,7 +1468,7 @@ public class LocalProcessExecutorTest {
 				try {
 					Object obj = new Object();
 
-					ProcessContext.writeProcessCallable(
+					LocalProcessLauncher.ProcessContext.writeProcessCallable(
 						() -> (Serializable)obj);
 				}
 				catch (IOException ioe) {
@@ -1444,13 +1482,14 @@ public class LocalProcessExecutorTest {
 			SHUTDOWN_HOOK_TRIGGER_BROKEN_PIPE = () -> {
 				AtomicReference<? extends Thread> heartbeatThreadReference =
 					ReflectionTestUtil.getFieldValue(
-						ProcessContext.class,
+						LocalProcessLauncher.ProcessContext.class,
 						"_heartbeatThreadAtomicReference");
 
 				Thread heartBeatThread = heartbeatThreadReference.get();
 
 				Object processOutputStream = ReflectionTestUtil.getFieldValue(
-					ProcessContext.class, "_processOutputStream");
+					LocalProcessLauncher.ProcessContext.class,
+					"_processOutputStream");
 
 				ObjectOutputStream objectOutputStream =
 					ReflectionTestUtil.getFieldValue(
@@ -1491,7 +1530,7 @@ public class LocalProcessExecutorTest {
 			SHUTDOWN_HOOK_TRIGGER_INTERRUPTION = () -> {
 				AtomicReference<? extends Thread> heartbeatThreadReference =
 					ReflectionTestUtil.getFieldValue(
-						ProcessContext.class,
+						LocalProcessLauncher.ProcessContext.class,
 						"_heartbeatThreadAtomicReference");
 
 				Thread heartBeatThread = heartbeatThreadReference.get();
@@ -1512,13 +1551,14 @@ public class LocalProcessExecutorTest {
 			SHUTDOWN_HOOK_TRIGGER_UNKNOWN = () -> {
 				AtomicReference<? extends Thread> heartbeatThreadReference =
 					ReflectionTestUtil.getFieldValue(
-						ProcessContext.class,
+						LocalProcessLauncher.ProcessContext.class,
 						"_heartbeatThreadAtomicReference");
 
 				Thread heartBeatThread = heartbeatThreadReference.get();
 
 				Object processOutputStream = ReflectionTestUtil.getFieldValue(
-					ProcessContext.class, "_processOutputStream");
+					LocalProcessLauncher.ProcessContext.class,
+					"_processOutputStream");
 
 				ObjectOutputStream objectOutputStream =
 					ReflectionTestUtil.getFieldValue(
@@ -1572,13 +1612,12 @@ public class LocalProcessExecutorTest {
 			asControllable(ProcessCallable<T> processCallable) {
 
 			return () -> {
-				Map<String, Object> attributes = ProcessContext.getAttributes();
+				Map<String, Object> attributes =
+					LocalProcessLauncher.ProcessContext.getAttributes();
 
 				try {
 					ServerSocketChannel serverSocketChannel =
-						SocketUtil.createServerSocketChannel(
-							InetAddressUtil.getLoopbackInetAddress(), 12342,
-							serverSocket -> serverSocket.setReuseAddress(true));
+						_createServerSocketChannel();
 
 					ServerSocket serverSocket = serverSocketChannel.socket();
 
@@ -1649,9 +1688,9 @@ public class LocalProcessExecutorTest {
 		}
 
 		public static ProcessCallable<Boolean> attach(
-			ShutdownHook shutdownHook) {
+			LocalProcessLauncher.ShutdownHook shutdownHook) {
 
-			return () -> ProcessContext.attach(
+			return () -> LocalProcessLauncher.ProcessContext.attach(
 				"Child Process", 1, shutdownHook);
 		}
 
@@ -1670,7 +1709,9 @@ public class LocalProcessExecutorTest {
 		public static final SerializableShutdownHook
 			DETACH_ON_BROKEN_PIPE_SHUTDOWN_HOOK =
 				(shutdownCode, shutdownThrowable) -> {
-					if ((shutdownCode == ShutdownHook.BROKEN_PIPE_CODE) &&
+					if ((shutdownCode ==
+							LocalProcessLauncher.ShutdownHook.
+								BROKEN_PIPE_CODE) &&
 						(shutdownThrowable instanceof IOException)) {
 
 						_unregisterHeartBeatThread();
@@ -1684,7 +1725,9 @@ public class LocalProcessExecutorTest {
 		public static final SerializableShutdownHook
 			DETACH_ON_INTERRUPTION_SHUTDOWN_HOOK =
 				(shutdownCode, shutdownThrowable) -> {
-					if ((shutdownCode == ShutdownHook.INTERRUPTION_CODE) &&
+					if ((shutdownCode ==
+							LocalProcessLauncher.ShutdownHook.
+								INTERRUPTION_CODE) &&
 						(shutdownThrowable.getClass() ==
 							InterruptedException.class)) {
 
@@ -1699,7 +1742,8 @@ public class LocalProcessExecutorTest {
 		public static final SerializableShutdownHook
 			DETACH_ON_UNKNOWN_SHUTDOWN_HOOK =
 				(shutdownCode, shutdownThrowable) -> {
-					if ((shutdownCode == ShutdownHook.UNKNOWN_CODE) &&
+					if ((shutdownCode ==
+							LocalProcessLauncher.ShutdownHook.UNKNOWN_CODE) &&
 						!(shutdownThrowable instanceof InterruptedException) &&
 						!(shutdownThrowable instanceof IOException)) {
 
@@ -1721,13 +1765,14 @@ public class LocalProcessExecutorTest {
 		private static void _unregisterHeartBeatThread() {
 			AtomicReference<? extends Thread> heartbeatThreadReference =
 				ReflectionTestUtil.getFieldValue(
-					ProcessContext.class, "_heartbeatThreadAtomicReference");
+					LocalProcessLauncher.ProcessContext.class,
+					"_heartbeatThreadAtomicReference");
 
 			heartbeatThreadReference.set(null);
 		}
 
 		private interface SerializableShutdownHook
-			extends Serializable, ShutdownHook {
+			extends Serializable, LocalProcessLauncher.ShutdownHook {
 		}
 
 	}

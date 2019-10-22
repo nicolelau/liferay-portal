@@ -45,16 +45,17 @@ public class TransferHeadersHelperImpl implements TransferHeadersHelper {
 
 	@Override
 	public void transferHeaders(
-		Map<String, Object> headers, HttpServletResponse httpServletResponse) {
+		Map<String, Object[]> headers,
+		HttpServletResponse httpServletResponse) {
 
 		boolean transferringHeaders = _transferringHeaders.get();
 
 		_transferringHeaders.set(true);
 
 		try {
-			for (Map.Entry<String, Object> entry : headers.entrySet()) {
+			for (Map.Entry<String, Object[]> entry : headers.entrySet()) {
 				String name = entry.getKey();
-				Object values = entry.getValue();
+				Object[] values = entry.getValue();
 
 				if (values instanceof Cookie[]) {
 					Cookie[] cookies = (Cookie[])values;
@@ -108,8 +109,7 @@ public class TransferHeadersHelperImpl implements TransferHeadersHelper {
 
 	private static final ThreadLocal<Boolean> _transferringHeaders =
 		new CentralizedThreadLocal<>(
-			TransferHeadersHelperImpl.class +
-				"._transferringHeaders",
+			TransferHeadersHelperImpl.class + "._transferringHeaders",
 			() -> false);
 
 	private class HeaderAction<T> {

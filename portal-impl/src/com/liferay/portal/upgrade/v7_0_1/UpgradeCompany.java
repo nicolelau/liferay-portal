@@ -15,10 +15,10 @@
 package com.liferay.portal.upgrade.v7_0_1;
 
 import com.liferay.petra.encryptor.Encryptor;
+import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.upgrade.UpgradeProcess;
 import com.liferay.portal.kernel.util.Base64;
 import com.liferay.portal.kernel.util.LoggingTimer;
-import com.liferay.portal.kernel.util.StringBundler;
 
 import java.security.Key;
 
@@ -43,6 +43,7 @@ public class UpgradeCompany extends UpgradeProcess {
 
 			while (rs.next()) {
 				String companyId = rs.getString("companyId");
+
 				String keyString = rs.getString("key_");
 
 				Key key = (Key)Base64.stringToObject(keyString);

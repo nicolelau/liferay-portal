@@ -17,6 +17,7 @@ package com.liferay.adaptive.media.image.internal.validator;
 import com.liferay.adaptive.media.image.internal.configuration.AMImageConfiguration;
 import com.liferay.adaptive.media.image.mime.type.AMImageMimeTypeProvider;
 import com.liferay.adaptive.media.image.validator.AMImageValidator;
+import com.liferay.document.library.kernel.util.DLProcessorRegistryUtil;
 import com.liferay.portal.configuration.metatype.bnd.util.ConfigurableUtil;
 import com.liferay.portal.kernel.repository.model.FileVersion;
 
@@ -31,16 +32,22 @@ import org.osgi.service.component.annotations.Reference;
  * @author Sergio González
  */
 @Component(
-	configurationPid = "com.liferay.adaptive.media.image.internal.configuration.AMImageConfiguration"
+	configurationPid = "com.liferay.adaptive.media.image.internal.configuration.AMImageConfiguration",
+	service = AMImageValidator.class
 )
 public class AMImageValidatorImpl implements AMImageValidator {
 
 	@Override
 	public boolean isValid(FileVersion fileVersion) {
+		if (!DLProcessorRegistryUtil.isPreviewableSize(fileVersion)) {
+			return false;
+		}
+
 		long imageMaxSize = _amImageConfiguration.imageMaxSize();
 
 		if ((imageMaxSize != -1) &&
-			((imageMaxSize == 0) || (fileVersion.getSize() >= imageMaxSize))) {
+			((imageMaxSize == 0) || (fileVersion.getSize() == 0) ||
+			 (fileVersion.getSize() >= imageMaxSize))) {
 
 			return false;
 		}

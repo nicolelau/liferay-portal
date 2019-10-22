@@ -22,6 +22,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 
 import java.net.HttpURLConnection;
+import java.net.URI;
 import java.net.URL;
 import java.net.URLConnection;
 
@@ -51,7 +52,16 @@ public class MirrorsGetTask extends Task {
 	}
 
 	public void setDest(File dest) {
-		_dest = dest;
+		String destPath = dest.getPath();
+
+		if (destPath.matches(".*\\$\\{.+\\}.*")) {
+			Project project = getProject();
+
+			_dest = new File(project.replaceProperties(destPath));
+		}
+		else {
+			_dest = dest;
+		}
 	}
 
 	public void setForce(boolean force) {
@@ -67,17 +77,26 @@ public class MirrorsGetTask extends Task {
 	}
 
 	public void setSrc(String src) {
-		Matcher matcher = _srcPattern.matcher(src);
+		Project project = getProject();
+
+		_src = project.replaceProperties(src);
+
+		if (_src.startsWith("file:")) {
+			return;
+		}
+
+		Matcher matcher = _srcPattern.matcher(_src);
 
 		if (!matcher.find()) {
-			throw new RuntimeException("Invalid src attribute: " + src);
+			throw new RuntimeException("Invalid src attribute: " + _src);
 		}
 
 		_fileName = matcher.group(2);
+
 		_path = matcher.group(1);
 
 		if (_path.startsWith("mirrors/")) {
-			_path = _path.replace("mirrors/", getMirrorsHostname());
+			_path = _path.replaceFirst("mirrors", getMirrorsHostname());
 		}
 
 		while (_path.endsWith("/")) {
@@ -106,11 +125,11 @@ public class MirrorsGetTask extends Task {
 
 		System.out.println(sb.toString());
 
-		URL sourceFileURL = new URL("file:" + sourceFile.getAbsolutePath());
+		URI sourceFileURI = sourceFile.toURI();
 
 		long time = System.currentTimeMillis();
 
-		int size = toFile(sourceFileURL, targetFile);
+		int size = toFile(sourceFileURI.toURL(), targetFile);
 
 		if (_verbose) {
 			sb = new StringBuilder();
@@ -126,6 +145,20 @@ public class MirrorsGetTask extends Task {
 	}
 
 	protected void doExecute() throws IOException {
+		if (_src.startsWith("file:")) {
+			File srcFile = new File(_src.substring("file:".length()));
+
+			File targetFile = _dest;
+
+			if (_dest.exists() && _dest.isDirectory()) {
+				targetFile = new File(_dest, srcFile.getName());
+			}
+
+			copyFile(srcFile, targetFile);
+
+			return;
+		}
+
 		Matcher matcher = _mirrorsHostNamePattern.matcher(_path);
 
 		if (_tryLocalNetwork && matcher.find()) {
@@ -183,8 +216,6 @@ public class MirrorsGetTask extends Task {
 					downloadFile(sourceURL, localCacheFile);
 				}
 				catch (IOException ioe) {
-					ioe.printStackTrace();
-
 					sb = new StringBuilder();
 
 					sb.append("http://");
@@ -192,9 +223,13 @@ public class MirrorsGetTask extends Task {
 					sb.append("/");
 					sb.append(_fileName);
 
-					sourceURL = new URL(sb.toString());
+					URL defaultURL = new URL(sb.toString());
 
-					downloadFile(sourceURL, localCacheFile);
+					System.out.println(
+						"Unable to connect to " + sourceURL +
+							", defaulting to " + defaultURL);
+
+					downloadFile(defaultURL, localCacheFile);
 				}
 			}
 			else {
@@ -321,8 +356,6 @@ public class MirrorsGetTask extends Task {
 		catch (Exception e) {
 			if (_verbose) {
 				System.out.println("Unable to access MD5 file");
-
-				e.printStackTrace();
 			}
 
 			return true;
@@ -518,6 +551,7 @@ public class MirrorsGetTask extends Task {
 	private String _mirrorsHostname;
 	private String _path;
 	private boolean _skipChecksum;
+	private String _src;
 	private boolean _tryLocalNetwork = true;
 	private boolean _verbose;
 

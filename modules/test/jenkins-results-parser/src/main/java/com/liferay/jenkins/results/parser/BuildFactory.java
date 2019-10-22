@@ -17,6 +17,7 @@ package com.liferay.jenkins.results.parser;
 import java.io.IOException;
 import java.io.StringReader;
 
+import java.util.Objects;
 import java.util.Properties;
 
 /**
@@ -31,6 +32,14 @@ public class BuildFactory {
 			return new AxisBuild(url, (BatchBuild)parentBuild);
 		}
 
+		if (url.contains("subrepository-source-format")) {
+			return new BatchBuild(url, (TopLevelBuild)parentBuild);
+		}
+
+		if (url.contains("-source-format")) {
+			return new SourceFormatBuild(url, (TopLevelBuild)parentBuild);
+		}
+
 		if (url.contains("-source")) {
 			return new SourceBuild(url, parentBuild);
 		}
@@ -39,29 +48,36 @@ public class BuildFactory {
 			return new ValidationBuild(url, (TopLevelBuild)parentBuild);
 		}
 
-		for (String batchIndicator : _BATCH_INDICATORS) {
-			if (url.contains(batchIndicator)) {
+		if (url.contains("root-cause-analysis-tool-batch")) {
+			return new FreestyleBatchBuild(url, (TopLevelBuild)parentBuild);
+		}
+
+		for (String batchToken : _TOKENS_BATCH) {
+			if (url.contains(batchToken)) {
 				return new BatchBuild(url, (TopLevelBuild)parentBuild);
 			}
 		}
 
-		TopLevelBuild topLevelBuild = new TopLevelBuild(
+		TopLevelBuild topLevelBuild = new DefaultTopLevelBuild(
 			url, (TopLevelBuild)parentBuild);
 
 		String jobName = topLevelBuild.getJobName();
 
-		if ((parentBuild != null) &&
-			jobName.equals("test-portal-acceptance-pullrequest(ee-6.2.x)")) {
+		if (jobName.equals("root-cause-analysis-tool")) {
+			return new RootCauseAnalysisToolBuild(
+				url, (TopLevelBuild)parentBuild);
+		}
 
-			String jenkinsJobVariant = topLevelBuild.getParameterValue(
-				"JENKINS_JOB_VARIANT");
+		if (jobName.startsWith("test-portal-acceptance-pullrequest")) {
+			String testSuite = topLevelBuild.getParameterValue("CI_TEST_SUITE");
 
-			if ((jenkinsJobVariant != null) &&
-				jenkinsJobVariant.equals("rebase-error")) {
-
-				return new RebaseErrorTopLevelBuild(
+			if (Objects.equals(testSuite, "bundle")) {
+				return new StandaloneTopLevelBuild(
 					url, (TopLevelBuild)parentBuild);
 			}
+
+			return new PortalPullRequestTesterTopLevelBuild(
+				url, (TopLevelBuild)parentBuild);
 		}
 
 		return topLevelBuild;
@@ -88,7 +104,8 @@ public class BuildFactory {
 			archiveProperties.getProperty("top.level.build.url"), null);
 	}
 
-	private static final String[] _BATCH_INDICATORS =
-		{"-batch", "-dist", "environment-"};
+	private static final String[] _TOKENS_BATCH = {
+		"-batch", "-dist", "environment-"
+	};
 
 }

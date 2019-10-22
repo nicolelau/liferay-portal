@@ -15,9 +15,9 @@
 package com.liferay.portal.search.elasticsearch6.internal.query;
 
 import com.liferay.petra.string.StringPool;
-import com.liferay.portal.kernel.search.generic.MatchQuery;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
+import com.liferay.portal.search.query.MatchQuery;
 
 import org.elasticsearch.common.unit.Fuzziness;
 import org.elasticsearch.index.query.MatchPhrasePrefixQueryBuilder;
@@ -33,36 +33,44 @@ import org.osgi.service.component.annotations.Component;
 /**
  * @author Michael C. Han
  */
-@Component(immediate = true, service = MatchQueryTranslator.class)
+@Component(service = MatchQueryTranslator.class)
 public class MatchQueryTranslatorImpl
 	extends BaseMatchQueryTranslatorImpl implements MatchQueryTranslator {
 
 	@Override
 	public QueryBuilder translate(MatchQuery matchQuery) {
 		String field = matchQuery.getField();
+
 		MatchQuery.Type type = matchQuery.getType();
-		String value = matchQuery.getValue();
+		Object value = matchQuery.getValue();
 
-		if (value.startsWith(StringPool.QUOTE) &&
-			value.endsWith(StringPool.QUOTE)) {
+		if (value instanceof String) {
+			String stringValue = (String)value;
 
-			type = MatchQuery.Type.PHRASE;
+			if (stringValue.startsWith(StringPool.QUOTE) &&
+				stringValue.endsWith(StringPool.QUOTE)) {
 
-			value = StringUtil.unquote(value);
+				type = MatchQuery.Type.PHRASE;
 
-			if (value.endsWith(StringPool.STAR)) {
-				type = MatchQuery.Type.PHRASE_PREFIX;
+				stringValue = StringUtil.unquote(stringValue);
+
+				if (stringValue.endsWith(StringPool.STAR)) {
+					type = MatchQuery.Type.PHRASE_PREFIX;
+				}
+			}
+
+			if (type == MatchQuery.Type.PHRASE) {
+				return translateMatchPhraseQuery(
+					field, stringValue, matchQuery);
+			}
+			else if (type == MatchQuery.Type.PHRASE_PREFIX) {
+				return translateMatchPhrasePrefixQuery(
+					field, stringValue, matchQuery);
 			}
 		}
 
 		if ((type == null) || (type == MatchQuery.Type.BOOLEAN)) {
 			return translateMatchQuery(field, value, matchQuery);
-		}
-		else if (type == MatchQuery.Type.PHRASE) {
-			return translateMatchPhraseQuery(field, value, matchQuery);
-		}
-		else if (type == MatchQuery.Type.PHRASE_PREFIX) {
-			return translateMatchPhrasePrefixQuery(field, value, matchQuery);
 		}
 
 		throw new IllegalArgumentException("Invalid match query type: " + type);
@@ -87,10 +95,6 @@ public class MatchQueryTranslatorImpl
 			matchPhrasePrefixQueryBuilder.slop(matchQuery.getSlop());
 		}
 
-		if (!matchQuery.isDefaultBoost()) {
-			matchPhrasePrefixQueryBuilder.boost(matchQuery.getBoost());
-		}
-
 		return matchPhrasePrefixQueryBuilder;
 	}
 
@@ -108,15 +112,11 @@ public class MatchQueryTranslatorImpl
 			matchPhraseQueryBuilder.slop(matchQuery.getSlop());
 		}
 
-		if (!matchQuery.isDefaultBoost()) {
-			matchPhraseQueryBuilder.boost(matchQuery.getBoost());
-		}
-
 		return matchPhraseQueryBuilder;
 	}
 
 	protected QueryBuilder translateMatchQuery(
-		String field, String value, MatchQuery matchQuery) {
+		String field, Object value, MatchQuery matchQuery) {
 
 		MatchQueryBuilder matchQueryBuilder = QueryBuilders.matchQuery(
 			field, value);
@@ -165,10 +165,6 @@ public class MatchQueryTranslatorImpl
 				matchQuery.getZeroTermsQuery());
 
 			matchQueryBuilder.zeroTermsQuery(matchQueryBuilderZeroTermsQuery);
-		}
-
-		if (!matchQuery.isDefaultBoost()) {
-			matchQueryBuilder.boost(matchQuery.getBoost());
 		}
 
 		if (matchQuery.isFuzzyTranspositions() != null) {

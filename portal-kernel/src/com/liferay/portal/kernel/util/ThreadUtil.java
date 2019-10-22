@@ -23,7 +23,6 @@ import com.liferay.portal.kernel.log.LogFactoryUtil;
 
 import java.util.Date;
 import java.util.Map;
-import java.util.Map.Entry;
 
 /**
  * @author Tina Tian
@@ -78,12 +77,12 @@ public class ThreadUtil {
 		}
 
 		try {
-			NoticeableFuture<Entry<byte[], byte[]>> noticeableFuture =
+			NoticeableFuture<Map.Entry<byte[], byte[]>> noticeableFuture =
 				ProcessUtil.execute(
 					CollectorOutputProcessor.INSTANCE, "jstack", "-l",
 					String.valueOf(HeapUtil.getProcessId()));
 
-			Entry<byte[], byte[]> entry = noticeableFuture.get();
+			Map.Entry<byte[], byte[]> entry = noticeableFuture.get();
 
 			return new String(entry.getKey());
 		}
@@ -141,9 +140,9 @@ public class ThreadUtil {
 			sb.append(thread.getState());
 			sb.append("\n");
 
-			for (int i = 0; i < elements.length; i++) {
+			for (StackTraceElement element : elements) {
 				sb.append("\t");
-				sb.append(elements[i]);
+				sb.append(element);
 				sb.append("\n");
 			}
 

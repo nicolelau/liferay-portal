@@ -14,21 +14,14 @@
 
 package com.liferay.portal.configuration;
 
-import com.germinus.easyconf.ComponentConfiguration;
-import com.germinus.easyconf.ComponentProperties;
-
-import com.liferay.portal.configuration.easyconf.ClassLoaderAggregateProperties;
-import com.liferay.portal.configuration.easyconf.ClassLoaderComponentConfiguration;
+import com.liferay.petra.lang.HashUtil;
+import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.configuration.Filter;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
-import com.liferay.portal.kernel.model.Company;
 import com.liferay.portal.kernel.model.CompanyConstants;
-import com.liferay.portal.kernel.service.CompanyLocalServiceUtil;
 import com.liferay.portal.kernel.util.ArrayUtil;
-import com.liferay.portal.kernel.util.HashUtil;
 import com.liferay.portal.kernel.util.PropertiesUtil;
-import com.liferay.portal.kernel.util.StringBundler;
 import com.liferay.portal.kernel.util.Validator;
 
 import java.lang.reflect.Field;
@@ -36,6 +29,7 @@ import java.lang.reflect.Field;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -54,33 +48,11 @@ import org.apache.commons.configuration.MapConfiguration;
 public class ConfigurationImpl
 	implements com.liferay.portal.kernel.configuration.Configuration {
 
-	/**
-	 * @deprecated As of 7.0.0, replaced by {@link
-	 *             #ConfigurationImpl(ClassLoader, String, long, String)}
-	 */
-	@Deprecated
-	public ConfigurationImpl(ClassLoader classLoader, String name) {
-		this(
-			classLoader, name, CompanyConstants.SYSTEM,
-			_getWebId(CompanyConstants.SYSTEM));
-	}
-
-	/**
-	 * @deprecated As of 7.0.0, replaced by {@link
-	 *             #ConfigurationImpl(ClassLoader, String, long, String)}
-	 */
-	@Deprecated
-	public ConfigurationImpl(
-		ClassLoader classLoader, String name, long companyId) {
-
-		this(classLoader, name, companyId, _getWebId(companyId));
-	}
-
 	public ConfigurationImpl(
 		ClassLoader classLoader, String name, long companyId, String webId) {
 
-		_componentConfiguration = new ClassLoaderComponentConfiguration(
-			classLoader, webId, name);
+		_classLoaderAggregateProperties =
+			ClassLoaderAggregatePropertiesUtil.create(classLoader, webId, name);
 
 		printSources(companyId, webId);
 	}
@@ -88,12 +60,6 @@ public class ConfigurationImpl
 	@Override
 	public void addProperties(Properties properties) {
 		try {
-			ComponentProperties componentProperties = getComponentProperties();
-
-			ClassLoaderAggregateProperties classLoaderAggregateProperties =
-				(ClassLoaderAggregateProperties)
-					componentProperties.toConfiguration();
-
 			Field field1 = CompositeConfiguration.class.getDeclaredField(
 				"configList");
 
@@ -101,8 +67,9 @@ public class ConfigurationImpl
 
 			// Add to configList of base conf
 
-			List<Configuration> configurations =
-				(List<Configuration>)field1.get(classLoaderAggregateProperties);
+			List<Configuration> configurations = new LinkedList<>(
+				(List<Configuration>)field1.get(
+					_classLoaderAggregateProperties));
 
 			MapConfiguration newConfiguration = new MapConfiguration(
 				_castPropertiesToMap(properties));
@@ -111,15 +78,19 @@ public class ConfigurationImpl
 
 			configurations.add(0, newConfiguration);
 
+			field1.set(_classLoaderAggregateProperties, configurations);
+
 			// Add to configList of AggregatedProperties itself
 
 			CompositeConfiguration compositeConfiguration =
-				classLoaderAggregateProperties.getBaseConfiguration();
+				_classLoaderAggregateProperties.getBaseConfiguration();
 
-			configurations = (List<Configuration>)field1.get(
-				compositeConfiguration);
+			configurations = new LinkedList<>(
+				(List<Configuration>)field1.get(compositeConfiguration));
 
 			configurations.add(0, newConfiguration);
+
+			field1.set(compositeConfiguration, configurations);
 
 			_properties = null;
 
@@ -145,9 +116,7 @@ public class ConfigurationImpl
 		Object value = _configurationCache.get(key);
 
 		if (value == null) {
-			ComponentProperties componentProperties = getComponentProperties();
-
-			value = componentProperties.getProperty(key);
+			value = _classLoaderAggregateProperties.getProperty(key);
 
 			if (value == null) {
 				value = _nullValue;
@@ -168,9 +137,7 @@ public class ConfigurationImpl
 		Object value = _configurationCache.get(key);
 
 		if (value == null) {
-			ComponentProperties componentProperties = getComponentProperties();
-
-			value = componentProperties.getString(key);
+			value = _classLoaderAggregateProperties.getString(key);
 
 			if (value == null) {
 				value = _nullValue;
@@ -191,7 +158,7 @@ public class ConfigurationImpl
 
 	@Override
 	public String get(String key, Filter filter) {
-		FilterCacheKey filterCacheKey = _buildFilterCacheKey(key, filter);
+		FilterCacheKey filterCacheKey = new FilterCacheKey(key, filter);
 
 		Object value = null;
 
@@ -200,10 +167,7 @@ public class ConfigurationImpl
 		}
 
 		if (value == null) {
-			ComponentProperties componentProperties = getComponentProperties();
-
-			value = componentProperties.getString(
-				key, getEasyConfFilter(filter));
+			value = _classLoaderAggregateProperties.getString(key, filter);
 
 			if (filterCacheKey != null) {
 				if (value == null) {
@@ -226,9 +190,8 @@ public class ConfigurationImpl
 		Object value = _configurationArrayCache.get(key);
 
 		if (value == null) {
-			ComponentProperties componentProperties = getComponentProperties();
-
-			String[] array = componentProperties.getStringArray(key);
+			String[] array = _classLoaderAggregateProperties.getStringArray(
+				key);
 
 			value = _fixArrayValue(array);
 
@@ -244,7 +207,7 @@ public class ConfigurationImpl
 
 	@Override
 	public String[] getArray(String key, Filter filter) {
-		FilterCacheKey filterCacheKey = _buildFilterCacheKey(key, filter);
+		FilterCacheKey filterCacheKey = new FilterCacheKey(key, filter);
 
 		Object value = null;
 
@@ -253,10 +216,8 @@ public class ConfigurationImpl
 		}
 
 		if (value == null) {
-			ComponentProperties componentProperties = getComponentProperties();
-
-			String[] array = componentProperties.getStringArray(
-				key, getEasyConfFilter(filter));
+			String[] array = _classLoaderAggregateProperties.getStringArray(
+				key, filter);
 
 			value = _fixArrayValue(array);
 
@@ -288,13 +249,12 @@ public class ConfigurationImpl
 
 		Properties properties = new Properties();
 
-		ComponentProperties componentProperties = getComponentProperties();
-
 		Properties componentPropertiesProperties =
-			componentProperties.getProperties();
+			_classLoaderAggregateProperties.getProperties();
 
 		for (String key : componentPropertiesProperties.stringPropertyNames()) {
-			properties.setProperty(key, componentProperties.getString(key));
+			properties.setProperty(
+				key, _classLoaderAggregateProperties.getString(key));
 		}
 
 		_properties = properties;
@@ -304,22 +264,15 @@ public class ConfigurationImpl
 
 	@Override
 	public Properties getProperties(String prefix, boolean removePrefix) {
-		Properties properties = getProperties();
-
-		return PropertiesUtil.getProperties(properties, prefix, removePrefix);
+		return PropertiesUtil.getProperties(
+			getProperties(), prefix, removePrefix);
 	}
 
 	@Override
 	public void removeProperties(Properties properties) {
 		try {
-			ComponentProperties componentProperties = getComponentProperties();
-
-			ClassLoaderAggregateProperties classLoaderAggregateProperties =
-				(ClassLoaderAggregateProperties)
-					componentProperties.toConfiguration();
-
 			CompositeConfiguration compositeConfiguration =
-				classLoaderAggregateProperties.getBaseConfiguration();
+				_classLoaderAggregateProperties.getBaseConfiguration();
 
 			Field field2 = CompositeConfiguration.class.getDeclaredField(
 				"configList");
@@ -345,7 +298,7 @@ public class ConfigurationImpl
 				if (mapConfiguration.getMap() == (Map<?, ?>)properties) {
 					itr.remove();
 
-					classLoaderAggregateProperties.removeConfiguration(
+					_classLoaderAggregateProperties.removeConfiguration(
 						configuration);
 				}
 			}
@@ -361,32 +314,13 @@ public class ConfigurationImpl
 
 	@Override
 	public void set(String key, String value) {
-		ComponentProperties componentProperties = getComponentProperties();
-
-		componentProperties.setProperty(key, value);
+		_classLoaderAggregateProperties.setProperty(key, value);
 
 		clearCache();
 	}
 
-	protected ComponentProperties getComponentProperties() {
-		return _componentConfiguration.getProperties();
-	}
-
-	protected com.germinus.easyconf.Filter getEasyConfFilter(Filter filter) {
-		com.germinus.easyconf.Filter easyConfFilter =
-			com.germinus.easyconf.Filter.by(filter.getSelectors());
-
-		if (filter.getVariables() != null) {
-			easyConfFilter.setVariables(filter.getVariables());
-		}
-
-		return easyConfFilter;
-	}
-
 	protected void printSources(long companyId, String webId) {
-		ComponentProperties componentProperties = getComponentProperties();
-
-		List<String> sources = componentProperties.getLoadedSources();
+		List<String> sources = _classLoaderAggregateProperties.loadedSources();
 
 		for (int i = sources.size() - 1; i >= 0; i--) {
 			String source = sources.get(i);
@@ -404,10 +338,8 @@ public class ConfigurationImpl
 			String info = "Loading " + source;
 
 			if (companyId > CompanyConstants.SYSTEM) {
-				info +=
-					StringBundler.concat(
-						" for {companyId=", String.valueOf(companyId),
-						", webId=", webId, "}");
+				info += StringBundler.concat(
+					" for {companyId=", companyId, ", webId=", webId, "}");
 			}
 
 			System.out.println(info);
@@ -419,30 +351,6 @@ public class ConfigurationImpl
 		Properties properties) {
 
 		return (Map)properties;
-	}
-
-	private static String _getWebId(long companyId) {
-		if (companyId > CompanyConstants.SYSTEM) {
-			try {
-				Company company = CompanyLocalServiceUtil.getCompanyById(
-					companyId);
-
-				return company.getWebId();
-			}
-			catch (Exception e) {
-				_log.error(e, e);
-			}
-		}
-
-		return null;
-	}
-
-	private FilterCacheKey _buildFilterCacheKey(String key, Filter filter) {
-		if (filter.getVariables() != null) {
-			return null;
-		}
-
-		return new FilterCacheKey(key, filter);
 	}
 
 	private Object _fixArrayValue(String[] array) {
@@ -480,7 +388,8 @@ public class ConfigurationImpl
 
 	private static final Object _nullValue = new Object();
 
-	private final ComponentConfiguration _componentConfiguration;
+	private final ClassLoaderAggregateProperties
+		_classLoaderAggregateProperties;
 	private final Map<String, Object> _configurationArrayCache =
 		new ConcurrentHashMap<>();
 	private final Map<String, Object> _configurationCache =

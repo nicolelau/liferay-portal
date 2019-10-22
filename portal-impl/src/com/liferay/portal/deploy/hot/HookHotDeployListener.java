@@ -20,8 +20,10 @@ import com.liferay.document.library.kernel.antivirus.AntivirusScannerWrapper;
 import com.liferay.document.library.kernel.util.DLProcessor;
 import com.liferay.document.library.kernel.util.DLProcessorRegistryUtil;
 import com.liferay.mail.kernel.util.Hook;
+import com.liferay.petra.io.StreamUtil;
 import com.liferay.petra.reflect.ReflectionUtil;
 import com.liferay.petra.string.CharPool;
+import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.bean.BeanLocatorException;
 import com.liferay.portal.kernel.bean.ClassLoaderBeanHandler;
@@ -72,8 +74,6 @@ import com.liferay.portal.kernel.security.membershippolicy.OrganizationMembershi
 import com.liferay.portal.kernel.security.membershippolicy.RoleMembershipPolicy;
 import com.liferay.portal.kernel.security.membershippolicy.SiteMembershipPolicy;
 import com.liferay.portal.kernel.security.membershippolicy.UserGroupMembershipPolicy;
-import com.liferay.portal.kernel.security.pacl.PACLConstants;
-import com.liferay.portal.kernel.security.pacl.permission.PortalHookPermission;
 import com.liferay.portal.kernel.security.pwd.Toolkit;
 import com.liferay.portal.kernel.service.CompanyLocalServiceUtil;
 import com.liferay.portal.kernel.service.ReleaseLocalServiceUtil;
@@ -89,14 +89,12 @@ import com.liferay.portal.kernel.servlet.WrapHttpServletResponseFilter;
 import com.liferay.portal.kernel.servlet.taglib.ui.FormNavigatorConstants;
 import com.liferay.portal.kernel.servlet.taglib.ui.FormNavigatorEntry;
 import com.liferay.portal.kernel.struts.StrutsAction;
-import com.liferay.portal.kernel.struts.StrutsPortletAction;
 import com.liferay.portal.kernel.upgrade.UpgradeProcess;
 import com.liferay.portal.kernel.upgrade.util.UpgradeProcessUtil;
 import com.liferay.portal.kernel.url.ServletContextURLContainer;
 import com.liferay.portal.kernel.util.CacheResourceBundleLoader;
 import com.liferay.portal.kernel.util.ClassResourceBundleLoader;
 import com.liferay.portal.kernel.util.GetterUtil;
-import com.liferay.portal.kernel.util.HttpUtil;
 import com.liferay.portal.kernel.util.InstanceFactory;
 import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.PropertiesUtil;
@@ -104,7 +102,6 @@ import com.liferay.portal.kernel.util.PropsKeys;
 import com.liferay.portal.kernel.util.ProxyUtil;
 import com.liferay.portal.kernel.util.ResourceBundleLoader;
 import com.liferay.portal.kernel.util.SetUtil;
-import com.liferay.portal.kernel.util.StringBundler;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.SystemProperties;
 import com.liferay.portal.kernel.util.Tuple;
@@ -119,13 +116,11 @@ import com.liferay.portal.repository.util.ExternalRepositoryFactoryImpl;
 import com.liferay.portal.security.auth.AuthVerifierPipeline;
 import com.liferay.portal.servlet.filters.cache.CacheUtil;
 import com.liferay.portal.servlet.taglib.ui.DeprecatedFormNavigatorEntry;
-import com.liferay.portal.spring.aop.ServiceBeanAopProxy;
-import com.liferay.portal.spring.context.PortalContextLoaderListener;
+import com.liferay.portal.spring.aop.AopInvocationHandler;
 import com.liferay.portal.util.JavaScriptBundleUtil;
 import com.liferay.portal.util.PortalInstances;
 import com.liferay.portal.util.PropsUtil;
 import com.liferay.portal.util.PropsValues;
-import com.liferay.portlet.documentlibrary.store.StoreFactory;
 import com.liferay.registry.Registry;
 import com.liferay.registry.RegistryUtil;
 import com.liferay.registry.ServiceRegistration;
@@ -142,7 +137,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
@@ -154,9 +148,6 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import javax.servlet.Filter;
 import javax.servlet.ServletContext;
-
-import org.springframework.aop.TargetSource;
-import org.springframework.aop.framework.AdvisedSupport;
 
 /**
  * @author Brian Wing Shun Chan
@@ -338,21 +329,13 @@ public class HookHotDeployListener
 			PropertiesUtil.toMap(properties));
 	}
 
+	/**
+	 * @deprecated As of Judson (7.1.x), with no direct replacement
+	 */
+	@Deprecated
 	protected boolean checkPermission(
 		String name, ClassLoader portletClassLoader, Object subject,
 		String message) {
-
-		try {
-			PortalHookPermission.checkPermission(
-				name, portletClassLoader, subject);
-		}
-		catch (SecurityException se) {
-			if (_log.isInfoEnabled()) {
-				_log.info(message);
-			}
-
-			return false;
-		}
 
 		return true;
 	}
@@ -361,9 +344,8 @@ public class HookHotDeployListener
 		if (_log.isDebugEnabled()) {
 			return true;
 		}
-		else {
-			return portalProperties.containsKey(key);
-		}
+
+		return portalProperties.containsKey(key);
 	}
 
 	protected void destroyCustomJspBag(
@@ -412,9 +394,7 @@ public class HookHotDeployListener
 		}
 
 		if (portalProperties.containsKey(PropsKeys.DL_STORE_IMPL)) {
-			StoreFactory storeFactory = StoreFactory.getInstance();
-
-			storeFactory.setStore(null);
+			PropsValues.DL_STORE_IMPL = PropsUtil.get(PropsKeys.DL_STORE_IMPL);
 		}
 
 		Set<String> liferayFilterClassNames =
@@ -448,15 +428,15 @@ public class HookHotDeployListener
 			_log.debug("Invoking deploy for " + servletContextName);
 		}
 
-		String xml = HttpUtil.URLtoString(
-			servletContext.getResource("/WEB-INF/liferay-hook.xml"));
+		String xml = StreamUtil.toString(
+			servletContext.getResourceAsStream("/WEB-INF/liferay-hook.xml"));
 
 		if (xml == null) {
 			return;
 		}
 
-		if (_log.isInfoEnabled()) {
-			_log.info("Registering hook for " + servletContextName);
+		if (_log.isDebugEnabled()) {
+			_log.debug("Registering hook for " + servletContextName);
 		}
 
 		_servletContextNames.add(servletContextName);
@@ -798,13 +778,6 @@ public class HookHotDeployListener
 			return;
 		}
 
-		if (!checkPermission(
-				PACLConstants.PORTAL_HOOK_PERMISSION_CUSTOM_JSP_DIR,
-				portletClassLoader, null, "Rejecting custom JSP directory")) {
-
-			return;
-		}
-
 		if (_log.isDebugEnabled()) {
 			_log.debug("Custom JSP directory: " + customJspDir);
 		}
@@ -1132,14 +1105,6 @@ public class HookHotDeployListener
 			String indexerClassName = indexerPostProcessorElement.elementText(
 				"indexer-class-name");
 
-			if (!checkPermission(
-					PACLConstants.PORTAL_HOOK_PERMISSION_INDEXER,
-					portletClassLoader, indexerClassName,
-					"Rejecting indexer " + indexerClassName)) {
-
-				continue;
-			}
-
 			String indexerPostProcessorImpl =
 				indexerPostProcessorElement.elementText(
 					"indexer-post-processor-impl");
@@ -1170,20 +1135,9 @@ public class HookHotDeployListener
 			Locale locale = getLocale(languagePropertiesLocation);
 
 			if (locale == null) {
-				if (_log.isInfoEnabled()) {
-					_log.info("Ignoring " + languagePropertiesLocation);
+				if (_log.isDebugEnabled()) {
+					_log.debug("Ignoring " + languagePropertiesLocation);
 				}
-
-				continue;
-			}
-
-			String languageId = LocaleUtil.toLanguageId(locale);
-
-			if (!StringPool.BLANK.equals(languageId) &&
-				!checkPermission(
-					PACLConstants.
-						PORTAL_HOOK_PERMISSION_LANGUAGE_PROPERTIES_LOCALE,
-					portletClassLoader, locale, "Rejecting locale " + locale)) {
 
 				continue;
 			}
@@ -1201,7 +1155,7 @@ public class HookHotDeployListener
 
 				Map<String, Object> properties = new HashMap<>();
 
-				properties.put("language.id", languageId);
+				properties.put("language.id", LocaleUtil.toLanguageId(locale));
 
 				registerService(
 					servletContextName, languagePropertiesLocation,
@@ -1290,28 +1244,12 @@ public class HookHotDeployListener
 			return;
 		}
 
-		Set<Object> set = portalProperties.keySet();
-
-		Iterator<Object> iterator = set.iterator();
-
-		while (iterator.hasNext()) {
-			String key = (String)iterator.next();
-
-			if (!checkPermission(
-					PACLConstants.PORTAL_HOOK_PERMISSION_PORTAL_PROPERTIES_KEY,
-					portletClassLoader, key,
-					"Rejecting portal.properties key " + key)) {
-
-				iterator.remove();
-			}
-		}
-
 		Properties unfilteredPortalProperties =
 			(Properties)portalProperties.clone();
 
 		portalProperties.remove(PropsKeys.RELEASE_INFO_BUILD_NUMBER);
 		portalProperties.remove(PropsKeys.RELEASE_INFO_PREVIOUS_BUILD_NUMBER);
-		portalProperties.remove(PropsKeys.UPGRADE_PROCESSES);
+		portalProperties.remove(_PROPS_KEY_UPGRADE_PROCESSES);
 
 		_portalPropertiesMap.put(servletContextName, portalProperties);
 
@@ -1476,12 +1414,8 @@ public class HookHotDeployListener
 		}
 
 		if (portalProperties.containsKey(PropsKeys.DL_STORE_IMPL)) {
-			StoreFactory storeFactory = StoreFactory.getInstance();
-
-			String storeClassName = portalProperties.getProperty(
+			PropsValues.DL_STORE_IMPL = portalProperties.getProperty(
 				PropsKeys.DL_STORE_IMPL);
-
-			storeFactory.setStore(storeClassName);
 		}
 
 		if (portalProperties.containsKey(
@@ -1754,11 +1688,11 @@ public class HookHotDeployListener
 		if (unfilteredPortalProperties.containsKey(
 				PropsKeys.RELEASE_INFO_BUILD_NUMBER) ||
 			unfilteredPortalProperties.containsKey(
-				PropsKeys.UPGRADE_PROCESSES)) {
+				_PROPS_KEY_UPGRADE_PROCESSES)) {
 
 			String[] upgradeProcessClassNames = StringUtil.split(
 				unfilteredPortalProperties.getProperty(
-					PropsKeys.UPGRADE_PROCESSES));
+					_PROPS_KEY_UPGRADE_PROCESSES));
 
 			List<UpgradeProcess> upgradeProcesses =
 				UpgradeProcessUtil.initUpgradeProcesses(
@@ -1780,14 +1714,6 @@ public class HookHotDeployListener
 		for (Element serviceElement : serviceElements) {
 			String serviceType = serviceElement.elementText("service-type");
 			String serviceImpl = serviceElement.elementText("service-impl");
-
-			if (!checkPermission(
-					PACLConstants.PORTAL_HOOK_PERMISSION_SERVICE,
-					portletClassLoader, serviceType,
-					"Rejecting service " + serviceImpl)) {
-
-				continue;
-			}
 
 			Class<?> serviceTypeClass = portletClassLoader.loadClass(
 				serviceType);
@@ -1829,21 +1755,20 @@ public class HookHotDeployListener
 	}
 
 	/**
-	 * @deprecated As of 7.0.0, as of 7.0.0, with no direct replacement
+	 * @deprecated As of Judson (7.1.x), as of 7.0.0, with no direct replacement
 	 */
 	@Deprecated
 	protected void initServices(
 			String servletContextName, ClassLoader portletClassLoader,
 			String serviceType, Class<?> serviceTypeClass,
 			Constructor<?> serviceImplConstructor, Object serviceProxy)
-		throws Exception {
+		throws ReflectiveOperationException {
 
-		AdvisedSupport advisedSupport = ServiceBeanAopProxy.getAdvisedSupport(
-			serviceProxy);
+		AopInvocationHandler aopInvocationHandler =
+			ProxyUtil.fetchInvocationHandler(
+				serviceProxy, AopInvocationHandler.class);
 
-		TargetSource targetSource = advisedSupport.getTargetSource();
-
-		Object previousService = targetSource.getTarget();
+		Object previousService = aopInvocationHandler.getTarget();
 
 		ServiceWrapper<?> serviceWrapper =
 			(ServiceWrapper<?>)serviceImplConstructor.newInstance(
@@ -1887,8 +1812,7 @@ public class HookHotDeployListener
 		}
 
 		filter = (Filter)ProxyUtil.newProxyInstance(
-			portletClassLoader,
-			interfaces.toArray(new Class<?>[interfaces.size()]),
+			portletClassLoader, interfaces.toArray(new Class<?>[0]),
 			new ClassLoaderBeanHandler(filter, portletClassLoader));
 
 		return filter;
@@ -1898,17 +1822,6 @@ public class HookHotDeployListener
 			ServletContext servletContext, String servletContextName,
 			ClassLoader portletClassLoader, Element parentElement)
 		throws Exception {
-
-		List<Element> servletFilterElements = parentElement.elements(
-			"servlet-filter");
-
-		if (!servletFilterElements.isEmpty() &&
-			!checkPermission(
-				PACLConstants.PORTAL_HOOK_PERMISSION_SERVLET_FILTERS,
-				portletClassLoader, null, "Rejecting servlet filters")) {
-
-			return;
-		}
 
 		Map<String, Tuple> filterTuples = new HashMap<>();
 
@@ -1954,6 +1867,9 @@ public class HookHotDeployListener
 				new Tuple(afterFilter, beforeFilter, dispatchers, urlPatterns));
 		}
 
+		List<Element> servletFilterElements = parentElement.elements(
+			"servlet-filter");
+
 		for (Element servletFilterElement : servletFilterElements) {
 			String servletFilterName = servletFilterElement.elementText(
 				"servlet-filter-name");
@@ -1977,10 +1893,7 @@ public class HookHotDeployListener
 			properties.put("after-filter", filterTuple.getObject(0));
 			properties.put("before-filter", filterTuple.getObject(1));
 			properties.put("dispatcher", filterTuple.getObject(2));
-
-			properties.put(
-				"servlet-context-name",
-				PortalContextLoaderListener.getPortalServletContextName());
+			properties.put("servlet-context-name", StringPool.BLANK);
 			properties.put("servlet-filter-name", servletFilterName);
 			properties.put("url-pattern", filterTuple.getObject(3));
 
@@ -2012,19 +1925,6 @@ public class HookHotDeployListener
 				servletContextName, strutsActionClassName, StrutsAction.class,
 				strutsAction, "path", strutsActionPath);
 		}
-		else {
-			StrutsPortletAction strutsPortletAction =
-				(StrutsPortletAction)ProxyUtil.newProxyInstance(
-					portletClassLoader,
-					new Class<?>[] {StrutsPortletAction.class},
-					new ClassLoaderBeanHandler(
-						strutsActionObject, portletClassLoader));
-
-			registerService(
-				servletContextName, strutsActionClassName,
-				StrutsPortletAction.class, strutsPortletAction, "path",
-				strutsActionPath);
-		}
 	}
 
 	protected void initStrutsActions(
@@ -2038,14 +1938,6 @@ public class HookHotDeployListener
 		for (Element strutsActionElement : strutsActionElements) {
 			String strutsActionPath = strutsActionElement.elementText(
 				"struts-action-path");
-
-			if (!checkPermission(
-					PACLConstants.PORTAL_HOOK_PERMISSION_STRUTS_ACTION_PATH,
-					portletClassLoader, strutsActionPath,
-					"Rejecting struts action path " + strutsActionPath)) {
-
-				continue;
-			}
 
 			String strutsActionImpl = strutsActionElement.elementText(
 				"struts-action-impl");
@@ -2303,23 +2195,24 @@ public class HookHotDeployListener
 			PropsUtil.addProperties(properties);
 		}
 
-		field.set(null, value);
+		if (!_propsKeysEvents.contains(key)) {
+			field.set(null, value);
+		}
 	}
 
 	private void _initServices(
 			String servletContextName, Constructor<?> serviceImplConstructor,
 			Object serviceProxy)
-		throws Exception {
-
-		AdvisedSupport advisedSupport = ServiceBeanAopProxy.getAdvisedSupport(
-			serviceProxy);
-
-		TargetSource targetSource = advisedSupport.getTargetSource();
+		throws ReflectiveOperationException {
 
 		Class<?> proxyClass = serviceProxy.getClass();
 
 		if (ProxyUtil.isProxyClass(proxyClass)) {
-			Object previousService = targetSource.getTarget();
+			AopInvocationHandler aopInvocationHandler =
+				ProxyUtil.fetchInvocationHandler(
+					serviceProxy, AopInvocationHandler.class);
+
+			Object previousService = aopInvocationHandler.getTarget();
 
 			ServiceWrapper<?> serviceWrapper =
 				(ServiceWrapper<?>)serviceImplConstructor.newInstance(
@@ -2336,14 +2229,18 @@ public class HookHotDeployListener
 		}
 	}
 
+	private static final String _PROPS_KEY_UPGRADE_PROCESSES =
+		"upgrade.processes";
+
 	private static final String[] _PROPS_KEYS_EVENTS = {
 		LOGIN_EVENTS_POST, LOGIN_EVENTS_PRE, LOGOUT_EVENTS_POST,
 		LOGOUT_EVENTS_PRE, SERVLET_SERVICE_EVENTS_POST,
 		SERVLET_SERVICE_EVENTS_PRE
 	};
 
-	private static final String[] _PROPS_KEYS_SESSION_EVENTS =
-		{SERVLET_SESSION_CREATE_EVENTS, SERVLET_SESSION_DESTROY_EVENTS};
+	private static final String[] _PROPS_KEYS_SESSION_EVENTS = {
+		SERVLET_SESSION_CREATE_EVENTS, SERVLET_SESSION_DESTROY_EVENTS
+	};
 
 	private static final String[] _PROPS_VALUES_BOOLEAN = {
 		"auth.forward.by.last.path", "captcha.check.portal.create_account",
@@ -2395,12 +2292,14 @@ public class HookHotDeployListener
 		"journal.article.form.update", "layout.form.add", "layout.form.update",
 		"layout.set.form.update", "layout.static.portlets.all",
 		"login.events.post", "login.events.pre", "login.form.navigation.post",
-		"login.form.navigation.pre", "organizations.form.add.identification",
-		"organizations.form.add.main", "organizations.form.add.miscellaneous",
+		"login.form.navigation.pre", "logout.events.pre", "logout.events.post",
+		"organizations.form.add.identification", "organizations.form.add.main",
+		"organizations.form.add.miscellaneous",
 		"portlet.add.default.resource.check.whitelist",
 		"portlet.add.default.resource.check.whitelist.actions",
 		"portlet.interrupted.request.whitelist",
 		"portlet.interrupted.request.whitelist.actions",
+		"servlet.service.events.post", "servlet.service.events.pre",
 		"session.phishing.protected.attributes", "sites.form.add.advanced",
 		"sites.form.add.main", "sites.form.add.miscellaneous",
 		"sites.form.add.seo", "sites.form.update.advanced",
@@ -2418,8 +2317,9 @@ public class HookHotDeployListener
 		"layout.user.public.layouts.modifiable"
 	};
 
-	private static final String[] _PROPS_VALUES_OVERRIDE_STRING_ARRAY =
-		{"locales.beta"};
+	private static final String[] _PROPS_VALUES_OVERRIDE_STRING_ARRAY = {
+		"locales.beta"
+	};
 
 	private static final String[] _PROPS_VALUES_STRING = {
 		"company.default.locale", "company.default.time.zone",
@@ -2544,7 +2444,7 @@ public class HookHotDeployListener
 				Collections.addAll(mergedStringSet, entry.getValue());
 			}
 
-			return mergedStringSet.toArray(new String[mergedStringSet.size()]);
+			return mergedStringSet.toArray(new String[0]);
 		}
 
 		@Override
@@ -2586,9 +2486,8 @@ public class HookHotDeployListener
 			if (Validator.isNotNull(_servletContextName)) {
 				return true;
 			}
-			else {
-				return false;
-			}
+
+			return false;
 		}
 
 		@Override

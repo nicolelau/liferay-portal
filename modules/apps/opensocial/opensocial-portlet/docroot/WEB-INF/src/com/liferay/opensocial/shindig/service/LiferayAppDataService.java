@@ -145,8 +145,6 @@ public class LiferayAppDataService implements AppDataService {
 
 		long companyId = getCompanyId(securityToken);
 
-		Map<String, Map<String, String>> peopleAppData = new HashMap<>();
-
 		List<ExpandoColumn> expandoColumns = getExpandoColumns(
 			companyId, appId);
 
@@ -161,6 +159,8 @@ public class LiferayAppDataService implements AppDataService {
 				fields.add(expandoColumn.getName());
 			}
 		}
+
+		Map<String, Map<String, String>> peopleAppData = new HashMap<>();
 
 		for (UserId userId : userIds) {
 			String userIdString = userId.getUserId(securityToken);
@@ -254,12 +254,9 @@ public class LiferayAppDataService implements AppDataService {
 		long companyId, String appId) {
 
 		try {
-			List<ExpandoColumn> expandoColumns =
-				ExpandoColumnLocalServiceUtil.getColumns(
-					companyId, User.class.getName(),
-					ShindigUtil.getTableOpenSocial());
-
-			return expandoColumns;
+			return ExpandoColumnLocalServiceUtil.getColumns(
+				companyId, User.class.getName(),
+				ShindigUtil.getTableOpenSocial());
 		}
 		catch (Exception e) {
 			return null;

@@ -14,10 +14,12 @@
 
 package com.liferay.portlet.exportimport.service.impl;
 
+import com.liferay.exportimport.kernel.lar.ExportImportThreadLocal;
 import com.liferay.exportimport.kernel.lar.MissingReferences;
 import com.liferay.exportimport.kernel.lar.PortletDataContext;
 import com.liferay.exportimport.kernel.lifecycle.ExportImportLifecycleManagerUtil;
 import com.liferay.exportimport.kernel.model.ExportImportConfiguration;
+import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.log.Log;
@@ -28,13 +30,11 @@ import com.liferay.portal.kernel.repository.model.Folder;
 import com.liferay.portal.kernel.security.permission.ActionKeys;
 import com.liferay.portal.kernel.service.permission.GroupPermissionUtil;
 import com.liferay.portal.kernel.util.MapUtil;
-import com.liferay.portal.kernel.util.StringBundler;
 import com.liferay.portlet.exportimport.service.base.StagingServiceBaseImpl;
 
 import java.io.Serializable;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * @author Michael C. Han
@@ -44,6 +44,11 @@ public class StagingServiceImpl extends StagingServiceBaseImpl {
 	@Override
 	public void cleanUpStagingRequest(long stagingRequestId)
 		throws PortalException {
+
+		boolean stagingInProcessOnLive =
+			ExportImportThreadLocal.isStagingInProcessOnRemoteLive();
+
+		ExportImportThreadLocal.setStagingInProcessOnRemoteLive(true);
 
 		try {
 			checkPermission(stagingRequestId);
@@ -60,11 +65,20 @@ public class StagingServiceImpl extends StagingServiceBaseImpl {
 
 			throw pe;
 		}
+		finally {
+			ExportImportThreadLocal.setStagingInProcessOnRemoteLive(
+				stagingInProcessOnLive);
+		}
 	}
 
 	@Override
 	public long createStagingRequest(long groupId, String checksum)
 		throws PortalException {
+
+		boolean stagingInProcessOnLive =
+			ExportImportThreadLocal.isStagingInProcessOnRemoteLive();
+
+		ExportImportThreadLocal.setStagingInProcessOnRemoteLive(true);
 
 		try {
 			GroupPermissionUtil.check(
@@ -78,12 +92,16 @@ public class StagingServiceImpl extends StagingServiceBaseImpl {
 			if (_log.isDebugEnabled()) {
 				_log.debug(
 					StringBundler.concat(
-						"StagingServiceImpl#createStagingRequest(",
-						String.valueOf(groupId), ", ", checksum, ")"),
+						"StagingServiceImpl#createStagingRequest(", groupId,
+						", ", checksum, ")"),
 					pe);
 			}
 
 			throw pe;
+		}
+		finally {
+			ExportImportThreadLocal.setStagingInProcessOnRemoteLive(
+				stagingInProcessOnLive);
 		}
 	}
 
@@ -104,8 +122,7 @@ public class StagingServiceImpl extends StagingServiceBaseImpl {
 				_log.debug(
 					StringBundler.concat(
 						"StagingServiceImpl#hasRemoteLayout(", uuid, ", ",
-						String.valueOf(groupId), ", ",
-						String.valueOf(privateLayout), ")"),
+						groupId, ", ", privateLayout, ")"),
 					pe);
 			}
 
@@ -145,7 +162,7 @@ public class StagingServiceImpl extends StagingServiceBaseImpl {
 
 			ExportImportLifecycleManagerUtil.fireExportImportLifecycleEvent(
 				code, processFlag, processId,
-				arguments.toArray(new Serializable[arguments.size()]));
+				arguments.toArray(new Serializable[0]));
 		}
 		catch (PortalException pe) {
 			if (_log.isDebugEnabled()) {
@@ -169,27 +186,16 @@ public class StagingServiceImpl extends StagingServiceBaseImpl {
 		}
 	}
 
-	/**
-	 * @deprecated As of 7.0.0, with no direct replacement
-	 */
-	@Deprecated
-	@Override
-	public MissingReferences publishStagingRequest(
-			long stagingRequestId, boolean privateLayout,
-			Map<String, String[]> parameterMap)
-		throws PortalException {
-
-		checkPermission(stagingRequestId);
-
-		return stagingLocalService.publishStagingRequest(
-			getUserId(), stagingRequestId, privateLayout, parameterMap);
-	}
-
 	@Override
 	public MissingReferences publishStagingRequest(
 			long stagingRequestId,
 			ExportImportConfiguration exportImportConfiguration)
 		throws PortalException {
+
+		boolean stagingInProcessOnLive =
+			ExportImportThreadLocal.isStagingInProcessOnRemoteLive();
+
+		ExportImportThreadLocal.setStagingInProcessOnRemoteLive(true);
 
 		try {
 			checkPermission(stagingRequestId);
@@ -202,12 +208,15 @@ public class StagingServiceImpl extends StagingServiceBaseImpl {
 				_log.debug(
 					StringBundler.concat(
 						"StagingServiceImpl#publishStagingRequest(",
-						String.valueOf(stagingRequestId), ", ",
-						String.valueOf(exportImportConfiguration), ")"),
+						stagingRequestId, ", ", exportImportConfiguration, ")"),
 					pe);
 			}
 
 			throw pe;
+		}
+		finally {
+			ExportImportThreadLocal.setStagingInProcessOnRemoteLive(
+				stagingInProcessOnLive);
 		}
 	}
 
@@ -215,6 +224,11 @@ public class StagingServiceImpl extends StagingServiceBaseImpl {
 	public void updateStagingRequest(
 			long stagingRequestId, String fileName, byte[] bytes)
 		throws PortalException {
+
+		boolean stagingInProcessOnLive =
+			ExportImportThreadLocal.isStagingInProcessOnRemoteLive();
+
+		ExportImportThreadLocal.setStagingInProcessOnRemoteLive(true);
 
 		try {
 			checkPermission(stagingRequestId);
@@ -227,30 +241,17 @@ public class StagingServiceImpl extends StagingServiceBaseImpl {
 				_log.debug(
 					StringBundler.concat(
 						"StagingServiceImpl#updateStagingRequest(",
-						String.valueOf(stagingRequestId), ", ", fileName, ", ",
-						String.valueOf(bytes.length), "bytes)"),
+						stagingRequestId, ", ", fileName, ", ", bytes.length,
+						"bytes)"),
 					pe);
 			}
 
 			throw pe;
 		}
-	}
-
-	/**
-	 * @deprecated As of 7.0.0, replaced by {@link #publishStagingRequest(long,
-	 *             boolean, Map)}
-	 */
-	@Deprecated
-	@Override
-	public MissingReferences validateStagingRequest(
-			long stagingRequestId, boolean privateLayout,
-			Map<String, String[]> parameterMap)
-		throws PortalException {
-
-		checkPermission(stagingRequestId);
-
-		return stagingLocalService.validateStagingRequest(
-			getUserId(), stagingRequestId, privateLayout, parameterMap);
+		finally {
+			ExportImportThreadLocal.setStagingInProcessOnRemoteLive(
+				stagingInProcessOnLive);
+		}
 	}
 
 	protected void checkPermission(long stagingRequestId)
