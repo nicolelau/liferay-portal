@@ -1,5 +1,5 @@
 Liferay-Releng-App-Description: %liferay-releng-app-description
-Liferay-Releng-App-Title: ${liferay.releng.app.title.prefix} Cross-Cluster Replication for Elasticsearch
+Liferay-Releng-App-Title: ${liferay.releng.app.title.prefix} Connector to Cross-Cluster Replication [Elastic Stack 7.x]
 Liferay-Releng-Bundle: false
 Liferay-Releng-Category: Utility
 Liferay-Releng-Demo-Url:
